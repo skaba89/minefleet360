@@ -22,7 +22,7 @@ Une machine, Docker Compose (`infra/deploy/docker-compose.demo.yml`) :
 3. Récupération du code : clone du dépôt privé avec une **clé de déploiement en lecture seule** (GitHub → Settings → Deploy keys), branche `main`.
 4. Secrets : création de `infra/deploy/.env.demo` **sur le serveur uniquement** (`openssl rand -hex 32` par secret), droits `600`.
 5. `docker compose -f docker-compose.demo.yml --env-file .env.demo up -d --build`.
-6. Migrations : `docker compose ... exec api alembic upgrade head`.
+6. Migrations : tâche ponctuelle `docker compose ... run --rm migrate` (seul conteneur recevant le secret `mf_owner` ; l'API ne reçoit ni ce secret ni celui de `postgres`).
 7. Premier `PLATFORM_ADMIN` : `MF_BOOTSTRAP_PASSWORD` saisi de façon interactive, puis `minefleet create-platform-admin`.
 8. Vérifications : `https://<domaine>/api/v1/health` → 200 ; route protégée sans jeton → 401 ; certificat valide.
 9. Sauvegarde : `backup.sh` en cron quotidien (rétention locale 7 jours ; copie hors machine à décider, C-09).

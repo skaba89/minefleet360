@@ -19,7 +19,8 @@ class Settings(BaseSettings):
     db_port: int = 5432
     db_name: str = "minefleet"
     app_password: SecretStr = Field(validation_alias="MF_APP_PASSWORD")
-    owner_password: SecretStr = Field(validation_alias="MF_OWNER_PASSWORD")
+    # Absent du processus API en déploiement (moindre privilège) : requis seulement pour les migrations.
+    owner_password: SecretStr | None = Field(default=None, validation_alias="MF_OWNER_PASSWORD")
 
     jwt_secret: SecretStr
     jwt_algorithm: Literal["HS256"] = "HS256"
@@ -63,7 +64,10 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
 
     def database_url(self, *, owner: bool = False) -> str:
-        user, password = ("mf_owner", self.owner_password) if owner else ("mf_app", self.app_password)
+        if owner and self.owner_password is None:
+            raise RuntimeError("MF_OWNER_PASSWORD requis pour les migrations (rôle mf_owner)")
+        password = self.owner_password if owner and self.owner_password else self.app_password
+        user = "mf_owner" if owner else "mf_app"
         return (
             f"postgresql+psycopg://{user}:{password.get_secret_value()}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}"

@@ -26,8 +26,11 @@ services:
       context: ../../backend
       target: runtime
     restart: unless-stopped
-    env_file: .env.demo
+    # Moindre privilège : l'API ne reçoit que ses propres secrets (ni postgres, ni mf_owner).
     environment:
+      MF_APP_PASSWORD: ${MF_APP_PASSWORD:?manquant}
+      MF_JWT_SECRET: ${MF_JWT_SECRET:?manquant}
+      MF_ALLOWED_ORIGINS: ${MF_ALLOWED_ORIGINS:-}
       MF_ENV: staging
       MF_DB_HOST: db
       MF_DB_PORT: "5432"
@@ -38,6 +41,25 @@ services:
       - mail-capture:/data/mail
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2",
               "--proxy-headers", "--forwarded-allow-ips", "*"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Tâche ponctuelle (rôle mf_owner) : docker compose ... run --rm migrate
+  migrate:
+    build:
+      context: ../../backend
+      target: runtime
+    profiles: ["ops"]
+    environment:
+      MF_ENV: staging
+      MF_DB_HOST: db
+      MF_DB_PORT: "5432"
+      MF_DB_NAME: minefleet
+      MF_APP_PASSWORD: ${MF_APP_PASSWORD:?manquant}
+      MF_OWNER_PASSWORD: ${MF_OWNER_PASSWORD:?manquant}
+      MF_JWT_SECRET: ${MF_JWT_SECRET:?manquant}
+    command: ["alembic", "upgrade", "head"]
     depends_on:
       db:
         condition: service_healthy
