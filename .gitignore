@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+# Node
+node_modules/
+dist/
+coverage/
+playwright-report/
+test-results/
+# Env / secrets
+.env
+*.local.env
+.claude/settings.local.json
+# Local dev artefacts
+var/
