@@ -242,3 +242,18 @@ def test_expired_or_forged_access_token_is_401(client: TestClient) -> None:
     for header in ({}, bearer("abc.def.ghi"), {"Authorization": "Basic xyz"}):
         resp = client.get(f"{API}/me", headers=header)
         assert resp.status_code == 401 and resp.json()["code"] == "AUTH_REQUIRED"
+
+
+def test_change_password_guessing_is_rate_limited_and_revokes_session(client: TestClient, api: Api) -> None:
+    t = api.tenant()
+    settings = get_settings()
+    statuses = [
+        client.post(
+            f"{API}/me/password",
+            headers=t.admin.headers,
+            json={"current_password": f"essai-{i}", "new_password": "Autre-mot-de-passe-fictif-7"},
+        ).status_code
+        for i in range(settings.login_max_failures)
+    ]
+    assert statuses[:-1] == [422] * (settings.login_max_failures - 1) and statuses[-1] == 429
+    assert client.get(f"{API}/me", headers=t.admin.headers).status_code == 401

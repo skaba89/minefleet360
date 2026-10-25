@@ -114,6 +114,20 @@ def create_invited_user(
     return user, assignment, token
 
 
+def revoke_open_tokens(db: Session, *, user_id: uuid.UUID, now: datetime) -> int:
+    """Invalide les jetons d'invitation et de réinitialisation ouverts (ex. à la désactivation)."""
+    result = db.execute(
+        update(AccountToken)
+        .where(
+            AccountToken.user_account_id == user_id,
+            AccountToken.consumed_at.is_(None),
+            AccountToken.revoked_at.is_(None),
+        )
+        .values(revoked_at=now)
+    )
+    return int(getattr(result, "rowcount", 0) or 0)
+
+
 def revoke_sessions(
     db: Session,
     *,

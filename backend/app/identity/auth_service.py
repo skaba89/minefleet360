@@ -10,7 +10,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.audit.contracts import record
@@ -445,14 +445,42 @@ def change_own_password(
     new: str,
     clock: Clock,
     settings: Settings,
+    limiters: AuthLimiters,
 ) -> None:
+    """Un jeton d'accès volé ne doit pas permettre de deviner le mot de passe actuel : limitation par
+    compte ; au seuil, la session courante est révoquée (présomption de vol) et l'échec audité."""
+    now = clock.now()
+    key = f"pwchange:{user_id}"
+    if limiters.tokens.is_blocked(key, now):
+        raise _rate_limited(settings)
     user = db.execute(
         select(UserAccount).where(UserAccount.user_account_id == user_id).with_for_update(key_share=True)
     ).scalar_one()
     if not verify_password(user.password_hash, current):
+        limiters.tokens.record_failure(key, now)
+        blocked = limiters.tokens.is_blocked(key, now)
+        if blocked:
+            db.execute(
+                update(AuthSession)
+                .where(AuthSession.auth_session_id == session_id, AuthSession.revoked_at.is_(None))
+                .values(revoked_at=now, revoked_reason="PASSWORD_GUESSING")
+            )
+        record(
+            db,
+            tenant_id=user.tenant_id,
+            action="user.change_own_password",
+            entity_type="user_account",
+            entity_id=user_id,
+            actor_user_id=user_id,
+            outcome="FAILURE",
+            reason="RATE_LIMITED" if blocked else "INVALID_CURRENT_PASSWORD",
+        )
+        db.commit()
+        if blocked:
+            raise _rate_limited(settings)
         raise AppError("VALIDATION_ERROR", details=[{"field": "current_password", "type": "invalid"}])
     check_password_policy(new, settings, email=user.email)
-    now = clock.now()
+    limiters.tokens.reset(key)
     user.password_hash = hash_password(new)
     user.updated_by = user_id
     db.flush()

@@ -223,6 +223,7 @@ def change_password(
     body: ChangePasswordRequest,
     auth: Annotated[Authorized, Depends(Require("identity.user.update_self"))],
     settings: SettingsDep,
+    limiters: LimitersDep,
 ) -> None:
     auth_service.change_own_password(
         auth.db,
@@ -232,6 +233,7 @@ def change_password(
         new=body.new_password,
         clock=auth.clock,
         settings=settings,
+        limiters=limiters,
     )
 
 

@@ -20,6 +20,7 @@ from app.identity.contracts import (
     invitation_message,
     issue_account_token,
     reset_message,
+    revoke_open_tokens,
     revoke_sessions,
 )
 from app.identity.models import Role, RoleAllowedScope, UserAccount, UserRoleAssignment
@@ -272,6 +273,7 @@ def change_user_status(
     db.flush()
     if deactivate:
         revoke_sessions(db, now=now, reason="USER_DISABLED", user_id=user.user_account_id)
+        revoke_open_tokens(db, user_id=user.user_account_id, now=now)
     record(
         db,
         tenant_id=auth.tenant_id,

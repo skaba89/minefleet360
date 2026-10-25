@@ -5,7 +5,8 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-from tests.conftest import API, Api, TenantFixture
+from app.core.email import MemoryEmailSender
+from tests.conftest import API, PASSWORD, Api, TenantFixture, last_token
 
 
 def _etag(client: TestClient, url: str, headers: dict[str, str]) -> str:
@@ -239,3 +240,20 @@ def test_roles_catalogue_hides_platform_admin_from_tenants(client: TestClient, a
     t = api.tenant()
     codes = {r["role_code"] for r in client.get(f"{API}/roles", headers=t.admin.headers).json()}
     assert "PLATFORM_ADMIN" not in codes and {"TENANT_ADMIN", "AUDITOR", "DISPATCHER"} <= codes
+
+
+def test_deactivation_revokes_pending_invitation_tokens(
+    client: TestClient, api: Api, outbox: MemoryEmailSender
+) -> None:
+    t = api.tenant()
+    invited = api.user(t, "HR", activate=False)
+    token = last_token(outbox, invited.email)
+    url = f"{API}/users/{invited.user_id}"
+    for action in ("deactivate", "reactivate"):
+        resp = client.post(
+            f"{url}/{action}", headers={**t.admin.headers, "If-Match": _etag(client, url, t.admin.headers)}
+        )
+        assert resp.status_code == 200
+    # Réactivé en INVITED : l'ancien lien ne doit pas revivre.
+    resp = client.post(f"{API}/auth/invitations/accept", json={"token": token, "password": PASSWORD})
+    assert resp.status_code == 422 and resp.json()["code"] == "TOKEN_INVALID"
