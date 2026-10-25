@@ -1,0 +1,59 @@
+# CI backend — tranche 1a. Secrets générés à la volée : aucun secret stocké dans le dépôt.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      db:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-postgres-only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 3s --health-retries 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      MF_ENV: test
+      MF_DB_HOST: localhost
+      MF_DB_PORT: "5432"
+      MF_DB_NAME: minefleet_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Secrets éphémères
+        run: |
+          echo "MF_OWNER_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          echo "MF_APP_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          echo "MF_JWT_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
+      - name: Amorçage de la base (rôles, extensions)
+        env:
+          PGHOST: localhost
+          PGPASSWORD: ci-postgres-only
+          POSTGRES_USER: postgres
+        run: bash ../infra/db/init/00_bootstrap.sh
+      - run: pip install -e ".[dev]" pip-audit==2.7.3
+      - name: Lint
+        run: ruff check . && ruff format --check .
+      - name: Types
+        run: mypy app
+      - name: Tests (migrations, RLS, autorisations générées, isolation)
+        run: pytest -q -p no:warnings
+      - name: Audit des dépendances
+        run: pip-audit --skip-editable

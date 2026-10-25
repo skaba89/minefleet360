@@ -1,0 +1,96 @@
+"""Commandes d'exploitation (rôle applicatif mf_app, jamais le propriétaire du schéma).
+
+minefleet create-platform-admin --email <e-mail> --name "<nom>"
+    US-1.32 : premier PLATFORM_ADMIN ; mot de passe lu dans MF_BOOTSTRAP_PASSWORD (jamais en argument).
+"""
+
+import argparse
+import os
+import sys
+
+from sqlalchemy import select
+
+from app.audit.contracts import record
+from app.core.clock import SystemClock
+from app.core.config import get_settings
+from app.core.db import new_session
+from app.core.errors import AppError
+from app.core.security import check_password_policy, hash_password
+from app.core.tenancy import PLATFORM_TENANT_ID, set_tenant_context
+from app.identity.models import UserAccount, UserRoleAssignment
+
+
+def create_platform_admin(email: str, display_name: str, password: str) -> int:
+    settings = get_settings()
+    try:
+        check_password_policy(password, settings, email=email)
+    except AppError as exc:
+        print(f"Mot de passe refusé : {exc.details}", file=sys.stderr)
+        return 2
+    now = SystemClock().now()
+    db = new_session()
+    try:
+        set_tenant_context(db, PLATFORM_TENANT_ID)
+        existing = db.execute(
+            select(UserRoleAssignment.user_role_assignment_id).where(
+                UserRoleAssignment.role_code == "PLATFORM_ADMIN", UserRoleAssignment.revoked_at.is_(None)
+            )
+        ).first()
+        if existing is not None:
+            print("Refusé : un PLATFORM_ADMIN existe déjà (US-1.32 A2).", file=sys.stderr)
+            return 3
+        user = UserAccount(
+            tenant_id=PLATFORM_TENANT_ID,
+            email=email.strip().lower(),
+            display_name=display_name,
+            password_hash=hash_password(password),
+            status="ACTIVE",
+            must_change_password=False,
+        )
+        db.add(user)
+        db.flush()
+        db.add(
+            UserRoleAssignment(
+                tenant_id=PLATFORM_TENANT_ID,
+                tenant_kind="PLATFORM",
+                user_account_id=user.user_account_id,
+                role_code="PLATFORM_ADMIN",
+                scope_type="PLATFORM",
+                valid_from=now,
+                granted_by=user.user_account_id,
+            )
+        )
+        record(
+            db,
+            tenant_id=PLATFORM_TENANT_ID,
+            action="platform_admin.bootstrap",
+            entity_type="user_account",
+            entity_id=user.user_account_id,
+            actor_kind="SYSTEM",
+            after={"display_name": display_name},
+        )
+        db.commit()
+        print(f"PLATFORM_ADMIN créé : {user.user_account_id}")
+        return 0
+    finally:
+        db.close()
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="minefleet")
+    sub = parser.add_subparsers(dest="command", required=True)
+    admin = sub.add_parser("create-platform-admin")
+    admin.add_argument("--email", required=True)
+    admin.add_argument("--name", required=True)
+    args = parser.parse_args(argv)
+    if args.command == "create-platform-admin":
+        password = os.environ.get("MF_BOOTSTRAP_PASSWORD")
+        if not password:
+            print("MF_BOOTSTRAP_PASSWORD est requis (variable d'environnement).", file=sys.stderr)
+            return 2
+        return create_platform_admin(args.email, args.name, password)
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

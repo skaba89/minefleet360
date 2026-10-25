@@ -44,6 +44,9 @@
 | D-30 | `ACTIVE` → `SUSPENDED` (et retour) au lot 1 : **action manuelle motivée** (`OPS_MANAGER`, `DISPATCHER` portée site), auditée ; `SUSPENDED` occupe toujours le créneau et bloque les changements de site. |
 | D-28 | Envoi d'e-mails (invitations, réinitialisation) via un **port `EmailSender`** ; en développement, adaptateur de capture locale (fichier/log, jamais d'envoi réel). Fournisseur réel = décision client (C-01). Interdiction d'auto-désactivation de son propre compte (`422`). |
 | D-29 | Inéligibilité d'affectation : **un seul code** `422 ASSIGNMENT_NOT_ELIGIBLE` avec `reasons[]` listant **tous** les motifs (`DRIVER_NOT_ACTIVE`, `DRIVER_LICENSE_EXPIRED`, `DRIVER_LICENSE_CATEGORY_MISSING`, `DRIVER_QUALIFICATION_MISSING`, `VEHICLE_NOT_AVAILABLE`, `ASSIGNMENT_SITE_MISMATCH`, `ASSIGNMENT_BACKDATED`). Les codes `IF_MATCH_REQUIRED` (428 → retenu en `422` pour simplicité client), `OPEN_ASSIGNMENTS_EXIST` et `SITE_HAS_ACTIVE_RESOURCES` (`409`) sont entérinés. |
+| D-31 | Limitation de débit de connexion à deux niveaux : par couple (espace, e-mail) `LOGIN_MAX_FAILURES` et par IP `LOGIN_IP_MAX_FAILURES` (seuil plus élevé : plusieurs utilisateurs d'un site derrière un même NAT ne doivent pas se bloquer mutuellement). Limiteur en mémoire par processus (limite documentée, QA-32). |
+| D-32 | Verrous applicatifs en `FOR NO KEY UPDATE` (jamais `FOR UPDATE`) pour ne pas bloquer les contrôles de clés étrangères de l'audit détaché ; `lock_timeout` applicatif configurable (`MF_DB_LOCK_TIMEOUT_MS`, 5 s par défaut). |
+| D-33 | `organization.tenant.list` (nouvelle permission, `PLATFORM_ADMIN`) pour `/platform/tenants` ; `organization.tenant.read` reste la lecture de **son** tenant. `DRIVER` retiré de `organization.site.read` au lot 1 (D-25). Code réservé à la création de tenant → `422 TENANT_CODE_RESERVED` (MATRICE_RBAC §1.3, prime sur US-1.01 A3). |
 | D-26 | Les codes d'erreur métier forment un **catalogue unique** (`backend/app/core/errors.py` + section OpenAPI) créé en tranche 1a ; tout code utilisé dans un document y est reporté ou supprimé. |
 
 ## B. Décisions à arbitrer (client / juriste)
@@ -66,4 +69,4 @@
 | C-14 | Fournisseur GPS, protocole, fréquence ; pont-bascule (format ticket, mode secours) | Adaptateur simulé uniquement | Lot 5 |
 | C-15 | Client pilote, volumétrie cible (tenants, sites, véhicules, utilisateurs) | Hypothèse dev : 3 tenants fictifs × 3 sites × 200 véhicules | Tests de charge |
 | C-16 | Import CSV initial du parc et du personnel | Hors lot 1 | Lot 2 |
-| C-17 | Hébergement du dépôt Git (GitHub, GitLab…) et activation de la CI distante | Dépôt local | Lot 1a (CI distante) |
+| C-17 | ~~Hébergement du dépôt Git~~ **Tranché (2026-10-25)** : GitHub privé `skaba89/minefleet360` ; CI GitHub Actions écrite (`.github/workflows/ci.yml`) | — | — |

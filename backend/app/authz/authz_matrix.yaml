@@ -1,0 +1,253 @@
+# Source de vérité MACHINE des permissions (D-09). Vue humaine : docs/MATRICE_RBAC.md.
+# Toute modification est relue par security-engineer. Les tests d'autorisation sont générés depuis ce fichier.
+# grants : rôle -> portées d'attribution qui PORTENT la permission (deny-by-default : rôle absent = 403).
+# Écarts assumés vs MATRICE_RBAC.md (à reporter dans la matrice) :
+#  - organization.tenant.list (nouvelle) : métadonnées plateforme pour PLATFORM_ADMIN, distincte de
+#    organization.tenant.read (lecture de SON tenant) pour éviter qu'un rôle tenant n'accède à /platform/*.
+#  - DRIVER ne porte que les permissions « propre compte » au lot 1 (D-25) : retiré de organization.site.read.
+#  - identity.session.revoke_own / revoke_any : déclarées, aucune route au lot 1a (déconnexion = /auth/logout).
+version: 1
+tranche_courante: 1a
+
+roles:
+  PLATFORM_ADMIN: { allowed_scopes: [PLATFORM], tenant_kind: PLATFORM, assignable_by_tenant: false }
+  TENANT_ADMIN:   { allowed_scopes: [TENANT], tenant_kind: CUSTOMER, assignable_by_tenant: true }
+  DIRECTION:      { allowed_scopes: [TENANT], tenant_kind: CUSTOMER, assignable_by_tenant: true }
+  OPS_MANAGER:    { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
+  DISPATCHER:     { allowed_scopes: [SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
+  HR:             { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
+  DRIVER:         { allowed_scopes: [SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
+  WORKSHOP_CHIEF: { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
+  MECHANIC:       { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
+  STOREKEEPER:    { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
+  FUEL_MANAGER:   { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
+  HSE:            { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
+  FINANCE:        { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
+  AUDITOR:        { allowed_scopes: [TENANT], tenant_kind: CUSTOMER, assignable_by_tenant: true, optional: true }
+
+permissions:
+  # --- organization (1a) -----------------------------------------------------------------------------
+  organization.tenant.create:
+    tranche: 1a
+    kind: create
+    site_bound: false
+    routes: [{ method: POST, path: /platform/tenants, shape: collection, success: 201 }]
+    audit: { action: tenant.create }
+    grants: { PLATFORM_ADMIN: [PLATFORM] }
+  organization.tenant.suspend:
+    tranche: 1a
+    kind: action
+    site_bound: false
+    routes:
+      - { method: POST, path: "/platform/tenants/{tenant_id}/suspend", shape: item, success: 200 }
+      - { method: POST, path: "/platform/tenants/{tenant_id}/reactivate", shape: item, success: 200 }
+    audit: { action: tenant.suspend }
+    grants: { PLATFORM_ADMIN: [PLATFORM] }
+  organization.tenant.list:
+    tranche: 1a
+    kind: read
+    site_bound: false
+    routes:
+      - { method: GET, path: /platform/tenants, shape: collection, success: 200 }
+      - { method: GET, path: "/platform/tenants/{tenant_id}", shape: item, success: 200 }
+    grants: { PLATFORM_ADMIN: [PLATFORM] }
+  organization.tenant.read:
+    tranche: 1a
+    kind: read
+    site_bound: false
+    routes: [{ method: GET, path: /tenant, shape: singleton, success: 200 }]
+    grants:
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      HR: [TENANT, SITE]
+      DRIVER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      MECHANIC: [TENANT, SITE]
+      STOREKEEPER: [TENANT, SITE]
+      FUEL_MANAGER: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  organization.tenant.update:
+    tranche: 1a
+    kind: update
+    site_bound: false
+    routes: [{ method: PATCH, path: /tenant, shape: singleton, success: 200 }]
+    audit: { action: tenant.update }
+    grants: { TENANT_ADMIN: [TENANT] }
+  organization.site.read:
+    tranche: 1a
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /sites, shape: collection, success: 200 }
+      - { method: GET, path: "/sites/{site_id}", shape: item, success: 200 }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      HR: [TENANT, SITE]
+      WORKSHOP_CHIEF: [SITE]
+      MECHANIC: [SITE]
+      STOREKEEPER: [SITE]
+      FUEL_MANAGER: [SITE]
+      HSE: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  organization.site.create:
+    tranche: 1a
+    kind: create
+    site_bound: false
+    routes: [{ method: POST, path: /sites, shape: collection, success: 201 }]
+    audit: { action: site.create }
+    grants: { TENANT_ADMIN: [TENANT] }
+  organization.site.update:
+    tranche: 1a
+    kind: update
+    site_bound: true
+    routes: [{ method: PATCH, path: "/sites/{site_id}", shape: item, success: 200 }]
+    audit: { action: site.update }
+    grants: { TENANT_ADMIN: [TENANT] }
+  organization.site.deactivate:
+    tranche: 1a
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: "/sites/{site_id}/deactivate", shape: item, success: 200 }
+      - { method: POST, path: "/sites/{site_id}/reactivate", shape: item, success: 200 }
+    audit: { action: site.deactivate }
+    grants: { TENANT_ADMIN: [TENANT] }
+
+  # --- identity (1a) ---------------------------------------------------------------------------------
+  identity.user.read:
+    tranche: 1a
+    kind: read
+    site_bound: false
+    routes:
+      - { method: GET, path: /users, shape: collection, success: 200 }
+      - { method: GET, path: "/users/{user_id}", shape: item, success: 200 }
+    grants: { TENANT_ADMIN: [TENANT], HR: [TENANT, SITE], AUDITOR: [TENANT] }
+  identity.user.create:
+    tranche: 1a
+    kind: create
+    site_bound: false
+    routes:
+      - { method: POST, path: /users, shape: collection, success: 201 }
+      - { method: POST, path: "/users/{user_id}/resend-invitation", shape: item, success: 202 }
+    audit: { action: user.invite }
+    grants: { TENANT_ADMIN: [TENANT] }
+  identity.user.update:
+    tranche: 1a
+    kind: update
+    site_bound: false
+    routes: [{ method: PATCH, path: "/users/{user_id}", shape: item, success: 200 }]
+    audit: { action: user.update }
+    grants: { TENANT_ADMIN: [TENANT] }
+  identity.user.deactivate:
+    tranche: 1a
+    kind: action
+    site_bound: false
+    routes:
+      - { method: POST, path: "/users/{user_id}/deactivate", shape: item, success: 200 }
+      - { method: POST, path: "/users/{user_id}/reactivate", shape: item, success: 200 }
+    audit: { action: user.deactivate }
+    grants: { TENANT_ADMIN: [TENANT] }
+  identity.user.reset_credentials:
+    tranche: 1a
+    kind: action
+    site_bound: false
+    routes: [{ method: POST, path: "/users/{user_id}/reset-credentials", shape: item, success: 202 }]
+    audit: { action: user.reset_credentials }
+    grants: { TENANT_ADMIN: [TENANT] }
+  identity.user.update_self:
+    tranche: 1a
+    kind: action
+    site_bound: false
+    routes:
+      - { method: GET, path: /me, shape: singleton, success: 200 }
+      - { method: POST, path: /me/password, shape: singleton, success: 204 }
+    audit: { action: user.change_own_password }
+    grants:
+      PLATFORM_ADMIN: [PLATFORM]
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      HR: [TENANT, SITE]
+      DRIVER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      MECHANIC: [TENANT, SITE]
+      STOREKEEPER: [TENANT, SITE]
+      FUEL_MANAGER: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  identity.role.read:
+    tranche: 1a
+    kind: read
+    site_bound: false
+    routes: [{ method: GET, path: /roles, shape: collection, success: 200 }]
+    grants: { PLATFORM_ADMIN: [PLATFORM], TENANT_ADMIN: [TENANT], DIRECTION: [TENANT], AUDITOR: [TENANT] }
+  identity.role_assignment.read:
+    tranche: 1a
+    kind: read
+    site_bound: false
+    routes: [{ method: GET, path: /role-assignments, shape: collection, success: 200 }]
+    grants: { TENANT_ADMIN: [TENANT], AUDITOR: [TENANT] }
+  identity.role_assignment.create:
+    tranche: 1a
+    kind: create
+    site_bound: false
+    routes: [{ method: POST, path: /role-assignments, shape: collection, success: 201 }]
+    audit: { action: role_assignment.create }
+    grants: { TENANT_ADMIN: [TENANT] }
+  identity.role_assignment.revoke:
+    tranche: 1a
+    kind: action
+    site_bound: false
+    routes: [{ method: POST, path: "/role-assignments/{assignment_id}/revoke", shape: item, success: 200 }]
+    audit: { action: role_assignment.revoke }
+    grants: { TENANT_ADMIN: [TENANT] }
+  identity.session.revoke_own:
+    tranche: 1a
+    kind: action
+    site_bound: false
+    routes: []
+    grants: {}
+  identity.session.revoke_any:
+    tranche: 1a
+    kind: action
+    site_bound: false
+    routes: []
+    grants: {}
+
+  # --- audit (1a) ------------------------------------------------------------------------------------
+  audit.event.read:
+    tranche: 1a
+    kind: read
+    site_bound: false
+    routes:
+      - { method: GET, path: /audit-events, shape: collection, success: 200 }
+      - { method: GET, path: "/audit-events/{event_id}", shape: item, success: 200 }
+    grants: { TENANT_ADMIN: [TENANT], AUDITOR: [TENANT] }
+
+public_routes:
+  - { method: GET, path: /health }
+  - { method: POST, path: /auth/login }
+  - { method: POST, path: /auth/platform/login }
+  - { method: POST, path: /auth/refresh }
+  - { method: POST, path: /auth/logout }
+  - { method: POST, path: /auth/invitations/accept }
+  - { method: POST, path: /auth/password/reset-request }
+  - { method: POST, path: /auth/password/reset-confirm }
+
+# Masquage côté serveur (D-15) : un champ listé n'est présent que pour les rôles indiqués.
+field_policies:
+  user_account:
+    email: { visible_to_roles: [TENANT_ADMIN] }
+    phone: { visible_to_roles: [TENANT_ADMIN] }
+
+global_tables: [role, role_allowed_scope, license_category_ref]
