@@ -19,3 +19,7 @@ test-results/
 .claude/settings.local.json
 # Local dev artefacts
 var/
+
+# Déploiement (serveur)
+infra/deploy/.env.demo
+infra/deploy/backups/

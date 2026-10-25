@@ -11,6 +11,6 @@ USER mf
 
 FROM base AS runtime
 COPY . .
-RUN pip install .
+RUN pip install . && mkdir -p /data/mail && chown -R mf:mf /data
 USER mf
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

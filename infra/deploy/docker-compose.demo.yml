@@ -1,0 +1,65 @@
+# Environnement de DÉMONSTRATION (données fictives uniquement) — VPS OVH, une machine.
+# Lancement depuis infra/deploy : docker compose -f docker-compose.demo.yml --env-file .env.demo up -d --build
+name: minefleet-demo
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?manquant}
+      MF_OWNER_PASSWORD: ${MF_OWNER_PASSWORD:?manquant}
+      MF_APP_PASSWORD: ${MF_APP_PASSWORD:?manquant}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ../db/init:/docker-entrypoint-initdb.d:ro
+    # Aucun port publié : la base n'est joignable que depuis le réseau Docker interne.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d minefleet"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build:
+      context: ../../backend
+      target: runtime
+    restart: unless-stopped
+    env_file: .env.demo
+    environment:
+      MF_ENV: staging
+      MF_DB_HOST: db
+      MF_DB_PORT: "5432"
+      MF_DB_NAME: minefleet
+      MF_COOKIE_SECURE: "true"
+      MF_MAIL_CAPTURE_DIR: /data/mail
+    volumes:
+      - mail-capture:/data/mail
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2",
+              "--proxy-headers", "--forwarded-allow-ips", "*"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2.8.4-alpine
+    restart: unless-stopped
+    environment:
+      MF_DOMAIN: ${MF_DOMAIN:?MF_DOMAIN manquant (nom de domaine pointant vers le VPS)}
+      MF_ACME_EMAIL: ${MF_ACME_EMAIL:?manquant}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+
+volumes:
+  db-data:
+  mail-capture:
+  caddy-data:
+  caddy-config:
