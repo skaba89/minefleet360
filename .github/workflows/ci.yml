@@ -1,4 +1,4 @@
-# CI backend — tranche 1a. Secrets générés à la volée : aucun secret stocké dans le dépôt.
+# CI backend et frontend. Secrets générés à la volée : aucun secret stocké dans le dépôt.
 name: ci
 
 on:
@@ -60,3 +60,28 @@ jobs:
         run: pytest -q -p no:warnings --cov=app --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=85
       - name: Audit des dépendances
         run: pip-audit --skip-editable
+
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Types
+        run: npm run typecheck
+      - name: Tests unitaires
+        run: npm test
+      - name: Build
+        run: npx vite build
+      - name: Audit des dépendances
+        run: npm audit --omit=dev --audit-level=high
+      # E2E Playwright : exige l'API et une base chargée par `minefleet seed-fictif` ; exécutés en local
+      # (frontend/README.md) tant que la CI ne monte pas la pile complète.

@@ -2,7 +2,7 @@
 #   MF_ENV=staging    : recette, données exclusivement FICTIVES (minefleet seed-fictif)
 #   MF_ENV=production : données réelles — uniquement après levée des bloquants (docs/DEPLOIEMENT_OVH.md §5)
 # Lancement depuis infra/deploy (docs/DEPLOIEMENT_OVH.md) :
-#   machine dédiée  : docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build db api caddy
+#   machine dédiée  : docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build db api web caddy
 #   proxy partagé   : ajouter -f docker-compose.edge.yml et ne pas lancer caddy (le proxy du serveur publie 80/443)
 name: minefleet
 
@@ -68,6 +68,18 @@ services:
       db:
         condition: service_healthy
 
+  # Interface web : fichiers statiques servis par Caddy (non root, aucun secret, aucun volume).
+  web:
+    build:
+      context: ../../frontend
+    restart: unless-stopped
+    mem_limit: 128m
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
   # Tâche ponctuelle (rôle mf_owner) : docker compose ... run --rm migrate
   migrate:
     build:
@@ -104,6 +116,7 @@ services:
       - caddy-config:/config
     depends_on:
       - api
+      - web
 
 volumes:
   db-data:

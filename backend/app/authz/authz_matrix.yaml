@@ -9,7 +9,7 @@
 #  - DRIVER sans fleet.vehicle_category.read au lot 1 (D-25). workforce.*.read_sensitive / read_number :
 #    exprimés par field_policies (HR seul), sans route propre.
 version: 1
-tranche_courante: 1b
+tranche_courante: 1c
 
 roles:
   PLATFORM_ADMIN: { allowed_scopes: [PLATFORM], tenant_kind: PLATFORM, assignable_by_tenant: false }
@@ -400,6 +400,54 @@ permissions:
     routes: [{ method: POST, path: "/driver-qualifications/{qualification_id}/revoke", shape: item, success: 200 }]
     audit: { action: driver_qualification.revoke }
     grants: { HR: [TENANT, SITE] }
+
+  # --- assignment (1c) -------------------------------------------------------------------------------
+  # Lecture : matrice §2.5 (WORKSHOP_CHIEF et FUEL_MANAGER en portée SITE) ; TENANT_ADMIN, FINANCE, DRIVER : non (D-25).
+  assignment.vehicle_assignment.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /vehicle-assignments, shape: collection, success: 200 }
+      - { method: GET, path: "/vehicle-assignments/{vehicle_assignment_id}", shape: item, success: 200 }
+      - { method: GET, path: "/vehicles/{vehicle_id}/assignments", shape: item, success: 200 }
+      - { method: GET, path: "/drivers/{driver_id}/assignments", shape: item, success: 200 }
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      HR: [TENANT, SITE]
+      WORKSHOP_CHIEF: [SITE]
+      FUEL_MANAGER: [SITE]
+      HSE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  assignment.vehicle_assignment.create:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /vehicle-assignments, shape: collection, success: 201 }]
+    audit: { action: vehicle_assignment.create }
+    grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
+  # Transitions d'une affectation en cours : prise de poste (D-27), suspension et reprise motivées (D-30).
+  assignment.vehicle_assignment.update:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: "/vehicle-assignments/{vehicle_assignment_id}/activate", shape: item, success: 200 }
+      - { method: POST, path: "/vehicle-assignments/{vehicle_assignment_id}/suspend", shape: item, success: 200 }
+      - { method: POST, path: "/vehicle-assignments/{vehicle_assignment_id}/resume", shape: item, success: 200 }
+    audit: { action: vehicle_assignment.update }
+    grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
+  assignment.vehicle_assignment.end:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: "/vehicle-assignments/{vehicle_assignment_id}/complete", shape: item, success: 200 }
+      - { method: POST, path: "/vehicle-assignments/{vehicle_assignment_id}/cancel", shape: item, success: 200 }
+    audit: { action: vehicle_assignment.end }
+    grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
 
 public_routes:
   - { method: GET, path: /health }

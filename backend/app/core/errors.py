@@ -56,6 +56,11 @@ CATALOG: dict[str, ErrorDef] = {
     "OPEN_ASSIGNMENTS_EXIST": ErrorDef(
         409, "Des affectations planifiées ou actives doivent d'abord être clôturées."
     ),
+    "VEHICLE_ASSIGNMENT_OVERLAP": ErrorDef(409, "Le véhicule est déjà affecté sur cette période."),
+    "DRIVER_ASSIGNMENT_OVERLAP": ErrorDef(409, "Le conducteur est déjà affecté sur cette période."),
+    "ASSIGNMENT_STATE_INVALID": ErrorDef(
+        409, "Cette action n'est pas possible dans l'état de l'affectation."
+    ),
     # 422
     "VALIDATION_ERROR": ErrorDef(422, "Les données envoyées sont invalides."),
     "IF_MATCH_REQUIRED": ErrorDef(422, "L'en-tête If-Match est obligatoire pour une modification."),
@@ -72,6 +77,13 @@ CATALOG: dict[str, ErrorDef] = {
         422, "Ce changement de statut du véhicule n'est pas autorisé."
     ),
     "STATUS_REASON_REQUIRED": ErrorDef(422, "Un motif est obligatoire pour ce statut."),
+    # D-29 : un seul code d'inéligibilité, `details.reasons[]` liste tous les motifs.
+    "ASSIGNMENT_NOT_ELIGIBLE": ErrorDef(422, "L'affectation ne respecte pas les conditions d'éligibilité."),
+    "END_BEFORE_START": ErrorDef(422, "La fin doit être postérieure au début."),
+    "END_IN_FUTURE": ErrorDef(422, "La date de fin ne peut pas être dans le futur."),
+    "END_BACKDATED": ErrorDef(
+        422, "La fin ne peut pas être antérieure à maintenant, sauf à la date de fin prévue."
+    ),
     # 503
     "SERVICE_BUSY": ErrorDef(503, "Service momentanément occupé. Réessayez dans quelques instants."),
     # 429
@@ -93,6 +105,8 @@ CONSTRAINT_CODES: dict[str, str] = {
     "uq_driver_tenant_employee": "DUPLICATE_EMPLOYEE_NUMBER",
     "uq_driver_license_issue": "DUPLICATE_LICENSE",
     "ex_dq_no_overlap": "DUPLICATE_QUALIFICATION",
+    "ex_va_vehicle_no_overlap": "VEHICLE_ASSIGNMENT_OVERLAP",
+    "ex_va_driver_no_overlap": "DRIVER_ASSIGNMENT_OVERLAP",
 }
 
 
@@ -203,6 +217,8 @@ def install_error_handlers(app: FastAPI) -> None:
         if isinstance(exc, DataError) or sqlstate.startswith("22"):  # données invalides (octet NUL…)
             return error_response("VALIDATION_ERROR")
         if sqlstate in ("40001", "40P01"):  # sérialisation, interblocage
+            return error_response("CONFLICT")
+        if sqlstate in ("MF003", "MF004"):  # gardes d'affectation (course contournant le contrôle applicatif)
             return error_response("CONFLICT")
         if sqlstate in ("55P03", "57014"):  # délai de verrou ou de requête dépassé
             return error_response("SERVICE_BUSY", headers={"Retry-After": "2"})

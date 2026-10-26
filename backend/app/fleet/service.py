@@ -6,10 +6,10 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.assignment.contracts import ensure_no_open_assignments
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.authz.principal import mask
-from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.http import PageParams, check_version
 from app.core.logging import security_logger
@@ -61,20 +61,9 @@ def _jsonable(data: dict[str, Any]) -> dict[str, Any]:
     return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in data.items()}
 
 
-def open_assignments(db: Session, vehicle_id: uuid.UUID) -> list[dict[str, Any]]:
-    """Affectations PLANNED/ACTIVE bloquant un changement de statut ou de site (D-11, D-13).
-
-    Les affectations n'existent qu'à partir de la tranche 1c : la liste est vide en 1b.
-    """
-    del db, vehicle_id
-    return []
-
-
-def _ensure_no_open_assignments(db: Session, vehicle_id: uuid.UUID) -> None:
-    blockers = open_assignments(db, vehicle_id)
-    if blockers:
-        limit = get_settings().blocking_list_max
-        raise AppError("OPEN_ASSIGNMENTS_EXIST", details={"total": len(blockers), "items": blockers[:limit]})
+def _ensure_no_open_assignments(auth: Authorized, vehicle: Vehicle) -> None:
+    """Affectations ouvertes bloquant un changement de statut ou de site (D-11, D-13)."""
+    ensure_no_open_assignments(auth.db, auth.principal, vehicle.site_id, vehicle_id=vehicle.vehicle_id)
 
 
 # --- Catégories ---------------------------------------------------------------------------------------
@@ -250,7 +239,7 @@ def update_vehicle(
     if body.site_id is not None and body.site_id != vehicle.site_id:
         if active_site_in_scope(db, auth.scope, body.site_id) is None:
             raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
-        _ensure_no_open_assignments(db, vehicle.vehicle_id)  # D-13
+        _ensure_no_open_assignments(auth, vehicle)  # D-13
     if body.vehicle_category_id is not None and body.vehicle_category_id != vehicle.vehicle_category_id:
         _active_category(db, body.vehicle_category_id)
     before = _snapshot(vehicle, fields)
@@ -282,7 +271,7 @@ def _apply_status(
     if target in REASON_REQUIRED and reason is None:
         raise AppError("STATUS_REASON_REQUIRED")
     if target != "AVAILABLE":
-        _ensure_no_open_assignments(db, vehicle.vehicle_id)  # D-11
+        _ensure_no_open_assignments(auth, vehicle)  # D-11
     # Calculé AVANT toute mutation : la requête déclencherait un autoflush partiel (ck_vehicle_retired).
     decommissioned = local_date(db, vehicle.site_id, auth.clock.now()) if target == "RETIRED" else None
     vehicle.status = target
