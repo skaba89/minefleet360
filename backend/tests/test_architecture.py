@@ -20,7 +20,16 @@ def test_only_tenancy_module_sets_tenant_context() -> None:
 
 
 def test_set_tenant_context_callers_are_known() -> None:
-    allowed = {"tenancy.py", "dependencies.py", "auth_service.py", "service.py", "contracts.py", "cli.py"}
+    # cli.py et seed.py : commandes d'exploitation (amorçage plateforme, jeu fictif de recette).
+    allowed = {
+        "tenancy.py",
+        "dependencies.py",
+        "auth_service.py",
+        "service.py",
+        "contracts.py",
+        "cli.py",
+        "seed.py",
+    }
     callers = {p.name for p, src in _sources() if "set_tenant_context(" in src and p.name != "tenancy.py"}
     assert callers <= allowed, callers - allowed
     organization = (APP / "organization" / "service.py").read_text(encoding="utf-8")

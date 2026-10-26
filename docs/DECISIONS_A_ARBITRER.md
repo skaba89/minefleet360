@@ -47,6 +47,7 @@
 | D-31 | Limitation de débit de connexion à deux niveaux : par couple (espace, e-mail) `LOGIN_MAX_FAILURES` et par IP `LOGIN_IP_MAX_FAILURES` (seuil plus élevé : plusieurs utilisateurs d'un site derrière un même NAT ne doivent pas se bloquer mutuellement). Limiteur en mémoire par processus (limite documentée, QA-32). |
 | D-32 | Verrous applicatifs en `FOR NO KEY UPDATE` (jamais `FOR UPDATE`) pour ne pas bloquer les contrôles de clés étrangères de l'audit détaché ; `lock_timeout` applicatif configurable (`MF_DB_LOCK_TIMEOUT_MS`, 5 s par défaut). |
 | D-33 | `organization.tenant.list` (nouvelle permission, `PLATFORM_ADMIN`) pour `/platform/tenants` ; `organization.tenant.read` reste la lecture de **son** tenant. `DRIVER` retiré de `organization.site.read` au lot 1 (D-25). Code réservé à la création de tenant → `422 TENANT_CODE_RESERVED` (MATRICE_RBAC §1.3, prime sur US-1.01 A3). |
+| D-39 | **Décision client (2026-10-26)** : pas de démo jetable ; le vrai projet est déployé avec une configuration de production. Recette (`MF_ENV=staging`) alimentée de données **exclusivement fictives** par `minefleet seed-fictif` (refusée en production, réexécution refusée) ; production (`MF_ENV=production`) seulement après levée des bloquants de `DEPLOIEMENT_OVH.md` §5. |
 | D-26 | Les codes d'erreur métier forment un **catalogue unique** (`backend/app/core/errors.py` + section OpenAPI) créé en tranche 1a ; tout code utilisé dans un document y est reporté ou supprimé. |
 
 ## B. Décisions à arbitrer (client / juriste)

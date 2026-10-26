@@ -1,6 +1,8 @@
-# Environnement de DÉMONSTRATION (données fictives uniquement) — VPS OVH, une machine.
-# Lancement depuis infra/deploy : docker compose -f docker-compose.demo.yml --env-file .env.demo up -d --build
-name: minefleet-demo
+# Environnement serveur MINEFLEET 360 (OVH, une machine) — même configuration pour la recette et la production.
+#   MF_ENV=staging    : recette, données exclusivement FICTIVES (minefleet seed-fictif)
+#   MF_ENV=production : données réelles — uniquement après levée des bloquants (docs/DEPLOIEMENT_OVH.md §5)
+# Lancement depuis infra/deploy : docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+name: minefleet
 
 services:
   db:
@@ -31,7 +33,7 @@ services:
       MF_APP_PASSWORD: ${MF_APP_PASSWORD:?manquant}
       MF_JWT_SECRET: ${MF_JWT_SECRET:?manquant}
       MF_ALLOWED_ORIGINS: ${MF_ALLOWED_ORIGINS:-}
-      MF_ENV: staging
+      MF_ENV: ${MF_ENV:?MF_ENV manquant (staging ou production)}
       MF_DB_HOST: db
       MF_DB_PORT: "5432"
       MF_DB_NAME: minefleet
@@ -52,7 +54,7 @@ services:
       target: runtime
     profiles: ["ops"]
     environment:
-      MF_ENV: staging
+      MF_ENV: ${MF_ENV:?MF_ENV manquant (staging ou production)}
       MF_DB_HOST: db
       MF_DB_PORT: "5432"
       MF_DB_NAME: minefleet

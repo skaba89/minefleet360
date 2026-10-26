@@ -12,5 +12,5 @@
 		-Server
 	}
 	reverse_proxy /api/* api:8000
-	respond / "MINEFLEET 360 — environnement de démonstration (données fictives)" 200
+	respond / "MINEFLEET 360" 200
 }

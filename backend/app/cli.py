@@ -2,6 +2,8 @@
 
 minefleet create-platform-admin --email <e-mail> --name "<nom>"
     US-1.32 : premier PLATFORM_ADMIN ; mot de passe lu dans MF_BOOTSTRAP_PASSWORD (jamais en argument).
+minefleet seed-fictif
+    US-1.30 : jeu de données FICTIF de recette (refusé en production et en cas de réexécution).
 """
 
 import argparse
@@ -82,6 +84,7 @@ def main(argv: list[str] | None = None) -> int:
     admin = sub.add_parser("create-platform-admin")
     admin.add_argument("--email", required=True)
     admin.add_argument("--name", required=True)
+    sub.add_parser("seed-fictif")
     args = parser.parse_args(argv)
     if args.command == "create-platform-admin":
         password = os.environ.get("MF_BOOTSTRAP_PASSWORD")
@@ -89,7 +92,24 @@ def main(argv: list[str] | None = None) -> int:
             print("MF_BOOTSTRAP_PASSWORD est requis (variable d'environnement).", file=sys.stderr)
             return 2
         return create_platform_admin(args.email, args.name, password)
+    if args.command == "seed-fictif":
+        return seed_fictitious()
     return 1
+
+
+def seed_fictitious() -> int:
+    from app.seed import SeedRefused, seed
+
+    try:
+        report = seed()
+    except SeedRefused as exc:
+        print(f"Refusé : {exc}", file=sys.stderr)
+        return 3
+    print("Données FICTIVES chargées :", ", ".join(f"{k}={v}" for k, v in sorted(report.counts.items())))
+    print("Comptes fictifs (mots de passe affichés UNE seule fois, non stockés en clair) :")
+    for workspace, email, role, password in report.accounts:
+        print(f"  {workspace:18} {role:15} {email:45} {password}")
+    return 0
 
 
 if __name__ == "__main__":
