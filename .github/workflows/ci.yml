@@ -54,6 +54,8 @@ jobs:
         run: ruff check . && ruff format --check .
       - name: Types
         run: mypy app
+      - name: Upgrade peuplé 0004 vers head
+        run: pytest -q -p no:warnings tests_migrations
       - name: Tests (migrations, RLS, autorisations générées, isolation)
         run: pytest -q -p no:warnings --cov=app --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=85
       - name: Audit des dépendances
