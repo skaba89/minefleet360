@@ -139,9 +139,9 @@ class QualificationOut(BaseModel):
     valid_to: date | None
     status: str
     validity: str
-    issued_by_name: str | None
-    reference: str | None
-    restrictions: str | None
+    issued_by_name: str | None = None  # texte libre : HR/HSE seulement (SEC1B-03)
+    reference: str | None = None
+    restrictions: str | None = None
     row_version: int
 
 

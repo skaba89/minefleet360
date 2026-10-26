@@ -75,14 +75,15 @@ def get_vehicle(
     return _out(service.get_vehicle(auth, vehicle_id), response)
 
 
-@router.get("/vehicles/{vehicle_id}/status-history", response_model=list[StatusHistoryOut])
+@router.get(
+    "/vehicles/{vehicle_id}/status-history",
+    response_model=list[StatusHistoryOut],
+    response_model_exclude_unset=True,
+)
 def vehicle_status_history(
     vehicle_id: uuid.UUID, auth: Annotated[Authorized, Depends(Require("fleet.vehicle.read"))]
 ) -> list[StatusHistoryOut]:
-    return [
-        StatusHistoryOut.model_validate(h, from_attributes=True)
-        for h in service.status_history(auth, vehicle_id)
-    ]
+    return service.status_history(auth, vehicle_id)
 
 
 @router.post("/vehicles", status_code=status.HTTP_201_CREATED, response_model=VehicleOut)

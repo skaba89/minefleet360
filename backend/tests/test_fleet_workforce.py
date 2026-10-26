@@ -439,7 +439,7 @@ def test_restricted_driver_fields_never_valued_in_audit(
         f"{API}/audit-events", headers=t.admin.headers, params={"entity_id": driver_id}
     ).json()["items"]
     dumped = str([(e["before_data"], e["after_data"]) for e in events])
-    assert "TEMP_AGENCY" not in dumped and "2021-05-05" not in dumped and "Autre" in dumped
+    assert "TEMP_AGENCY" not in dumped and "2021-05-05" not in dumped and "Autre" not in dumped
     assert any("employment_type" in (e["changed_fields"] or []) for e in events)
 
 
@@ -570,3 +570,71 @@ def test_check_violation_does_not_leak_constraint_name(
     t, hr = fleet
     resp = _driver(client, t, hr, employment_type="SUBCONTRACTOR")
     assert resp.status_code == 422 and "ck_" not in resp.text
+
+
+# --- Compléments revue sécurité 1b ---------------------------------------------------------------------
+
+
+def test_sec1b01_nul_byte_is_422_and_never_logged(
+    client: TestClient, fleet: tuple[TenantFixture, Account]
+) -> None:
+    t, hr = fleet
+    resp = _driver(client, t, hr, last_name="Nom" + chr(0) + "Test", phone="+224000000999")
+    assert (resp.status_code, resp.json()["code"]) == (422, "VALIDATION_ERROR")
+    query = client.get(f"{API}/drivers", headers=hr.headers, params={"q": "a" + chr(0)})
+    assert (query.status_code, query.json()["code"]) == (422, "VALIDATION_ERROR")
+
+
+def test_sec1b02_audit_has_no_driver_identity(
+    client: TestClient, fleet: tuple[TenantFixture, Account]
+) -> None:
+    t, hr = fleet
+    driver_id = _driver(client, t, hr, employee_number="MAT-SENTINELLE", last_name="Sentinelle-Nom").json()[
+        "driver_id"
+    ]
+    url = f"{API}/drivers/{driver_id}"
+    client.patch(url, headers=_etag(client, url, hr.headers), json={"last_name": "Sentinelle-Autre"})
+    raw = client.get(f"{API}/audit-events", headers=t.admin.headers, params={"entity_id": driver_id}).text
+    assert "SENTINELLE" not in raw.upper()
+
+
+def test_sec1b03_qualification_free_text_restricted(
+    client: TestClient, api: Api, fleet: tuple[TenantFixture, Account]
+) -> None:
+    t, hr = fleet
+    driver_id = _driver(client, t, hr).json()["driver_id"]
+    url = f"{API}/drivers/{driver_id}/qualifications"
+    client.post(
+        url,
+        headers=hr.headers,
+        json={
+            "qualification_type": "SAFETY_TRAINING",
+            "valid_from": "2024-01-01",
+            "restrictions": "Restriction-fictive",
+        },
+    )
+    assert "Restriction-fictive" in client.get(url, headers=hr.headers).text
+    ops = api.user(t, "OPS_MANAGER")
+    assert "Restriction-fictive" not in client.get(url, headers=ops.headers).text
+
+
+def test_sec1b08_status_history_author_restricted(client: TestClient, api: Api) -> None:
+    t = api.tenant()
+    vid = _vehicle(client, t).json()["vehicle_id"]
+    url = f"{API}/vehicles/{vid}/status-history"
+    assert client.get(url, headers=t.admin.headers).json()[0]["changed_by"] is not None
+    ops = api.user(t, "OPS_MANAGER")
+    assert "changed_by" not in client.get(url, headers=ops.headers).json()[0]
+
+
+def test_sec1b10_site_scoped_hr_cannot_create_tenant_wide_qualification(client: TestClient, api: Api) -> None:
+    t = api.tenant()
+    hr_s1 = api.user(t, "HR", "SITE", "S1")
+    driver_id = _driver(client, t, hr_s1).json()["driver_id"]
+    url = f"{API}/drivers/{driver_id}/qualifications"
+    body = {"qualification_type": "SAFETY_TRAINING", "valid_from": "2024-01-01"}
+    assert client.post(url, headers=hr_s1.headers, json=body).status_code == 422
+    assert (
+        client.post(url, headers=hr_s1.headers, json={**body, "site_id": str(t.sites["S1"])}).status_code
+        == 201
+    )

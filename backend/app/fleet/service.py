@@ -8,12 +8,14 @@ from sqlalchemy.orm import Session
 
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
+from app.authz.principal import mask
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.http import PageParams, check_version
 from app.core.logging import security_logger
 from app.fleet.models import Vehicle, VehicleCategory, VehicleCategoryLicense, VehicleStatusHistory
 from app.fleet.schemas import (
+    StatusHistoryOut,
     VehicleCategoryOut,
     VehicleCreate,
     VehicleRetire,
@@ -51,7 +53,8 @@ _TRACKED = (
 
 
 def _snapshot(vehicle: Vehicle, fields: tuple[str, ...] = _TRACKED) -> dict[str, Any]:
-    return {name: getattr(vehicle, name) for name in fields}
+    """Valeurs journalisées : jamais le texte libre `notes` (seul son nom dans changed_fields, SEC1B-04)."""
+    return {name: getattr(vehicle, name) for name in fields if name != "notes"}
 
 
 def _jsonable(data: dict[str, Any]) -> dict[str, Any]:
@@ -175,14 +178,30 @@ def get_vehicle(auth: Authorized, vehicle_id: uuid.UUID) -> Vehicle:
     return _vehicle_in_scope(auth, vehicle_id)
 
 
-def status_history(auth: Authorized, vehicle_id: uuid.UUID) -> list[VehicleStatusHistory]:
-    _vehicle_in_scope(auth, vehicle_id)
+def status_history(auth: Authorized, vehicle_id: uuid.UUID) -> list[StatusHistoryOut]:
+    vehicle = _vehicle_in_scope(auth, vehicle_id)
     rows = auth.db.execute(
         select(VehicleStatusHistory)
         .where(VehicleStatusHistory.vehicle_id == vehicle_id)
         .order_by(VehicleStatusHistory.changed_at.desc(), VehicleStatusHistory.vehicle_status_history_id)
     )
-    return list(rows.scalars())
+    return [
+        StatusHistoryOut(
+            **mask(
+                "vehicle_status_history",
+                auth.scope,
+                {
+                    "from_status": h.from_status,
+                    "to_status": h.to_status,
+                    "reason_code": h.reason_code,
+                    "changed_at": h.changed_at,
+                    "changed_by": h.changed_by,
+                },
+                vehicle.site_id,
+            )
+        )
+        for h in rows.scalars()
+    ]
 
 
 def create_vehicle(auth: Authorized, body: VehicleCreate) -> Vehicle:

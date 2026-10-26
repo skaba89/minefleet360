@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import DBAPIError, IntegrityError
+from sqlalchemy.exc import DataError, DBAPIError, IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.request_context import get_request_id
@@ -72,6 +72,8 @@ CATALOG: dict[str, ErrorDef] = {
         422, "Ce changement de statut du véhicule n'est pas autorisé."
     ),
     "STATUS_REASON_REQUIRED": ErrorDef(422, "Un motif est obligatoire pour ce statut."),
+    # 503
+    "SERVICE_BUSY": ErrorDef(503, "Service momentanément occupé. Réessayez dans quelques instants."),
     # 429
     "RATE_LIMITED": ErrorDef(429, "Trop de tentatives. Réessayez plus tard."),
     # 500
@@ -176,7 +178,11 @@ def install_error_handlers(app: FastAPI) -> None:
         try:
             mapped = map_integrity_error(exc)
         except IntegrityError:
-            logger.exception("integrity_error_unmapped")
+            # Sans exc_info : le DETAIL PostgreSQL peut contenir des valeurs personnelles (SEC1B-01).
+            logger.error(
+                "integrity_error_unmapped",
+                extra={"sqlstate": getattr(exc.orig, "sqlstate", None), "constraint": _constraint_name(exc)},
+            )
             return error_response("INTERNAL_ERROR")
         return error_response(mapped.code, mapped.details)
 
@@ -187,6 +193,19 @@ def install_error_handlers(app: FastAPI) -> None:
         if exc.status_code == 405:
             return error_response("METHOD_NOT_ALLOWED")
         logger.error("http_exception", extra={"status": exc.status_code})
+        return error_response("INTERNAL_ERROR")
+
+    @app.exception_handler(DBAPIError)
+    async def _database(_: Request, exc: DBAPIError) -> JSONResponse:
+        """Erreurs base hors intégrité : jamais de requête, paramètre ni DETAIL dans les logs (SEC1B-01)."""
+        sqlstate = getattr(exc.orig, "sqlstate", None) or ""
+        logger.error("database_error", extra={"sqlstate": sqlstate, "error_type": type(exc.orig).__name__})
+        if isinstance(exc, DataError) or sqlstate.startswith("22"):  # données invalides (octet NUL…)
+            return error_response("VALIDATION_ERROR")
+        if sqlstate in ("40001", "40P01"):  # sérialisation, interblocage
+            return error_response("CONFLICT")
+        if sqlstate in ("55P03", "57014"):  # délai de verrou ou de requête dépassé
+            return error_response("SERVICE_BUSY", headers={"Retry-After": "2"})
         return error_response("INTERNAL_ERROR")
 
     @app.exception_handler(Exception)

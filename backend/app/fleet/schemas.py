@@ -108,4 +108,4 @@ class StatusHistoryOut(BaseModel):
     to_status: str
     reason_code: str | None
     changed_at: datetime
-    changed_by: uuid.UUID | None
+    changed_by: uuid.UUID | None = None  # TENANT_ADMIN et AUDITOR seulement (SEC1B-08)

@@ -1,10 +1,10 @@
 """Aides HTTP : concurrence optimiste (If-Match/ETag, D-19), pagination (CT-9), schémas stricts."""
 
 import re
-from typing import Annotated, TypeVar
+from typing import Annotated, Any, TypeVar
 
 from fastapi import Depends, Header, Query
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.core.config import get_settings
 from app.core.errors import AppError
@@ -18,6 +18,14 @@ class StrictModel(BaseModel):
     """Corps de requête : tout champ inconnu (dont tenant_id) est refusé (422, RBAC §4.2 règle 7)."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    @field_validator("*", mode="after")
+    @classmethod
+    def _no_nul_byte(cls, value: Any) -> Any:
+        """PostgreSQL refuse l'octet NUL dans un texte : rejet en 422 dès la validation (SEC1B-01)."""
+        if isinstance(value, str) and chr(0) in value:
+            raise ValueError("caractère NUL interdit")
+        return value
 
 
 def etag(row_version: int) -> str:

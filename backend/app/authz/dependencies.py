@@ -39,6 +39,8 @@ def reject_unknown_query(request: Request) -> None:
     dependant = getattr(route, "dependant", None)
     if dependant is None:
         return
+    if any(chr(0) in value for value in request.query_params.values()):
+        raise AppError("VALIDATION_ERROR", details=[{"field": "query", "type": "nul_byte"}])
     unknown = sorted(set(request.query_params) - _query_names(dependant))
     if unknown:
         raise AppError(

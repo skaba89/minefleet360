@@ -427,6 +427,12 @@ field_policies:
     license_number: { visible_to_roles: [HR] }
     document_reference: { visible_to_roles: [HR] }
     status_note: { visible_to_roles: [HR] }
+  driver_qualification:
+    issued_by_name: { visible_to_roles: [HR, HSE] }
+    reference: { visible_to_roles: [HR, HSE] }
+    restrictions: { visible_to_roles: [HR, HSE] }
+  vehicle_status_history:
+    changed_by: { visible_to_roles: [TENANT_ADMIN, AUDITOR] }
 
 global_tables:
   [role, role_allowed_scope, license_category_ref, vehicle_category_template, vehicle_category_template_license]

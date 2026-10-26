@@ -53,3 +53,22 @@
 
 ## Prochaine étape
 Tranche 1c : affectations conducteur ↔ véhicule (exclusion de chevauchement en base, éligibilité, activation explicite D-27, suspension D-30), interface web minimale en français, E2E.
+
+## Suites des revues de la tranche 1b (2026-10-26)
+Vérifié après corrections : `ruff`, `mypy` strict OK ; `pytest` **1162 passed**, couverture **92 %**.
+
+| Constat | Traitement |
+|---|---|
+| SEC1B-01 (élevée) octet NUL → 500 et requête + paramètres (PII) dans les logs | **Corrigé** : `hide_parameters`, erreurs base journalisées sans requête ni valeur, `DataError`→422, verrou/délai→503 `SERVICE_BUSY`, sérialisation→409, NUL refusé à la validation (corps et paramètres) |
+| SEC1B-02 noms/matricules des conducteurs dans l'audit lisible par TENANT_ADMIN | **Corrigé** : seules les valeurs opérationnelles (site, statut) sont journalisées ; les autres champs n'apparaissent que par leur nom |
+| SEC1B-03 texte libre des habilitations | **Corrigé** : `restrictions`, `issued_by_name`, `reference` visibles HR/HSE seulement |
+| SEC1B-04 `vehicle.notes` dans l'audit | **Corrigé** (nom du champ seulement) ; reste visible des lecteurs du véhicule (pas de donnée personnelle attendue) |
+| SEC1B-08 `changed_by` de l'historique de statut | **Corrigé** : TENANT_ADMIN et AUDITOR seulement |
+| SEC1B-10 habilitation tenant entier créée par un HR de portée SITE | **Corrigé** (422) |
+| SEC1B-05 levée de `SAFETY_BAN` par un dispatcher ; permis `WITHDRAWN`→`VALID` sans motif | Ouvert — règle métier à arbitrer avec HSE (qui peut lever une interdiction de sécurité) |
+| SEC1B-06 409 d'unicité révélant un objet d'un autre site | Accepté : l'unicité est par tenant (numéro de parc, matricule) |
+| SEC1B-07 matricule sensible à la casse, même n° de permis sur deux conducteurs, dates extrêmes | Ouvert, faible |
+| SEC1B-09 droits `mf_app` plus larges que les routes (INSERT historique, UPDATE catégories) | Ouvert, faible (l'historique doit rester insérable par le trigger exécuté sous `mf_app`) |
+| SEC1B-11 `/workforce/expirations` non paginé | Ouvert |
+| QA1B-02/04/05/07/13 et 409 `OPEN_ASSIGNMENTS_EXIST` | **Corrigés** (commit `3b69246`) |
+| QA1B-01 tests base pour les tables 1b ; D-23 via l'API ; masquage de toutes les listes | Ouverts |

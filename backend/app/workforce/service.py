@@ -38,6 +38,9 @@ from app.workforce.validity import ELIGIBLE, derive_validity
 
 # Dérivé de field_policies (source unique) : aucune valeur restreinte dans l'audit (revue 1b).
 SENSITIVE_DRIVER_FIELDS = restricted_fields("driver")
+# Seuls champs dont la VALEUR est journalisée : opérationnels, non nominatifs (SEC1B-02, D-10).
+AUDIT_VALUED_DRIVER_FIELDS = frozenset({"site_id", "status", "unavailability_reason", "unavailable_until"})
+assert not AUDIT_VALUED_DRIVER_FIELDS & SENSITIVE_DRIVER_FIELDS
 
 
 def _norm_name(value: str) -> str:
@@ -163,21 +166,23 @@ def _qualification_out(auth: Authorized, q: DriverQualification, site_id: uuid.U
         tz=site_timezone(auth.db, site_id),
         warning_days=get_settings().expiry_warning_days,
     )
-    return QualificationOut(
-        driver_qualification_id=q.driver_qualification_id,
-        driver_id=q.driver_id,
-        qualification_type=q.qualification_type,
-        vehicle_category_id=q.vehicle_category_id,
-        site_id=q.site_id,
-        valid_from=q.valid_from,
-        valid_to=q.valid_to,
-        status=q.status,
-        validity=validity,
-        issued_by_name=q.issued_by_name,
-        reference=q.reference,
-        restrictions=q.restrictions,
-        row_version=q.row_version,
-    )
+    data: dict[str, Any] = {
+        "driver_qualification_id": q.driver_qualification_id,
+        "driver_id": q.driver_id,
+        "qualification_type": q.qualification_type,
+        "vehicle_category_id": q.vehicle_category_id,
+        "site_id": q.site_id,
+        "valid_from": q.valid_from,
+        "valid_to": q.valid_to,
+        "status": q.status,
+        "validity": validity,
+        "issued_by_name": q.issued_by_name,
+        "reference": q.reference,
+        "restrictions": q.restrictions,
+        "row_version": q.row_version,
+    }
+    # Texte libre (risque de donnée médicale) : HR/HSE seulement (SEC1B-03).
+    return QualificationOut(**mask("driver_qualification", auth.scope, data, site_id))
 
 
 # --- Conducteurs --------------------------------------------------------------------------------------
@@ -249,12 +254,9 @@ def create_driver(auth: Authorized, body: DriverCreate) -> tuple[Driver, list[st
         entity_id=driver.driver_id,
         site_id=driver.site_id,
         actor_user_id=auth.user_id,
-        after={
-            "employee_number": driver.employee_number,
-            "site_id": str(driver.site_id),
-            "status": driver.status,
-        },
-        changed_fields=[f for f in body.model_fields_set if f in SENSITIVE_DRIVER_FIELDS],
+        # Ni nom ni matricule : le journal est lisible par TENANT_ADMIN, qui ne lit pas les personnes (D-10).
+        after={"site_id": str(driver.site_id), "status": driver.status},
+        changed_fields=sorted(body.model_fields_set),
     )
     db.commit()
     return driver, warnings
@@ -274,7 +276,7 @@ def update_driver(
         if site_in_scope(db, auth.scope, body.site_id) is None:
             raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
         _ensure_no_open_assignments(db, driver.driver_id)  # D-13
-    visible = tuple(f for f in fields if f not in SENSITIVE_DRIVER_FIELDS)
+    visible = tuple(f for f in fields if f in AUDIT_VALUED_DRIVER_FIELDS)
     before = {f: getattr(driver, f) for f in visible}
     for name in fields:
         setattr(driver, name, getattr(body, name))
@@ -452,6 +454,9 @@ def create_qualification(
     """US-1.19 : catégorie du référentiel du tenant ; chevauchement d'habilitations VALID → 409 (base)."""
     db = auth.db
     driver = driver_in_scope(auth, driver_id)
+    if body.site_id is None and not auth.scope.tenant_wide:
+        # Une habilitation valable sur tout le tenant exige une portée TENANT (SEC1B-10).
+        raise AppError("VALIDATION_ERROR", details=[{"field": "site_id", "type": "required_for_site_scope"}])
     if body.site_id is not None and site_in_scope(db, auth.scope, body.site_id) is None:
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
     q = DriverQualification(

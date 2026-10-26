@@ -134,7 +134,11 @@ def update_license(
     return out
 
 
-@router.get("/drivers/{driver_id}/qualifications", response_model=list[QualificationOut])
+@router.get(
+    "/drivers/{driver_id}/qualifications",
+    response_model=list[QualificationOut],
+    response_model_exclude_unset=True,
+)
 def list_qualifications(
     driver_id: uuid.UUID, auth: Annotated[Authorized, Depends(Require("workforce.driver_qualification.read"))]
 ) -> list[QualificationOut]:
@@ -145,6 +149,7 @@ def list_qualifications(
     "/drivers/{driver_id}/qualifications",
     status_code=status.HTTP_201_CREATED,
     response_model=QualificationOut,
+    response_model_exclude_unset=True,
 )
 def create_qualification(
     driver_id: uuid.UUID,
@@ -157,7 +162,11 @@ def create_qualification(
     return out
 
 
-@router.post("/driver-qualifications/{qualification_id}/revoke", response_model=QualificationOut)
+@router.post(
+    "/driver-qualifications/{qualification_id}/revoke",
+    response_model=QualificationOut,
+    response_model_exclude_unset=True,
+)
 def revoke_qualification(
     qualification_id: uuid.UUID,
     body: QualificationRevoke,

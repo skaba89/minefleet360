@@ -33,6 +33,7 @@ def get_engine() -> Engine:
             settings.database_url(),
             connect_args={"options": f"-c lock_timeout={settings.db_lock_timeout_ms}"},
             pool_pre_ping=True,
+            hide_parameters=True,  # jamais de valeur (PII) dans les messages d'exception (SEC1B-01)
             pool_reset_on_return="rollback",
         )
         _session_factory = sessionmaker(bind=_engine, expire_on_commit=False, autoflush=True)
