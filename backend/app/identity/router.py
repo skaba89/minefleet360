@@ -1,14 +1,16 @@
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Cookie, Depends, Header, Query, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Header, Query, Request, Response, status
 from sqlalchemy import select
 
 from app.authz.dependencies import Authorized, ClockDep, DbSession, Require, SettingsDep, load_grants
 from app.authz.routing import SecuredRoute
 from app.core.config import Settings
+from app.core.email import EmailMessage, EmailSender
 from app.core.errors import AppError
 from app.core.http import IfMatch, Page, Pagination, etag
+from app.core.logging import security_logger
 from app.identity import auth_service, service
 from app.identity.auth_service import AuthLimiters, IssuedSession
 from app.identity.models import UserAccount
@@ -174,6 +176,7 @@ def accept_invitation(
 @auth_router.post("/password/reset-request", status_code=status.HTTP_202_ACCEPTED)
 def password_reset_request(
     body: ResetRequest,
+    background_tasks: BackgroundTasks,
     db: DbSession,
     clock: ClockDep,
     settings: SettingsDep,
@@ -184,8 +187,16 @@ def password_reset_request(
         db, code=body.workspace_code, email=body.email, clock=clock, settings=settings, limiters=limiters
     )
     if message is not None:
-        email.send(message)
+        background_tasks.add_task(_deliver_reset_email, email, message)
     return {"message_fr": "Si un compte correspond, un lien de réinitialisation a été envoyé."}
+
+
+def _deliver_reset_email(sender: EmailSender, message: EmailMessage) -> None:
+    """Une panne SMTP ne doit ni révéler l'existence du compte ni changer la réponse anonyme."""
+    try:
+        sender.send(message)
+    except (RuntimeError, OSError):
+        security_logger.error("email_delivery_failed", extra={"kind": "PASSWORD_RESET"})
 
 
 @auth_router.post("/password/reset-confirm", status_code=status.HTTP_204_NO_CONTENT)

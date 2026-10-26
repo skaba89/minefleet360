@@ -99,6 +99,9 @@ class AuthSession(Base):
     user_account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     refresh_hash_current: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     refresh_hash_previous: Mapped[bytes | None] = mapped_column(LargeBinary)
+    consumed_refresh_hashes: Mapped[list[bytes]] = mapped_column(
+        ARRAY(LargeBinary), nullable=False, server_default=text("'{}'::bytea[]")
+    )
     rotated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     amr: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, server_default=text("'{pwd}'"))
     ip_address: Mapped[str | None] = mapped_column(INET)

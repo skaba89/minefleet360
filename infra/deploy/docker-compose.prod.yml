@@ -47,6 +47,16 @@ services:
       MF_DB_NAME: minefleet
       MF_COOKIE_SECURE: "true"
       MF_MAIL_CAPTURE_DIR: /data/mail
+      MF_MAIL_BACKEND: ${MF_MAIL_BACKEND:-capture}
+      MF_MAIL_CAPTURE_TTL_SECONDS: ${MF_MAIL_CAPTURE_TTL_SECONDS:-86400}
+      MF_PUBLIC_WEB_URL: ${MF_PUBLIC_WEB_URL:-http://localhost:5173}
+      MF_SMTP_HOST: ${MF_SMTP_HOST:-}
+      MF_SMTP_PORT: ${MF_SMTP_PORT:-587}
+      MF_SMTP_USERNAME: ${MF_SMTP_USERNAME:-}
+      MF_SMTP_PASSWORD: ${MF_SMTP_PASSWORD:-}
+      MF_SMTP_SENDER: ${MF_SMTP_SENDER:-}
+      MF_SMTP_USE_SSL: ${MF_SMTP_USE_SSL:-false}
+      MF_SMTP_TIMEOUT_SECONDS: ${MF_SMTP_TIMEOUT_SECONDS:-10}
     volumes:
       - mail-capture:/data/mail
     # X-Forwarded-For n'est cru que des pairs listés (IP ou CIDR) : sinon un voisin réseau pourrait usurper
