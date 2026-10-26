@@ -1,0 +1,18 @@
+# Site MineFleet pour le proxy commun du serveur : copier dans ~/vps-proxy/sites/minefleet.caddy
+# en remplaçant ACME_EMAIL_A_RENSEIGNER, puis ~/vps-proxy/reload.sh. L'API rejoint le réseau « edge » sous l'alias minefleet-api.
+minefleet.51-75-248-4.sslip.io {
+	tls ACME_EMAIL_A_RENSEIGNER
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+	request_body {
+		max_size 2MB
+	}
+	reverse_proxy /api/* minefleet-api:8000
+	respond / "MINEFLEET 360 — recette (données fictives)" 200
+}

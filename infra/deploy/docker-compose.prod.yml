@@ -1,13 +1,20 @@
 # Environnement serveur MINEFLEET 360 (OVH, une machine) — même configuration pour la recette et la production.
 #   MF_ENV=staging    : recette, données exclusivement FICTIVES (minefleet seed-fictif)
 #   MF_ENV=production : données réelles — uniquement après levée des bloquants (docs/DEPLOIEMENT_OVH.md §5)
-# Lancement depuis infra/deploy : docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+# Lancement depuis infra/deploy (docs/DEPLOIEMENT_OVH.md) :
+#   machine dédiée  : docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build db api caddy
+#   proxy partagé   : ajouter -f docker-compose.edge.yml et ne pas lancer caddy (le proxy du serveur publie 80/443)
 name: minefleet
 
 services:
   db:
     image: postgis/postgis:16-3.4
     restart: unless-stopped
+    mem_limit: 1g
+    networks:
+      default:
+        # Nom unique : l'API peut aussi rejoindre un réseau partagé où « db » serait ambigu.
+        aliases: [minefleet-db]
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?manquant}
@@ -28,13 +35,14 @@ services:
       context: ../../backend
       target: runtime
     restart: unless-stopped
+    mem_limit: 768m
     # Moindre privilège : l'API ne reçoit que ses propres secrets (ni postgres, ni mf_owner).
     environment:
       MF_APP_PASSWORD: ${MF_APP_PASSWORD:?manquant}
       MF_JWT_SECRET: ${MF_JWT_SECRET:?manquant}
       MF_ALLOWED_ORIGINS: ${MF_ALLOWED_ORIGINS:-}
       MF_ENV: ${MF_ENV:?MF_ENV manquant (staging ou production)}
-      MF_DB_HOST: db
+      MF_DB_HOST: minefleet-db
       MF_DB_PORT: "5432"
       MF_DB_NAME: minefleet
       MF_COOKIE_SECURE: "true"
@@ -55,7 +63,7 @@ services:
     profiles: ["ops"]
     environment:
       MF_ENV: ${MF_ENV:?MF_ENV manquant (staging ou production)}
-      MF_DB_HOST: db
+      MF_DB_HOST: minefleet-db
       MF_DB_PORT: "5432"
       MF_DB_NAME: minefleet
       MF_APP_PASSWORD: ${MF_APP_PASSWORD:?manquant}
@@ -66,8 +74,10 @@ services:
       db:
         condition: service_healthy
 
+  # Proxy HTTPS propre à MineFleet (machine dédiée uniquement).
   caddy:
     image: caddy:2.8.4-alpine
+    profiles: ["standalone-proxy"]
     restart: unless-stopped
     environment:
       MF_DOMAIN: ${MF_DOMAIN:?MF_DOMAIN manquant (nom de domaine pointant vers le VPS)}
