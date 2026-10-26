@@ -33,4 +33,19 @@ Migration : non applicable, aucun changement de schéma. API : routes et codes e
 
 Local : Ruff et format réussis, mypy réussi sur 54 fichiers, 3 tests unitaires réussis. PostgreSQL et Docker absents localement : les nouveaux tests métier/concurrence nécessitent la CI réelle. Revue spécialisée sécurité/QA effectuée : aucun bloquant statique; la recommandation de calculer total et liste dans la même requête par module a été intégrée.
 
-Statut : **implémenté, validation PostgreSQL CI en attente**. Aucun déploiement ni fusion automatique.
+## Résultat PostgreSQL/PostGIS vérifié
+
+Le [run CI 40308112556](https://github.com/skaba89/minefleet360/actions/runs/40308112556) sur le commit applicatif `225d591f81a98e06150280a1a542d0f8d2c1adfa` est terminé avec succès (job 121522186644). Journaux consultés :
+
+| Contrôle | Résultat |
+|---|---|
+| Ruff lint / format | Réussis, 76 fichiers conformes |
+| mypy app | Réussi, 54 fichiers |
+| Upgrade peuplé 0004 vers head | 2 tests réussis |
+| Suite applicative, RLS, isolation et concurrence R2 | 1173 tests réussis |
+| Couverture de l'application | 92 % |
+| Audit des dépendances | Aucune vulnérabilité connue |
+
+Les six nouveaux tests R2 sont inclus dans les 1173 tests. Le rapport a été complété après l'exécution; le SHA ci-dessus identifie précisément le code vérifié.
+
+Statut : **implémenté et vérifié en CI PostgreSQL/PostGIS**, proposé dans la [PR #3](https://github.com/skaba89/minefleet360/pull/3). Aucun déploiement ni fusion automatique.
