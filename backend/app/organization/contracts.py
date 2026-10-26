@@ -19,6 +19,23 @@ def site_in_scope(db: Session, scope: PermissionScope, site_id: uuid.UUID) -> Si
     return site
 
 
+def active_site_in_scope(db: Session, scope: PermissionScope, site_id: uuid.UUID) -> Site | None:
+    """Valide et verrouille le site jusqu'au commit pour toute arrivée de ressource active.
+
+    FOR SHARE est compatible avec les autres créations, mais bloque le FOR NO KEY UPDATE de la
+    désactivation. Après attente, populate_existing évite de relire un statut périmé du cache ORM.
+    """
+    if not scope.covers_site(site_id):
+        return None
+    site = db.execute(
+        select(Site)
+        .where(Site.site_id == site_id)
+        .with_for_update(read=True)
+        .execution_options(populate_existing=True)
+    ).scalar_one_or_none()
+    return site if site is not None and site.status == "ACTIVE" else None
+
+
 def site_timezone(db: Session, site_id: uuid.UUID) -> ZoneInfo:
     """Fuseau d'affichage et de calcul des échéances : celui du site, sinon celui du tenant (H4)."""
     row = db.execute(

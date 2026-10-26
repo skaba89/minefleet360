@@ -6,7 +6,7 @@
 ## Contenu
 | Élément | Détail |
 |---|---|
-| Migration | `0008_assignment` (le n° 0007 est pris par la réparation du catalogue) : table `vehicle_assignment` conforme à `MODELE_PHYSIQUE_LOT1.md` §5.7, RLS forcée, FK composites, `EXCLUDE gist` véhicule et conducteur, gardes `MF003` (immuabilité) et `MF004` (même site, changement de site) ; `ck_va_shift` ajouté (format du code de poste) |
+| Migration | `0010_assignment` (0007 à 0009 sont pris par la réparation du catalogue et le lot R3) : table `vehicle_assignment` conforme à `MODELE_PHYSIQUE_LOT1.md` §5.7, RLS forcée, FK composites, `EXCLUDE gist` véhicule et conducteur, gardes `MF003` (immuabilité) et `MF004` (même site, changement de site) ; `ck_va_shift` ajouté (format du code de poste) |
 | Module | `backend/app/assignment/` : `models`, `schemas`, `eligibility` (fonction pure), `service`, `router`, `contracts` |
 | Contrats | `fleet/contracts.vehicle_facts`, nouveau `workforce/contracts.driver_facts` (ADR-001 : l'affectation n'importe aucun modèle d'un autre module) ; `assignment/contracts.open_assignments` remplace les fonctions vides des services flotte et personnel |
 | Permissions | `assignment.vehicle_assignment.read/create/update/end` dans `authz_matrix.yaml` (grants de `MATRICE_RBAC.md` §2.5) ; `tranche_courante: 1c` |
@@ -56,5 +56,5 @@
 - E2E dans la CI (exige de monter API + base + seed) ; audit d'accessibilité outillé (reporté par D-22, contrôle manuel à faire).
 - Paramètres de requête non typés dans le client (`get(path, query)`) : c'est ce qui a laissé passer le bug `search`/`q` ; à typer depuis `schema.d.ts`.
 - Affectations dans `minefleet seed-fictif` pour la recette.
-- Déploiement sur le VPS de recette : non fait (migration 0008 à appliquer avec la procédure de `DEPLOIEMENT_OVH.md`).
+- Déploiement sur le VPS de recette : non fait (migration 0010 à appliquer avec la procédure de `DEPLOIEMENT_OVH.md`).
 - Mise à jour de `MATRICE_RBAC.md` §2.5 et `USER_STORIES.md` (US-1.33, US-1.34) avec les hypothèses ci-dessus.

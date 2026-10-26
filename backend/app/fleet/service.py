@@ -22,7 +22,7 @@ from app.fleet.schemas import (
     VehicleStatusChange,
     VehicleUpdate,
 )
-from app.organization.contracts import local_date, site_in_scope
+from app.organization.contracts import active_site_in_scope, local_date
 
 # Transitions manuelles autorisées (MODELE_CONCEPTUEL 4.1) ; RETIRED passe par la réforme (US-1.15).
 TRANSITIONS: dict[str, frozenset[str]] = {
@@ -196,7 +196,7 @@ def status_history(auth: Authorized, vehicle_id: uuid.UUID) -> list[StatusHistor
 def create_vehicle(auth: Authorized, body: VehicleCreate) -> Vehicle:
     """US-1.12 : site et catégorie doivent appartenir au tenant ET à la portée (422 sinon)."""
     db = auth.db
-    if site_in_scope(db, auth.scope, body.site_id) is None:
+    if active_site_in_scope(db, auth.scope, body.site_id) is None:
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
     _active_category(db, body.vehicle_category_id)
     vehicle = Vehicle(
@@ -237,7 +237,7 @@ def update_vehicle(
         if required in fields and getattr(body, required) is None:
             raise AppError("VALIDATION_ERROR", details=[{"field": required, "type": "missing"}])
     if body.site_id is not None and body.site_id != vehicle.site_id:
-        if site_in_scope(db, auth.scope, body.site_id) is None:
+        if active_site_in_scope(db, auth.scope, body.site_id) is None:
             raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
         _ensure_no_open_assignments(auth, vehicle)  # D-13
     if body.vehicle_category_id is not None and body.vehicle_category_id != vehicle.vehicle_category_id:

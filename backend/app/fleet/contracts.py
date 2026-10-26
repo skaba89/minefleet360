@@ -4,7 +4,7 @@ import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.fleet.models import Vehicle, VehicleCategory, VehicleCategoryLicense
@@ -62,6 +62,19 @@ def vehicle_facts(
         )
         for vehicle, category in rows
     }
+
+
+def site_blockers(db: Session, site_id: uuid.UUID, limit: int) -> tuple[int, list[dict[str, str]]]:
+    """Ressources non réformées du site courant; identifiants techniques uniquement (RLS)."""
+    rows = db.execute(
+        select(Vehicle.vehicle_id, func.count().over().label("total"))
+        .where(Vehicle.site_id == site_id, Vehicle.status != "RETIRED")
+        .order_by(Vehicle.vehicle_id)
+        .limit(max(1, limit))
+    ).all()
+    return (int(rows[0].total) if rows else 0), [
+        {"entity_type": "vehicle", "entity_id": str(row.vehicle_id)} for row in rows[: max(0, limit)]
+    ]
 
 
 def seed_tenant_catalog(db: Session, tenant_id: uuid.UUID) -> int:

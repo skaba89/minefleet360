@@ -1,17 +1,18 @@
 """Affectations conducteur ↔ véhicule (MODELE_PHYSIQUE_LOT1 §5.7, tranche 1c).
 
-Revision ID: 0008
-Revises: 0007
+Revision ID: 0010
+Revises: 0009
 
-Numérotée 0008 : le numéro 0007 prévu par le modèle physique a été pris par la réparation du catalogue.
+Numérotée 0010 : 0007 (réparation du catalogue), 0008 et 0009 (limites partagées, historique des
+rafraîchissements, lot R3) précèdent cette migration ; le modèle physique la nommait 0007.
 La base garantit l'isolation (RLS, FK composites), le non-chevauchement (EXCLUDE gist), l'immuabilité
 des affectations terminées et la cohérence de site ; l'éligibilité reste applicative (RM-030).
 """
 
 from app.core.migration_tools import guard_destructive, run_sql
 
-revision = "0008"
-down_revision = "0007"
+revision = "0010"
+down_revision = "0009"
 branch_labels = None
 depends_on = None
 

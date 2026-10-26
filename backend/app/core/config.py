@@ -55,6 +55,15 @@ class Settings(BaseSettings):
     cookie_secure: bool = True
     allowed_origins: str = ""  # liste séparée par des virgules
     mail_capture_dir: str = "var/mail"
+    mail_backend: Literal["capture", "smtp"] = "capture"
+    mail_capture_ttl_seconds: int = Field(default=86400, ge=60, le=604800)
+    smtp_host: str = ""
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_username: str = ""
+    smtp_password: SecretStr | None = None
+    smtp_sender: str = ""
+    smtp_use_ssl: bool = False
+    smtp_timeout_seconds: int = Field(default=10, ge=1, le=60)
     platform_tenant_code: str = "mf-platform"
     # Codes d'espace refusés à la création d'un tenant client (MATRICE_RBAC §1.3).
     reserved_tenant_codes: tuple[str, ...] = ("mf-platform", "admin", "api", "platform", "support", "www")

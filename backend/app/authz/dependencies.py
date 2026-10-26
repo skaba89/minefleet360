@@ -95,6 +95,7 @@ def authenticate(
             AuthSession.revoked_at.is_(None),
             AuthSession.expires_at > now,
             UserAccount.status == "ACTIVE",
+            UserAccount.mfa_enabled.is_(False),
             Tenant.status == "ACTIVE",
         )
     ).first()

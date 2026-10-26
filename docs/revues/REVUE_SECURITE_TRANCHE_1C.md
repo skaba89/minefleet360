@@ -1,6 +1,6 @@
 # Revue sécurité et QA — tranche 1c, partie serveur (affectations)
 
-> Date : 2026-10-26. Objet : commit `f1710ca` (`backend/app/assignment/`, contrats fleet/workforce, migration `0008_assignment`, `authz_matrix.yaml` `assignment.*`, `errors.py`).
+> Date : 2026-10-26. Objet : commit `f1710ca` (`backend/app/assignment/`, contrats fleet/workforce, migration `0010_assignment` (ex-0008), `authz_matrix.yaml` `assignment.*`, `errors.py`).
 > Revue **interne** (même agent que l'implémentation), complétée par la revue automatique de commit (SEC1C-05, SEC1C-06) ; elle ne remplace pas la revue indépendante prévue par CLAUDE.md.
 
 ## 1. Modèle de menace (résumé)

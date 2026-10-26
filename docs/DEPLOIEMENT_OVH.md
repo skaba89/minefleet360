@@ -25,7 +25,7 @@ Deux variantes, même image et même base :
 
 Services :
 - `caddy` (machine dédiée) ou proxy commun : seul point exposé (80/443), HTTPS automatique, en-têtes de sécurité, proxy `/api/*`.
-- `api` : image `runtime` non root ; ne reçoit que `MF_APP_PASSWORD` et `MF_JWT_SECRET` (moindre privilège).
+- `api` : image `runtime` non root ; secrets applicatifs `MF_APP_PASSWORD`, `MF_JWT_SECRET` et, si SMTP activé, `MF_SMTP_PASSWORD`. Aucun secret propriétaire PostgreSQL.
 - `migrate` : tâche ponctuelle, seule à recevoir le secret `mf_owner`.
 - `db` : PostgreSQL 16 + PostGIS, **aucun port publié**, nom d'hôte unique `minefleet-db` ; pas de base de test (`MF_CREATE_TEST_DB` absent).
 - Limites mémoire : API 768 Mo, base 1 Go (serveur partagé).
@@ -36,8 +36,8 @@ Services :
 2. Docker Engine + plugin Compose (dépôt officiel).
 3. Code : `git archive <commit> | ssh … tar -x` depuis le poste de déploiement (aucun identifiant GitHub sur le serveur), ou clone avec une **clé de déploiement en lecture seule**. Le commit déployé est noté dans `DEPLOYED_COMMIT`.
 4. `infra/deploy/.env.prod` créé **sur le serveur** (secrets `openssl rand -hex 32`, droits `600`), `MF_ENV=staging`.
-5. `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build db api caddy`.
-6. `docker compose ... run --rm migrate`.
+5. Construire les images API/migrate puis démarrer la base : `docker compose -f docker-compose.prod.yml --env-file .env.prod build api migrate`, puis `docker compose ... up -d db`.
+6. `docker compose ... run --rm migrate`, puis démarrer/recréer `api` et le proxy choisi. La version applicative R3 exige les migrations `0008` et `0009` avant de servir les authentifications.
 7. Premier `PLATFORM_ADMIN` (`MF_BOOTSTRAP_PASSWORD` saisi de façon interactive) : `minefleet create-platform-admin`.
 8. **Recette** : `minefleet seed-fictif >> comptes-recette.txt` (fichier `600` sur le serveur, jamais affiché dans un terminal partagé) → 2 sociétés fictives, 4 sites (dont 2 en UTC+1), 16 comptes (un par rôle et par société), 20 véhicules, 16 conducteurs, permis (valides, proches de l'échéance, expirés), habilitations. Les mots de passe sont affichés **une seule fois** à transmettre aux testeurs par un canal sûr.
 9. Vérifications : `/api/v1/health` → 200, route protégée sans jeton → 401, certificat valide, connexion d'un compte fictif.
@@ -53,6 +53,20 @@ Services :
 | Envoi d'e-mails réel (fournisseur) au lieu de la capture locale | D-28, SEC-08 |
 | Interface web et tests E2E (tranche 1c), revue sécurité finale | PLAN_LOT1 |
 | Machine dédiée à la production, distincte de la recette | §1 |
+
+### Configuration email et authentification après R3
+
+`MF_MAIL_BACKEND=capture` reste autorisé en recette avec données fictives. Les captures sont privées (répertoire0700/fichiers0600), purgées à chaque nouvel envoi selon `MF_MAIL_CAPTURE_TTL_SECONDS` (24h par défaut). Sans nouvel envoi, elles persistent : l'exploitant doit aussi prévoir leur suppression à échéance. La capture est refusée au démarrage en `MF_ENV=production`.
+
+Pour SMTP : `MF_MAIL_BACKEND=smtp`, `MF_SMTP_HOST`, `MF_SMTP_PORT`, `MF_SMTP_SENDER`, et si authentification requise le couple `MF_SMTP_USERNAME`/`MF_SMTP_PASSWORD`. `MF_SMTP_USE_SSL=true` utilise TLS dès la connexion; sinon STARTTLS est obligatoire, sans repli en clair. `MF_PUBLIC_WEB_URL` doit être l'URL HTTPS réelle de l'interface en recette/production. La construction du transport ne teste pas le réseau : vérifier l'envoi avec le fournisseur dans un environnement autorisé avant exploitation.
+
+La demande anonyme de reset conserve sa réponse202 même si SMTP échoue; l'échec est journalisé par le code `email_delivery_failed`, sans destinataire ni lien. L'envoi s'exécute en tâche de fond du processus après réponse, sans file durable ni retry automatique : suivre les alertes et permettre une nouvelle demande après rétablissement. Les invitations administratives conservent un échec explicite du transport après création du compte.
+
+Les compteurs sont partagés entre les deux workers par PostgreSQL, avec pool distinct et clés HMAC. La table `app.auth_failure_bucket` est globale mais ne contient aucune identité en clair; mf_app n'y possède aucun droit direct. Les fonctions bornées utilisent uniquement l'horloge DB. Capacité :10000 clés actives par namespace, puis refus conservateur des nouvelles clés; les expirées sont purgées lors d'un nouvel échec. La vérification du seuil et le constat d'échec étant distincts, des requêtes déjà en vol peuvent dépasser le seuil avant leur comptabilisation; ce mécanisme ne garantit pas un plafond strict de requêtes simultanées.
+
+Le même secret JWT doit être utilisé par toutes les instances; sa rotation invalide les sessions signées et les empreintes de limiteurs précédentes. Superviser la disponibilité PostgreSQL et la saturation des compteurs. Les empreintes de refresh consommés sont bornées à1024 par session; au plafond, la session est révoquée et exige une nouvelle connexion. Elles restent stockées avec la session jusqu'à sa purge, qui doit faire partie de la politique de rétention.
+
+Le flag MFA ne constitue toujours pas une implémentation TOTP : un compte marqué `mfa_enabled=true` est refusé à la connexion, au refresh et lors des accès protégés. L'enrôlement/challenge reste un bloquant de production.
 
 ## 6. Retour arrière
 `git checkout <commit précédent>` puis `up -d --build`. Aucune migration n'est rétrogradée hors `local/test/ci` : toute migration doit rester rétrocompatible (expansion/contraction). Dernier recours : restauration du dernier `pg_dump`.
