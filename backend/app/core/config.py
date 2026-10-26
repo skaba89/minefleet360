@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     login_lockout_duration: timedelta = timedelta(minutes=15)
     password_min_length: int = 12
     password_max_length: int = 128
+    expiry_warning_days: int = 30  # EXPIRY_WARNING_DAYS (Q21, valeur de développement)
     page_size_default: int = 50
     page_size_max: int = 200
     blocking_list_max: int = 20

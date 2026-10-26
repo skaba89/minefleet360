@@ -6,8 +6,10 @@
 #    organization.tenant.read (lecture de SON tenant) pour éviter qu'un rôle tenant n'accède à /platform/*.
 #  - DRIVER ne porte que les permissions « propre compte » au lot 1 (D-25) : retiré de organization.site.read.
 #  - identity.session.revoke_own / revoke_any : déclarées, aucune route au lot 1a (déconnexion = /auth/logout).
+#  - DRIVER sans fleet.vehicle_category.read au lot 1 (D-25). workforce.*.read_sensitive / read_number :
+#    exprimés par field_policies (HR seul), sans route propre.
 version: 1
-tranche_courante: 1a
+tranche_courante: 1b
 
 roles:
   PLATFORM_ADMIN: { allowed_scopes: [PLATFORM], tenant_kind: PLATFORM, assignable_by_tenant: false }
@@ -234,6 +236,170 @@ permissions:
       - { method: GET, path: "/audit-events/{event_id}", shape: item, success: 200 }
     grants: { TENANT_ADMIN: [TENANT], AUDITOR: [TENANT] }
 
+  # --- fleet (1b) ------------------------------------------------------------------------------------
+  fleet.vehicle_category.read:
+    tranche: 1b
+    kind: read
+    site_bound: false
+    routes:
+      - { method: GET, path: /vehicle-categories, shape: collection, success: 200 }
+      - { method: GET, path: "/vehicle-categories/{category_id}", shape: item, success: 200 }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      HR: [TENANT, SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      MECHANIC: [TENANT, SITE]
+      STOREKEEPER: [TENANT, SITE]
+      FUEL_MANAGER: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  fleet.vehicle.read:
+    tranche: 1b
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /vehicles, shape: collection, success: 200 }
+      - { method: GET, path: "/vehicles/{vehicle_id}", shape: item, success: 200 }
+      - { method: GET, path: "/vehicles/{vehicle_id}/status-history", shape: item, success: 200 }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      WORKSHOP_CHIEF: [SITE]
+      MECHANIC: [SITE]
+      STOREKEEPER: [SITE]
+      FUEL_MANAGER: [SITE]
+      HSE: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  fleet.vehicle.create:
+    tranche: 1b
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /vehicles, shape: collection, success: 201 }]
+    audit: { action: vehicle.create }
+    grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT, SITE] }
+  fleet.vehicle.update:
+    tranche: 1b
+    kind: update
+    site_bound: true
+    routes: [{ method: PATCH, path: "/vehicles/{vehicle_id}", shape: item, success: 200 }]
+    audit: { action: vehicle.update }
+    grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT, SITE] }
+  fleet.vehicle.update_status:
+    tranche: 1b
+    kind: action
+    site_bound: true
+    routes: [{ method: POST, path: "/vehicles/{vehicle_id}/status", shape: item, success: 200 }]
+    audit: { action: vehicle.change_status }
+    grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE], WORKSHOP_CHIEF: [SITE] }
+  fleet.vehicle.deactivate:
+    tranche: 1b
+    kind: action
+    site_bound: true
+    routes: [{ method: POST, path: "/vehicles/{vehicle_id}/retire", shape: item, success: 200 }]
+    audit: { action: vehicle.retire }
+    grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT, SITE] }
+  fleet.vehicle_category.manage:
+    tranche: later
+    kind: update
+    site_bound: false
+    routes: []
+    grants: {}
+
+  # --- workforce (1b) --------------------------------------------------------------------------------
+  workforce.driver.read:
+    tranche: 1b
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /drivers, shape: collection, success: 200 }
+      - { method: GET, path: "/drivers/{driver_id}", shape: item, success: 200 }
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      HR: [TENANT, SITE]
+      WORKSHOP_CHIEF: [SITE]
+      FUEL_MANAGER: [SITE]
+      HSE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  workforce.driver.create:
+    tranche: 1b
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /drivers, shape: collection, success: 201 }]
+    audit: { action: driver.create }
+    grants: { HR: [TENANT, SITE] }
+  workforce.driver.update:
+    tranche: 1b
+    kind: update
+    site_bound: true
+    routes: [{ method: PATCH, path: "/drivers/{driver_id}", shape: item, success: 200 }]
+    audit: { action: driver.update }
+    grants: { HR: [TENANT, SITE] }
+  workforce.driver.deactivate:
+    tranche: 1b
+    kind: action
+    site_bound: true
+    routes: [{ method: POST, path: "/drivers/{driver_id}/status", shape: item, success: 200 }]
+    audit: { action: driver.change_status }
+    grants: { HR: [TENANT, SITE] }
+  workforce.driver_license.read:
+    tranche: 1b
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: "/drivers/{driver_id}/licenses", shape: item, success: 200 }
+      - { method: GET, path: /workforce/expirations, shape: collection, success: 200 }
+    grants:
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      HR: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  workforce.driver_license.manage:
+    tranche: 1b
+    kind: create
+    site_bound: true
+    routes:
+      - { method: POST, path: "/drivers/{driver_id}/licenses", shape: item, success: 201 }
+      - { method: PATCH, path: "/driver-licenses/{license_id}", shape: item, success: 200 }
+    audit: { action: driver_license.create }
+    grants: { HR: [TENANT, SITE] }
+  workforce.driver_qualification.read:
+    tranche: 1b
+    kind: read
+    site_bound: true
+    routes: [{ method: GET, path: "/drivers/{driver_id}/qualifications", shape: item, success: 200 }]
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      HR: [TENANT, SITE]
+      WORKSHOP_CHIEF: [SITE]
+      HSE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  workforce.driver_qualification.manage:
+    tranche: 1b
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: "/drivers/{driver_id}/qualifications", shape: item, success: 201 }]
+    audit: { action: driver_qualification.create }
+    grants: { HR: [TENANT, SITE] }
+  workforce.driver_qualification.revoke:
+    tranche: 1b
+    kind: action
+    site_bound: true
+    routes: [{ method: POST, path: "/driver-qualifications/{qualification_id}/revoke", shape: item, success: 200 }]
+    audit: { action: driver_qualification.revoke }
+    grants: { HR: [TENANT, SITE] }
+
 public_routes:
   - { method: GET, path: /health }
   - { method: POST, path: /auth/login }
@@ -249,5 +415,17 @@ field_policies:
   user_account:
     email: { visible_to_roles: [TENANT_ADMIN] }
     phone: { visible_to_roles: [TENANT_ADMIN] }
+  driver:
+    phone: { visible_to_roles: [HR] }
+    suspension_reason_code: { visible_to_roles: [HR, HSE] }
+    employment_type: { visible_to_roles: [HR] }
+    external_company_name: { visible_to_roles: [HR] }
+    hire_date: { visible_to_roles: [HR] }
+    exit_date: { visible_to_roles: [HR] }
+  driver_license:
+    license_number: { visible_to_roles: [HR] }
+    document_reference: { visible_to_roles: [HR] }
+    status_note: { visible_to_roles: [HR] }
 
-global_tables: [role, role_allowed_scope, license_category_ref]
+global_tables:
+  [role, role_allowed_scope, license_category_ref, vehicle_category_template, vehicle_category_template_license]

@@ -15,6 +15,7 @@ from app.core.errors import AppError
 from app.core.http import PageParams, check_version
 from app.core.logging import security_logger
 from app.core.tenancy import PLATFORM_TENANT_ID, set_tenant_context
+from app.fleet.contracts import seed_tenant_catalog
 from app.identity.contracts import create_invited_user, invitation_message, revoke_sessions
 from app.organization.models import Site, Tenant
 from app.organization.schemas import SiteCreate, SiteUpdate, TenantCreate, TenantUpdate
@@ -32,7 +33,7 @@ def _snapshot(obj: Any, fields: tuple[str, ...]) -> dict[str, Any]:
 def create_tenant(auth: Authorized, body: TenantCreate, settings: Settings) -> tuple[Tenant, EmailMessage]:
     """US-1.01 : tenant + premier TENANT_ADMIN invité, dans UNE transaction, audité des deux côtés.
 
-    La copie par tenant des catégories (véhicule, permis) arrive avec leurs tables en tranche 1b (D-18).
+    Les catégories de véhicule (et permis requis) sont copiées du catalogue de référence (D-18).
     """
     if body.code in settings.reserved_tenant_codes:
         raise AppError("TENANT_CODE_RESERVED")
@@ -59,6 +60,7 @@ def create_tenant(auth: Authorized, body: TenantCreate, settings: Settings) -> t
     )
     # Changement de contexte unique et audité (MODELE_PHYSIQUE §6.2 point 4).
     set_tenant_context(db, tenant.tenant_id)
+    categories = seed_tenant_catalog(db, tenant.tenant_id)
     admin, _, token = create_invited_user(
         db,
         tenant_id=tenant.tenant_id,
@@ -80,7 +82,12 @@ def create_tenant(auth: Authorized, body: TenantCreate, settings: Settings) -> t
         entity_type="tenant",
         entity_id=tenant.tenant_id,
         actor_user_id=auth.user_id,
-        after={"code": tenant.code, "first_admin_user_id": admin.user_account_id, "criticality": "HIGH"},
+        after={
+            "code": tenant.code,
+            "first_admin_user_id": admin.user_account_id,
+            "vehicle_categories_copied": categories,
+            "criticality": "HIGH",
+        },
     )
     db.commit()
     return tenant, invitation_message(str(body.admin_email), token, tenant.code, settings)

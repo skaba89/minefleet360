@@ -24,6 +24,23 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
     ("PATCH", "/sites/{site_id}"): {"name": "Nom modifié"},
     ("PATCH", "/users/{user_id}"): {"display_name": "Nom-Test modifié"},
     ("PATCH", "/tenant"): {"display_name": "Nom modifié"},
+    ("PATCH", "/vehicles/{vehicle_id}"): {"notes": "Note fictive"},
+    ("POST", "/vehicles/{vehicle_id}/status"): {"status": "IN_MAINTENANCE"},
+    ("POST", "/vehicles/{vehicle_id}/retire"): {"reason_code": "END_OF_LIFE"},
+    ("PATCH", "/drivers/{driver_id}"): {"last_name": "Nom-Test"},
+    ("POST", "/drivers/{driver_id}/status"): {"status": "UNAVAILABLE", "unavailability_reason": "LEAVE"},
+    ("POST", "/drivers/{driver_id}/licenses"): {
+        "license_number": "PERMIS-FICTIF-9999",
+        "category_code": "C",
+        "issue_date": "2020-01-01",
+        "expiry_date": "2030-01-01",
+    },
+    ("PATCH", "/driver-licenses/{license_id}"): {"status_note": "Note fictive"},
+    ("POST", "/drivers/{driver_id}/qualifications"): {
+        "qualification_type": "SAFETY_TRAINING",
+        "valid_from": "2024-01-01",
+    },
+    ("POST", "/driver-qualifications/{qualification_id}/revoke"): {"status": "SUSPENDED"},
 }
 
 
@@ -60,13 +77,52 @@ def world(api: Api, client: TestClient) -> World:
     b_personas = {
         "TENANT_ADMIN": Persona("TENANT_ADMIN", "TENANT", b.admin.headers),
         "AUDITOR": Persona("AUDITOR", "TENANT", api.user(b, "AUDITOR").headers),
+        "HR": Persona("HR", "TENANT", api.user(b, "HR").headers),
+        "OPS_MANAGER": Persona("OPS_MANAGER", "TENANT", api.user(b, "OPS_MANAGER").headers),
     }
     hr = api.user(a, "HR")
     assignment = client.get(
         f"{API}/role-assignments", headers=a.admin.headers, params={"user_id": str(hr.user_id)}
     ).json()["items"][0]["user_role_assignment_id"]
     event = client.get(f"{API}/audit-events", headers=a.admin.headers).json()["items"][0]["audit_event_id"]
+    category = client.get(f"{API}/vehicle-categories", headers=a.admin.headers).json()[0][
+        "vehicle_category_id"
+    ]
+    vehicle = client.post(
+        f"{API}/vehicles",
+        headers=a.admin.headers,
+        json={"site_id": str(a.sites["S1"]), "vehicle_category_id": category, "fleet_number": "PARC-001"},
+    ).json()["vehicle_id"]
+    driver = client.post(
+        f"{API}/drivers",
+        headers=hr.headers,
+        json={
+            "site_id": str(a.sites["S1"]),
+            "employee_number": "MAT-001",
+            "last_name": "Nom-Test",
+            "first_name": "A",
+        },
+    ).json()["driver_id"]
+    license_id = client.post(
+        f"{API}/drivers/{driver}/licenses",
+        headers=hr.headers,
+        json=SAMPLE_BODIES[("POST", "/drivers/{driver_id}/licenses")],
+    ).json()["driver_license_id"]
+    qualification = client.post(
+        f"{API}/drivers/{driver}/qualifications",
+        headers=hr.headers,
+        json={
+            "qualification_type": "DRIVING_AUTHORIZATION",
+            "vehicle_category_id": category,
+            "valid_from": "2024-01-01",
+        },
+    ).json()["driver_qualification_id"]
     objects = {
+        "vehicle_id": uuid.UUID(vehicle),
+        "category_id": uuid.UUID(category),
+        "driver_id": uuid.UUID(driver),
+        "license_id": uuid.UUID(license_id),
+        "qualification_id": uuid.UUID(qualification),
         "site_id": a.sites["S1"],
         "user_id": hr.user_id,
         "assignment_id": uuid.UUID(assignment),
@@ -80,7 +136,7 @@ def _routes() -> list[tuple[str, str, str]]:
     return [
         (perm.name, route.method, route.path)
         for perm in MATRIX.permissions.values()
-        if perm.tranche in ("1a",)
+        if perm.tranche != "later"
         for route in perm.routes
     ]
 
@@ -196,7 +252,7 @@ def _item_routes() -> list[tuple[str, str, str, str]]:
     for permission, method, path in _routes():
         if "{" not in path or path.startswith("/platform"):
             continue
-        for role in ("TENANT_ADMIN", "AUDITOR"):
+        for role in ("TENANT_ADMIN", "AUDITOR", "HR", "OPS_MANAGER"):
             if "TENANT" in MATRIX.permissions[permission].grants.get(role, ()):
                 cases.append((permission, method, path, role))
                 break

@@ -74,3 +74,9 @@ def visible_fields(entity: str, scope: PermissionScope) -> frozenset[str] | None
 def masked_fields(entity: str, scope: PermissionScope) -> frozenset[str]:
     policy = load_matrix().field_policies.get(entity, {})
     return frozenset(name for name, allowed in policy.items() if not allowed & scope.roles)
+
+
+def mask(entity: str, scope: PermissionScope, data: dict[str, object]) -> dict[str, object]:
+    """Retire de la réponse les champs restreints non visibles pour ces rôles (masquage total, D-15)."""
+    hidden = masked_fields(entity, scope)
+    return {key: value for key, value in data.items() if key not in hidden}

@@ -18,9 +18,11 @@ from app.core.email import EmailSender, FileCaptureEmailSender
 from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
 from app.core.request_context import RequestMeta, set_request_meta
+from app.fleet.router import router as fleet_router
 from app.identity.auth_service import AuthLimiters
 from app.identity.router import auth_router, me_router, role_router, user_router
 from app.organization.router import platform_router, site_router, tenant_router
+from app.workforce.router import router as workforce_router
 
 API_PREFIX = "/api/v1"
 
@@ -113,6 +115,8 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         user_router,
         role_router,
         audit_router,
+        fleet_router,
+        workforce_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     return app

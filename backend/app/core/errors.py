@@ -45,6 +45,17 @@ CATALOG: dict[str, ErrorDef] = {
     "SITE_HAS_ACTIVE_RESOURCES": ErrorDef(409, "Le site possède encore des ressources actives."),
     "STATE_TRANSITION_INVALID": ErrorDef(409, "Cette action n'est pas possible dans l'état actuel."),
     "CONFLICT": ErrorDef(409, "Conflit avec l'état actuel des données."),
+    "DUPLICATE_FLEET_NUMBER": ErrorDef(
+        409, "Ce numéro de parc est déjà utilisé (y compris par un véhicule réformé)."
+    ),
+    "DUPLICATE_REGISTRATION": ErrorDef(409, "Cette immatriculation est déjà utilisée."),
+    "DUPLICATE_SERIAL_NUMBER": ErrorDef(409, "Ce numéro de série est déjà enregistré pour cette marque."),
+    "DUPLICATE_EMPLOYEE_NUMBER": ErrorDef(409, "Ce matricule est déjà utilisé."),
+    "DUPLICATE_LICENSE": ErrorDef(409, "Ce permis est déjà enregistré pour ce conducteur."),
+    "DUPLICATE_QUALIFICATION": ErrorDef(409, "Une habilitation valide se chevauche déjà sur cette période."),
+    "OPEN_ASSIGNMENTS_EXIST": ErrorDef(
+        409, "Des affectations planifiées ou actives doivent d'abord être clôturées."
+    ),
     # 422
     "VALIDATION_ERROR": ErrorDef(422, "Les données envoyées sont invalides."),
     "IF_MATCH_REQUIRED": ErrorDef(422, "L'en-tête If-Match est obligatoire pour une modification."),
@@ -57,6 +68,10 @@ CATALOG: dict[str, ErrorDef] = {
     "PASSWORD_POLICY_VIOLATION": ErrorDef(422, "Le mot de passe ne respecte pas la politique de sécurité."),
     "TOKEN_INVALID": ErrorDef(422, "Ce lien est invalide ou a expiré."),
     "TENANT_CODE_RESERVED": ErrorDef(422, "Ce code d'espace de travail est réservé."),
+    "VEHICLE_STATUS_TRANSITION_INVALID": ErrorDef(
+        422, "Ce changement de statut du véhicule n'est pas autorisé."
+    ),
+    "STATUS_REASON_REQUIRED": ErrorDef(422, "Un motif est obligatoire pour ce statut."),
     # 429
     "RATE_LIMITED": ErrorDef(429, "Trop de tentatives. Réessayez plus tard."),
     # 500
@@ -70,6 +85,12 @@ CONSTRAINT_CODES: dict[str, str] = {
     "uq_site_tenant_code": "DUPLICATE_SITE_CODE",
     "uq_user_account_tenant_email": "DUPLICATE_EMAIL",
     "ex_ura_no_duplicate": "DUPLICATE_ROLE_ASSIGNMENT",
+    "uq_vehicle_tenant_fleet_number": "DUPLICATE_FLEET_NUMBER",
+    "uq_vehicle_tenant_registration": "DUPLICATE_REGISTRATION",
+    "uq_vehicle_tenant_serial": "DUPLICATE_SERIAL_NUMBER",
+    "uq_driver_tenant_employee": "DUPLICATE_EMPLOYEE_NUMBER",
+    "uq_driver_license_issue": "DUPLICATE_LICENSE",
+    "ex_dq_no_overlap": "DUPLICATE_QUALIFICATION",
 }
 
 
@@ -132,7 +153,8 @@ def map_integrity_error(exc: IntegrityError) -> AppError:
     if sqlstate in ("23505", "23P01"):
         return AppError("CONFLICT")
     if sqlstate == "23514":
-        return AppError("VALIDATION_ERROR")
+        logger.warning("check_constraint_violation", extra={"constraint": name})
+        return AppError("VALIDATION_ERROR", details=[{"constraint": name}] if name else None)
     raise exc
 
 

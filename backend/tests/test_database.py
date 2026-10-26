@@ -18,7 +18,15 @@ TENANT_TABLES = (
     "auth_session",
     "audit_event",
 )
-GLOBAL_TABLES = {"role", "role_allowed_scope", "license_category_ref", "alembic_version", "spatial_ref_sys"}
+GLOBAL_TABLES = {
+    "role",
+    "role_allowed_scope",
+    "license_category_ref",
+    "vehicle_category_template",
+    "vehicle_category_template_license",
+    "alembic_version",
+    "spatial_ref_sys",
+}
 
 
 @pytest.fixture(scope="module")
