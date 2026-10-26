@@ -24,7 +24,8 @@ Deux variantes, même image et même base :
 - **serveur partagé** (cas du VPS actuel, qui héberge d'autres applications) : `docker-compose.edge.yml` attache la seule API au réseau Docker externe `edge` (alias `minefleet-api`) ; le proxy commun du serveur publie 80/443 et sert `vps-proxy-minefleet.caddy`. L'API est aussi publiée sur `127.0.0.1:8200` pour les vérifications par tunnel SSH.
 
 Services :
-- `caddy` (machine dédiée) ou proxy commun : seul point exposé (80/443), HTTPS automatique, en-têtes de sécurité, proxy `/api/*`.
+- `caddy` (machine dédiée) ou proxy commun : seul point exposé (80/443), HTTPS automatique, en-têtes de sécurité ; `/api/*` vers l'API, tout le reste vers l'interface.
+- `web` : interface (fichiers statiques Vite servis par Caddy, `frontend/Dockerfile`), non root, système de fichiers en lecture seule, aucun secret ; CSP stricte. Sur le serveur partagé, alias `minefleet-web` du réseau `edge`.
 - `api` : image `runtime` non root ; secrets applicatifs `MF_APP_PASSWORD`, `MF_JWT_SECRET` et, si SMTP activé, `MF_SMTP_PASSWORD`. Aucun secret propriétaire PostgreSQL.
 - `migrate` : tâche ponctuelle, seule à recevoir le secret `mf_owner`.
 - `db` : PostgreSQL 16 + PostGIS, **aucun port publié**, nom d'hôte unique `minefleet-db` ; pas de base de test (`MF_CREATE_TEST_DB` absent).
@@ -36,11 +37,11 @@ Services :
 2. Docker Engine + plugin Compose (dépôt officiel).
 3. Code : `git archive <commit> | ssh … tar -x` depuis le poste de déploiement (aucun identifiant GitHub sur le serveur), ou clone avec une **clé de déploiement en lecture seule**. Le commit déployé est noté dans `DEPLOYED_COMMIT`.
 4. `infra/deploy/.env.prod` créé **sur le serveur** (secrets `openssl rand -hex 32`, droits `600`), `MF_ENV=staging`.
-5. Construire les images API/migrate puis démarrer la base : `docker compose -f docker-compose.prod.yml --env-file .env.prod build api migrate`, puis `docker compose ... up -d db`.
-6. `docker compose ... run --rm migrate`, puis démarrer/recréer `api` et le proxy choisi. La version applicative R3 exige les migrations `0008` et `0009` avant de servir les authentifications.
+5. Construire les images puis démarrer la base : `docker compose -f docker-compose.prod.yml --env-file .env.prod build api migrate web`, puis `docker compose ... up -d db`. `.env.prod` doit contenir `MF_PUBLIC_WEB_URL` (URL HTTPS de l'interface : liens d'invitation et de réinitialisation) et `MF_ALLOWED_ORIGINS` (même origine : contrôle du rafraîchissement de session).
+6. `docker compose ... run --rm migrate`, puis démarrer/recréer `api`, `web` et le proxy choisi. La version applicative R3 exige les migrations `0008` et `0009` avant de servir les authentifications ; la tranche 1c ajoute `0010` (affectations). Serveur partagé : recopier `vps-proxy-minefleet.caddy` dans `~/vps-proxy/sites/minefleet.caddy` (adresse ACME renseignée) puis `~/vps-proxy/reload.sh`, qui valide avant de recharger.
 7. Premier `PLATFORM_ADMIN` (`MF_BOOTSTRAP_PASSWORD` saisi de façon interactive) : `minefleet create-platform-admin`.
 8. **Recette** : `minefleet seed-fictif >> comptes-recette.txt` (fichier `600` sur le serveur, jamais affiché dans un terminal partagé) → 2 sociétés fictives, 4 sites (dont 2 en UTC+1), 16 comptes (un par rôle et par société), 20 véhicules, 16 conducteurs, permis (valides, proches de l'échéance, expirés), habilitations. Les mots de passe sont affichés **une seule fois** à transmettre aux testeurs par un canal sûr.
-9. Vérifications : `/api/v1/health` → 200, route protégée sans jeton → 401, certificat valide, connexion d'un compte fictif.
+9. Vérifications : `/api/v1/health` → 200, route protégée sans jeton → 401, certificat valide, `/` et `/affectations` → page de l'interface avec en-tête `Content-Security-Policy`, connexion d'un compte fictif dans le navigateur.
 10. Sauvegarde : `backup.sh` en cron quotidien.
 
 ## 5. Conditions avant tout passage en production (données réelles)
