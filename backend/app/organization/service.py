@@ -16,9 +16,11 @@ from app.core.http import PageParams, check_version
 from app.core.logging import security_logger
 from app.core.tenancy import PLATFORM_TENANT_ID, set_tenant_context
 from app.fleet.contracts import seed_tenant_catalog
+from app.fleet.contracts import site_blockers as fleet_site_blockers
 from app.identity.contracts import create_invited_user, invitation_message, revoke_sessions
 from app.organization.models import Site, Tenant
 from app.organization.schemas import SiteCreate, SiteUpdate, TenantCreate, TenantUpdate
+from app.workforce.contracts import site_blockers as workforce_site_blockers
 
 logger = logging.getLogger("minefleet.organization")
 
@@ -286,14 +288,12 @@ def update_site(auth: Authorized, site_id: uuid.UUID, body: SiteUpdate, expected
     return site
 
 
-def _site_blockers(db: Session, site_id: uuid.UUID) -> list[dict[str, Any]]:
-    """Ressources actives empêchant la désactivation (US-1.03 A4).
-
-    Au lot 1a il n'existe ni véhicule ni conducteur : la liste est vide. Les tranches 1b/1c y ajoutent
-    véhicules non réformés et conducteurs non inactifs.
-    """
-    del db, site_id
-    return []
+def _site_blockers(db: Session, site_id: uuid.UUID) -> tuple[int, list[dict[str, str]]]:
+    """Contrats publics uniquement; total exact et liste bornée sans identité personnelle."""
+    limit = get_settings().blocking_list_max
+    fleet_total, fleet_items = fleet_site_blockers(db, site_id, limit)
+    driver_total, driver_items = workforce_site_blockers(db, site_id, max(0, limit - len(fleet_items)))
+    return fleet_total + driver_total, fleet_items + driver_items
 
 
 def change_site_status(auth: Authorized, site_id: uuid.UUID, expected_version: int, target: str) -> Site:
@@ -304,11 +304,11 @@ def change_site_status(auth: Authorized, site_id: uuid.UUID, expected_version: i
     if site.status != source:
         raise AppError("STATE_TRANSITION_INVALID")
     if target == "INACTIVE":
-        blockers = _site_blockers(db, site.site_id)
-        if blockers:
+        total, blockers = _site_blockers(db, site.site_id)
+        if total:
             raise AppError(
                 "SITE_HAS_ACTIVE_RESOURCES",
-                details={"total": len(blockers), "items": blockers[: get_settings().blocking_list_max]},
+                details={"total": total, "items": blockers},
             )
     site.status = target
     site.updated_by = auth.user_id

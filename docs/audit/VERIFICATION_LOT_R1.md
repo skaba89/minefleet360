@@ -23,7 +23,9 @@ Date : 26 octobre 2026. Branche : `audit/2026-10-26-mvp-remediation`. Base : `2e
 | `python -m compileall -q app alembic tests_migrations tests_unit` | Réussi |
 | `git diff --check` | Réussi |
 
-Le test `tests_migrations` et la suite PostgreSQL/PostGIS ne sont pas exécutables dans l'environnement local actuel : aucun serveur PostgreSQL ni moteur Docker n'y est disponible. Leur exécution est ajoutée à la CI; le résultat doit être inscrit ici avant de considérer R1 comme vérifié sur base réelle.
+Le test `tests_migrations` et la suite PostgreSQL/PostGIS ne sont pas exécutables dans l'environnement local actuel : aucun serveur PostgreSQL ni moteur Docker n'y est disponible. Ils ont été exécutés en CI sur le `main` `b19c825d504ec158fc633024a5b8993bf7b31d01` : [run 40296704419](https://github.com/skaba89/minefleet360/actions/runs/40296704419), job 121484406259, succès. Journaux vérifiés : **2 tests de migration réussis, 1167 tests applicatifs réussis, couverture 92 %, aucune vulnérabilité connue**.
+
+Le premier run R1 sur `f507942` avait validé les deux migrations mais échoué sur `test_owner_database_url_requires_owner_secret`, qui héritait du secret propriétaire CI. Le commit `f1c92ef` a rendu ce test hermétique avec suppression temporaire de la variable d'environnement. Cette correction fait partie du main vérifié ci-dessus.
 
 ## Couverture du test de migration
 
@@ -37,8 +39,8 @@ Revues base, sécurité et QA effectuées sur le diff. Aucun point bloquant stat
 
 ## Risques résiduels
 
-- Le type exact de l'exception PostgreSQL du scénario de collision doit être confirmé par la CI réelle.
+- Le type de l'exception PostgreSQL du scénario de collision est confirmé par les deux tests de migration réussis en CI.
 - La migration modifie les données de référence de chaque tenant client; effectuer une sauvegarde vérifiée et un inventaire des collisions avant toute exécution hors environnement de test.
 - R1 ne corrige pas encore la garde de désactivation des sites (R2), l'anti-bruteforce partagé ni le transport email (R3).
 
-Statut : **implémenté, validation PostgreSQL CI en attente**.
+Statut : **R1 fusionné et vérifié sur PostgreSQL/PostGIS en CI**. Aucun déploiement réalisé par cet audit.
