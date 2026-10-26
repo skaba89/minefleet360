@@ -19,7 +19,7 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.http import PageParams, check_version
 from app.core.logging import security_logger
-from app.organization.contracts import site_in_scope, site_timezone
+from app.organization.contracts import active_site_in_scope, site_in_scope, site_timezone
 from app.workforce.models import Driver, DriverLicense, DriverQualification
 from app.workforce.schemas import (
     DriverCreate,
@@ -228,7 +228,7 @@ def list_drivers(
 def create_driver(auth: Authorized, body: DriverCreate) -> tuple[Driver, list[str]]:
     """US-1.16 : matricule unique (409) ; homonyme sur le même site = avertissement non bloquant (A6)."""
     db = auth.db
-    if site_in_scope(db, auth.scope, body.site_id) is None:
+    if active_site_in_scope(db, auth.scope, body.site_id) is None:
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
     if body.employment_type == "SUBCONTRACTOR" and not body.external_company_name:
         raise AppError("VALIDATION_ERROR", details=[{"field": "external_company_name", "type": "missing"}])
@@ -273,7 +273,7 @@ def update_driver(
         if required in fields and getattr(body, required) is None:
             raise AppError("VALIDATION_ERROR", details=[{"field": required, "type": "missing"}])
     if body.site_id is not None and body.site_id != driver.site_id:
-        if site_in_scope(db, auth.scope, body.site_id) is None:
+        if active_site_in_scope(db, auth.scope, body.site_id) is None:
             raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
         _ensure_no_open_assignments(db, driver.driver_id)  # D-13
     visible = tuple(f for f in fields if f in AUDIT_VALUED_DRIVER_FIELDS)
@@ -318,6 +318,8 @@ def change_driver_status(
         raise AppError("STATUS_REASON_REQUIRED")
     if target != "ACTIVE":
         _ensure_no_open_assignments(db, driver.driver_id)
+    if target != "INACTIVE" and active_site_in_scope(db, auth.scope, driver.site_id) is None:
+        raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
     driver.status = target
     driver.unavailability_reason = body.unavailability_reason if target == "UNAVAILABLE" else None
     driver.unavailable_until = body.unavailable_until if target == "UNAVAILABLE" else None
