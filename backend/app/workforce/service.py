@@ -10,9 +10,8 @@ from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 
-from app.assignment.contracts import open_assignments
+from app.assignment.contracts import ensure_no_open_assignments
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.authz.principal import mask, restricted_fields
@@ -53,12 +52,9 @@ def _jsonable(data: dict[str, Any]) -> dict[str, Any]:
     return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in data.items()}
 
 
-def _ensure_no_open_assignments(db: Session, driver_id: uuid.UUID) -> None:
+def _ensure_no_open_assignments(auth: Authorized, driver: Driver) -> None:
     """Affectations ouvertes du conducteur bloquant un changement de statut ou de site (D-11, D-13)."""
-    blockers = open_assignments(db, driver_id=driver_id)
-    if blockers:
-        limit = get_settings().blocking_list_max
-        raise AppError("OPEN_ASSIGNMENTS_EXIST", details={"total": len(blockers), "items": blockers[:limit]})
+    ensure_no_open_assignments(auth.db, auth.principal, driver.site_id, driver_id=driver.driver_id)
 
 
 # --- Sérialisation ------------------------------------------------------------------------------------
@@ -271,7 +267,7 @@ def update_driver(
     if body.site_id is not None and body.site_id != driver.site_id:
         if site_in_scope(db, auth.scope, body.site_id) is None:
             raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
-        _ensure_no_open_assignments(db, driver.driver_id)  # D-13
+        _ensure_no_open_assignments(auth, driver)  # D-13
     visible = tuple(f for f in fields if f in AUDIT_VALUED_DRIVER_FIELDS)
     before = {f: getattr(driver, f) for f in visible}
     for name in fields:
@@ -313,7 +309,7 @@ def change_driver_status(
     if target in required and required[target] is None:
         raise AppError("STATUS_REASON_REQUIRED")
     if target != "ACTIVE":
-        _ensure_no_open_assignments(db, driver.driver_id)
+        _ensure_no_open_assignments(auth, driver)
     driver.status = target
     driver.unavailability_reason = body.unavailability_reason if target == "UNAVAILABLE" else None
     driver.unavailable_until = body.unavailable_until if target == "UNAVAILABLE" else None

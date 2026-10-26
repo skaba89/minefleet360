@@ -1,7 +1,7 @@
 # Revue sécurité et QA — tranche 1c, partie serveur (affectations)
 
 > Date : 2026-10-26. Objet : commit `f1710ca` (`backend/app/assignment/`, contrats fleet/workforce, migration `0008_assignment`, `authz_matrix.yaml` `assignment.*`, `errors.py`).
-> Revue **interne** (même agent que l'implémentation) : elle ne remplace pas la revue indépendante prévue par CLAUDE.md.
+> Revue **interne** (même agent que l'implémentation), complétée par la revue automatique de commit (SEC1C-05, SEC1C-06) ; elle ne remplace pas la revue indépendante prévue par CLAUDE.md.
 
 ## 1. Modèle de menace (résumé)
 | Menace | Contrôle | Preuve |
@@ -26,13 +26,15 @@
 | SEC1C-02 | Faible | À la création, le véhicule puis le conducteur sont verrouillés **avant** le contrôle de portée : un utilisateur peut brièvement verrouiller un véhicule d'un autre site de sa société (le temps de la requête) | **Accepté** au lot 1 (même tenant, durée d'une requête, `lock_timeout` 5 s). Correctif possible : lecture sans verrou, contrôle, puis verrou |
 | SEC1C-03 | Faible | `valid_from` sans borne haute : une affectation peut réserver un créneau très lointain (ex. 2099) | Ouvert : borne de planification à arbitrer avec l'exploitation (C-11) |
 | SEC1C-04 | Info | `audit.action` de la matrice (`vehicle_assignment.update`, `.end`) ne liste pas les actions réellement écrites (`.activate`, `.suspend`, `.resume`, `.complete`, `.cancel`) | Ouvert : le schéma YAML n'accepte qu'une action par permission ; à étendre si un contrôle s'appuie dessus |
+| SEC1C-05 | Moyenne | Le 409 `OPEN_ASSIGNMENTS_EXIST` listait les affectations (identifiants, dates) à tout appelant pouvant changer le statut ou le site : `TENANT_ADMIN` les recevait sans lire les affectations (D-10) | **Corrigé** : liste jointe seulement si l'appelant porte `assignment.vehicle_assignment.read` sur le site, sinon `total` seul (`assignment/contracts.ensure_no_open_assignments`) ; test `test_sec1c05_*` |
+| SEC1C-06 | Moyenne | Le détail de conformité (`LICENSE_EXPIRED` et date d'échéance) était visible de rôles qui lisent les affectations sans lire permis ou habilitations (`DIRECTION`, `WORKSHOP_CHIEF`, `FUEL_MANAGER`) | **Corrigé** : motifs et avertissements liés au permis exigent `workforce.driver_license.read`, ceux liés à l'habilitation `workforce.driver_qualification.read`, `NEXT_EXPIRY` les deux, sur le site de l'affectation. Le statut `NON_COMPLIANT` reste visible (alerte opérationnelle, risque résiduel accepté : il laisse deviner un problème de pièce) ; test `test_sec1c06_*` |
 | QA1C-01 | Info | Filtre `compliance` évalué en mémoire (D-12) : `total` exact mais coût proportionnel aux affectations actives | Accepté jusqu'au planificateur (lot 2+) |
 | QA1C-02 | Info | Pas encore de test E2E ni d'interface : le masquage côté UI est sans objet, l'API seule fait foi | Suite de la tranche 1c |
 
 Aucun constat élevé ou bloquant.
 
 ## 3. Vérifications exécutées
-- `ruff`, `mypy` strict, `pytest` (1399 passed, couverture 92,9 %), `tests_migrations` (2 passed) ; détail dans `LIVRAISON_TRANCHE_1C.md`.
+- `ruff`, `mypy` strict, `pytest` (1401 passed après corrections, couverture 93 %), `tests_migrations` (2 passed) ; détail dans `LIVRAISON_TRANCHE_1C.md`.
 - Revue de code des points ci-dessus.
 
 ## 4. Non couvert

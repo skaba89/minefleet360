@@ -462,7 +462,7 @@ def test_d11_d13_open_assignment_blocks_status_and_site_changes(client: TestClie
     vurl = f"{API}/vehicles/{created['vehicle_id']}"
 
     def vehicle_headers() -> dict[str, str]:
-        return {**w.t.admin.headers, "If-Match": client.get(vurl, headers=w.t.admin.headers).headers["ETag"]}
+        return {**w.ops.headers, "If-Match": client.get(vurl, headers=w.ops.headers).headers["ETag"]}
 
     for resp in (
         client.post(f"{vurl}/status", headers=vehicle_headers(), json={"status": "IN_MAINTENANCE"}),
@@ -607,3 +607,41 @@ def test_db_guards_overlap_site_and_immutability(client: TestClient, w: World, a
         conn.rollback()
         # Sans contexte tenant : aucune ligne visible (RLS forcée).
         assert conn.execute(text("SELECT count(*) FROM vehicle_assignment")).scalar_one() == 0
+
+
+# --- SEC1C-05 / SEC1C-06 Divulgation limitée aux droits de lecture ------------------------------------
+
+
+def test_sec1c05_blocker_list_only_for_assignment_readers(client: TestClient, w: World) -> None:
+    """TENANT_ADMIN change le statut d'un véhicule sans lire les affectations (D-10) : total seulement."""
+    created = _create(client, w, _vehicle(client, w), _driver(client, w)).json()
+    vurl = f"{API}/vehicles/{created['vehicle_id']}"
+    for headers, has_items in ((w.t.admin.headers, False), (w.ops.headers, True)):
+        etag = client.get(vurl, headers=headers).headers["ETag"]
+        resp = client.post(
+            f"{vurl}/status", headers={**headers, "If-Match": etag}, json={"status": "IN_MAINTENANCE"}
+        )
+        assert (resp.status_code, resp.json()["code"]) == (409, "OPEN_ASSIGNMENTS_EXIST")
+        assert resp.json()["details"]["total"] == 1
+        assert ("items" in resp.json()["details"]) is has_items
+
+
+def test_sec1c06_document_reasons_hidden_without_document_read(
+    client: TestClient, w: World, api: Api
+) -> None:
+    created = _create(client, w, _vehicle(client, w), _driver(client, w)).json()
+    lic = client.get(f"{API}/drivers/{created['driver_id']}/licenses", headers=w.hr.headers).json()[0]
+    withdrawn = client.patch(
+        f"{API}/driver-licenses/{lic['driver_license_id']}",
+        headers={**w.hr.headers, "If-Match": f'"{lic["row_version"]}"'},
+        json={"status": "WITHDRAWN"},
+    )
+    assert withdrawn.status_code == 200
+    url = f"{API}/vehicle-assignments/{created['vehicle_assignment_id']}"
+    fuel = api.user(w.t, "FUEL_MANAGER", "SITE", "S1")
+    direction = api.user(w.t, "DIRECTION")
+    hse = api.user(w.t, "HSE")
+    for account, reasons in ((fuel, []), (direction, []), (hse, ["LICENSE_EXPIRED"])):
+        compliance = client.get(url, headers=account.headers).json()["compliance"]
+        assert compliance["status"] == "NON_COMPLIANT"
+        assert [r["code"] for r in compliance["reasons"]] == reasons

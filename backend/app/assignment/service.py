@@ -27,6 +27,7 @@ from app.assignment.schemas import (
 )
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
+from app.authz.principal import evaluate as evaluate_permission
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.http import PageParams, check_version
@@ -73,7 +74,36 @@ class _Facts:
         return self._zones[site_id]
 
 
-def _compliance(facts: _Facts, a: VehicleAssignment, now: datetime) -> ComplianceOut:
+# Motifs dont le code ou la date révèlent l'état d'un permis ou d'une habilitation (SEC1C-06).
+_DOCUMENT_PERMISSION = {
+    "LICENSE_EXPIRED": "workforce.driver_license.read",
+    "LICENSE_EXPIRING": "workforce.driver_license.read",
+    "QUALIFICATION_EXPIRED": "workforce.driver_qualification.read",
+    "QUALIFICATION_EXPIRING": "workforce.driver_qualification.read",
+}
+
+
+def _visible(auth: Authorized, site_id: uuid.UUID, findings: list[Finding]) -> list[Finding]:
+    """Ne garde que les motifs lisibles par l'appelant sur ce site (permis, habilitations : D-15).
+
+    Le statut de conformité reste visible de tous les lecteurs : c'est l'alerte opérationnelle.
+    """
+    allowed: dict[str, bool] = {}
+    for permission in set(_DOCUMENT_PERMISSION.values()):
+        scope = evaluate_permission(auth.principal, permission)
+        allowed[permission] = scope is not None and scope.covers_site(site_id)
+    # NEXT_EXPIRY : échéance la plus proche du permis ou de l'habilitation → exige les deux lectures.
+    allowed["NEXT_EXPIRY"] = all(allowed.values())
+    return [
+        f
+        for f in findings
+        if allowed.get(
+            "NEXT_EXPIRY" if f.code == "NEXT_EXPIRY" else _DOCUMENT_PERMISSION.get(f.code, ""), True
+        )
+    ]
+
+
+def _compliance(auth: Authorized, facts: _Facts, a: VehicleAssignment, now: datetime) -> ComplianceOut:
     reasons, warnings = compliance(
         facts.vehicles[a.vehicle_id],
         facts.drivers[a.driver_id],
@@ -83,13 +113,17 @@ def _compliance(facts: _Facts, a: VehicleAssignment, now: datetime) -> Complianc
     )
     return ComplianceOut(
         status="NON_COMPLIANT" if reasons else "COMPLIANT",
-        reasons=_issues(reasons),
-        warnings=_issues(warnings),
+        reasons=_issues(_visible(auth, a.site_id, reasons)),
+        warnings=_issues(_visible(auth, a.site_id, warnings)),
     )
 
 
 def _out(
-    facts: _Facts, a: VehicleAssignment, now: datetime, warnings: list[Finding] | None = None
+    auth: Authorized,
+    facts: _Facts,
+    a: VehicleAssignment,
+    now: datetime,
+    warnings: list[Finding] | None = None,
 ) -> AssignmentOut:
     vehicle, driver = facts.vehicles[a.vehicle_id], facts.drivers[a.driver_id]
     data: dict[str, Any] = {
@@ -112,16 +146,17 @@ def _out(
         "row_version": a.row_version,
     }
     if a.status == "ACTIVE":
-        data["compliance"] = _compliance(facts, a, now)
-    if warnings:
-        data["warnings"] = _issues(warnings)
+        data["compliance"] = _compliance(auth, facts, a, now)
+    visible_warnings = _visible(auth, a.site_id, warnings or [])
+    if visible_warnings:
+        data["warnings"] = _issues(visible_warnings)
     return AssignmentOut(**data)
 
 
 def assignments_out(auth: Authorized, assignments: list[VehicleAssignment]) -> list[AssignmentOut]:
     facts = _Facts.load(auth.db, assignments)
     now = auth.clock.now()
-    return [_out(facts, a, now) for a in assignments]
+    return [_out(auth, facts, a, now) for a in assignments]
 
 
 # --- Lecture ------------------------------------------------------------------------------------------
@@ -321,7 +356,7 @@ def create_assignment(auth: Authorized, body: AssignmentCreate) -> AssignmentOut
         actor_user_id=auth.user_id,
         after=_snapshot(assignment),
     )
-    out = _out(facts, assignment, now, ev.warnings)  # avant COMMIT : le contexte tenant disparaît après
+    out = _out(auth, facts, assignment, now, ev.warnings)  # avant COMMIT : le contexte tenant disparaît après
     db.commit()
     return out
 
@@ -359,7 +394,7 @@ def _transition(
         after={k: after[k] for k in changed},
         changed_fields=changed,
     )
-    out = _out(facts, assignment, auth.clock.now())
+    out = _out(auth, facts, assignment, auth.clock.now())
     db.commit()
     return out
 

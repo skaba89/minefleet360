@@ -7,6 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.assignment.models import VehicleAssignment
+from app.authz.principal import Principal, evaluate
+from app.core.config import get_settings
+from app.core.errors import AppError
 
 # SUSPENDED occupe toujours le créneau (D-30) : il bloque comme PLANNED et ACTIVE.
 OPEN_STATUSES = ("PLANNED", "ACTIVE", "SUSPENDED")
@@ -38,3 +41,26 @@ def open_assignments(
         }
         for r in rows
     ]
+
+
+def ensure_no_open_assignments(
+    db: Session,
+    principal: Principal,
+    site_id: uuid.UUID,
+    *,
+    vehicle_id: uuid.UUID | None = None,
+    driver_id: uuid.UUID | None = None,
+) -> None:
+    """409 `OPEN_ASSIGNMENTS_EXIST` (D-11, D-13).
+
+    La liste des affectations n'est jointe que si l'appelant peut les lire sur ce site (SEC1C-05) :
+    TENANT_ADMIN change le statut d'un véhicule sans lire les affectations (D-10) et ne reçoit que le total.
+    """
+    blockers = open_assignments(db, vehicle_id=vehicle_id, driver_id=driver_id)
+    if not blockers:
+        return
+    details: dict[str, Any] = {"total": len(blockers)}
+    scope = evaluate(principal, "assignment.vehicle_assignment.read")
+    if scope is not None and scope.covers_site(site_id):
+        details["items"] = blockers[: get_settings().blocking_list_max]
+    raise AppError("OPEN_ASSIGNMENTS_EXIST", details=details)
