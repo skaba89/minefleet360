@@ -1,7 +1,7 @@
-# Livraison — tranche 1c, partie serveur (affectations conducteur ↔ véhicule)
+# Livraison — tranche 1c (affectations conducteur ↔ véhicule, interface web)
 
 > Date : 2026-10-26. Périmètre : US-1.22 à US-1.25, prise de poste (D-27), suspension/reprise (D-30), branchement des refus D-11/D-13.
-> **Hors de cette livraison** : interface web, tests E2E Playwright, jeu fictif d'affectations (US-1.30), revues sécurité et QA indépendantes.
+> **Hors de cette livraison** : jeu fictif d'affectations (US-1.30), revue sécurité et QA indépendante, écrans d'administration (utilisateurs, rôles, sites, journal d'audit) et de saisie (véhicules, conducteurs, permis).
 
 ## Contenu
 | Élément | Détail |
@@ -41,9 +41,20 @@
 - Tests ajoutés : `tests/test_assignment.py` (création, chevauchements, concurrence réelle à deux fils, motifs D-29, fuseau UTC+1, clôture/annulation, If-Match, D-27, D-30, D-11/D-13, historique à l'instant, portée site, conformité, gardes en base) ; `tests_unit/test_eligibility.py` (bornes au fuseau du site, bascule de conformité avec horloge explicite) ; matrice générée étendue aux nouvelles routes (refus 403, lectures autorisées, isolation inter-tenant).
 - Le test à bouchon `test_d11_open_assignments_block_status_and_site_changes` est remplacé par un test sur de vraies affectations.
 
+## Interface web (`frontend/`)
+| Élément | Détail |
+|---|---|
+| Pile | React 19, React Router 8, TanStack Query 5, Vite 8, TypeScript 5.9 (strict) ; types d'API générés par `openapi-typescript` ; tests Vitest 4 + Testing Library + jsdom 29, E2E Playwright 1.64. Versions exactes (`package-lock.json`) |
+| Sécurité | Jeton d'accès en mémoire seulement, rafraîchissement par cookie httpOnly, API sous la même origine (proxy) ; cache vidé à la déconnexion ; actions masquées selon les rôles, le serveur restant seul juge |
+| Écrans | Connexion (restauration de session), accueil (rôles), sélecteur de site, listes véhicules et conducteurs (filtres, pagination), affectations (filtres statut et conformité, création au fuseau du site, prise de poste, suspension, reprise, clôture, annulation avec motifs) ; états chargement / vide / erreur / 403 / 404 ; motifs d'erreur en français |
+| Choix de versions | TypeScript 7 écarté (sans API JavaScript : incompatible avec `openapi-typescript`) ; Vitest 5 et jsdom 30 écartés (exigent Node 22, le poste local est en Node 20.19). La CI frontend utilise Node 22 |
+| Vérifications | `tsc --noEmit` OK ; Vitest **10 passed** ; `vite build` OK (99 ko gzip) ; `npm audit --omit=dev` : 0 vulnérabilité ; Playwright **3 passed** contre la pile locale (affecter puis clôturer, refus d'inéligibilité avec motifs, cloisonnement entre sociétés) |
+| Bug trouvé par l'E2E | La recherche de conducteurs envoyait `search` au lieu de `q` (422) : corrigé |
+
 ## Non exécuté / reste à faire
 - Revues **sécurité** et **QA** indépendantes de cette tranche (CLAUDE.md).
-- Interface web React (connexion, listes, fiches, affectations) et E2E Playwright : suite de la tranche 1c.
+- E2E dans la CI (exige de monter API + base + seed) ; audit d'accessibilité outillé (reporté par D-22, contrôle manuel à faire).
+- Paramètres de requête non typés dans le client (`get(path, query)`) : c'est ce qui a laissé passer le bug `search`/`q` ; à typer depuis `schema.d.ts`.
 - Affectations dans `minefleet seed-fictif` pour la recette.
 - Déploiement sur le VPS de recette : non fait (migration 0008 à appliquer avec la procédure de `DEPLOIEMENT_OVH.md`).
 - Mise à jour de `MATRICE_RBAC.md` §2.5 et `USER_STORIES.md` (US-1.33, US-1.34) avec les hypothèses ci-dessus.

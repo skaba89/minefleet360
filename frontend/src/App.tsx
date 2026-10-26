@@ -1,0 +1,36 @@
+import { Navigate, Route, Routes } from "react-router";
+
+import { useAuth } from "./auth/AuthContext";
+import { Layout } from "./components/Layout";
+import { AssignmentsPage } from "./pages/AssignmentsPage";
+import { DriversPage } from "./pages/DriversPage";
+import { HomePage } from "./pages/HomePage";
+import { LoginPage } from "./pages/LoginPage";
+import { VehiclesPage } from "./pages/VehiclesPage";
+import { SiteProvider } from "./site/SiteContext";
+
+function Protected() {
+  const { status } = useAuth();
+  if (status === "loading") return <p className="muted center" role="status">Chargement…</p>;
+  if (status === "anonymous") return <Navigate to="/connexion" replace />;
+  return (
+    <SiteProvider>
+      <Layout />
+    </SiteProvider>
+  );
+}
+
+export function App() {
+  return (
+    <Routes>
+      <Route path="/connexion" element={<LoginPage />} />
+      <Route element={<Protected />}>
+        <Route index element={<HomePage />} />
+        <Route path="vehicules" element={<VehiclesPage />} />
+        <Route path="conducteurs" element={<DriversPage />} />
+        <Route path="affectations" element={<AssignmentsPage />} />
+        <Route path="*" element={<p>Page introuvable.</p>} />
+      </Route>
+    </Routes>
+  );
+}
