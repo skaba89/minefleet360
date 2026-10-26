@@ -40,6 +40,9 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
         "valid_from": "2024-01-01",
     },
     ("POST", "/driver-qualifications/{qualification_id}/revoke"): {"status": "SUSPENDED"},
+    ("POST", "/vehicle-assignments/{vehicle_assignment_id}/suspend"): {"reason_code": "WEATHER"},
+    ("POST", "/vehicle-assignments/{vehicle_assignment_id}/complete"): {},
+    ("POST", "/vehicle-assignments/{vehicle_assignment_id}/cancel"): {"reason_code": "PLAN_CHANGED"},
 }
 
 
@@ -116,7 +119,15 @@ def world(api: Api, client: TestClient) -> World:
             "valid_from": "2024-01-01",
         },
     ).json()["driver_qualification_id"]
+    ops = next(p for p in personas if p.role == "OPS_MANAGER" and p.scope == "TENANT")
+    vehicle_assignment = client.post(
+        f"{API}/vehicle-assignments",
+        headers=ops.headers,
+        json={"vehicle_id": vehicle, "driver_id": driver, "valid_from": "2099-01-01T06:00:00+00:00"},
+    )
+    assert vehicle_assignment.status_code == 201, vehicle_assignment.text
     objects = {
+        "vehicle_assignment_id": uuid.UUID(vehicle_assignment.json()["vehicle_assignment_id"]),
         "vehicle_id": uuid.UUID(vehicle),
         "category_id": uuid.UUID(category),
         "driver_id": uuid.UUID(driver),

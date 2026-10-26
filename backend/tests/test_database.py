@@ -17,6 +17,9 @@ TENANT_TABLES = (
     "account_token",
     "auth_session",
     "audit_event",
+    "vehicle",
+    "driver",
+    "vehicle_assignment",
 )
 GLOBAL_TABLES = {
     "role",

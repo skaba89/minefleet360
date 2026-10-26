@@ -9,6 +9,7 @@ from fastapi import APIRouter, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
+from app.assignment.router import router as assignment_router
 from app.audit.router import router as audit_router
 from app.authz.routing import SecuredRoute
 from app.core.clock import Clock, SystemClock
@@ -117,6 +118,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         audit_router,
         fleet_router,
         workforce_router,
+        assignment_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     return app

@@ -62,15 +62,13 @@ Services :
 |---|---|
 | Serveur | VPS OVH `vps-235d8499.vps.ovh.net` (51.75.248.4), Ubuntu 26.04, **partagé** avec gestion-scolaire-pro, Kora et Kora Finance |
 | Variante | Serveur partagé (`docker-compose.edge.yml`), `MF_ENV=staging`, répertoire `~/minefleet360` |
-| Adresse prévue | `https://minefleet.51-75-248-4.sslip.io` (pas de nom de domaine : nom sslip.io dérivé de l'IP, comme Kora) |
+| Adresse | `https://minefleet.51-75-248-4.sslip.io` (pas de nom de domaine : nom sslip.io dérivé de l'IP, comme Kora) ; API sous `/api/v1/` (santé : `/api/v1/health`) |
 | Données | Fictives : 2 sociétés, 4 sites, 18 comptes (dont l'administrateur plateforme), 20 véhicules, 16 conducteurs, permis et habilitations |
 | Comptes | `~/minefleet360/infra/deploy/comptes-recette.txt` (`600`) : à récupérer puis supprimer |
 
 Vérifié sur le serveur (via `127.0.0.1:8200`) : migrations à `0007` (head) ; `/health` 200 ; route protégée sans jeton 401 ; mauvais mot de passe 401 ; connexion d'un compte fictif 200 ; chaque société ne voit que ses 10 véhicules ; véhicule d'une autre société 404 ; compte d'une société refusé sur l'espace de l'autre 401 ; masquage des champs RH (téléphone, contrat…) pour OPS_MANAGER, visibles pour HR ; paramètre inconnu 422 ; DISPATCHER refusé en création de véhicule 403 ; sauvegarde `pg_dump` (fichier `600`, dossier `700`).
 
 **Reste à faire par l'exploitant** (actions refusées à l'agent : configuration d'un autre projet et tâche planifiée persistante) :
-1. Exposition HTTPS : le proxy commun `~/vps-proxy` est préparé mais **pas encore basculé** (le Caddy de gestion-scolaire-pro publie toujours 80/443). Copier le site puis le recharger au moment de la bascule :
-   `sed 's/ACME_EMAIL_A_RENSEIGNER/<e-mail ACME>/' ~/minefleet360/infra/deploy/vps-proxy-minefleet.caddy > ~/vps-proxy/sites/minefleet.caddy`
-   puis `~/vps-proxy/reload.sh` si le proxy commun tourne déjà (sinon il sera pris en compte par `bascule.sh`).
-2. Sauvegarde quotidienne : `crontab -e` puis `17 2 * * * $HOME/minefleet360/infra/deploy/backup.sh >> $HOME/minefleet360/infra/deploy/backup.log 2>&1`.
+1. ~~Exposition HTTPS~~ — **fait le 2026-10-26** : site copié dans `~/vps-proxy/sites/minefleet.caddy`, proxy commun rechargé, certificat Let's Encrypt obtenu ; `https://minefleet.51-75-248-4.sslip.io/api/v1/health` 200 depuis l'extérieur, autres sites du proxy toujours servis.
+2. ~~Sauvegarde quotidienne~~ — **fait le 2026-10-26** : crontab de `ubuntu` = `17 2 * * * $HOME/minefleet360/infra/deploy/backup.sh >> $HOME/minefleet360/infra/deploy/backup.log 2>&1` (script testé en environnement minimal ; rétention locale 7 fichiers).
 3. Copie hors machine chiffrée des sauvegardes (§5).

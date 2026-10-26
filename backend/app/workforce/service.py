@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.assignment.contracts import open_assignments
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.authz.principal import mask, restricted_fields
@@ -52,14 +53,9 @@ def _jsonable(data: dict[str, Any]) -> dict[str, Any]:
     return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in data.items()}
 
 
-def open_assignments(db: Session, driver_id: uuid.UUID) -> list[dict[str, Any]]:
-    """Affectations PLANNED/ACTIVE du conducteur (D-11, D-13) ; vide jusqu'à la tranche 1c."""
-    del db, driver_id
-    return []
-
-
 def _ensure_no_open_assignments(db: Session, driver_id: uuid.UUID) -> None:
-    blockers = open_assignments(db, driver_id)
+    """Affectations ouvertes du conducteur bloquant un changement de statut ou de site (D-11, D-13)."""
+    blockers = open_assignments(db, driver_id=driver_id)
     if blockers:
         limit = get_settings().blocking_list_max
         raise AppError("OPEN_ASSIGNMENTS_EXIST", details={"total": len(blockers), "items": blockers[:limit]})

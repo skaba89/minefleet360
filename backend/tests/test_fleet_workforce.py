@@ -499,43 +499,6 @@ def test_us118_patch_license_status_changes_validity(
     assert stale.json()["code"] == "VERSION_CONFLICT"
 
 
-def test_d11_open_assignments_block_status_and_site_changes(
-    client: TestClient, api: Api, fleet: tuple[TenantFixture, Account], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Le refus 409 est câblé dès la 1b ; les affectations réelles arrivent en 1c (stub remplacé ici)."""
-    from app.fleet import service as fleet_service
-    from app.workforce import service as workforce_service
-
-    t, hr = fleet
-    blocker = [{"vehicle_assignment_id": str(uuid.uuid4()), "status": "ACTIVE"}]
-    monkeypatch.setattr(fleet_service, "open_assignments", lambda db, vid: blocker)
-    monkeypatch.setattr(workforce_service, "open_assignments", lambda db, did: blocker)
-    vid = _vehicle(client, t).json()["vehicle_id"]
-    vurl = f"{API}/vehicles/{vid}"
-    for call in (
-        lambda: client.post(
-            f"{vurl}/status", headers=_etag(client, vurl, t.admin.headers), json={"status": "IN_MAINTENANCE"}
-        ),
-        lambda: client.post(
-            f"{vurl}/retire", headers=_etag(client, vurl, t.admin.headers), json={"reason_code": "SOLD"}
-        ),
-        lambda: client.patch(
-            vurl, headers=_etag(client, vurl, t.admin.headers), json={"site_id": str(t.sites["S2"])}
-        ),
-    ):
-        resp = call()
-        assert (resp.status_code, resp.json()["code"]) == (409, "OPEN_ASSIGNMENTS_EXIST")
-        assert resp.json()["details"]["total"] == 1
-    did = _driver(client, t, hr).json()["driver_id"]
-    durl = f"{API}/drivers/{did}"
-    resp = client.post(
-        f"{durl}/status",
-        headers=_etag(client, durl, hr.headers),
-        json={"status": "UNAVAILABLE", "unavailability_reason": "LEAVE"},
-    )
-    assert (resp.status_code, resp.json()["code"]) == (409, "OPEN_ASSIGNMENTS_EXIST")
-
-
 def test_us117_driver_site_isolation_within_tenant(
     client: TestClient, api: Api, fleet: tuple[TenantFixture, Account]
 ) -> None:

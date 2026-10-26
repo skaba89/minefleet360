@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.assignment.contracts import open_assignments
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.authz.principal import mask
@@ -61,17 +62,9 @@ def _jsonable(data: dict[str, Any]) -> dict[str, Any]:
     return {k: (v.isoformat() if hasattr(v, "isoformat") else v) for k, v in data.items()}
 
 
-def open_assignments(db: Session, vehicle_id: uuid.UUID) -> list[dict[str, Any]]:
-    """Affectations PLANNED/ACTIVE bloquant un changement de statut ou de site (D-11, D-13).
-
-    Les affectations n'existent qu'à partir de la tranche 1c : la liste est vide en 1b.
-    """
-    del db, vehicle_id
-    return []
-
-
 def _ensure_no_open_assignments(db: Session, vehicle_id: uuid.UUID) -> None:
-    blockers = open_assignments(db, vehicle_id)
+    """Affectations ouvertes bloquant un changement de statut ou de site (D-11, D-13)."""
+    blockers = open_assignments(db, vehicle_id=vehicle_id)
     if blockers:
         limit = get_settings().blocking_list_max
         raise AppError("OPEN_ASSIGNMENTS_EXIST", details={"total": len(blockers), "items": blockers[:limit]})
