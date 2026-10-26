@@ -28,8 +28,25 @@ La limitation protège le partage entre workers et conserve tous les échecs enr
 
 ## Vérification locale
 
-Ruff lint/format réussis; mypy app réussi sur54 fichiers;20 tests unitaires email/configuration réussis. Compilation et chaîne Alembic à vérifier après finalisation. Tests PostgreSQL nouveaux et suite complète à exécuter en CI (Docker/PostgreSQL absents localement).
+Ruff lint/format réussis; mypy app réussi sur 54 fichiers; 20 tests unitaires email/configuration réussis. Compilation réussie et chaîne Alembic vérifiée : `0009 (head)`. Docker/PostgreSQL absents localement; les validations réelles DB ci-dessous ont été exécutées en CI.
 
 Revue sécurité spécialisée effectuée. Deux recommandations appliquées avant publication : suppression de la date choisie par le rôle applicatif dans les fonctions de purge, et suppression du différentiel202/500 sur reset anonyme en cas de panne SMTP.
 
-Statut : **implémenté, validation PostgreSQL CI en attente**.
+## Résultats CI PostgreSQL/PostGIS vérifiés
+
+[Run 40352366169](https://github.com/skaba89/minefleet360/actions/runs/40352366169), job `121675580756`, commit applicatif `c870fd1a666aab9ca39cb67a418c342714c9cf81` : terminé avec succès. Journaux consultés :
+
+| Vérification | Résultat |
+|---|---|
+| Ruff lint / format | Réussis, 81 fichiers conformes |
+| mypy app | Réussi, 54 fichiers |
+| Upgrade depuis 0004 peuplée vers head | 2 tests réussis |
+| Suite applicative complète | 1205 tests réussis en 91,11 secondes |
+| Couverture | 93 % |
+| Audit des dépendances | Aucune vulnérabilité connue |
+
+Les 15 nouveaux tests d'intégration authentification/refresh et les 17 nouveaux cas unitaires email sont inclus dans les 1205 tests. Deux instances FastAPI successives, les enregistrements concurrents, les accès DB interdits, le plafond/expiration, le MFA refusé, le reset en panne et les rejeux ont donc été exercés réellement sur PostgreSQL/PostGIS.
+
+Le transport capture repose sur les primitives POSIX/Linux utilisées par les conteneurs cibles. Les clés HMAC sont des empreintes pseudonymisées et restent soumises à la politique de conservation; elles ne doivent pas être considérées comme une anonymisation irréversible.
+
+Statut : **implémenté et vérifié en CI**, proposé dans la [PR #5](https://github.com/skaba89/minefleet360/pull/5). Ce complément de rapport est postérieur au SHA applicatif testé. Aucun déploiement ni fusion automatique.
