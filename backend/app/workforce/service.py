@@ -571,37 +571,58 @@ def expirations(auth: Authorized, within_days: int) -> list[ExpirationItem]:
                 )
             )
 
-    for lic in db.execute(
-        select(DriverLicense).where(
-            DriverLicense.driver_id.in_(list(drivers)),
-            DriverLicense.status == "VALID",
-            DriverLicense.expiry_date <= horizon,
-        )
-    ).scalars():
-        add(
-            "LICENSE",
-            lic.driver_license_id,
-            lic.driver_id,
-            f"Permis {lic.category_code}",
-            lic.expiry_date,
-            lic.status,
-            lic.issue_date,
-        )
-    for q in db.execute(
-        select(DriverQualification).where(
-            DriverQualification.driver_id.in_(list(drivers)),
-            DriverQualification.status == "VALID",
-            DriverQualification.valid_to.is_not(None),
-            DriverQualification.valid_to <= horizon,
-        )
-    ).scalars():
-        add(
-            "QUALIFICATION",
-            q.driver_qualification_id,
-            q.driver_id,
-            q.qualification_type,
-            q.valid_to,
-            q.status,
-            q.valid_from,
-        )
+    # Seule l'échéance la plus lointaine d'une même lignée compte : un permis renouvelé ou une
+    # habilitation reconduite ne doit pas rester signalé « expiré » indéfiniment (QA1B-04).
+    licenses = list(
+        db.execute(
+            select(DriverLicense).where(
+                DriverLicense.driver_id.in_(list(drivers)), DriverLicense.status == "VALID"
+            )
+        ).scalars()
+    )
+    latest_license: dict[tuple[uuid.UUID, str], Any] = {}
+    for lic in licenses:
+        key = (lic.driver_id, lic.category_code)
+        latest_license[key] = max(latest_license.get(key, lic.expiry_date), lic.expiry_date)
+    for lic in licenses:
+        if (
+            lic.expiry_date <= horizon
+            and lic.expiry_date == latest_license[(lic.driver_id, lic.category_code)]
+        ):
+            add(
+                "LICENSE",
+                lic.driver_license_id,
+                lic.driver_id,
+                f"Permis {lic.category_code}",
+                lic.expiry_date,
+                lic.status,
+                lic.issue_date,
+            )
+    qualifications = list(
+        db.execute(
+            select(DriverQualification).where(
+                DriverQualification.driver_id.in_(list(drivers)),
+                DriverQualification.status == "VALID",
+                DriverQualification.valid_to.is_not(None),
+            )
+        ).scalars()
+    )
+    latest_q: dict[tuple[Any, ...], Any] = {}
+    for q in qualifications:
+        if q.valid_to is None:  # exclu par la requête ; garde pour le typage
+            continue
+        key_q = (q.driver_id, q.qualification_type, q.vehicle_category_id, q.site_id)
+        latest_q[key_q] = max(latest_q.get(key_q, q.valid_to), q.valid_to)
+    for q in qualifications:
+        key_q = (q.driver_id, q.qualification_type, q.vehicle_category_id, q.site_id)
+        if q.valid_to is not None and q.valid_to <= horizon and q.valid_to == latest_q[key_q]:
+            add(
+                "QUALIFICATION",
+                q.driver_qualification_id,
+                q.driver_id,
+                q.qualification_type,
+                q.valid_to,
+                q.status,
+                q.valid_from,
+            )
     return sorted(items, key=lambda i: (i.expires_on, i.driver_name, str(i.item_id)))

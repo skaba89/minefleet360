@@ -10,6 +10,9 @@ from fastapi.testclient import TestClient
 from app.workforce.validity import derive_validity
 from tests.conftest import API, Account, Api, TenantFixture
 
+# Dates relatives : aucun test ne doit échouer avec le passage du temps (QA1B-07).
+FAR_FUTURE = (datetime.now(UTC) + timedelta(days=3650)).date().isoformat()
+
 
 @pytest.fixture
 def fleet(api: Api) -> tuple[TenantFixture, Account]:
@@ -119,7 +122,12 @@ def test_us114_status_machine_reason_and_history(client: TestClient, api: Api) -
     )
     assert back.status_code == 200 and back.json()["status_reason_code"] is None
     history = client.get(f"{url}/status-history", headers=t.admin.headers).json()
-    assert [h["to_status"] for h in history] == ["AVAILABLE", "IMMOBILIZED", "AVAILABLE"]
+    # Ordre antichronologique : la transition la plus récente d'abord (non palindromique, QA1B-05).
+    assert [(h["from_status"], h["to_status"]) for h in history] == [
+        ("IMMOBILIZED", "AVAILABLE"),
+        ("AVAILABLE", "IMMOBILIZED"),
+        (None, "AVAILABLE"),
+    ]
     stale = client.post(
         f"{url}/status", headers={**t.admin.headers, "If-Match": '"1"'}, json={"status": "IN_MAINTENANCE"}
     )
@@ -270,7 +278,7 @@ def test_us118_license_rules_and_number_masking(
     assert expired.status_code == 201 and expired.json()["validity"] == "EXPIRED"
     assert client.post(url, headers=hr.headers, json=body).json()["code"] == "DUPLICATE_LICENSE"
     renewed = client.post(
-        url, headers=hr.headers, json={**body, "issue_date": "2025-01-01", "expiry_date": "2035-01-01"}
+        url, headers=hr.headers, json={**body, "issue_date": "2025-01-01", "expiry_date": FAR_FUTURE}
     )
     assert renewed.status_code == 201 and renewed.json()["validity"] == "VALID"
     bad = client.post(
@@ -301,7 +309,7 @@ def test_us119_qualifications_overlap_hse_and_authorized_categories(
         "qualification_type": "DRIVING_AUTHORIZATION",
         "vehicle_category_id": category,
         "valid_from": "2025-01-01",
-        "valid_to": "2030-12-31",
+        "valid_to": FAR_FUTURE,
     }
     created = client.post(url, headers=hr.headers, json=body)
     assert created.status_code == 201
@@ -433,3 +441,132 @@ def test_restricted_driver_fields_never_valued_in_audit(
     dumped = str([(e["before_data"], e["after_data"]) for e in events])
     assert "TEMP_AGENCY" not in dumped and "2021-05-05" not in dumped and "Autre" in dumped
     assert any("employment_type" in (e["changed_fields"] or []) for e in events)
+
+
+# --- Compléments revue QA 1b ---------------------------------------------------------------------------
+
+
+def test_us114_patch_vehicle_success_and_category_change(client: TestClient, api: Api) -> None:
+    t = api.tenant()
+    vid = _vehicle(client, t, registration_number="AA-111-AA").json()["vehicle_id"]
+    url = f"{API}/vehicles/{vid}"
+    new_cat = _category(client, t, "WHEEL_LOADER")
+    resp = client.patch(
+        url,
+        headers=_etag(client, url, t.admin.headers),
+        json={"vehicle_category_id": new_cat, "make": "MarqueFictive", "registration_number": None},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert (body["vehicle_category_id"], body["make"], body["registration_number"]) == (
+        new_cat,
+        "MarqueFictive",
+        None,
+    )
+    assert resp.headers["ETag"] == f'"{body["row_version"]}"'
+    status_change = client.patch(url, headers=_etag(client, url, t.admin.headers), json={"status": "RETIRED"})
+    assert (status_change.status_code, status_change.json()["code"]) == (422, "VALIDATION_ERROR")
+
+
+def test_us118_patch_license_status_changes_validity(
+    client: TestClient, fleet: tuple[TenantFixture, Account]
+) -> None:
+    t, hr = fleet
+    driver_id = _driver(client, t, hr).json()["driver_id"]
+    created = client.post(
+        f"{API}/drivers/{driver_id}/licenses",
+        headers=hr.headers,
+        json={
+            "license_number": "PERMIS-FICTIF-7777",
+            "category_code": "B",
+            "issue_date": "2024-01-01",
+            "expiry_date": FAR_FUTURE,
+        },
+    )
+    assert created.status_code == 201 and created.headers["ETag"] == '"1"'
+    lic_id = created.json()["driver_license_id"]
+    resp = client.patch(
+        f"{API}/driver-licenses/{lic_id}",
+        headers={**hr.headers, "If-Match": created.headers["ETag"]},
+        json={"status": "SUSPENDED", "status_note": "Note fictive"},
+    )
+    assert resp.status_code == 200 and resp.json()["validity"] == "SUSPENDED"
+    stale = client.patch(
+        f"{API}/driver-licenses/{lic_id}",
+        headers={**hr.headers, "If-Match": created.headers["ETag"]},
+        json={"status": "VALID"},
+    )
+    assert stale.json()["code"] == "VERSION_CONFLICT"
+
+
+def test_d11_open_assignments_block_status_and_site_changes(
+    client: TestClient, api: Api, fleet: tuple[TenantFixture, Account], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Le refus 409 est câblé dès la 1b ; les affectations réelles arrivent en 1c (stub remplacé ici)."""
+    from app.fleet import service as fleet_service
+    from app.workforce import service as workforce_service
+
+    t, hr = fleet
+    blocker = [{"vehicle_assignment_id": str(uuid.uuid4()), "status": "ACTIVE"}]
+    monkeypatch.setattr(fleet_service, "open_assignments", lambda db, vid: blocker)
+    monkeypatch.setattr(workforce_service, "open_assignments", lambda db, did: blocker)
+    vid = _vehicle(client, t).json()["vehicle_id"]
+    vurl = f"{API}/vehicles/{vid}"
+    for call in (
+        lambda: client.post(
+            f"{vurl}/status", headers=_etag(client, vurl, t.admin.headers), json={"status": "IN_MAINTENANCE"}
+        ),
+        lambda: client.post(
+            f"{vurl}/retire", headers=_etag(client, vurl, t.admin.headers), json={"reason_code": "SOLD"}
+        ),
+        lambda: client.patch(
+            vurl, headers=_etag(client, vurl, t.admin.headers), json={"site_id": str(t.sites["S2"])}
+        ),
+    ):
+        resp = call()
+        assert (resp.status_code, resp.json()["code"]) == (409, "OPEN_ASSIGNMENTS_EXIST")
+        assert resp.json()["details"]["total"] == 1
+    did = _driver(client, t, hr).json()["driver_id"]
+    durl = f"{API}/drivers/{did}"
+    resp = client.post(
+        f"{durl}/status",
+        headers=_etag(client, durl, hr.headers),
+        json={"status": "UNAVAILABLE", "unavailability_reason": "LEAVE"},
+    )
+    assert (resp.status_code, resp.json()["code"]) == (409, "OPEN_ASSIGNMENTS_EXIST")
+
+
+def test_us117_driver_site_isolation_within_tenant(
+    client: TestClient, api: Api, fleet: tuple[TenantFixture, Account]
+) -> None:
+    t, hr = fleet
+    on_s2 = _driver(client, t, hr, site_id=str(t.sites["S2"])).json()["driver_id"]
+    disp = api.user(t, "DISPATCHER", "SITE", "S1")
+    assert client.get(f"{API}/drivers/{on_s2}", headers=disp.headers).status_code == 404
+    assert client.get(f"{API}/drivers/{on_s2}/licenses", headers=disp.headers).status_code == 404
+    listed = client.get(f"{API}/drivers", headers=disp.headers).json()
+    assert on_s2 not in {d["driver_id"] for d in listed["items"]}
+
+
+def test_us120_renewed_license_no_longer_listed(
+    client: TestClient, fleet: tuple[TenantFixture, Account]
+) -> None:
+    t, hr = fleet
+    driver_id = _driver(client, t, hr).json()["driver_id"]
+    url = f"{API}/drivers/{driver_id}/licenses"
+    base = {"license_number": "PERMIS-FICTIF-3131", "category_code": "C"}
+    client.post(
+        url, headers=hr.headers, json={**base, "issue_date": "2010-01-01", "expiry_date": "2015-01-01"}
+    )
+    listed = client.get(f"{API}/workforce/expirations", headers=hr.headers).json()
+    assert [i["validity"] for i in listed] == ["EXPIRED"]
+    client.post(url, headers=hr.headers, json={**base, "issue_date": "2025-01-01", "expiry_date": FAR_FUTURE})
+    assert client.get(f"{API}/workforce/expirations", headers=hr.headers).json() == []
+
+
+def test_check_violation_does_not_leak_constraint_name(
+    client: TestClient, fleet: tuple[TenantFixture, Account]
+) -> None:
+    t, hr = fleet
+    resp = _driver(client, t, hr, employment_type="SUBCONTRACTOR")
+    assert resp.status_code == 422 and "ck_" not in resp.text

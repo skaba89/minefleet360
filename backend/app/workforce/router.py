@@ -114,8 +114,11 @@ def create_license(
     driver_id: uuid.UUID,
     body: LicenseCreate,
     auth: Annotated[Authorized, Depends(Require("workforce.driver_license.manage"))],
+    response: Response,
 ) -> LicenseOut:
-    return service.create_license(auth, driver_id, body)
+    out = service.create_license(auth, driver_id, body)
+    response.headers["ETag"] = etag(out.row_version)
+    return out
 
 
 @router.patch("/driver-licenses/{license_id}", response_model=LicenseOut, response_model_exclude_unset=True)
@@ -124,8 +127,11 @@ def update_license(
     body: LicenseUpdate,
     auth: Annotated[Authorized, Depends(Require("workforce.driver_license.manage"))],
     version: IfMatch,
+    response: Response,
 ) -> LicenseOut:
-    return service.update_license(auth, license_id, body, version)
+    out = service.update_license(auth, license_id, body, version)
+    response.headers["ETag"] = etag(out.row_version)
+    return out
 
 
 @router.get("/drivers/{driver_id}/qualifications", response_model=list[QualificationOut])
@@ -144,8 +150,11 @@ def create_qualification(
     driver_id: uuid.UUID,
     body: QualificationCreate,
     auth: Annotated[Authorized, Depends(Require("workforce.driver_qualification.manage"))],
+    response: Response,
 ) -> QualificationOut:
-    return service.create_qualification(auth, driver_id, body)
+    out = service.create_qualification(auth, driver_id, body)
+    response.headers["ETag"] = etag(out.row_version)
+    return out
 
 
 @router.post("/driver-qualifications/{qualification_id}/revoke", response_model=QualificationOut)
@@ -154,8 +163,11 @@ def revoke_qualification(
     body: QualificationRevoke,
     auth: Annotated[Authorized, Depends(Require("workforce.driver_qualification.revoke"))],
     version: IfMatch,
+    response: Response,
 ) -> QualificationOut:
-    return service.revoke_qualification(auth, qualification_id, body, version)
+    out = service.revoke_qualification(auth, qualification_id, body, version)
+    response.headers["ETag"] = etag(out.row_version)
+    return out
 
 
 @router.get("/workforce/expirations", response_model=list[ExpirationItem])

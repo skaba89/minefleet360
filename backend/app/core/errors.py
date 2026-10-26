@@ -154,7 +154,7 @@ def map_integrity_error(exc: IntegrityError) -> AppError:
         return AppError("CONFLICT")
     if sqlstate == "23514":
         logger.warning("check_constraint_violation", extra={"constraint": name})
-        return AppError("VALIDATION_ERROR", details=[{"constraint": name}] if name else None)
+        return AppError("VALIDATION_ERROR")  # nom de contrainte journalisé, jamais exposé (QA1B)
     raise exc
 
 
