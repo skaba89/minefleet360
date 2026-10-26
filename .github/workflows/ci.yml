@@ -47,13 +47,14 @@ jobs:
           PGHOST: localhost
           PGPASSWORD: ci-postgres-only
           POSTGRES_USER: postgres
+          MF_CREATE_TEST_DB: "true"
         run: bash ../infra/db/init/00_bootstrap.sh
-      - run: pip install -e ".[dev]" pip-audit==2.7.3
+      - run: python -m pip install pip==26.2 && pip install -e ".[dev]" pip-audit==2.10.1
       - name: Lint
         run: ruff check . && ruff format --check .
       - name: Types
         run: mypy app
       - name: Tests (migrations, RLS, autorisations générées, isolation)
-        run: pytest -q -p no:warnings
+        run: pytest -q -p no:warnings --cov=app --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=85
       - name: Audit des dépendances
         run: pip-audit --skip-editable

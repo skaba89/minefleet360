@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
-from app.authz.principal import mask
+from app.authz.principal import mask, restricted_fields
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.http import PageParams, check_version
@@ -36,13 +36,8 @@ from app.workforce.schemas import (
 )
 from app.workforce.validity import ELIGIBLE, derive_validity
 
-SENSITIVE_DRIVER_FIELDS = (
-    "phone",
-    "suspension_reason_code",
-    "external_company_name",
-    "hire_date",
-    "exit_date",
-)
+# Dérivé de field_policies (source unique) : aucune valeur restreinte dans l'audit (revue 1b).
+SENSITIVE_DRIVER_FIELDS = restricted_fields("driver")
 
 
 def _norm_name(value: str) -> str:
@@ -125,7 +120,7 @@ def driver_out(
     }
     if warnings:
         data["warnings"] = warnings
-    return DriverOut(**mask("driver", auth.scope, data))
+    return DriverOut(**mask("driver", auth.scope, data, driver.site_id))
 
 
 def drivers_out(auth: Authorized, drivers: list[Driver]) -> list[DriverOut]:
@@ -156,7 +151,7 @@ def _license_out(auth: Authorized, lic: DriverLicense, site_id: uuid.UUID) -> Li
         "status_note": lic.status_note,
         "row_version": lic.row_version,
     }
-    return LicenseOut(**mask("driver_license", auth.scope, data))
+    return LicenseOut(**mask("driver_license", auth.scope, data, site_id))
 
 
 def _qualification_out(auth: Authorized, q: DriverQualification, site_id: uuid.UUID) -> QualificationOut:

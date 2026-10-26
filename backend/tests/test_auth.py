@@ -1,7 +1,9 @@
 """US-1.05, US-1.08, US-1.09, US-1.10, US-1.02 (effet sur les sessions) — authentification."""
 
 import uuid
+from datetime import timedelta
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
@@ -124,7 +126,9 @@ def test_us108_a4_same_email_in_two_tenants_opens_the_right_tenant(client: TestC
     assert me["workspace_code"] == a.code
 
 
-def test_refresh_rotates_and_reuse_revokes_session(client: TestClient, api: Api) -> None:
+def test_refresh_rotates_and_reuse_revokes_session(
+    client: TestClient, api: Api, monkeypatch: pytest.MonkeyPatch
+) -> None:
     t = api.tenant()
     first = _login(client, t.code, t.admin.email)
     old_cookie = first.cookies["mf_refresh"]
@@ -135,14 +139,9 @@ def test_refresh_rotates_and_reuse_revokes_session(client: TestClient, api: Api)
     assert new_cookie != old_cookie
     client.cookies.clear()
 
-    # Rejeu de l'ancien refresh hors fenêtre de grâce : on simule en vidant la fenêtre.
-    settings = get_settings()
-    grace = settings.refresh_grace_period
-    settings.refresh_grace_period = grace * 0
-    try:
-        replay = client.post(f"{API}/auth/refresh", cookies={"mf_refresh": old_cookie})
-    finally:
-        settings.refresh_grace_period = grace
+    # Rejeu de l'ancien refresh hors fenêtre de grâce (fenêtre ramenée à zéro, restaurée par monkeypatch).
+    monkeypatch.setattr(get_settings(), "refresh_grace_period", timedelta(0))
+    replay = client.post(f"{API}/auth/refresh", cookies={"mf_refresh": old_cookie})
     client.cookies.clear()
     assert replay.status_code == 401
     # La session entière est révoquée : le refresh légitime et le jeton d'accès ne marchent plus.
@@ -257,3 +256,41 @@ def test_change_password_guessing_is_rate_limited_and_revokes_session(client: Te
     ]
     assert statuses[:-1] == [422] * (settings.login_max_failures - 1) and statuses[-1] == 429
     assert client.get(f"{API}/me", headers=t.admin.headers).status_code == 401
+
+
+def _suspend(client: TestClient, api: Api, tenant_id: uuid.UUID):  # type: ignore[no-untyped-def]
+    platform = api.platform()
+    etag = client.get(f"{API}/platform/tenants/{tenant_id}", headers=platform).headers.get("ETag", '"1"')
+    return client.post(
+        f"{API}/platform/tenants/{tenant_id}/suspend",
+        headers={**platform, "If-Match": etag},
+        json={"reason": "Test de suspension"},
+    )
+
+
+def test_us102_a5_platform_tenant_cannot_be_suspended(client: TestClient, api: Api) -> None:
+    from app.core.tenancy import PLATFORM_TENANT_ID
+
+    resp = _suspend(client, api, PLATFORM_TENANT_ID)
+    assert (resp.status_code, resp.json()["code"]) == (422, "VALIDATION_ERROR")
+
+
+def test_us105_a4_invitation_of_suspended_tenant_is_invalid(
+    client: TestClient, api: Api, outbox: MemoryEmailSender
+) -> None:
+    t = api.tenant()
+    invited = api.user(t, "HR", activate=False)
+    token = last_token(outbox, invited.email)
+    assert _suspend(client, api, t.tenant_id).status_code == 200
+    resp = client.post(f"{API}/auth/invitations/accept", json={"token": token, "password": PASSWORD})
+    assert (resp.status_code, resp.json()["code"]) == (422, "TOKEN_INVALID")
+
+
+def test_us110_a4_reset_requests_are_rate_limited(client: TestClient, api: Api) -> None:
+    t = api.tenant()
+    body = {"workspace_code": t.code, "email": t.admin.email}
+    statuses = [
+        client.post(f"{API}/auth/password/reset-request", json=body).status_code
+        for _ in range(get_settings().login_max_failures + 1)
+    ]
+    assert statuses[-1] == 429 and set(statuses[:-1]) == {202}

@@ -12,7 +12,6 @@ import uuid
 from dataclasses import dataclass
 
 import pytest
-from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from app.authz.matrix import load_matrix
@@ -151,17 +150,20 @@ def _call(client: TestClient, method: str, path: str, headers: dict[str, str], i
 
 
 def test_st01_every_route_declares_exactly_the_matrix_permission(client: TestClient) -> None:
+    """Inventaire via le schéma OpenAPI (indépendant des structures internes du routeur FastAPI).
+
+    `x-permission` est dérivé de la dépendance `Require` réellement attachée à la route (SecuredRoute).
+    """
     declared = MATRIX.route_permissions()
+    schema = client.get(f"{API}/openapi.json").json()
     seen: set[tuple[str, str]] = set()
     problems = []
-    for route in client.app.routes:  # type: ignore[attr-defined]
-        if not isinstance(route, APIRoute) or not route.path.startswith(API):
-            continue
-        path = route.path.removeprefix(API)
-        for method in route.methods - {"HEAD", "OPTIONS"}:
-            key = (method, path)
+    for full_path, operations in schema["paths"].items():
+        path = full_path.removeprefix(API)
+        for method, operation in operations.items():
+            key = (method.upper(), path)
             seen.add(key)
-            permission = getattr(route, "permission", "<route sans SecuredRoute>")
+            permission = operation.get("x-permission")
             if key in MATRIX.public_routes:
                 if permission is not None:
                     problems.append(f"{key} est publique mais exige {permission}")

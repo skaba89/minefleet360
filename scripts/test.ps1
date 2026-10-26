@@ -8,5 +8,5 @@ docker @compose exec api ruff format --check .
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 docker @compose exec api mypy app
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-docker @compose exec -e MF_ENV=test -e MF_DB_NAME=minefleet_test api pytest @args
+docker @compose exec -e MF_ENV=test -e MF_DB_NAME=minefleet_test api pytest --cov=app --cov-branch --cov-fail-under=85 @args
 exit $LASTEXITCODE

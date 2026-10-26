@@ -387,3 +387,49 @@ def test_stored_status_takes_precedence_over_dates() -> None:
         )
         == "SUSPENDED"
     )
+
+
+def test_masking_is_evaluated_per_record_site(client: TestClient, api: Api) -> None:
+    """Revue sécurité 1b : HR sur S1 + DISPATCHER sur S2 ne voit pas le téléphone d'un conducteur de S2."""
+    t = api.tenant()
+    hr = api.user(t, "HR")
+    mixed = api.user(t, "HR", "SITE", "S1")
+    assert (
+        client.post(
+            f"{API}/role-assignments",
+            headers=t.admin.headers,
+            json={
+                "user_account_id": str(mixed.user_id),
+                "role_code": "DISPATCHER",
+                "scope_type": "SITE",
+                "site_id": str(t.sites["S2"]),
+            },
+        ).status_code
+        == 201
+    )
+    on_s1 = _driver(client, t, hr, phone="+224000000101").json()["driver_id"]
+    on_s2 = _driver(client, t, hr, site_id=str(t.sites["S2"]), phone="+224000000202").json()["driver_id"]
+    assert client.get(f"{API}/drivers/{on_s1}", headers=mixed.headers).json()["phone"] == "+224000000101"
+    s2_view = client.get(f"{API}/drivers/{on_s2}", headers=mixed.headers)
+    assert s2_view.status_code == 200 and "phone" not in s2_view.json()
+
+
+def test_restricted_driver_fields_never_valued_in_audit(
+    client: TestClient, fleet: tuple[TenantFixture, Account]
+) -> None:
+    t, hr = fleet
+    driver_id = _driver(client, t, hr, employment_type="TEMP_AGENCY", hire_date="2021-05-05").json()[
+        "driver_id"
+    ]
+    url = f"{API}/drivers/{driver_id}"
+    client.patch(
+        url,
+        headers=_etag(client, url, hr.headers),
+        json={"employment_type": "EMPLOYEE", "last_name": "Autre"},
+    )
+    events = client.get(
+        f"{API}/audit-events", headers=t.admin.headers, params={"entity_id": driver_id}
+    ).json()["items"]
+    dumped = str([(e["before_data"], e["after_data"]) for e in events])
+    assert "TEMP_AGENCY" not in dumped and "2021-05-05" not in dumped and "Autre" in dumped
+    assert any("employment_type" in (e["changed_fields"] or []) for e in events)

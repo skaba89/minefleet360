@@ -131,7 +131,8 @@ permissions:
     routes:
       - { method: GET, path: /users, shape: collection, success: 200 }
       - { method: GET, path: "/users/{user_id}", shape: item, success: 200 }
-    grants: { TENANT_ADMIN: [TENANT], HR: [TENANT, SITE], AUDITOR: [TENANT] }
+    # HR en portée TENANT seulement : les comptes ne sont pas rattachés à un site (SEC-05).
+    grants: { TENANT_ADMIN: [TENANT], HR: [TENANT], AUDITOR: [TENANT] }
   identity.user.create:
     tranche: 1a
     kind: create

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import Depends, Header, Request
+from fastapi.dependencies.models import Dependant
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -23,6 +24,26 @@ from app.core.security import decode_access_token
 from app.core.tenancy import set_tenant_context
 from app.identity.models import AuthSession, UserAccount, UserRoleAssignment
 from app.organization.models import Tenant
+
+
+def _query_names(dependant: Dependant) -> frozenset[str]:
+    names = {field.alias for field in dependant.query_params}
+    for dep in dependant.dependencies:
+        names |= _query_names(dep)
+    return frozenset(names)
+
+
+def reject_unknown_query(request: Request) -> None:
+    """CT-9 / CT-1 : tout paramètre de requête non déclaré par la route (dont `tenant_id`) → 422."""
+    route = request.scope.get("route")
+    dependant = getattr(route, "dependant", None)
+    if dependant is None:
+        return
+    unknown = sorted(set(request.query_params) - _query_names(dependant))
+    if unknown:
+        raise AppError(
+            "VALIDATION_ERROR", details=[{"field": name, "type": "unknown_parameter"} for name in unknown]
+        )
 
 
 def get_clock(request: Request) -> Clock:
@@ -112,6 +133,7 @@ class Require:
 
     def __call__(
         self,
+        request: Request,
         principal: Annotated[Principal, Depends(authenticate)],
         db: DbSession,
         clock: ClockDep,
@@ -127,6 +149,7 @@ class Require:
                 reason="PERMISSION_DENIED",
             )
             raise AppError("PERMISSION_DENIED")
+        reject_unknown_query(request)  # après 401/403 : ordre D-05a
         return Authorized(principal, scope, db, clock)
 
     def __repr__(self) -> str:

@@ -1,7 +1,7 @@
 """Aides HTTP : concurrence optimiste (If-Match/ETag, D-19), pagination (CT-9), schémas stricts."""
 
 import re
-from typing import Annotated, Generic, TypeVar
+from typing import Annotated, TypeVar
 
 from fastapi import Depends, Header, Query
 from pydantic import BaseModel, ConfigDict
@@ -64,7 +64,7 @@ def page_params(
 Pagination = Annotated[PageParams, Depends(page_params)]
 
 
-class Page(BaseModel, Generic[T]):
+class Page[T](BaseModel):
     items: list[T]
     page: int
     page_size: int

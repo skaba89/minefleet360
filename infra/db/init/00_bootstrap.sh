@@ -16,8 +16,10 @@ ALTER ROLE mf_app SET search_path = public;
 ALTER ROLE mf_owner SET timezone = 'UTC';
 SQL
 
-# Base de développement + base de test (détruite/recréée par les tests via Alembic).
-for db in minefleet minefleet_test; do
+# Base applicative ; base de test seulement si demandée (dev/CI), jamais sur la démo (SEC-14).
+databases="minefleet"
+if [ "${MF_CREATE_TEST_DB:-false}" = "true" ]; then databases="minefleet minefleet_test"; fi
+for db in $databases; do
   psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres \
     -c "CREATE DATABASE ${db} OWNER mf_owner"
   psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$db" <<SQL

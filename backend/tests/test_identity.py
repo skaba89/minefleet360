@@ -161,8 +161,10 @@ def test_us131_a4_concurrent_mutual_revocation_keeps_one_admin(client: TestClien
     first_ta = _assignments(client, t, t.admin.user_id)[0]
     second_ta = next(a for a in _assignments(client, t, second.user_id) if a["role_code"] == "TENANT_ADMIN")
     results: dict[str, int] = {}
+    barrier = threading.Barrier(2)  # départ simultané des deux révocations (QA1A-07)
 
     def run(label: str, headers: dict[str, str], assignment: dict) -> None:  # type: ignore[type-arg]
+        barrier.wait(timeout=10)
         results[label] = _revoke(client, headers, assignment).status_code
 
     threads = [
@@ -257,3 +259,9 @@ def test_deactivation_revokes_pending_invitation_tokens(
     # Réactivé en INVITED : l'ancien lien ne doit pas revivre.
     resp = client.post(f"{API}/auth/invitations/accept", json={"token": token, "password": PASSWORD})
     assert resp.status_code == 422 and resp.json()["code"] == "TOKEN_INVALID"
+
+
+def test_sec05_site_scoped_hr_cannot_list_accounts(client: TestClient, api: Api) -> None:
+    t = api.tenant()
+    hr_site = api.user(t, "HR", "SITE", "S1")
+    assert client.get(f"{API}/users", headers=hr_site.headers).status_code == 403

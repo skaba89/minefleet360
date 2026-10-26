@@ -10,6 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env}
       MF_OWNER_PASSWORD: ${MF_OWNER_PASSWORD:?manquant}
       MF_APP_PASSWORD: ${MF_APP_PASSWORD:?manquant}
+      MF_CREATE_TEST_DB: "true"
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro

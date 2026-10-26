@@ -10,10 +10,10 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 import pytest
+from alembic.config import Config
 from fastapi.testclient import TestClient
 
 from alembic import command
-from alembic.config import Config
 from app.core.config import get_settings
 from app.core.db import dispose_engine
 from app.core.email import MemoryEmailSender

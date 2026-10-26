@@ -32,7 +32,7 @@ class SessionUser(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
-    token_type: Literal["bearer"] = "bearer"
+    token_type: Literal["bearer"] = "bearer"  # noqa: S105 (type de jeton OAuth2, pas un secret)
     expires_in: int
     user: SessionUser
 
