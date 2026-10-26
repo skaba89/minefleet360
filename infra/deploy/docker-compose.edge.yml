@@ -1,7 +1,7 @@
 # Variante « serveur partagé » : un proxy HTTPS commun (ex. ~/vps-proxy sur le VPS OVH) publie 80/443
-# et rejoint le réseau Docker externe « edge ». Seule l'API y est attachée, sous un alias unique ;
+# et rejoint le réseau Docker externe « edge ». L'API et l'interface y sont attachées, sous des alias uniques ;
 # la base reste sur le réseau interne du projet.
-#   docker compose -f docker-compose.prod.yml -f docker-compose.edge.yml --env-file .env.prod up -d --build db api
+#   docker compose -f docker-compose.prod.yml -f docker-compose.edge.yml --env-file .env.prod up -d --build db api web
 services:
   api:
     networks:
@@ -11,6 +11,10 @@ services:
     # Vérifications locales par tunnel SSH uniquement (jamais exposé publiquement).
     ports:
       - "127.0.0.1:8200:8000"
+  web:
+    networks:
+      edge:
+        aliases: [minefleet-web]
 
 networks:
   edge:

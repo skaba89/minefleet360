@@ -6,6 +6,7 @@ import { AssignmentsPage } from "./pages/AssignmentsPage";
 import { DriversPage } from "./pages/DriversPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
+import { ActivationPage, ResetConfirmPage, ResetRequestPage } from "./pages/PasswordPages";
 import { VehiclesPage } from "./pages/VehiclesPage";
 import { SiteProvider } from "./site/SiteContext";
 
@@ -24,6 +25,9 @@ export function App() {
   return (
     <Routes>
       <Route path="/connexion" element={<LoginPage />} />
+      <Route path="/activation" element={<ActivationPage />} />
+      <Route path="/reinitialisation" element={<ResetConfirmPage />} />
+      <Route path="/mot-de-passe-oublie" element={<ResetRequestPage />} />
       <Route element={<Protected />}>
         <Route index element={<HomePage />} />
         <Route path="vehicules" element={<VehiclesPage />} />

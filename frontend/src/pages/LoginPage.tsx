@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Navigate } from "react-router";
+import { Link, Navigate } from "react-router";
 
 import { useAuth } from "../auth/AuthContext";
 import { ErrorMessage } from "../components/common";
@@ -69,6 +69,7 @@ export function LoginPage() {
         <button type="submit" className="primary" disabled={submitting}>
           {submitting ? "Connexion…" : "Se connecter"}
         </button>
+        <Link to="/mot-de-passe-oublie">Mot de passe oublié ?</Link>
       </form>
     </main>
   );
