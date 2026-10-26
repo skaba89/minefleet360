@@ -51,15 +51,17 @@ ignore = ["S101", "RUF001", "RUF002", "RUF003", "RUF012", "B008"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S105", "S106", "S311"]
+"tests_unit/**" = ["S105", "S106", "S311"]
+"tests_migrations/**" = ["S105", "S106", "S311"]
 "alembic/**" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-exclude = ["alembic/"]
+exclude = ["alembic/", "tests_migrations/", "tests_unit/"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "tests_unit"]
 addopts = "-ra --strict-markers"
 pythonpath = ["."]

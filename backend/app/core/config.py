@@ -6,6 +6,7 @@ from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL
 
 Environment = Literal["local", "test", "ci", "staging", "production"]
 
@@ -64,14 +65,18 @@ class Settings(BaseSettings):
     def allowed_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.allowed_origins.split(",") if origin.strip()]
 
-    def database_url(self, *, owner: bool = False) -> str:
+    def database_url(self, *, owner: bool = False) -> URL:
         if owner and self.owner_password is None:
             raise RuntimeError("MF_OWNER_PASSWORD requis pour les migrations (rôle mf_owner)")
         password = self.owner_password if owner and self.owner_password else self.app_password
         user = "mf_owner" if owner else "mf_app"
-        return (
-            f"postgresql+psycopg://{user}:{password.get_secret_value()}"
-            f"@{self.db_host}:{self.db_port}/{self.db_name}"
+        return URL.create(
+            drivername="postgresql+psycopg",
+            username=user,
+            password=password.get_secret_value(),
+            host=self.db_host,
+            port=self.db_port,
+            database=self.db_name,
         )
 
     @property
