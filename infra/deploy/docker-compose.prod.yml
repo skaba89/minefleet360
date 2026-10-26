@@ -49,8 +49,11 @@ services:
       MF_MAIL_CAPTURE_DIR: /data/mail
     volumes:
       - mail-capture:/data/mail
+    # X-Forwarded-For n'est cru que des pairs listés (IP ou CIDR) : sinon un voisin réseau pourrait usurper
+    # une IP cliente (limitation de débit, audit). Machine dédiée : réseau interne du projet ; proxy partagé :
+    # IP ou sous-réseau du proxy (MF_FORWARDED_ALLOW_IPS dans .env.prod).
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2",
-              "--proxy-headers", "--forwarded-allow-ips", "*"]
+              "--proxy-headers", "--forwarded-allow-ips", "${MF_FORWARDED_ALLOW_IPS:-127.0.0.1}"]
     depends_on:
       db:
         condition: service_healthy
