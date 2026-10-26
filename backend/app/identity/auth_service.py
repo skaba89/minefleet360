@@ -54,9 +54,11 @@ class IssuedSession:
 
 class AuthLimiters:
     def __init__(self, settings: Settings) -> None:
-        self.login = FailureLimiter(settings.login_max_failures, settings.login_lockout_duration)
-        self.source = FailureLimiter(settings.login_ip_max_failures, settings.login_lockout_duration)
-        self.tokens = FailureLimiter(settings.login_max_failures, settings.login_lockout_duration)
+        self.login = FailureLimiter("login", settings.login_max_failures, settings.login_lockout_duration)
+        self.source = FailureLimiter(
+            "source", settings.login_ip_max_failures, settings.login_lockout_duration
+        )
+        self.tokens = FailureLimiter("tokens", settings.login_max_failures, settings.login_lockout_duration)
 
 
 def _client_key() -> str:
@@ -151,6 +153,7 @@ def login(
         or user is None
         or not password_ok
         or user.status != "ACTIVE"
+        or user.mfa_enabled  # aucun second facteur opérationnel : ne jamais ouvrir une session pwd seule
         or tenant.status != "ACTIVE"
     ):
         limiters.login.record_failure(key, now)
@@ -220,11 +223,36 @@ def refresh(db: Session, *, raw_cookie: str | None, clock: Clock, settings: Sett
         or user is None
         or tenant is None
         or user.status != "ACTIVE"
+        or user.mfa_enabled
         or tenant.status != "ACTIVE"
     ):
         raise AppError("AUTH_REQUIRED")
     presented = token.secret_hash
     if constant_time_equals(presented, session.refresh_hash_current):
+        history = list(session.consumed_refresh_hashes)
+        # Compatibilité des sessions antérieures à 0009 : conserver aussi leur ancien previous.
+        if session.refresh_hash_previous is not None and not any(
+            constant_time_equals(session.refresh_hash_previous, consumed) for consumed in history
+        ):
+            history.append(session.refresh_hash_previous)
+        if len(history) >= 1024:
+            # Ne jamais oublier un ancien jeton pour faire de la place : demander une nouvelle
+            # connexion au lieu d'affaiblir la détection de rejeu ou de laisser grossir la ligne.
+            session.revoked_at = now
+            session.revoked_reason = "REFRESH_ROTATION_LIMIT"
+            record(
+                db,
+                tenant_id=tenant.tenant_id,
+                action="auth.refresh_limit",
+                entity_type="auth_session",
+                entity_id=session.auth_session_id,
+                actor_user_id=user.user_account_id,
+                outcome="FAILURE",
+                reason="REFRESH_ROTATION_LIMIT",
+            )
+            db.commit()
+            raise AppError("AUTH_REQUIRED")
+        session.consumed_refresh_hashes = [*history, session.refresh_hash_current]
         secret = new_secret()
         session.refresh_hash_previous = session.refresh_hash_current
         session.refresh_hash_current = sha256(secret)
@@ -234,11 +262,17 @@ def refresh(db: Session, *, raw_cookie: str | None, clock: Clock, settings: Sett
         issued = _issue(session, user, tenant, secret, clock, settings)
         db.commit()
         return issued
-    if session.refresh_hash_previous is not None and constant_time_equals(
+    is_previous = session.refresh_hash_previous is not None and constant_time_equals(
         presented, session.refresh_hash_previous
-    ):
+    )
+    known_consumed = is_previous or any(
+        constant_time_equals(presented, consumed) for consumed in session.consumed_refresh_hashes
+    )
+    if known_consumed:
         in_grace = (
-            session.rotated_at is not None and now - session.rotated_at <= settings.refresh_grace_period
+            is_previous
+            and session.rotated_at is not None
+            and now - session.rotated_at <= settings.refresh_grace_period
         )
         if not in_grace:
             # Rejeu d'un refresh déjà consommé : vol présumé → révocation de la session (ADR-003).
@@ -265,9 +299,15 @@ def logout(db: Session, *, raw_cookie: str | None, clock: Clock) -> None:
     if loaded is None:
         return
     session, token = loaded
-    known = constant_time_equals(token.secret_hash, session.refresh_hash_current) or (
-        session.refresh_hash_previous is not None
-        and constant_time_equals(token.secret_hash, session.refresh_hash_previous)
+    known = (
+        constant_time_equals(token.secret_hash, session.refresh_hash_current)
+        or (
+            session.refresh_hash_previous is not None
+            and constant_time_equals(token.secret_hash, session.refresh_hash_previous)
+        )
+        or any(
+            constant_time_equals(token.secret_hash, consumed) for consumed in session.consumed_refresh_hashes
+        )
     )
     if not known or session.revoked_at is not None:
         return

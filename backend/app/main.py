@@ -14,7 +14,7 @@ from app.authz.routing import SecuredRoute
 from app.core.clock import Clock, SystemClock
 from app.core.config import get_settings
 from app.core.db import get_engine
-from app.core.email import EmailSender, FileCaptureEmailSender
+from app.core.email import EmailSender, build_email_sender
 from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
 from app.core.request_context import RequestMeta, set_request_meta
@@ -70,7 +70,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         lifespan=lifespan,
     )
     app.state.clock = clock or SystemClock()
-    app.state.email_sender = email_sender or FileCaptureEmailSender(settings.mail_capture_dir)
+    app.state.email_sender = email_sender or build_email_sender(settings)
     app.state.auth_limiters = AuthLimiters(settings)
 
     install_error_handlers(app)
