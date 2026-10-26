@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     assignment_backdate_tolerance: timedelta = timedelta(minutes=15)
     assignment_end_future_tolerance: timedelta = timedelta(minutes=5)
     clock_skew_tolerance: timedelta = timedelta(minutes=5)
+    # Horizon de planification (SEC1C-03) : valeur de développement, à arbitrer avec l'exploitation (C-11).
+    assignment_max_horizon: timedelta = timedelta(days=31)
     # Filtre de conformité calculé en mémoire au lot 1 (D-12) : plafond des affectations actives évaluées.
     compliance_scan_max: int = 2000
 

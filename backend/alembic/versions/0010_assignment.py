@@ -29,6 +29,7 @@ CREATE TABLE vehicle_assignment (
   shift_code    text,
   status        text NOT NULL DEFAULT 'PLANNED',
   status_reason text,
+  activated_at  timestamptz,                         -- instant réel de prise de poste (SEC1C-R-03)
   eligibility_snapshot jsonb NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
   created_by uuid NOT NULL, updated_by uuid, row_version integer NOT NULL DEFAULT 1,
@@ -42,6 +43,7 @@ CREATE TABLE vehicle_assignment (
   CONSTRAINT ck_va_status    CHECK (status IN ('PLANNED','ACTIVE','SUSPENDED','COMPLETED','CANCELLED')),
   CONSTRAINT ck_va_reason    CHECK (status NOT IN ('SUSPENDED','COMPLETED','CANCELLED') OR status_reason IS NOT NULL),
   CONSTRAINT ck_va_completed CHECK (status <> 'COMPLETED' OR valid_to IS NOT NULL),
+  CONSTRAINT ck_va_activated CHECK (status IN ('PLANNED','CANCELLED') OR activated_at IS NOT NULL),
   CONSTRAINT ck_va_shift     CHECK (shift_code IS NULL OR shift_code ~ '^[A-Z0-9_-]{1,20}$'),
   CONSTRAINT ck_va_snapshot  CHECK (jsonb_typeof(eligibility_snapshot) = 'object'),
   CONSTRAINT ck_va_version   CHECK (row_version >= 1),
@@ -80,14 +82,24 @@ CREATE TRIGGER tg_va_guard BEFORE INSERT OR UPDATE ON vehicle_assignment
 
 -- Changement de site d'un véhicule ou d'un conducteur refusé tant qu'une affectation ouverte existe
 -- (D-13, RM-051). SUSPENDED compte : le créneau reste occupé (D-30).
+-- Une branche par table : PL/pgSQL évalue tous les champs d'une expression, et OLD.driver_id n'existe
+-- pas sur vehicle (erreur à chaque déplacement libre, SEC1C-R-11).
 CREATE FUNCTION app.tg_site_change_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE v_open boolean;
 BEGIN
-  IF NEW.site_id IS DISTINCT FROM OLD.site_id AND EXISTS (
-       SELECT 1 FROM vehicle_assignment va
-        WHERE va.tenant_id = OLD.tenant_id
-          AND ((TG_TABLE_NAME = 'vehicle' AND va.vehicle_id = OLD.vehicle_id)
-            OR (TG_TABLE_NAME = 'driver'  AND va.driver_id  = OLD.driver_id))
-          AND va.status IN ('PLANNED','ACTIVE','SUSPENDED')) THEN
+  IF NEW.site_id IS NOT DISTINCT FROM OLD.site_id THEN
+    RETURN NEW;
+  END IF;
+  IF TG_TABLE_NAME = 'vehicle' THEN
+    SELECT EXISTS (SELECT 1 FROM vehicle_assignment va
+                    WHERE va.tenant_id = OLD.tenant_id AND va.vehicle_id = OLD.vehicle_id
+                      AND va.status IN ('PLANNED','ACTIVE','SUSPENDED')) INTO v_open;
+  ELSE
+    SELECT EXISTS (SELECT 1 FROM vehicle_assignment va
+                    WHERE va.tenant_id = OLD.tenant_id AND va.driver_id = OLD.driver_id
+                      AND va.status IN ('PLANNED','ACTIVE','SUSPENDED')) INTO v_open;
+  END IF;
+  IF v_open THEN
     RAISE EXCEPTION 'site change refused: open assignment exists' USING ERRCODE = 'MF004';
   END IF;
   RETURN NEW;

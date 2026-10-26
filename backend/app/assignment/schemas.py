@@ -63,6 +63,7 @@ class AssignmentOut(BaseModel):
     shift_code: str | None
     status: AssignmentStatus
     status_reason: str | None
+    activated_at: datetime | None  # instant réel de la prise de poste (null si jamais commencée)
     # Indicateurs dérivés à la lecture (D-27), jamais stockés.
     activation_overdue: bool
     end_overdue: bool

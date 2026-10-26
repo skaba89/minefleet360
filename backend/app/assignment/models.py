@@ -29,5 +29,7 @@ class VehicleAssignment(AuditedColumns, Base):
     shift_code: Mapped[str | None] = mapped_column(String)
     status: Mapped[str] = mapped_column(String, nullable=False, server_default="PLANNED")
     status_reason: Mapped[str | None] = mapped_column(String)
+    # Instant réel de la prise de poste (création déjà commencée ou action « activate ») : SEC1C-R-03.
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Identifiants et dates des pièces retenues à la création (DB-41) : jamais de n° de permis.
     eligibility_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)

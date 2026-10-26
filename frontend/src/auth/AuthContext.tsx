@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import {
+  ApiError,
   get,
   onSessionExpired,
   refreshSession,
@@ -72,9 +73,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     try {
       await request("/auth/logout", { method: "POST" });
-    } finally {
-      reset();
+    } catch (err) {
+      // Révocation non confirmée (réseau coupé…) : le cookie de rafraîchissement resterait valide et la
+      // personne suivante sur un poste partagé récupérerait la session. On ne simule pas la déconnexion.
+      if (!(err instanceof ApiError) || err.status === 0 || err.status >= 500) throw err;
     }
+    reset();
   }, [reset]);
 
   const value = useMemo(() => ({ status, me, login, logout }), [status, me, login, logout]);

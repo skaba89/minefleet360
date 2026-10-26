@@ -81,6 +81,9 @@ CATALOG: dict[str, ErrorDef] = {
     "ASSIGNMENT_NOT_ELIGIBLE": ErrorDef(422, "L'affectation ne respecte pas les conditions d'éligibilité."),
     "END_BEFORE_START": ErrorDef(422, "La fin doit être postérieure au début."),
     "END_IN_FUTURE": ErrorDef(422, "La date de fin ne peut pas être dans le futur."),
+    "END_BACKDATED": ErrorDef(
+        422, "La fin ne peut pas être antérieure à maintenant, sauf à la date de fin prévue."
+    ),
     # 503
     "SERVICE_BUSY": ErrorDef(503, "Service momentanément occupé. Réessayez dans quelques instants."),
     # 429

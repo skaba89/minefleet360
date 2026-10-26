@@ -140,6 +140,7 @@ def _out(
         "status": a.status,
         "status_reason": a.status_reason,
         "activation_overdue": a.status == "PLANNED" and a.valid_from <= now,
+        "activated_at": a.activated_at,
         "end_overdue": a.status in ("ACTIVE", "SUSPENDED") and a.valid_to is not None and a.valid_to <= now,
         "created_at": a.created_at,
         "updated_at": a.updated_at,
@@ -307,6 +308,9 @@ def create_assignment(auth: Authorized, body: AssignmentCreate) -> AssignmentOut
         pre.append(Finding("ASSIGNMENT_SITE_MISMATCH"))
     if body.valid_from < now - settings.assignment_backdate_tolerance:
         pre.append(Finding("ASSIGNMENT_BACKDATED"))
+    if body.valid_from > now + settings.assignment_max_horizon:
+        # Pas de réservation de créneau lointaine (SEC1C-03) : elle bloquerait statuts et sites (D-11).
+        pre.append(Finding("ASSIGNMENT_TOO_FAR_AHEAD"))
     ev = evaluate(
         vehicle,
         driver,
@@ -335,6 +339,7 @@ def create_assignment(auth: Authorized, body: AssignmentCreate) -> AssignmentOut
         valid_to=body.valid_to.astimezone(UTC) if body.valid_to else None,
         shift_code=body.shift_code,
         status="ACTIVE" if started else "PLANNED",
+        activated_at=now if started else None,
         eligibility_snapshot={
             "evaluated_at": now.isoformat(),
             "license_ids": ev.license_ids,
@@ -370,6 +375,7 @@ def _transition(
     target: str,
     reason: str | None,
     valid_to: datetime | None = None,
+    activated_at: datetime | None = None,
 ) -> AssignmentOut:
     db = auth.db
     before = _snapshot(assignment)
@@ -377,6 +383,8 @@ def _transition(
     assignment.status_reason = reason
     if valid_to is not None:
         assignment.valid_to = valid_to
+    if activated_at is not None:
+        assignment.activated_at = activated_at
     assignment.updated_by = auth.user_id
     db.flush()
     after = _snapshot(assignment)
@@ -437,8 +445,15 @@ def activate_assignment(auth: Authorized, assignment_id: uuid.UUID, expected_ver
         raise AppError("ASSIGNMENT_STATE_INVALID", details={"status": "PLANNED", "reason": "ALREADY_ENDED"})
     facts, vehicle, driver = _locked_facts(auth, assignment.vehicle_id, assignment.driver_id)
     _recheck(auth, assignment, facts, vehicle, driver)
+    # Instant réel de prise de poste (SEC1C-R-03) : une activation tardive reste visible et exploitable.
     return _transition(
-        auth, assignment, facts, action="vehicle_assignment.activate", target="ACTIVE", reason=None
+        auth,
+        assignment,
+        facts,
+        action="vehicle_assignment.activate",
+        target="ACTIVE",
+        reason=None,
+        activated_at=now,
     )
 
 
@@ -473,14 +488,24 @@ def resume_assignment(auth: Authorized, assignment_id: uuid.UUID, expected_versi
 def complete_assignment(
     auth: Authorized, assignment_id: uuid.UUID, body: AssignmentComplete, expected_version: int
 ) -> AssignmentOut:
-    """US-1.23 A1 : clôture d'une affectation en cours, fin réelle tronquée (jamais prolongée au lot 1)."""
+    """US-1.23 A1 : clôture d'une affectation en cours, fin réelle tronquée (jamais prolongée au lot 1).
+
+    Fin rétroactive bornée comme le début (SEC1C-R-01) : au plus la tolérance d'antidatage, sauf la fin
+    prévue elle-même (affectation arrivée à échéance, clôturée après coup). Sans `ended_at` : maintenant,
+    ou la fin prévue si elle est déjà passée.
+    """
     assignment = _load_for_update(auth, assignment_id, expected_version, ("ACTIVE", "SUSPENDED"))
     now = auth.clock.now()
-    ended_at = (body.ended_at or now).astimezone(UTC)
+    settings = get_settings()
+    planned_end = assignment.valid_to
+    default_end = min(now, planned_end) if planned_end is not None else now
+    ended_at = (body.ended_at or default_end).astimezone(UTC)
     if ended_at <= assignment.valid_from:
         raise AppError("END_BEFORE_START")
-    if ended_at > now + get_settings().assignment_end_future_tolerance:
+    if ended_at > now + settings.assignment_end_future_tolerance:
         raise AppError("END_IN_FUTURE")
+    if ended_at < now - settings.assignment_backdate_tolerance and ended_at != planned_end:
+        raise AppError("END_BACKDATED")
     if assignment.valid_to is not None and ended_at > assignment.valid_to:
         raise AppError("VALIDATION_ERROR", details=[{"field": "ended_at", "type": "after_planned_end"}])
     facts = _Facts.load(auth.db, [assignment])

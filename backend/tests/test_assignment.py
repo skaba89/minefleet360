@@ -645,3 +645,106 @@ def test_sec1c06_document_reasons_hidden_without_document_read(
         compliance = client.get(url, headers=account.headers).json()["compliance"]
         assert compliance["status"] == "NON_COMPLIANT"
         assert [r["code"] for r in compliance["reasons"]] == reasons
+
+
+# --- Revue indépendante (SEC1C-R-01, R-03, R-06, R-11, SEC1C-03) --------------------------------------
+
+
+def test_sec1c_r01_retroactive_end_is_bounded(client: TestClient, w: World) -> None:
+    created = _create(
+        client, w, _vehicle(client, w), _driver(client, w), start=_now() - timedelta(minutes=10)
+    )
+    aid = created.json()["vehicle_assignment_id"]
+    # Effacer les heures conduites (fin = début + 1 s) est refusé au-delà de la tolérance d'antidatage.
+    ended = datetime.fromisoformat(created.json()["valid_from"]) + timedelta(seconds=1)
+    settings = get_settings()
+    original = settings.assignment_backdate_tolerance
+    settings.assignment_backdate_tolerance = timedelta(minutes=1)
+    try:
+        refused = _action(client, w, aid, "complete", {"ended_at": _iso(ended)})
+    finally:
+        settings.assignment_backdate_tolerance = original
+    assert (refused.status_code, refused.json()["code"]) == (422, "END_BACKDATED")
+    assert _action(client, w, aid, "complete", {}).status_code == 200
+
+
+def test_sec1c_r01_overdue_assignment_closes_at_planned_end(
+    client: TestClient, w: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    start = _now() + timedelta(minutes=10)  # au-delà de la tolérance d'horloge : PLANNED
+    created = _create(client, w, _vehicle(client, w), _driver(client, w), start, start + timedelta(minutes=2))
+    planned_end = created.json()["valid_to"]
+    aid = created.json()["vehicle_assignment_id"]
+    monkeypatch.setattr(client.app.state, "clock", OffsetClock(timedelta(minutes=11)))  # type: ignore[attr-defined]
+    assert _action(client, w, aid, "activate").status_code == 200
+    # Échéance dépassée de longtemps : la clôture par défaut retient la fin prévue, sans antidatage abusif.
+    monkeypatch.setattr(client.app.state, "clock", OffsetClock(timedelta(minutes=14)))  # type: ignore[attr-defined]
+    settings = get_settings()
+    original = settings.assignment_backdate_tolerance
+    settings.assignment_backdate_tolerance = timedelta(minutes=1)
+    try:
+        done = _action(client, w, aid, "complete", {})
+    finally:
+        settings.assignment_backdate_tolerance = original
+    assert done.status_code == 200, done.text
+    assert datetime.fromisoformat(done.json()["valid_to"]) == datetime.fromisoformat(planned_end)
+
+
+def test_sec1c03_start_beyond_planning_horizon_is_refused(client: TestClient, w: World) -> None:
+    far = _now() + get_settings().assignment_max_horizon + timedelta(days=1)
+    assert _reasons(_create(client, w, _vehicle(client, w), _driver(client, w), start=far)) == [
+        "ASSIGNMENT_TOO_FAR_AHEAD"
+    ]
+
+
+def test_sec1c_r03_activation_instant_is_recorded(
+    client: TestClient, w: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    immediate = _create(client, w, _vehicle(client, w), _driver(client, w)).json()
+    assert immediate["activated_at"] is not None
+    planned = _create(
+        client, w, _vehicle(client, w), _driver(client, w), start=_now() + timedelta(minutes=10)
+    ).json()
+    assert planned["activated_at"] is None
+    monkeypatch.setattr(client.app.state, "clock", OffsetClock(timedelta(minutes=13)))  # type: ignore[attr-defined]
+    activated = _action(client, w, planned["vehicle_assignment_id"], "activate").json()
+    late = datetime.fromisoformat(activated["activated_at"]) - datetime.fromisoformat(activated["valid_from"])
+    assert late >= timedelta(minutes=2)  # prise de poste tardive visible, pas confondue avec le début prévu
+
+
+def test_sec1c_r06_assignment_writers_can_read_driver_documents() -> None:
+    """Les motifs du 422 (échéances de permis/habilitation) ne sont pas filtrés : tout rôle qui écrit une
+    affectation doit lire permis et habilitations, à la même portée (sinon fuite contournant SEC1C-06)."""
+    from app.authz.matrix import load_matrix
+
+    perms = load_matrix().permissions
+    for name in ("create", "update", "end"):
+        for role, scopes in perms[f"assignment.vehicle_assignment.{name}"].grants.items():
+            for document in ("workforce.driver_license.read", "workforce.driver_qualification.read"):
+                assert set(scopes) <= set(perms[document].grants.get(role, ())), (name, role, document)
+
+
+def test_sec1c_r11_site_move_without_open_assignment_and_db_guard(
+    client: TestClient, w: World, app_engine: Engine
+) -> None:
+    vehicle, driver = _vehicle(client, w), _driver(client, w)
+    for url, headers in (
+        (f"{API}/vehicles/{vehicle}", w.t.admin.headers),
+        (f"{API}/drivers/{driver}", w.hr.headers),
+    ):
+        moved = client.patch(
+            url,
+            headers={**headers, "If-Match": client.get(url, headers=headers).headers["ETag"]},
+            json={"site_id": str(w.t.sites["S2"])},
+        )
+        assert moved.status_code == 200, moved.text  # le garde de base ne bloque pas un déplacement libre
+    busy = _create(client, w, _vehicle(client, w), _driver(client, w)).json()
+    with app_engine.connect() as conn:
+        conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(w.t.tenant_id)})
+        with pytest.raises(DBAPIError) as refused:
+            conn.execute(
+                text("UPDATE vehicle SET site_id = :s WHERE vehicle_id = :v"),
+                {"s": str(w.t.sites["S2"]), "v": busy["vehicle_id"]},
+            )
+        assert getattr(refused.value.orig, "sqlstate", None) == "MF004"
+        conn.rollback()

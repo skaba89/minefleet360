@@ -79,3 +79,34 @@ describe("connexion", () => {
     expect(screen.getAllByRole("link", { name: /Affectations/ }).length).toBeGreaterThan(0);
   });
 });
+
+describe("déconnexion", () => {
+  it("ne simule pas la déconnexion si le serveur est injoignable (SEC1C-R-08)", async () => {
+    let offline = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (offline) throw new TypeError("Failed to fetch");
+        if (url.endsWith("/auth/refresh"))
+          return json(200, { access_token: "jeton", token_type: "bearer", expires_in: 900, user: {} });
+        if (url.endsWith("/me"))
+          return json(200, {
+            user_account_id: "u",
+            display_name: "Awa Fictive",
+            email: "awa@example.com",
+            workspace_code: "demo",
+            tenant_display_name: "Société fictive",
+            timezone: "Africa/Conakry",
+            grants: [],
+          });
+        return json(200, { items: [], page: 1, page_size: 200, total: 0 });
+      }),
+    );
+    renderApp();
+    await screen.findByRole("heading", { name: "Bonjour Awa Fictive" });
+    offline = true;
+    fireEvent.click(screen.getByRole("button", { name: "Se déconnecter" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Déconnexion non confirmée");
+    expect(screen.getByRole("heading", { name: "Bonjour Awa Fictive" })).toBeTruthy();
+  });
+});

@@ -52,6 +52,7 @@ export const CANCEL_REASONS: Record<string, string> = {
 export const ISSUES: Record<string, string> = {
   ASSIGNMENT_SITE_MISMATCH: "Véhicule et conducteur ne sont pas sur le même site",
   ASSIGNMENT_BACKDATED: "Début trop ancien (antidatage interdit)",
+  ASSIGNMENT_TOO_FAR_AHEAD: "Début trop lointain (au-delà de l'horizon de planification)",
   DRIVER_NOT_ACTIVE: "Conducteur non actif",
   VEHICLE_NOT_AVAILABLE: "Véhicule non disponible",
   VEHICLE_CATEGORY_WITHOUT_DRIVER: "Cette catégorie d'engin ne se conduit pas",

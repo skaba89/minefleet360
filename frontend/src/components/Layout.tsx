@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink, Outlet } from "react-router";
 
 import { useAuth, useMe } from "../auth/AuthContext";
@@ -8,6 +9,7 @@ export function Layout() {
   const me = useMe();
   const { logout } = useAuth();
   const { sites, siteId, setSiteId } = useSites();
+  const [logoutFailed, setLogoutFailed] = useState(false);
   const links = [
     { to: "/vehicules", text: "Véhicules", show: can(me.grants, "fleet.vehicle.read") },
     { to: "/conducteurs", text: "Conducteurs", show: can(me.grants, "workforce.driver.read") },
@@ -33,11 +35,24 @@ export function Layout() {
         </label>
         <div className="user">
           <span>{me.display_name}</span>
-          <button type="button" className="link" onClick={() => void logout()}>
+          <button
+            type="button"
+            className="link"
+            onClick={() => {
+              setLogoutFailed(false);
+              logout().catch(() => setLogoutFailed(true));
+            }}
+          >
             Se déconnecter
           </button>
         </div>
       </header>
+      {logoutFailed && (
+        <p className="error" role="alert">
+          Déconnexion non confirmée par le serveur (réseau indisponible ?). Votre session reste ouverte :
+          réessayez avant de quitter ce poste.
+        </p>
+      )}
       <nav className="mainnav" aria-label="Navigation principale">
         <NavLink to="/" end>
           Accueil

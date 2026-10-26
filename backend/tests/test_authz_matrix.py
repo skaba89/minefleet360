@@ -10,6 +10,7 @@ L'oracle vient du YAML et de la table de décision D-05, jamais des décorateurs
 import re
 import uuid
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -123,7 +124,11 @@ def world(api: Api, client: TestClient) -> World:
     vehicle_assignment = client.post(
         f"{API}/vehicle-assignments",
         headers=ops.headers,
-        json={"vehicle_id": vehicle, "driver_id": driver, "valid_from": "2099-01-01T06:00:00+00:00"},
+        json={
+            "vehicle_id": vehicle,
+            "driver_id": driver,
+            "valid_from": (datetime.now(UTC) + timedelta(days=7)).isoformat(),
+        },
     )
     assert vehicle_assignment.status_code == 201, vehicle_assignment.text
     objects = {

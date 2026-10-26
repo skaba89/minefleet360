@@ -39,3 +39,23 @@ Aucun constat élevé ou bloquant.
 
 ## 4. Non couvert
 Revue indépendante (agent sécurité distinct), tests de charge, rétention des affectations (C-09), interface web.
+
+## 5. Revue indépendante (agent security-engineer distinct, 2026-10-26)
+Lecture du code de la PR #4 (serveur et interface), sans exécution. Aucun constat critique ou élevé ; aucun IDOR ni fuite inter-tenant ou inter-site.
+
+| ID | Gravité | Constat | Traitement |
+|---|---|---|---|
+| SEC1C-R-01 | Moyenne | Clôture avec `ended_at` rétroactif sans borne basse : effacer les heures conduites (ex. après incident) | **Corrigé** : fin bornée à `maintenant − MF_ASSIGNMENT_BACKDATE_TOLERANCE`, sauf la fin prévue elle-même ; sans `ended_at`, fin = min(maintenant, fin prévue) ; code `END_BACKDATED` ; tests `test_sec1c_r01_*` |
+| SEC1C-R-02 | Moyenne | Une affectation ouverte bloque (409, D-11) l'immobilisation d'un engin par `WORKSHOP_CHIEF` ou la suspension d'un conducteur par `HR`, qui ne peuvent pas clôturer | **À arbitrer (client)** : D-11 est une décision tranchée. Atténué par SEC1C-03 (plus de réservation lointaine). Option proposée : accepter les statuts de sécurité et rendre l'affectation non conforme, ou permission d'urgence tracée |
+| SEC1C-03 (révisé) | Faible → **Moyenne** | Réservation lointaine combinée à R-02 | **Corrigé** : début limité à `MF_ASSIGNMENT_MAX_HORIZON` (31 jours, à arbitrer C-11), motif `ASSIGNMENT_TOO_FAR_AHEAD` ; test `test_sec1c03_*` |
+| SEC1C-R-03 | Faible | Instant réel de prise de poste non stocké | **Corrigé** : colonne `activated_at` (migration 0010, `ck_va_activated`), exposée par l'API ; test `test_sec1c_r03_*` |
+| SEC1C-R-04 | Faible | `status_reason` (`NON_COMPLIANCE`, `DRIVER_ABSENT`…) visible de tous les lecteurs | **Accepté** : même nature que le statut `NON_COMPLIANT` (alerte opérationnelle, risque résiduel de SEC1C-06) |
+| SEC1C-R-05 | Faible | Le journal d'audit montre à `TENANT_ADMIN` les identifiants conducteur/véhicule des affectations (UUID, sans nom) | **Accepté, à reporter dans MATRICE_RBAC** : pseudonymes ; filtrage du journal par rôle à étudier avec C-08 |
+| SEC1C-R-06 | Faible | Motifs du 422 non filtrés par `_visible` : sûr tant que les rôles qui écrivent lisent permis et habilitations | **Corrigé (garde-fou)** : test de cohérence de la matrice `test_sec1c_r06_*` |
+| SEC1C-R-07 | Faible | Filtre `compliance` coûteux et sans limitation de débit | **Ouvert** : limitation par utilisateur ou calcul SQL avec le planificateur (lot 2) |
+| SEC1C-R-08 | Faible | Déconnexion simulée si `/auth/logout` échoue : session récupérable sur poste partagé | **Corrigé** : session conservée et alerte « Déconnexion non confirmée » ; test Vitest |
+| SEC1C-R-09 | Info | Rafraîchissement concurrent dans deux onglets → un onglet déconnecté | Ouvert (confort) |
+| SEC1C-R-10 | Info | Traces Playwright contenant jetons et mots de passe fictifs ; E2E pointables vers une autre API | **Corrigé** : `playwright.config.ts` refuse toute `MF_API_URL` non locale |
+| SEC1C-R-11 | Info → **Élevée (confirmée)** | `tg_site_change_guard` lisait `OLD.driver_id` sur `vehicle` (et l'inverse) : **tout déplacement de site d'un véhicule ou d'un conducteur renvoyait 500** | **Corrigé** : une branche par table dans le trigger ; tests de déplacement libre et de refus en SQL direct (`test_sec1c_r11_*`). Régression introduite par la tranche 1c, détectée avant tout déploiement |
+
+Vérifications après corrections : ruff, mypy strict, **1445 tests** (couverture 93,3 %), Vitest **13**, Playwright **3** contre la pile locale.
