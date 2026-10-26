@@ -42,7 +42,9 @@ def test_database_url_preserves_reserved_characters(
     assert expected_password not in repr(url)
 
 
-def test_owner_database_url_requires_owner_secret() -> None:
+def test_owner_database_url_requires_owner_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Hermétique : le conteneur et la CI définissent MF_OWNER_PASSWORD dans l'environnement.
+    monkeypatch.delenv("MF_OWNER_PASSWORD", raising=False)
     settings = Settings(
         MF_APP_PASSWORD=APP_PASSWORD,
         jwt_secret=SecretStr("synthetic-jwt-secret-at-least-32-characters"),
