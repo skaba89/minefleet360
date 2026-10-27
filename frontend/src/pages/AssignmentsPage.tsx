@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type FormEvent } from "react";
 
-import { get, request, type Schemas } from "../api/client";
+import { call, read, request, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, ErrorMessage, Pager } from "../components/common";
 import {
@@ -52,16 +52,19 @@ export function AssignmentsPage() {
   const [status, setStatus] = useState("");
   const [compliance, setCompliance] = useState("");
   const [page, setPage] = useState(1);
-  const canWrite = can(me.grants, "assignment.vehicle_assignment.write", siteId);
+  const canCreate = can(me.grants, "assignment.vehicle_assignment.create", siteId);
+  const canAct = can(me.grants, "assignment.vehicle_assignment.update", siteId) || can(me.grants, "assignment.vehicle_assignment.end", siteId);
   const list = useQuery({
     queryKey: ["assignments", siteId, status, compliance, page],
     queryFn: () =>
-      get<Schemas["Page_AssignmentOut_"]>("/vehicle-assignments", {
-        site_id: siteId,
-        status: status || null,
-        compliance: compliance || null,
-        page,
-        page_size: PAGE_SIZE,
+      read("/vehicle-assignments", {
+        query: {
+          site_id: siteId,
+          status: (status || null) as Assignment["status"] | null,
+          compliance: (compliance || null) as "COMPLIANT" | "NON_COMPLIANT" | null,
+          page,
+          page_size: PAGE_SIZE,
+        },
       }),
   });
   const siteCode = new Map(sites.map((s) => [s.site_id, s.code]));
@@ -70,7 +73,7 @@ export function AssignmentsPage() {
   return (
     <section>
       <h1>Affectations conducteur ↔ véhicule</h1>
-      {canWrite && <CreateAssignment />}
+      {canCreate && <CreateAssignment />}
       <div className="filters">
         <label>
           Statut
@@ -115,7 +118,7 @@ export function AssignmentsPage() {
               <th scope="col">Fin</th>
               <th scope="col">Statut</th>
               <th scope="col">Conformité</th>
-              {canWrite && <th scope="col">Actions</th>}
+              {canAct && <th scope="col">Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -125,7 +128,7 @@ export function AssignmentsPage() {
                 assignment={a}
                 site={siteCode.get(a.site_id) ?? "—"}
                 timeZone={timezoneOf(a.site_id)}
-                canWrite={canWrite && can(me.grants, "assignment.vehicle_assignment.write", a.site_id)}
+                canWrite={canAct && (can(me.grants, "assignment.vehicle_assignment.update", a.site_id) || can(me.grants, "assignment.vehicle_assignment.end", a.site_id))}
               />
             ))}
           </tbody>
@@ -274,7 +277,7 @@ function CreateAssignment() {
     queryKey: ["vehicles", "available", siteId],
     enabled: open,
     queryFn: () =>
-      get<Schemas["Page_VehicleOut_"]>("/vehicles", { site_id: siteId, status: "AVAILABLE", page_size: 200 }),
+      read("/vehicles", { query: { site_id: siteId, status: "AVAILABLE", page_size: 200 } }),
   });
   const vehicle = useMemo(
     () => vehicles.data?.items.find((v) => v.vehicle_id === vehicleId),
@@ -285,14 +288,13 @@ function CreateAssignment() {
     queryKey: ["drivers", "active", vehicle?.site_id],
     enabled: open && Boolean(vehicle),
     queryFn: () =>
-      get<Schemas["Page_DriverOut_"]>("/drivers", { site_id: vehicle?.site_id, status: "ACTIVE", page_size: 200 }),
+      read("/drivers", { query: { site_id: vehicle?.site_id, status: "ACTIVE", page_size: 200 } }),
   });
   const timeZone = timezoneOf(vehicle?.site_id ?? siteId);
 
   const mutation = useMutation({
     mutationFn: () =>
-      request<Assignment>("/vehicle-assignments", {
-        method: "POST",
+      call("post", "/vehicle-assignments", {
         body: {
           vehicle_id: vehicleId,
           driver_id: driverId,

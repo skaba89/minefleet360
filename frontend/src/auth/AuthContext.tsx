@@ -3,8 +3,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 
 import {
   ApiError,
-  get,
+  call,
   onSessionExpired,
+  read,
   refreshSession,
   request,
   setAccessToken,
@@ -46,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const profile = await get<Me>("/me");
+        const profile = await read("/me");
         if (!cancelled) {
           setMe(profile);
           setStatus("authenticated");
@@ -61,12 +62,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [reset]);
 
   const login = useCallback(async (workspaceCode: string, email: string, password: string) => {
-    const { data } = await request<Schemas["TokenResponse"]>("/auth/login", {
-      method: "POST",
+    const { data } = await call("post", "/auth/login", {
       body: { workspace_code: workspaceCode.trim(), email: email.trim(), password },
     });
     setAccessToken(data.access_token);
-    setMe(await get<Me>("/me"));
+    setMe(await read("/me"));
     setStatus("authenticated");
   }, []);
 

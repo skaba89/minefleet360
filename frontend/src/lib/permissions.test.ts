@@ -8,8 +8,8 @@ const S2 = "22222222-2222-4222-8222-222222222222";
 describe("affichage conditionnel des actions", () => {
   it("dispatcher : écriture sur son site seulement", () => {
     const grants = [{ role_code: "DISPATCHER", scope_type: "SITE", site_id: S1 }];
-    expect(can(grants, "assignment.vehicle_assignment.write", S1)).toBe(true);
-    expect(can(grants, "assignment.vehicle_assignment.write", S2)).toBe(false);
+    expect(can(grants, "assignment.vehicle_assignment.create", S1)).toBe(true);
+    expect(can(grants, "assignment.vehicle_assignment.create", S2)).toBe(false);
   });
 
   it("administrateur du tenant : pas d'accès aux affectations ni aux conducteurs (D-10)", () => {
@@ -22,6 +22,6 @@ describe("affichage conditionnel des actions", () => {
   it("RH lit les affectations sans pouvoir en créer", () => {
     const grants = [{ role_code: "HR", scope_type: "TENANT", site_id: null }];
     expect(can(grants, "assignment.vehicle_assignment.read")).toBe(true);
-    expect(can(grants, "assignment.vehicle_assignment.write")).toBe(false);
+    expect(can(grants, "assignment.vehicle_assignment.create")).toBe(false);
   });
 });
