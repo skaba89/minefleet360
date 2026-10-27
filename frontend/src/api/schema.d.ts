@@ -1484,6 +1484,11 @@ export interface components {
             mission_event_id: string;
             /** Event Type */
             event_type: string;
+            /**
+             * Vehicle Assignment Id
+             * Format: uuid
+             */
+            vehicle_assignment_id: string;
             /** From Status */
             from_status: string | null;
             /** To Status */
@@ -1898,13 +1903,10 @@ export interface components {
             vehicle_id: string;
             /** Vehicle Fleet Number */
             vehicle_fleet_number: string;
-            /**
-             * Driver Id
-             * Format: uuid
-             */
-            driver_id: string;
+            /** Driver Id */
+            driver_id: string | null;
             /** Driver Display Name */
-            driver_display_name: string;
+            driver_display_name: string | null;
             /**
              * Origin Location Id
              * Format: uuid

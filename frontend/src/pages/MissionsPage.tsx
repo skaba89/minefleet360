@@ -94,7 +94,8 @@ export function MissionsPage() {
                   <div className="small muted">{siteCode.get(m.site_id)}</div>
                 </td>
                 <td>{m.vehicle_fleet_number}</td>
-                <td>{m.driver_display_name}</td>
+                {/* Masqué (null) pour les rôles qui ne lisent pas les affectations du site. */}
+                <td>{m.driver_display_name ?? "—"}</td>
                 <td>
                   {m.origin_name} → {m.destination_name}
                 </td>

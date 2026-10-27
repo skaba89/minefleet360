@@ -258,3 +258,84 @@ def test_site_scope_and_append_only_events(client: TestClient, w: World) -> None
             conn.rollback()
     finally:
         engine.dispose()
+
+
+def test_reassignment_is_traceable(client: TestClient, w: World) -> None:  # noqa: F811
+    """L2A-R-01 : la chronologie et l'audit disent qui a pris le relais, et de qui."""
+    first = _assignment(client, w)
+    mid = _mission(client, w, first, _refs(client, w)).json()["mission_id"]
+    assert _event(client, w, mid, "SUSPENDED", reason_code="BREAKDOWN").status_code == 200
+    spare = _assignment(client, w)
+    reassigned = _event(client, w, mid, "REASSIGNED", vehicle_assignment_id=spare["vehicle_assignment_id"])
+    assert reassigned.status_code == 200, reassigned.text
+    crews = [(e["event_type"], e["vehicle_assignment_id"]) for e in reassigned.json()["events"]]
+    assert crews == [
+        ("CREATED", first["vehicle_assignment_id"]),
+        ("SUSPENDED", first["vehicle_assignment_id"]),
+        ("REASSIGNED", spare["vehicle_assignment_id"]),
+    ]
+    audit = client.get(
+        f"{API}/audit-events",
+        headers=w.t.admin.headers,
+        params={"entity_id": mid, "action": "mission.reassigned"},
+    ).json()["items"][0]
+    assert audit["before_data"]["driver_id"] == first["driver_id"]
+    assert audit["after_data"]["driver_id"] == spare["driver_id"]
+    assert set(audit["changed_fields"]) >= {"vehicle_assignment_id", "vehicle_id", "driver_id"}
+
+
+def test_driver_name_follows_assignment_read_rights(client: TestClient, w: World, api: Api) -> None:  # noqa: F811
+    """L2A-R-02 : FINANCE et un chef d'atelier d'un autre site lisent la mission sans le conducteur (D-10)."""
+    mid = _mission(client, w, _assignment(client, w), _refs(client, w)).json()["mission_id"]
+    seen = client.get(f"{API}/missions/{mid}", headers=w.ops.headers).json()
+    assert seen["driver_display_name"] and seen["driver_id"]
+    for reader in (
+        api.user(w.t, "FINANCE"),
+        api.user(w.t, "WORKSHOP_CHIEF"),  # portée tenant : lit les affectations de son seul site
+    ):
+        masked = client.get(f"{API}/missions/{mid}", headers=reader.headers)
+        assert masked.status_code == 200, masked.text
+        assert masked.json()["driver_display_name"] is None and masked.json()["driver_id"] is None
+        listed = client.get(f"{API}/missions", headers=reader.headers).json()["items"]
+        assert all(m["driver_display_name"] is None for m in listed)
+    local_chief = api.user(w.t, "WORKSHOP_CHIEF", "SITE", "S1")
+    assert client.get(f"{API}/missions/{mid}", headers=local_chief.headers).json()["driver_display_name"]
+
+
+def test_departure_checks_use_server_time(client: TestClient, w: World) -> None:  # noqa: F811
+    """L2A-R-03 : un départ antidaté avant la fin de l'affectation reste refusé une fois celle-ci échue."""
+    assignment = _assignment(client, w, start=_now() - timedelta(minutes=10))
+    mid = _mission(client, w, assignment, _refs(client, w)).json()["mission_id"]
+    created_at = client.get(f"{API}/missions/{mid}", headers=w.ops.headers).json()["events"][0]["occurred_at"]
+    engine = create_engine(get_settings().database_url(), pool_size=1, max_overflow=0)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(w.t.tenant_id)})
+            # Affectation encore ACTIVE mais échue une milliseconde après la création de la mission.
+            conn.execute(
+                text(
+                    "UPDATE vehicle_assignment"
+                    " SET valid_to = CAST(:at AS timestamptz) + interval '1 millisecond'"
+                    " WHERE vehicle_assignment_id = :a"
+                ),
+                {"at": created_at, "a": assignment["vehicle_assignment_id"]},
+            )
+    finally:
+        engine.dispose()
+    backdated = _event(client, w, mid, "DEPARTED", occurred_at=created_at)
+    assert (backdated.status_code, backdated.json()["code"]) == (422, "MISSION_NOT_ELIGIBLE")
+    assert "ASSIGNMENT_ENDED" in [r["code"] for r in backdated.json()["details"]["reasons"]]
+
+
+def test_event_id_of_another_mission_is_not_revealed(client: TestClient, w: World) -> None:  # noqa: F811
+    """L2A-R-05 : identifiant déjà pris ailleurs → conflit ordinaire, sans rejeu de l'autre mission."""
+    refs = _refs(client, w)
+    first = _mission(client, w, _assignment(client, w), refs).json()["mission_id"]
+    second = _mission(client, w, _assignment(client, w), refs).json()["mission_id"]
+    key = str(uuid.uuid4())
+    assert _event(client, w, first, "DEPARTED", client_event_id=key).status_code == 200
+    reused = _event(client, w, second, "DEPARTED", client_event_id=key)
+    assert (reused.status_code, reused.json()["code"]) == (409, "CONFLICT")
+    assert "mission_id" not in str(reused.json()["details"] or "")
+    still = client.get(f"{API}/missions/{second}", headers=w.ops.headers).json()
+    assert still["status"] == "ASSIGNED" and len(still["events"]) == 1

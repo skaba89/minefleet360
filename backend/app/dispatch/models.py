@@ -76,6 +76,7 @@ class MissionEvent(Base):
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     mission_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    vehicle_assignment_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     event_type: Mapped[str] = mapped_column(String, nullable=False)
     from_status: Mapped[str | None] = mapped_column(String)
     to_status: Mapped[str] = mapped_column(String, nullable=False)
