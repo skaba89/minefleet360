@@ -28,6 +28,7 @@ from app.core.security import (
     burn_password_check,
     check_password_policy,
     constant_time_equals,
+    credential_fingerprint,
     hash_password,
     issue_access_token,
     issue_mfa_challenge,
@@ -210,7 +211,11 @@ def login(
         db.commit()
         return IssuedChallenge(
             mfa_token=issue_mfa_challenge(
-                MfaChallenge(user.user_account_id, tenant.tenant_id), now, settings
+                MfaChallenge(
+                    user.user_account_id, tenant.tenant_id, credential_fingerprint(user.password_hash)
+                ),
+                now,
+                settings,
             ),
             expires_in=int(settings.mfa_challenge_ttl.total_seconds()),
         )

@@ -145,12 +145,20 @@ def decode_access_token(token: str, now: datetime, settings: Settings) -> Access
 class MfaChallenge:
     user_id: uuid.UUID
     tenant_id: uuid.UUID
+    # Empreinte de l'état du mot de passe à l'émission : un changement de mot de passe invalide le défi.
+    credential_fingerprint: bytes
+
+
+def credential_fingerprint(password_hash: str | None) -> bytes:
+    """Empreinte courte du hachage du mot de passe (jamais le hachage lui-même dans le jeton)."""
+    return hashlib.sha256(f"mfa-challenge:{password_hash or ''}".encode()).digest()[:16]
 
 
 def issue_mfa_challenge(challenge: MfaChallenge, now: datetime, settings: Settings) -> str:
     payload = {
         "sub": str(challenge.user_id),
         "tid": str(challenge.tenant_id),
+        "pwv": challenge.credential_fingerprint.hex(),
         "jti": str(uuid.uuid4()),
         "iat": int(now.timestamp()),
         "exp": int((now + settings.mfa_challenge_ttl).timestamp()),
@@ -165,13 +173,15 @@ def decode_mfa_challenge(token: str, now: datetime, settings: Settings) -> MfaCh
             token,
             settings.jwt_secret.get_secret_value(),
             algorithms=[settings.jwt_algorithm],
-            options={"require": ["sub", "tid", "exp", "iat"], "verify_exp": False},
+            options={"require": ["sub", "tid", "exp", "iat", "pwv"], "verify_exp": False},
         )
     except jwt.PyJWTError:
         return None
     if payload.get("typ") != "mfa" or int(payload["exp"]) <= int(now.timestamp()):
         return None
     try:
-        return MfaChallenge(uuid.UUID(payload["sub"]), uuid.UUID(payload["tid"]))
+        return MfaChallenge(
+            uuid.UUID(payload["sub"]), uuid.UUID(payload["tid"]), bytes.fromhex(payload["pwv"])
+        )
     except (ValueError, TypeError):
         return None

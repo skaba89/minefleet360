@@ -22,9 +22,20 @@ from app.core.config import Settings
 from app.core.errors import AppError
 from app.core.http import check_version
 from app.core.secretbox import open_sealed, seal
-from app.core.security import constant_time_equals, decode_mfa_challenge, verify_password
+from app.core.security import (
+    constant_time_equals,
+    credential_fingerprint,
+    decode_mfa_challenge,
+    verify_password,
+)
 from app.core.tenancy import set_tenant_context
-from app.identity.auth_service import AuthLimiters, IssuedSession, _open_session, _rate_limited
+from app.identity.auth_service import (
+    AuthLimiters,
+    IssuedSession,
+    _client_key,
+    _open_session,
+    _rate_limited,
+)
 from app.identity.contracts import revoke_sessions
 from app.identity.models import AuthSession, UserAccount
 from app.identity.service import _user_or_404
@@ -213,10 +224,16 @@ def disable(auth: Authorized, password: str, code: str, settings: Settings, limi
     if not user.mfa_enabled:
         raise AppError("MFA_NOT_ENABLED")
     key = f"mfa-manage:{auth.user_id}"
-    if not verify_password(user.password_hash, password):
-        limiters.tokens.record_failure(key, auth.clock.now())
+    now = auth.clock.now()
+    if limiters.tokens.is_blocked(key, now):  # avant tout calcul : pas de force brute du mot de passe
+        raise _rate_limited(settings)
+    password_ok = verify_password(user.password_hash, password)
+    step = totp.verify(_active_secret(user, settings), code, now, last_step=user.mfa_last_step)
+    if not password_ok or step is None:
+        # Erreur unique : ne révèle pas lequel des deux facteurs est faux.
+        limiters.tokens.record_failure(key, now)
         raise AppError("INVALID_CREDENTIALS")
-    _check_totp(user, code, now=auth.clock.now(), settings=settings, key=key, limiters=limiters)
+    limiters.tokens.reset(key)
     _clear(user)
     record(
         db,
@@ -276,7 +293,8 @@ def verify_challenge(
     if challenge is None:
         raise AppError("MFA_CODE_INVALID")
     key = f"mfa-login:{challenge.user_id}"
-    if limiters.tokens.is_blocked(key, now):
+    source = f"ip:{_client_key()}"
+    if limiters.tokens.is_blocked(key, now) or limiters.source.is_blocked(source, now):
         raise _rate_limited(settings)
     set_tenant_context(db, challenge.tenant_id)
     user = db.execute(
@@ -291,6 +309,10 @@ def verify_challenge(
         or user.status != "ACTIVE"
         or tenant.status != "ACTIVE"
         or not user.mfa_enabled
+        # Mot de passe changé (ou réinitialisé) depuis l'émission du défi : celui-ci ne vaut plus.
+        or not constant_time_equals(
+            challenge.credential_fingerprint, credential_fingerprint(user.password_hash)
+        )
     ):
         raise AppError("MFA_CODE_INVALID")
 
@@ -309,6 +331,7 @@ def verify_challenge(
 
     if method is None:
         limiters.tokens.record_failure(key, now)
+        limiters.source.record_failure(source, now)
         record(
             db,
             tenant_id=tenant.tenant_id,
