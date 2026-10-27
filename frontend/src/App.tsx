@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router";
 
 import { useAuth } from "./auth/AuthContext";
 import { Layout } from "./components/Layout";
+import { AdminIndex, AdminLayout, AuditAdminPage, SitesAdminPage, UsersAdminPage } from "./pages/AdminPages";
 import { AssignmentsPage } from "./pages/AssignmentsPage";
 import { DriverDetailPage } from "./pages/DriverDetailPage";
 import { DriversPage } from "./pages/DriversPage";
@@ -37,6 +38,12 @@ export function App() {
         <Route path="conducteurs" element={<DriversPage />} />
         <Route path="conducteurs/:driverId" element={<DriverDetailPage />} />
         <Route path="affectations" element={<AssignmentsPage />} />
+        <Route path="administration" element={<AdminLayout />}>
+          <Route index element={<AdminIndex />} />
+          <Route path="sites" element={<SitesAdminPage />} />
+          <Route path="utilisateurs" element={<UsersAdminPage />} />
+          <Route path="journal" element={<AuditAdminPage />} />
+        </Route>
         <Route path="*" element={<p>Page introuvable.</p>} />
       </Route>
     </Routes>

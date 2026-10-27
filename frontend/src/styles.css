@@ -102,3 +102,8 @@ button.danger { background: var(--bad); border-color: var(--bad); color: #ffffff
 a.back { display: inline-block; margin-bottom: 0.5rem; color: var(--muted); }
 textarea { font: inherit; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; }
 .checkbox { flex-direction: row; align-items: center; gap: 0.5rem; }
+.tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--border); margin-bottom: 1rem; overflow-x: auto; }
+.tabs a { padding: 0.5rem 0.8rem; color: var(--text); text-decoration: none; border-bottom: 3px solid transparent; white-space: nowrap; }
+.tabs a.active { border-bottom-color: var(--accent); font-weight: 600; }
+pre { white-space: pre-wrap; word-break: break-word; background: var(--bg); padding: 0.5rem; border-radius: 6px; margin: 0; }
+h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
