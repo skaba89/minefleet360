@@ -161,6 +161,25 @@ def invitation_message(
     )
 
 
+def mfa_notice(email: str, event: str) -> EmailMessage:
+    """Alerte de sécurité : activation ou retrait de la double authentification (revue MFA-R-01/R-04)."""
+    texts = {
+        "ENABLED": "La double authentification vient d'être activée sur votre compte.",
+        "DISABLED": "La double authentification vient d'être désactivée sur votre compte.",
+        "RESET": "Un administrateur vient de retirer la double authentification de votre compte. "
+        "Vous devrez la reconfigurer à votre prochaine connexion.",
+    }
+    return EmailMessage(
+        to=email,
+        subject="MINEFLEET 360 — alerte de sécurité sur votre compte",
+        body=(
+            f"Bonjour,\n\n{texts[event]}\n"
+            "Si vous n'êtes pas à l'origine de ce changement, prévenez immédiatement votre administrateur.\n"
+        ),
+        kind="SECURITY_NOTICE",
+    )
+
+
 def reset_message(email: str, token: IssuedToken, settings: Settings) -> EmailMessage:
     link = f"{settings.public_web_url}/reinitialisation#token={token.encode()}"
     return EmailMessage(

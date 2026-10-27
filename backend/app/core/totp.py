@@ -74,9 +74,12 @@ def normalize_recovery_code(code: str) -> str:
     return code.strip().upper().replace("-", "").replace(" ", "")
 
 
-def hash_recovery_code(code: str) -> bytes:
-    """Empreinte stockée (codes à forte entropie, usage unique) : jamais le code en clair."""
-    return hashlib.sha256(normalize_recovery_code(code).encode()).digest()
+def hash_recovery_code(code: str, pepper: bytes) -> bytes:
+    """Empreinte stockée : HMAC-SHA256 avec un poivre hors base (dérivé de MF_MFA_ENCRYPTION_KEY).
+
+    Une fuite de la base seule ne permet pas de retrouver les codes par recherche exhaustive.
+    """
+    return hmac.new(pepper, normalize_recovery_code(code).encode(), hashlib.sha256).digest()
 
 
 def looks_like_recovery_code(code: str) -> bool:

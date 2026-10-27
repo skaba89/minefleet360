@@ -42,17 +42,32 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
 function Enroll({ onEnabled }: { onEnabled: (codes: string[]) => void }) {
   const [setup, setSetup] = useState<Schemas["MfaSetupOut"] | null>(null);
   const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
   if (!setup) {
     return (
       <ActionForm
         title="Activer la double authentification"
         submitLabel="Commencer"
-        onSubmit={async () => setSetup((await call("post", "/me/mfa/setup")).data)}
+        onSubmit={async () => {
+          const { data } = await call("post", "/me/mfa/setup", { body: { password } });
+          setPassword("");
+          setSetup(data);
+        }}
       >
         <p>
           Installez une application d'authentification sur votre téléphone (par exemple Google Authenticator,
-          Microsoft Authenticator ou FreeOTP), puis cliquez sur « Commencer ». Elle fonctionne sans réseau.
+          Microsoft Authenticator ou FreeOTP), puis confirmez votre mot de passe. Elle fonctionne sans réseau.
         </p>
+        <label>
+          Mot de passe actuel
+          <input
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </label>
       </ActionForm>
     );
   }

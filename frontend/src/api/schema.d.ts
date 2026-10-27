@@ -534,7 +534,7 @@ export interface paths {
         put?: never;
         /**
          * Reset Mfa
-         * @description Perte du second facteur : retrait par l'administrateur, sessions fermées, audité.
+         * @description Perte du second facteur : retrait par l'administrateur, sessions fermées, audité, cible prévenue.
          */
         post: operations["reset_mfa_api_v1_users__user_id__reset_mfa_post"];
         delete?: never;
@@ -1562,6 +1562,11 @@ export interface components {
             secret: string;
             /** Otpauth Uri */
             otpauth_uri: string;
+        };
+        /** MfaSetupRequest */
+        MfaSetupRequest: {
+            /** Password */
+            password: string;
         };
         /** MfaStatusOut */
         MfaStatusOut: {
@@ -2610,7 +2615,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaSetupRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

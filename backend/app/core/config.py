@@ -1,5 +1,7 @@
 """Configuration par variables d'environnement (préfixe MF_). Aucun secret par défaut."""
 
+import base64
+import binascii
 from datetime import timedelta
 from functools import lru_cache
 from typing import Literal
@@ -90,6 +92,15 @@ class Settings(BaseSettings):
     def _mfa_key_required_on_servers(self) -> "Settings":
         if self.env in ("staging", "production") and self.mfa_encryption_key is None:
             raise ValueError("MF_MFA_ENCRYPTION_KEY est obligatoire en recette et en production")
+        if self.mfa_encryption_key is not None:
+            # Échec au démarrage plutôt qu'à la première connexion d'un utilisateur (revue MFA-R-07).
+            raw = self.mfa_encryption_key.get_secret_value().strip()
+            try:
+                key = base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4))
+            except (ValueError, binascii.Error) as exc:
+                raise ValueError("MF_MFA_ENCRYPTION_KEY n'est pas du base64url valide") from exc
+            if len(key) != 32:
+                raise ValueError("MF_MFA_ENCRYPTION_KEY doit contenir 32 octets (AES-256)")
         return self
 
     @property

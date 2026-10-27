@@ -13,6 +13,7 @@ from app.core.http import IfMatch, Page, Pagination, etag
 from app.core.logging import security_logger
 from app.identity import auth_service, mfa_service, service
 from app.identity.auth_service import AuthLimiters, IssuedChallenge, IssuedSession
+from app.identity.contracts import mfa_notice
 from app.identity.models import UserAccount
 from app.identity.schemas import (
     ChangePasswordRequest,
@@ -24,6 +25,7 @@ from app.identity.schemas import (
     MfaDisableRequest,
     MfaRecoveryCodesOut,
     MfaSetupOut,
+    MfaSetupRequest,
     MfaStatusOut,
     MfaVerifyRequest,
     PlatformLoginRequest,
@@ -219,16 +221,16 @@ def password_reset_request(
         db, code=body.workspace_code, email=body.email, clock=clock, settings=settings, limiters=limiters
     )
     if message is not None:
-        background_tasks.add_task(_deliver_reset_email, email, message)
+        background_tasks.add_task(_deliver_quietly, email, message)
     return {"message_fr": "Si un compte correspond, un lien de réinitialisation a été envoyé."}
 
 
-def _deliver_reset_email(sender: EmailSender, message: EmailMessage) -> None:
-    """Une panne SMTP ne doit ni révéler l'existence du compte ni changer la réponse anonyme."""
+def _deliver_quietly(sender: EmailSender, message: EmailMessage) -> None:
+    """Envoi après réponse : une panne SMTP ne révèle rien et ne change pas la réponse (journalisée)."""
     try:
         sender.send(message)
     except (RuntimeError, OSError):
-        security_logger.error("email_delivery_failed", extra={"kind": "PASSWORD_RESET"})
+        security_logger.error("email_delivery_failed", extra={"kind": message.kind})
 
 
 @auth_router.post("/password/reset-confirm", status_code=status.HTTP_204_NO_CONTENT)
@@ -274,17 +276,28 @@ def mfa_status(auth: SelfService, settings: SettingsDep) -> MfaStatusOut:
 
 
 @me_router.post("/mfa/setup", response_model=MfaSetupOut)
-def mfa_setup(auth: SelfService, settings: SettingsDep, response: Response) -> MfaSetupOut:
+def mfa_setup(
+    body: MfaSetupRequest, auth: SelfService, settings: SettingsDep, limiters: LimitersDep, response: Response
+) -> MfaSetupOut:
     response.headers["Cache-Control"] = "no-store"
-    return MfaSetupOut.model_validate(mfa_service.start_setup(auth, settings))
+    return MfaSetupOut.model_validate(mfa_service.start_setup(auth, body.password, settings, limiters))
 
 
 @me_router.post("/mfa/confirm", response_model=MfaRecoveryCodesOut)
 def mfa_confirm(
-    body: MfaCodeRequest, auth: SelfService, settings: SettingsDep, limiters: LimitersDep, response: Response
+    body: MfaCodeRequest,
+    auth: SelfService,
+    settings: SettingsDep,
+    limiters: LimitersDep,
+    response: Response,
+    background_tasks: BackgroundTasks,
+    email: EmailDep,
 ) -> MfaRecoveryCodesOut:
     response.headers["Cache-Control"] = "no-store"
-    return MfaRecoveryCodesOut(recovery_codes=mfa_service.confirm_setup(auth, body.code, settings, limiters))
+    address = _own_email(auth)  # avant le commit du service : le contexte tenant (SET LOCAL) s'y perd
+    codes = mfa_service.confirm_setup(auth, body.code, settings, limiters)
+    background_tasks.add_task(_deliver_quietly, email, mfa_notice(address, "ENABLED"))
+    return MfaRecoveryCodesOut(recovery_codes=codes)
 
 
 @me_router.post("/mfa/recovery-codes", response_model=MfaRecoveryCodesOut)
@@ -299,9 +312,22 @@ def mfa_recovery_codes(
 
 @me_router.post("/mfa/disable", status_code=status.HTTP_204_NO_CONTENT)
 def mfa_disable(
-    body: MfaDisableRequest, auth: SelfService, settings: SettingsDep, limiters: LimitersDep
+    body: MfaDisableRequest,
+    auth: SelfService,
+    settings: SettingsDep,
+    limiters: LimitersDep,
+    background_tasks: BackgroundTasks,
+    email: EmailDep,
 ) -> None:
+    address = _own_email(auth)  # avant le commit du service : le contexte tenant (SET LOCAL) s'y perd
     mfa_service.disable(auth, body.password, body.code, settings, limiters)
+    background_tasks.add_task(_deliver_quietly, email, mfa_notice(address, "DISABLED"))
+
+
+def _own_email(auth: Authorized) -> str:
+    return auth.db.execute(
+        select(UserAccount.email).where(UserAccount.user_account_id == auth.user_id)
+    ).scalar_one()
 
 
 @me_router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
@@ -414,9 +440,12 @@ def reset_mfa(
     auth: Annotated[Authorized, Depends(Require("identity.user.reset_mfa"))],
     version: IfMatch,
     response: Response,
+    background_tasks: BackgroundTasks,
+    email: EmailDep,
 ) -> UserOut:
-    """Perte du second facteur : retrait par l'administrateur, sessions fermées, audité."""
+    """Perte du second facteur : retrait par l'administrateur, sessions fermées, audité, cible prévenue."""
     user = mfa_service.admin_reset(auth, user_id, version)
+    background_tasks.add_task(_deliver_quietly, email, mfa_notice(user.email, "RESET"))
     response.headers["ETag"] = etag(user.row_version)
     return service.user_out(user, auth.scope)
 

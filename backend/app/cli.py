@@ -10,6 +10,7 @@ minefleet reset-platform-mfa --email <e-mail>
 """
 
 import argparse
+import getpass
 import os
 import sys
 
@@ -81,6 +82,14 @@ def create_platform_admin(email: str, display_name: str, password: str) -> int:
         db.close()
 
 
+def _operator() -> str:
+    """Utilisateur système qui lance la commande (traçabilité de l'exploitation, revue MFA-R-09)."""
+    try:
+        return getpass.getuser()
+    except (KeyError, OSError):
+        return "inconnu"
+
+
 def reset_platform_mfa(email: str) -> int:
     from app.identity.contracts import revoke_sessions
 
@@ -108,7 +117,7 @@ def reset_platform_mfa(email: str) -> int:
             entity_type="user_account",
             entity_id=user.user_account_id,
             actor_kind="SYSTEM",
-            reason="OPS_CLI",
+            reason=f"OPS_CLI:{_operator()}"[:200],
             changed_fields=("mfa_enabled",),
         )
         db.commit()

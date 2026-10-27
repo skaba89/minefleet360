@@ -49,7 +49,12 @@ def test_recovery_codes_are_unique_unambiguous_and_hashed() -> None:
         assert len(code) == 11 and code[5] == "-"
         assert not set(code.replace("-", "")) & set("01OI")
         assert totp.looks_like_recovery_code(code.lower())
-        assert totp.hash_recovery_code(code) == totp.hash_recovery_code(code.lower().replace("-", " "))
+        pepper = b"p" * 32
+        assert totp.hash_recovery_code(code, pepper) == totp.hash_recovery_code(
+            code.lower().replace("-", " "), pepper
+        )
+        # Sans le poivre (hors base), l'empreinte ne se recalcule pas : une fuite de la base ne suffit pas.
+        assert totp.hash_recovery_code(code, pepper) != totp.hash_recovery_code(code, b"q" * 32)
     assert not totp.looks_like_recovery_code("123456")
 
 
@@ -72,3 +77,12 @@ def test_secret_sealing_is_bound_to_its_context_and_key() -> None:
 def test_key_is_mandatory_on_servers() -> None:
     with pytest.raises(ValueError, match="MF_MFA_ENCRYPTION_KEY"):
         Settings(app_password=SecretStr("x"), jwt_secret=SecretStr("j" * 40), env="staging")  # type: ignore[arg-type]
+
+
+def test_invalid_key_is_refused_at_startup() -> None:
+    """Revue MFA-R-07 : une clé mal formée échoue au démarrage, pas à la première connexion."""
+    with pytest.raises(ValueError, match="32 octets"):
+        _settings(MF_MFA_ENCRYPTION_KEY=SecretStr("dHJvcC1jb3VydGU"))
+    # Le décodeur base64url ignore les caractères invalides : la longueur fausse est détectée à leur place.
+    with pytest.raises(ValueError, match="MF_MFA_ENCRYPTION_KEY"):
+        _settings(MF_MFA_ENCRYPTION_KEY=SecretStr("pas du base64 !!!"))
