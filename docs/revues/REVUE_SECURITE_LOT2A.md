@@ -1,4 +1,4 @@
-# Revue sécurité — lot 2a : missions de transport et rotations (PR #13)
+# Revue sécurité — lot 2a : missions de transport et rotations (PR #13, correctifs PR suivante)
 
 > Date : 2026-10-27. Objet : `backend/app/dispatch/*`, migration `0012_dispatch`, `assignment/contracts.py` (`running_blockers`), `authz_matrix.yaml` (`dispatch.*`), `errors.py`, pages web Missions, Détail de mission et Lieux et matières.
 
@@ -7,7 +7,7 @@ Aucun constat critique ni élevé. Vérifiés sans problème : isolation des ten
 
 | ID | Gravité | Constat | Traitement |
 |---|---|---|---|
-| L2A-R-01 | Moyenne | La réaffectation remplaçait véhicule, conducteur et affectation sans trace dans la chronologie ni dans l'audit | **Corrigé** : chaque événement porte l'affectation en vigueur (`mission_event.vehicle_assignment_id`, clé étrangère composite) ; l'audit `mission.reassigned` consigne avant/après de `vehicle_assignment_id`, `vehicle_id`, `driver_id` ; test `test_reassignment_is_traceable` |
+| L2A-R-01 | Moyenne | La réaffectation remplaçait véhicule, conducteur et affectation sans trace dans la chronologie ni dans l'audit | **Corrigé** : chaque événement porte l'affectation en vigueur (`mission_event.vehicle_assignment_id`, clé étrangère composite, migration `0013` qui complète les événements existants) ; l'audit `mission.reassigned` consigne avant/après de `vehicle_assignment_id`, `vehicle_id`, `driver_id` ; test `test_reassignment_is_traceable` |
 | L2A-R-02 | Moyenne | Nom du conducteur renvoyé à FINANCE et au chef d'atelier (portée société), alors que l'API des affectations le leur refuse (D-10) | **Corrigé** : `driver_id` et `driver_display_name` à `null` sans `assignment.vehicle_assignment.read` sur le site ; documenté dans MATRICE_RBAC §2.5 bis ; test `test_driver_name_follows_assignment_read_rights` |
 | L2A-R-03 | Faible à moyenne | Conformité et fin d'affectation évaluées à l'heure déclarée : un départ antidaté passait après l'échéance | **Corrigé** : contrôles à l'heure serveur, l'heure déclarée ne sert qu'à la chronologie ; test `test_departure_checks_use_server_time`. Résiduel accepté : la fenêtre d'antidatage de 15 min reste utilisable pour la chronologie (saisie différée sur le terrain) ; `recorded_at` garde l'heure réelle d'enregistrement |
 | L2A-R-04 | Faible | Rotations sans durée minimale ni plafond ; détail de mission non paginé | **Ouvert, lot 2b** : durée minimale paramétrable, plafond (`planned_rotations`), indicateur de cohérence, pagination du détail. Détectable aujourd'hui par l'audit et `recorded_at` |
@@ -21,7 +21,7 @@ Aucun constat critique ni élevé. Vérifiés sans problème : isolation des ten
 | L2A-R-12 | Info | Action d'audit déclarée `mission.progress`, écrite `mission.<événement>` | **Documenté** dans `authz_matrix.yaml` |
 
 ## 2. Vérifications exécutées (2026-10-27)
-- Serveur : `scripts/test.ps1` → ruff, format, mypy OK ; **1734 tests passés**, couverture 92,75 %. Base de test remise à 0011 puis migrée avec la nouvelle 0012 (migration jamais déployée).
+- Serveur : `scripts/test.ps1` → ruff, format, mypy OK ; **1734 tests passés**, couverture 92,75 %. Migration `0013` vérifiée sur la base locale de développement (fictive) : événements créés en 0012 complétés, politiques temporaires retirées, trigger d'ajout seul réactif (modification refusée).
 - Interface : `tsc` OK, Vitest 16/16, Playwright 12/12 (dont `missions.spec.ts`), build OK ; types API régénérés.
 
 ## 3. Non vérifié
