@@ -9,6 +9,7 @@ import { DriversPage } from "./pages/DriversPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { ActivationPage, ResetConfirmPage, ResetRequestPage } from "./pages/PasswordPages";
+import { SecurityPage } from "./pages/SecurityPage";
 import { VehicleDetailPage } from "./pages/VehicleDetailPage";
 import { VehiclesPage } from "./pages/VehiclesPage";
 import { SiteProvider } from "./site/SiteContext";
@@ -38,6 +39,7 @@ export function App() {
         <Route path="conducteurs" element={<DriversPage />} />
         <Route path="conducteurs/:driverId" element={<DriverDetailPage />} />
         <Route path="affectations" element={<AssignmentsPage />} />
+        <Route path="mon-compte/securite" element={<SecurityPage />} />
         <Route path="administration" element={<AdminLayout />}>
           <Route index element={<AdminIndex />} />
           <Route path="sites" element={<SitesAdminPage />} />

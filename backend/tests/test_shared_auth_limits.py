@@ -146,7 +146,10 @@ def test_app_role_cannot_read_or_clear_global_limits() -> None:
         assert exc.value.orig is not None and exc.value.orig.sqlstate == "42501"
 
 
-def test_mfa_flag_refuses_password_login_existing_access_and_refresh(client: TestClient, api: Api) -> None:
+def test_mfa_flag_refuses_password_only_session_existing_access_and_refresh(
+    client: TestClient, api: Api
+) -> None:
+    """Compte passé en double authentification : plus aucune session sur le mot de passe seul (C-03)."""
     tenant = api.tenant()
     current = client.post(
         f"{API}/auth/login",
@@ -157,18 +160,21 @@ def test_mfa_flag_refuses_password_login_existing_access_and_refresh(client: Tes
         set_tenant_context(db, tenant.tenant_id)
         db.execute(
             text(
-                "UPDATE user_account SET mfa_enabled = true, mfa_secret_encrypted = :secret"
+                "UPDATE user_account SET mfa_enabled = true, mfa_enabled_at = now(),"
+                " mfa_secret_encrypted = :secret"
                 " WHERE user_account_id = :user_id"
             ),
             {"secret": b"synthetic-encrypted-placeholder", "user_id": tenant.admin.user_id},
         )
         db.commit()
-    refused = client.post(
+    challenge = client.post(
         f"{API}/auth/login",
         json={"workspace_code": tenant.code, "email": tenant.admin.email, "password": PASSWORD},
     )
-    assert refused.status_code == 401 and refused.json()["code"] == "INVALID_CREDENTIALS"
-    assert "set-cookie" not in refused.headers
+    # Mot de passe correct : défi du second facteur, mais ni jeton d'accès ni cookie de session.
+    assert challenge.status_code == 200 and challenge.json()["mfa_required"] is True
+    assert "access_token" not in challenge.json()
+    assert "set-cookie" not in challenge.headers
     assert client.get(f"{API}/tenant", headers=tenant.admin.headers).status_code == 401
     client.cookies.clear()
     assert client.post(f"{API}/auth/refresh", cookies={"mf_refresh": cookie}).status_code == 401

@@ -36,7 +36,7 @@ Services :
 1. Durcissement : mises à jour, `ufw` (22, 80, 443), `PasswordAuthentication no`, mises à jour de sécurité automatiques.
 2. Docker Engine + plugin Compose (dépôt officiel).
 3. Code : `git archive <commit> | ssh … tar -x` depuis le poste de déploiement (aucun identifiant GitHub sur le serveur), ou clone avec une **clé de déploiement en lecture seule**. Le commit déployé est noté dans `DEPLOYED_COMMIT`.
-4. `infra/deploy/.env.prod` créé **sur le serveur** (secrets `openssl rand -hex 32`, droits `600`), `MF_ENV=staging`.
+4. `infra/deploy/.env.prod` créé **sur le serveur** (secrets `openssl rand -hex 32`, droits `600`), `MF_ENV=staging`. Double authentification : `MF_MFA_ENCRYPTION_KEY` (32 octets base64url, voir `.env.prod.example`) **sauvegardée hors serveur** — sa perte rend tous les seconds facteurs invérifiables (retrait par l'administrateur puis réenrôlement).
 5. Construire les images puis démarrer la base : `docker compose -f docker-compose.prod.yml --env-file .env.prod build api migrate web`, puis `docker compose ... up -d db`. `.env.prod` doit contenir `MF_PUBLIC_WEB_URL` (URL HTTPS de l'interface : liens d'invitation et de réinitialisation) et `MF_ALLOWED_ORIGINS` (même origine : contrôle du rafraîchissement de session).
 6. `docker compose ... run --rm migrate`, puis démarrer/recréer `api`, `web` et le proxy choisi. La version applicative R3 exige les migrations `0008` et `0009` avant de servir les authentifications ; la tranche 1c ajoute `0010` (affectations). Serveur partagé : recopier `vps-proxy-minefleet.caddy` dans `~/vps-proxy/sites/minefleet.caddy` (adresse ACME renseignée) puis `~/vps-proxy/reload.sh`, qui valide avant de recharger.
 7. Premier `PLATFORM_ADMIN` (`MF_BOOTSTRAP_PASSWORD` saisi de façon interactive) : `minefleet create-platform-admin`.
@@ -47,7 +47,7 @@ Services :
 ## 5. Conditions avant tout passage en production (données réelles)
 | Bloquant | Référence |
 |---|---|
-| MFA (TOTP) pour `PLATFORM_ADMIN`, `TENANT_ADMIN`, `HR`, `FINANCE` | C-03, SEC-04 |
+| ~~MFA (TOTP) pour `PLATFORM_ADMIN`, `TENANT_ADMIN`, `HR`, `FINANCE`~~ — **livré (D-40)**, à valider en recette avec de vrais téléphones | C-03, SEC-04 |
 | Avis juridique guinéen : base légale, hébergement hors Guinée, durées de conservation | C-01, C-08, C-09 |
 | Sauvegardes chiffrées hors machine + test de restauration | SEC-15 |
 | Limitation de débit partagée (pas en mémoire) et supervision/alertes | SEC-07, QA-32 |
@@ -67,7 +67,7 @@ Les compteurs sont partagés entre les deux workers par PostgreSQL, avec pool di
 
 Le même secret JWT doit être utilisé par toutes les instances; sa rotation invalide les sessions signées et les empreintes de limiteurs précédentes. Superviser la disponibilité PostgreSQL et la saturation des compteurs. Les empreintes de refresh consommés sont bornées à1024 par session; au plafond, la session est révoquée et exige une nouvelle connexion. Elles restent stockées avec la session jusqu'à sa purge, qui doit faire partie de la politique de rétention.
 
-Le flag MFA ne constitue toujours pas une implémentation TOTP : un compte marqué `mfa_enabled=true` est refusé à la connexion, au refresh et lors des accès protégés. L'enrôlement/challenge reste un bloquant de production.
+Double authentification (D-40) : un compte `mfa_enabled` reçoit un défi après le mot de passe (`/auth/mfa/verify`) ; seule une session marquée `otp` donne accès et peut être rafraîchie. Les rôles sensibles sans second facteur sont limités à leur compte jusqu'à l'enrôlement (`MF_MFA_ENFORCEMENT=enroll`, défaut). Perte du téléphone : codes de récupération, sinon retrait par l'administrateur (`POST /users/{id}/reset-mfa`) ; pour un `PLATFORM_ADMIN`, `docker compose ... run --rm api minefleet reset-platform-mfa --email <e-mail>`.
 
 ## 6. Retour arrière
 `git checkout <commit précédent>` puis `up -d --build`. Aucune migration n'est rétrogradée hors `local/test/ci` : toute migration doit rester rétrocompatible (expansion/contraction). Dernier recours : restauration du dernier `pg_dump`.
@@ -85,6 +85,8 @@ Vérifié sur le serveur (via `127.0.0.1:8200`) : migrations à `0007` (head) ; 
 
 **Mise à jour du 2026-10-26/27 — tranche 1c (affectations + interface web)** : commit `6808ead` (PR #4) + correctif `1abbe97` (PR #6), noté dans `DEPLOYED_COMMIT`. Sauvegarde préalable `backups/minefleet-20261026T184903Z.dump`. Migrations `0007` → `0010` (R3 puis affectations), `MF_PUBLIC_WEB_URL` ajouté à `.env.prod`, services `api` et `web` recréés, site du proxy partagé remplacé (validé par `reload.sh`). Vérifié depuis l'extérieur : `/api/v1/health` 200 ; `/`, `/affectations`, `/activation` 200 (interface) ; `/api/v1/vehicle-assignments` sans jeton 401 ; en-tête `Content-Security-Policy` présent.
 Incidents pendant le déploiement : (1) `docker compose run` sans `-T` lisait l'entrée standard et a interrompu le script distant après la migration — exécuter les commandes compose distantes avec `-T` / `</dev/null` ; (2) le conteneur `web` redémarrait en boucle (`operation not permitted`) à cause de la capacité de fichier du binaire Caddy sous `cap_drop: ALL` — corrigé par PR #6. Interface indisponible (502) pendant l'intervalle ; API restée disponible.
+
+**Mise à jour du 2026-10-27 — écrans de saisie et d'administration** : commit `1340687` (PR #6 et #7), conteneur `web` seul reconstruit (serveur, infrastructure et base inchangés). Vérifié depuis l'extérieur : `/`, `/vehicules`, `/conducteurs`, `/affectations`, `/administration/sites` 200 ; API santé 200, route protégée sans jeton 401 ; CSP présente ; bundle servi identique au build testé (`index-guIX9EIZ.js`).
 
 **Reste à faire par l'exploitant** (actions refusées à l'agent : configuration d'un autre projet et tâche planifiée persistante) :
 1. ~~Exposition HTTPS~~ — **fait le 2026-10-26** : site copié dans `~/vps-proxy/sites/minefleet.caddy`, proxy commun rechargé, certificat Let's Encrypt obtenu ; `https://minefleet.51-75-248-4.sslip.io/api/v1/health` 200 depuis l'extérieur, autres sites du proxy toujours servis.

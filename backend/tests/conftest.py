@@ -18,6 +18,10 @@ from app.core.config import get_settings
 from app.core.db import dispose_engine
 from app.core.email import MemoryEmailSender
 
+# Les comptes de test (TENANT_ADMIN, HR…) n'ont pas de second facteur : l'enrôlement doux (C-03) est
+# désactivé pour le harnais commun et réactivé explicitement par les tests de tests/test_mfa.py.
+os.environ.setdefault("MF_MFA_ENFORCEMENT", "off")
+
 PLATFORM_EMAIL = "plateforme@example.com"
 PASSWORD = "Mot-de-passe-fictif-2026"
 API = "/api/v1"

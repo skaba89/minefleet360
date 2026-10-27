@@ -134,3 +134,44 @@ def decode_access_token(token: str, now: datetime, settings: Settings) -> Access
         return AccessClaims(uuid.UUID(payload["sub"]), uuid.UUID(payload["tid"]), uuid.UUID(payload["sid"]))
     except (ValueError, TypeError):
         return None
+
+
+# --- Jeton de défi du second facteur (C-03) ---------------------------------------------------------
+# Émis après un mot de passe correct pour un compte à double authentification : il n'ouvre aucune
+# session et ne vaut pas jeton d'accès (typ distinct, refusé par decode_access_token).
+
+
+@dataclass(frozen=True)
+class MfaChallenge:
+    user_id: uuid.UUID
+    tenant_id: uuid.UUID
+
+
+def issue_mfa_challenge(challenge: MfaChallenge, now: datetime, settings: Settings) -> str:
+    payload = {
+        "sub": str(challenge.user_id),
+        "tid": str(challenge.tenant_id),
+        "jti": str(uuid.uuid4()),
+        "iat": int(now.timestamp()),
+        "exp": int((now + settings.mfa_challenge_ttl).timestamp()),
+        "typ": "mfa",
+    }
+    return jwt.encode(payload, settings.jwt_secret.get_secret_value(), algorithm=settings.jwt_algorithm)
+
+
+def decode_mfa_challenge(token: str, now: datetime, settings: Settings) -> MfaChallenge | None:
+    try:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret.get_secret_value(),
+            algorithms=[settings.jwt_algorithm],
+            options={"require": ["sub", "tid", "exp", "iat"], "verify_exp": False},
+        )
+    except jwt.PyJWTError:
+        return None
+    if payload.get("typ") != "mfa" or int(payload["exp"]) <= int(now.timestamp()):
+        return None
+    try:
+        return MfaChallenge(uuid.UUID(payload["sub"]), uuid.UUID(payload["tid"]))
+    except (ValueError, TypeError):
+        return None

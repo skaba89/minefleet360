@@ -37,6 +37,48 @@ class TokenResponse(BaseModel):
     user: SessionUser
 
 
+class MfaChallengeResponse(BaseModel):
+    """Mot de passe correct, second facteur attendu : aucune session n'est ouverte à ce stade."""
+
+    mfa_required: Literal[True] = True
+    mfa_token: str
+    expires_in: int
+
+
+class MfaVerifyRequest(StrictModel):
+    mfa_token: str = Field(min_length=10, max_length=2000)
+    code: str = Field(min_length=6, max_length=20)  # 6 chiffres TOTP ou code de récupération XXXXX-XXXXX
+
+
+class MfaCodeRequest(StrictModel):
+    code: str = Field(min_length=6, max_length=20)
+
+
+class MfaDisableRequest(StrictModel):
+    password: str = Field(min_length=1, max_length=256)
+    code: str = Field(min_length=6, max_length=20)
+
+
+class MfaStatusOut(BaseModel):
+    enabled: bool
+    required: bool
+    enabled_at: datetime | None
+    recovery_codes_remaining: int
+
+
+class MfaSetupOut(BaseModel):
+    """Affiché une seule fois, pendant l'enrôlement : secret à saisir ou lien otpauth:// à ouvrir."""
+
+    secret: str
+    otpauth_uri: str
+
+
+class MfaRecoveryCodesOut(BaseModel):
+    """Codes de récupération en clair : renvoyés UNE seule fois, jamais relisibles ensuite."""
+
+    recovery_codes: list[str]
+
+
 class TokenPasswordRequest(StrictModel):
     token: str = Field(min_length=10, max_length=200)
     password: str = Field(min_length=1, max_length=256)
@@ -75,6 +117,7 @@ class UserOut(BaseModel):
     user_account_id: uuid.UUID
     display_name: str
     status: str
+    mfa_enabled: bool  # indicateur seulement : jamais le secret ni les codes
     email: str | None = None
     phone: str | None = None
     last_login_at: datetime | None = None
@@ -96,6 +139,9 @@ class MeOut(BaseModel):
     tenant_display_name: str
     timezone: str
     grants: list[GrantOut]
+    mfa_enabled: bool
+    # Enrôlement doux (C-03) : tant que vrai, seules les routes du compte sont accessibles.
+    mfa_enrollment_required: bool
 
 
 # --- Rôles --------------------------------------------------------------------------------------------

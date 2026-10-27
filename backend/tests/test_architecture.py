@@ -25,6 +25,7 @@ def test_set_tenant_context_callers_are_known() -> None:
         "tenancy.py",
         "dependencies.py",
         "auth_service.py",
+        "mfa_service.py",  # seconde étape de connexion : tenant porté par le jeton de défi signé
         "service.py",
         "contracts.py",
         "cli.py",

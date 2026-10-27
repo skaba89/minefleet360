@@ -24,11 +24,13 @@ from app.core.request_context import get_request_meta
 from app.core.security import (
     AccessClaims,
     CompositeToken,
+    MfaChallenge,
     burn_password_check,
     check_password_policy,
     constant_time_equals,
     hash_password,
     issue_access_token,
+    issue_mfa_challenge,
     new_secret,
     parse_composite_token,
     password_needs_rehash,
@@ -39,6 +41,14 @@ from app.core.tenancy import set_login_tenant_code, set_tenant_context
 from app.identity.contracts import issue_account_token, reset_message, revoke_sessions
 from app.identity.models import AccountToken, AuthSession, UserAccount
 from app.organization.models import Tenant
+
+
+@dataclass(frozen=True)
+class IssuedChallenge:
+    """Mot de passe correct pour un compte à double authentification : le code est encore attendu."""
+
+    mfa_token: str
+    expires_in: int
 
 
 @dataclass(frozen=True)
@@ -81,7 +91,13 @@ def _resolve_tenant(db: Session, code: str, kind: str) -> Tenant | None:
 
 
 def _open_session(
-    db: Session, user: UserAccount, tenant: Tenant, clock: Clock, settings: Settings
+    db: Session,
+    user: UserAccount,
+    tenant: Tenant,
+    clock: Clock,
+    settings: Settings,
+    *,
+    amr: tuple[str, ...] = ("pwd",),
 ) -> IssuedSession:
     now = clock.now()
     meta = get_request_meta()
@@ -91,7 +107,7 @@ def _open_session(
         tenant_id=tenant.tenant_id,
         user_account_id=user.user_account_id,
         refresh_hash_current=sha256(secret),
-        amr=["pwd"],
+        amr=list(amr),
         ip_address=meta.ip_address if meta else None,
         user_agent=(meta.user_agent or "")[:300] if meta and meta.user_agent else None,
         created_at=now,
@@ -130,7 +146,7 @@ def login(
     clock: Clock,
     settings: Settings,
     limiters: AuthLimiters,
-) -> IssuedSession:
+) -> IssuedSession | IssuedChallenge:
     now = clock.now()
     code, email_key = code.strip().lower(), email.strip().lower()
     key = f"{kind}:{code}:{email_key}"
@@ -153,7 +169,6 @@ def login(
         or user is None
         or not password_ok
         or user.status != "ACTIVE"
-        or user.mfa_enabled  # aucun second facteur opérationnel : ne jamais ouvrir une session pwd seule
         or tenant.status != "ACTIVE"
     ):
         limiters.login.record_failure(key, now)
@@ -182,6 +197,23 @@ def login(
     if user.password_hash and password_needs_rehash(user.password_hash):
         user.password_hash = hash_password(password)
     user.failed_login_count = 0
+    if user.mfa_enabled:
+        # Jamais de session sur le seul mot de passe pour un compte à double authentification (C-03).
+        record(
+            db,
+            tenant_id=tenant.tenant_id,
+            action="auth.mfa_challenge",
+            entity_type="user_account",
+            entity_id=user.user_account_id,
+            actor_user_id=user.user_account_id,
+        )
+        db.commit()
+        return IssuedChallenge(
+            mfa_token=issue_mfa_challenge(
+                MfaChallenge(user.user_account_id, tenant.tenant_id), now, settings
+            ),
+            expires_in=int(settings.mfa_challenge_ttl.total_seconds()),
+        )
     user.last_login_at = now
     issued = _open_session(db, user, tenant, clock, settings)
     record(
@@ -223,7 +255,7 @@ def refresh(db: Session, *, raw_cookie: str | None, clock: Clock, settings: Sett
         or user is None
         or tenant is None
         or user.status != "ACTIVE"
-        or user.mfa_enabled
+        or (user.mfa_enabled and "otp" not in session.amr)
         or tenant.status != "ACTIVE"
     ):
         raise AppError("AUTH_REQUIRED")

@@ -251,6 +251,11 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "identity.user.reset_mfa": {
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "identity.user.update": {
     "TENANT_ADMIN": [
       "TENANT"

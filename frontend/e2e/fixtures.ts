@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
@@ -98,4 +99,21 @@ export async function preparePair(
   expect(qualification.status()).toBe(201);
   const driverLabel = `${lastName.toUpperCase()} Test`;
   return { fleetNumber, driverLabel, driverOption: `${driverLabel} — M-E2E-${suffix}` };
+}
+
+/** TOTP RFC 6238 (SHA1, 6 chiffres, 30 s) pour simuler l'application d'authentification du testeur. */
+export function totpCode(base32Secret: string, offsetSeconds = 0): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const char of base32Secret.replace(/[\s=]/g, "").toUpperCase()) {
+    bits += alphabet.indexOf(char).toString(2).padStart(5, "0");
+  }
+  const key = Buffer.from(bits.match(/.{8}/g)!.map((b) => parseInt(b, 2)));
+  const step = Math.floor((Date.now() / 1000 + offsetSeconds) / 30);
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(step));
+  const digest = createHmac("sha1", key).update(counter).digest();
+  const offset = digest[digest.length - 1]! & 0x0f;
+  const value = (digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000;
+  return value.toString().padStart(6, "0");
 }

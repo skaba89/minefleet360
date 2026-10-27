@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ARRAY, Boolean, DateTime, FetchedValue, Integer, LargeBinary, String, text
+from sqlalchemy import ARRAY, BigInteger, Boolean, DateTime, FetchedValue, Integer, LargeBinary, String, text
 from sqlalchemy.dialects.postgresql import CITEXT, INET, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -38,6 +38,15 @@ class UserAccount(AuditedColumns, Base):
     phone: Mapped[str | None] = mapped_column(String)
     password_hash: Mapped[str | None] = mapped_column(String)
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    # Secrets TOTP toujours chiffrés (app.core.secretbox) ; codes de récupération hachés (app.core.totp).
+    mfa_secret_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
+    mfa_pending_secret_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
+    mfa_pending_created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    mfa_last_step: Mapped[int | None] = mapped_column(BigInteger)
+    mfa_enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    mfa_recovery_hashes: Mapped[list[bytes]] = mapped_column(
+        ARRAY(LargeBinary), nullable=False, server_default=text("'{}'::bytea[]")
+    )
     status: Mapped[str] = mapped_column(String, nullable=False, server_default="INVITED")
     failed_login_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -14,10 +14,17 @@ import {
 
 type Me = Schemas["MeOut"];
 
+/** Mot de passe correct, second facteur attendu (C-03) : jeton de défi à présenter avec le code. */
+export interface MfaChallenge {
+  mfaToken: string;
+}
+
 interface AuthState {
   status: "loading" | "anonymous" | "authenticated";
   me: Me | null;
-  login: (workspaceCode: string, email: string, password: string) => Promise<void>;
+  login: (workspaceCode: string, email: string, password: string) => Promise<MfaChallenge | null>;
+  verifyMfa: (challenge: MfaChallenge, code: string) => Promise<void>;
+  refreshMe: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -61,13 +68,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [reset]);
 
-  const login = useCallback(async (workspaceCode: string, email: string, password: string) => {
-    const { data } = await call("post", "/auth/login", {
-      body: { workspace_code: workspaceCode.trim(), email: email.trim(), password },
-    });
-    setAccessToken(data.access_token);
+  const enter = useCallback(async (accessToken: string) => {
+    setAccessToken(accessToken);
     setMe(await read("/me"));
     setStatus("authenticated");
+  }, []);
+
+  const login = useCallback(
+    async (workspaceCode: string, email: string, password: string): Promise<MfaChallenge | null> => {
+      const { data } = await call("post", "/auth/login", {
+        body: { workspace_code: workspaceCode.trim(), email: email.trim(), password },
+      });
+      if ("mfa_required" in data) return { mfaToken: data.mfa_token };
+      await enter(data.access_token);
+      return null;
+    },
+    [enter],
+  );
+
+  const verifyMfa = useCallback(
+    async (challenge: MfaChallenge, code: string) => {
+      const { data } = await call("post", "/auth/mfa/verify", {
+        body: { mfa_token: challenge.mfaToken, code: code.trim() },
+      });
+      await enter(data.access_token);
+    },
+    [enter],
+  );
+
+  const refreshMe = useCallback(async () => {
+    setMe(await read("/me"));
   }, []);
 
   const logout = useCallback(async () => {
@@ -81,7 +111,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     reset();
   }, [reset]);
 
-  const value = useMemo(() => ({ status, me, login, logout }), [status, me, login, logout]);
+  const value = useMemo(
+    () => ({ status, me, login, verifyMfa, refreshMe, logout }),
+    [status, me, login, verifyMfa, refreshMe, logout],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

@@ -10,7 +10,7 @@ from typing import Annotated
 
 from fastapi import Depends, Header, Request
 from fastapi.dependencies.models import Dependant
-from sqlalchemy import select
+from sqlalchemy import any_, literal, or_, select
 from sqlalchemy.orm import Session
 
 from app.audit.contracts import record_detached
@@ -53,6 +53,9 @@ def get_clock(request: Request) -> Clock:
     return clock
 
 
+# Seule permission accessible avant l'enrôlement : /me, mot de passe et configuration du second facteur.
+SELF_SERVICE_PERMISSION = "identity.user.update_self"
+
 DbSession = Annotated[Session, Depends(get_db)]
 ClockDep = Annotated[Clock, Depends(get_clock)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -86,7 +89,7 @@ def authenticate(
     set_tenant_context(db, claims.tenant_id)
     now = clock.now()
     row = db.execute(
-        select(AuthSession.auth_session_id, Tenant.kind)
+        select(AuthSession.auth_session_id, Tenant.kind, UserAccount.mfa_enabled)
         .join(UserAccount, UserAccount.user_account_id == AuthSession.user_account_id)
         .join(Tenant, Tenant.tenant_id == AuthSession.tenant_id)
         .where(
@@ -95,18 +98,25 @@ def authenticate(
             AuthSession.revoked_at.is_(None),
             AuthSession.expires_at > now,
             UserAccount.status == "ACTIVE",
-            UserAccount.mfa_enabled.is_(False),
+            # Compte à double authentification : seule une session ouverte après le second facteur vaut.
+            or_(UserAccount.mfa_enabled.is_(False), literal("otp") == any_(AuthSession.amr)),
             Tenant.status == "ACTIVE",
         )
     ).first()
     if row is None:
         raise AppError("AUTH_REQUIRED")
+    grants = load_grants(db, claims.user_id, clock)
     return Principal(
         user_id=claims.user_id,
         tenant_id=claims.tenant_id,
         tenant_kind=row.kind,
         session_id=claims.session_id,
-        grants=load_grants(db, claims.user_id, clock),
+        grants=grants,
+        mfa_enrollment_pending=(
+            settings.mfa_enforcement == "enroll"
+            and not row.mfa_enabled
+            and any(g.role_code in settings.mfa_required_roles for g in grants)
+        ),
     )
 
 
@@ -141,6 +151,9 @@ class Require:
         db: DbSession,
         clock: ClockDep,
     ) -> Authorized:
+        if principal.mfa_enrollment_pending and self.permission != SELF_SERVICE_PERMISSION:
+            # Enrôlement doux (C-03) : un rôle sensible sans second facteur n'accède qu'à son compte.
+            raise AppError("MFA_ENROLLMENT_REQUIRED")
         scope = evaluate(principal, self.permission)
         if scope is None:
             record_detached(

@@ -20,6 +20,8 @@ class Principal:
     tenant_kind: str
     session_id: uuid.UUID
     grants: tuple[Grant, ...]
+    # Rôle soumis à la double authentification sans second facteur configuré (C-03, enrôlement doux).
+    mfa_enrollment_pending: bool = False
 
     @property
     def role_codes(self) -> frozenset[str]:

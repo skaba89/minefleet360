@@ -4,7 +4,7 @@ from datetime import timedelta
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
@@ -66,6 +66,14 @@ class Settings(BaseSettings):
     smtp_sender: str = ""
     smtp_use_ssl: bool = False
     smtp_timeout_seconds: int = Field(default=10, ge=1, le=60)
+    # Double authentification TOTP (C-03, SEC-04). Clé AES-256 (base64url, 32 octets) obligatoire en
+    # recette et production ; dérivée du secret JWT en local/test uniquement (développement).
+    mfa_encryption_key: SecretStr | None = Field(default=None, validation_alias="MF_MFA_ENCRYPTION_KEY")
+    # « enroll » : un rôle concerné sans second facteur n'accède qu'à son compte jusqu'à l'enrôlement.
+    mfa_enforcement: Literal["enroll", "off"] = "enroll"
+    mfa_required_roles: tuple[str, ...] = ("PLATFORM_ADMIN", "TENANT_ADMIN", "HR", "FINANCE")
+    mfa_challenge_ttl: timedelta = timedelta(minutes=5)
+    mfa_issuer: str = "MINEFLEET 360"
     platform_tenant_code: str = "mf-platform"
     # Codes d'espace refusés à la création d'un tenant client (MATRICE_RBAC §1.3).
     reserved_tenant_codes: tuple[str, ...] = ("mf-platform", "admin", "api", "platform", "support", "www")
@@ -77,6 +85,12 @@ class Settings(BaseSettings):
         if len(value.get_secret_value()) < 32:
             raise ValueError("MF_JWT_SECRET doit contenir au moins 32 caractères")
         return value
+
+    @model_validator(mode="after")
+    def _mfa_key_required_on_servers(self) -> "Settings":
+        if self.env in ("staging", "production") and self.mfa_encryption_key is None:
+            raise ValueError("MF_MFA_ENCRYPTION_KEY est obligatoire en recette et en production")
+        return self
 
     @property
     def allowed_origin_list(self) -> list[str]:

@@ -84,6 +84,7 @@ Colonnes (ordre fixe, codes du socle) : **PA** `PLATFORM_ADMIN` · **TA** `TENAN
 | `identity.user.update` | ❌ | ✅³ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `identity.user.deactivate` | ❌ | ✅³ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `identity.user.reset_credentials` (déclenchée par l'administrateur) | ❌ | ✅³ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `identity.user.reset_mfa` (retrait du second facteur d'un autre compte, D-40) | ❌ | ✅³ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `identity.user.update_self` (profil, mot de passe) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `identity.role.read` (catalogue **global**, D-18) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | `identity.role_assignment.read` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
