@@ -528,6 +528,7 @@ permissions:
     kind: action
     site_bound: true
     routes: [{ method: POST, path: "/missions/{mission_id}/events", shape: item, success: 200 }]
+    # Action d'audit réellement écrite : mission.<événement> (mission.departed, mission.reassigned…).
     audit: { action: mission.progress }
     grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
 

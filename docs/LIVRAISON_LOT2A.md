@@ -16,3 +16,6 @@
 - Revue sécurité indépendante du lot 2a.
 - Tranche 2b : pesées (tickets immuables, correction, mesuré vs estimé, saisie dégradée approuvée) et indicateurs ; tranche 2c : compteurs et documents.
 - Missions `PLANNED` sans affectation (planification) ; déclarations tardives hors ligne (lot 4).
+
+## Revue sécurité
+Voir `docs/revues/REVUE_SECURITE_LOT2A.md` : L2A-R-01, 02, 03, 05, 06, 11 corrigés ; L2A-R-04, 07, 08 reportés au lot 2b.

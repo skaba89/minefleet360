@@ -129,6 +129,7 @@ CONSTRAINT_CODES: dict[str, str] = {
     "uq_mission_driver_running": "DRIVER_ON_MISSION",
     "uq_sl_site_code": "DUPLICATE_LOCATION_CODE",
     "uq_material_code": "DUPLICATE_MATERIAL_CODE",
+    "uq_me_client_event": "CONFLICT",
 }
 
 

@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.assignment.contracts import AssignmentFacts, assignment_facts, running_blockers
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
+from app.authz.principal import evaluate
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.http import PageParams, check_version
@@ -247,15 +248,17 @@ def _rotation_out(r: Rotation) -> RotationOut:
     )
 
 
-def _out(db: Session, m: Mission, labels: _Labels, now: datetime, *, detail: bool = False) -> MissionOut:
+def _out(
+    db: Session, m: Mission, labels: _Labels, now: datetime, *, show_driver: bool, detail: bool = False
+) -> MissionOut:
     data: dict[str, Any] = {
         "mission_id": m.mission_id,
         "site_id": m.site_id,
         "vehicle_assignment_id": m.vehicle_assignment_id,
         "vehicle_id": m.vehicle_id,
         "vehicle_fleet_number": labels.fleet.get(m.vehicle_id, "?"),
-        "driver_id": m.driver_id,
-        "driver_display_name": labels.drivers.get(m.driver_id, "?"),
+        "driver_id": m.driver_id if show_driver else None,
+        "driver_display_name": labels.drivers.get(m.driver_id, "?") if show_driver else None,
         "origin_location_id": m.origin_location_id,
         "origin_name": labels.locations.get(m.origin_location_id, "?"),
         "destination_location_id": m.destination_location_id,
@@ -285,6 +288,7 @@ def _out(db: Session, m: Mission, labels: _Labels, now: datetime, *, detail: boo
             EventOut(
                 mission_event_id=e.mission_event_id,
                 event_type=e.event_type,
+                vehicle_assignment_id=e.vehicle_assignment_id,
                 from_status=e.from_status,
                 to_status=e.to_status,
                 occurred_at=e.occurred_at,
@@ -304,7 +308,20 @@ def _out(db: Session, m: Mission, labels: _Labels, now: datetime, *, detail: boo
 def missions_out(auth: Authorized, missions: list[Mission], *, detail: bool = False) -> list[MissionOut]:
     labels = _labels(auth.db, missions)
     now = auth.clock.now()
-    return [_out(auth.db, m, labels, now, detail=detail) for m in missions]
+    # Le nom du conducteur suit les droits de lecture des affectations, pas ceux des missions (L2A-R-02) :
+    # FINANCE n'y a pas accès, le chef d'atelier seulement sur son site.
+    drivers = evaluate(auth.principal, "assignment.vehicle_assignment.read")
+    return [
+        _out(
+            auth.db,
+            m,
+            labels,
+            now,
+            show_driver=drivers is not None and drivers.covers_site(m.site_id),
+            detail=detail,
+        )
+        for m in missions
+    ]
 
 
 # --- Lecture -------------------------------------------------------------------------------------------
@@ -386,6 +403,7 @@ def _event(
         MissionEvent(
             tenant_id=auth.tenant_id,
             mission_id=mission.mission_id,
+            vehicle_assignment_id=mission.vehicle_assignment_id,
             event_type=event_type,
             from_status=from_status,
             to_status=mission.status,
@@ -479,9 +497,10 @@ def _open_rotation(db: Session, mission: Mission) -> Rotation | None:
     ).scalar_one_or_none()
 
 
-def _ensure_can_run(auth: Authorized, mission: Mission, now: datetime) -> None:
+def _ensure_can_run(auth: Authorized, mission: Mission) -> None:
+    # Heure serveur, pas l'heure déclarée : un départ antidaté ne contourne pas une échéance (L2A-R-03).
     facts = assignment_facts(auth.db, mission.vehicle_assignment_id)
-    reasons = ["REFERENCE_NOT_FOUND"] if facts is None else running_blockers(auth.db, facts, now)
+    reasons = ["REFERENCE_NOT_FOUND"] if facts is None else running_blockers(auth.db, facts, auth.clock.now())
     if reasons:
         raise AppError("MISSION_NOT_ELIGIBLE", details={"reasons": [{"code": r} for r in reasons]})
 
@@ -491,16 +510,24 @@ def record_event(
 ) -> MissionOut:
     """US-2.02 à US-2.04 : avancement, suspension, reprise, réaffectation, clôture, annulation."""
     db = auth.db
+    mission = mission_in_scope(auth, mission_id, for_update=True)
     if body.client_event_id is not None:
+        # Recherche limitée à CETTE mission, après le contrôle de portée et sous le verrou : un renvoi
+        # concurrent attend le premier puis le reconnaît (L2A-R-06) ; l'identifiant d'une autre mission
+        # n'est pas révélé, il échoue sur la contrainte d'unicité comme un conflit ordinaire (L2A-R-05).
         seen = db.execute(
-            select(MissionEvent).where(MissionEvent.client_event_id == body.client_event_id)
+            select(MissionEvent).where(
+                MissionEvent.mission_id == mission.mission_id,
+                MissionEvent.client_event_id == body.client_event_id,
+            )
         ).scalar_one_or_none()
         if seen is not None:
             # Renvoi après coupure réseau (RM-084) : aucun nouvel événement, état courant renvoyé.
-            if seen.mission_id != mission_id or seen.event_type != body.event_type:
+            if seen.event_type != body.event_type:
                 raise AppError("CONFLICT")
-            return missions_out(auth, [mission_in_scope(auth, mission_id)], detail=True)[0]
-    mission = mission_in_scope(auth, mission_id, for_update=True)
+            out = missions_out(auth, [mission], detail=True)[0]
+            db.commit()
+            return out
     check_version(version, mission.row_version)
     if mission.status in TERMINAL:
         raise AppError("MISSION_STATE_INVALID", details={"status": mission.status})
@@ -508,13 +535,22 @@ def record_event(
     source, kind = mission.status, body.event_type
     reason: str | None = body.reason_code
     rotation = _open_rotation(db, mission)
+    if (
+        rotation is None
+        and kind in ("LOADED", "ARRIVED_UNLOADING", "UNLOADED")
+        and source in PROGRESS[kind][0]
+    ):
+        raise RuntimeError(f"mission {mission.mission_id} en {source} sans rotation ouverte")  # L2A-R-11
+    before: dict[str, Any] = {"status": source}
+    after: dict[str, Any] = {}
+    changed: tuple[str, ...] = ("status",)
 
     if kind in PROGRESS:
         allowed, target = PROGRESS[kind]
         if source not in allowed:
             raise AppError("MISSION_STATE_INVALID", details={"status": source, "event": kind})
         if kind == "DEPARTED":
-            _ensure_can_run(auth, mission, at)
+            _ensure_can_run(auth, mission)
         if kind == "ARRIVED_LOADING":
             sequence = (
                 db.execute(
@@ -562,7 +598,7 @@ def record_event(
             raise AppError("MISSION_STATE_INVALID", details={"status": source, "event": kind})
         target = mission.status_before_suspension
         if target in RUNNING:
-            _ensure_can_run(auth, mission, at)
+            _ensure_can_run(auth, mission)
         mission.status, mission.status_before_suspension, mission.status_reason = target, None, None
     elif kind == "REASSIGNED":
         # US-2.03 : véhicule en panne → autre affectation du même site ; le cycle en cours est perdu.
@@ -575,6 +611,11 @@ def record_event(
         facts = _assignment_for(auth, body.vehicle_assignment_id, mission.site_id)
         if rotation is not None:
             rotation.status = "ABORTED"
+        # Qui a pris le relais, et de qui (L2A-R-01) : avant/après dans l'audit, affectation dans l'événement.
+        crew = ("vehicle_assignment_id", "vehicle_id", "driver_id")
+        before |= {f: str(getattr(mission, f)) for f in crew}
+        after |= {f: str(getattr(facts, f)) for f in crew}
+        changed = ("status", *crew)
         mission.vehicle_assignment_id = facts.vehicle_assignment_id
         mission.vehicle_id, mission.driver_id = facts.vehicle_id, facts.driver_id
         mission.status_before_suspension = "ASSIGNED"  # reprise depuis le départ, avec le nouvel engin
@@ -607,9 +648,9 @@ def record_event(
         site_id=mission.site_id,
         actor_user_id=auth.user_id,
         reason=reason,
-        before={"status": source},
-        after={"status": mission.status},
-        changed_fields=("status",),
+        before=before,
+        after={"status": mission.status, **after},
+        changed_fields=changed,
     )
     db.flush()
     out = missions_out(auth, [mission], detail=True)[0]

@@ -113,6 +113,8 @@ CREATE TABLE mission_event (
   mission_event_id uuid NOT NULL DEFAULT gen_random_uuid(),
   tenant_id  uuid NOT NULL,
   mission_id uuid NOT NULL,
+  -- Affectation (véhicule + conducteur) en vigueur après l'événement : une réaffectation reste traçable.
+  vehicle_assignment_id uuid NOT NULL,
   event_type text NOT NULL,
   from_status text,
   to_status   text NOT NULL,
@@ -124,6 +126,7 @@ CREATE TABLE mission_event (
   reason      text,
   CONSTRAINT pk_mission_event PRIMARY KEY (mission_event_id),
   CONSTRAINT fk_me__mission FOREIGN KEY (tenant_id, mission_id) REFERENCES mission (tenant_id, mission_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_me__assignment FOREIGN KEY (tenant_id, vehicle_assignment_id) REFERENCES vehicle_assignment (tenant_id, vehicle_assignment_id) ON DELETE RESTRICT,
   CONSTRAINT uq_me_client_event UNIQUE (tenant_id, client_event_id),
   CONSTRAINT ck_me_type   CHECK (event_type IN ('CREATED','DEPARTED','ARRIVED_LOADING','LOADED','ARRIVED_UNLOADING',
                                                 'UNLOADED','COMPLETED','SUSPENDED','RESUMED','REASSIGNED','CANCELLED')),
