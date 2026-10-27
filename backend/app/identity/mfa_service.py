@@ -21,7 +21,7 @@ from app.core.clock import Clock
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.core.http import check_version
-from app.core.secretbox import open_sealed, seal
+from app.core.secretbox import derive, open_sealed, seal
 from app.core.security import (
     constant_time_equals,
     credential_fingerprint,
@@ -73,9 +73,14 @@ def _active_secret(user: UserAccount, settings: Settings) -> bytes:
     return secret
 
 
-def _new_recovery(user: UserAccount) -> list[str]:
+def _pepper(settings: Settings) -> bytes:
+    return derive("recovery-codes", settings)
+
+
+def _new_recovery(user: UserAccount, settings: Settings) -> list[str]:
     codes = totp.new_recovery_codes()
-    user.mfa_recovery_hashes = [totp.hash_recovery_code(c) for c in codes]
+    pepper = _pepper(settings)
+    user.mfa_recovery_hashes = [totp.hash_recovery_code(c, pepper) for c in codes]
     return codes
 
 
@@ -105,11 +110,23 @@ def status(auth: Authorized, settings: Settings) -> dict[str, object]:
     }
 
 
-def start_setup(auth: Authorized, settings: Settings) -> dict[str, str]:
+def start_setup(
+    auth: Authorized, password: str, settings: Settings, limiters: AuthLimiters
+) -> dict[str, str]:
+    """Réauthentification exigée (revue MFA-R-01) : un jeton d'accès volé ne suffit pas à enrôler
+    un téléphone tiers. Essais limités, comme le changement de mot de passe."""
     db = auth.db
     user = _me(auth)
     if user.mfa_enabled:
         raise AppError("MFA_ALREADY_ENABLED")
+    key = f"mfa-manage:{auth.user_id}"
+    now = auth.clock.now()
+    if limiters.tokens.is_blocked(key, now):
+        raise _rate_limited(settings)
+    if not verify_password(user.password_hash, password):
+        limiters.tokens.record_failure(key, now)
+        raise AppError("INVALID_CREDENTIALS")
+    limiters.tokens.reset(key)
     secret = totp.new_secret()
     user.mfa_pending_secret_encrypted = seal(secret, context=_context(user, "mfa-pending"), settings=settings)
     user.mfa_pending_created_at = auth.clock.now()
@@ -133,9 +150,9 @@ def confirm_setup(auth: Authorized, code: str, settings: Settings, limiters: Aut
     db = auth.db
     now = auth.clock.now()
     key = f"mfa-setup:{auth.user_id}"
+    user = _me(auth)  # verrou d'abord : des essais parallèles ne passent pas tous le contrôle de limite
     if limiters.tokens.is_blocked(key, now):
         raise _rate_limited(settings)
-    user = _me(auth)
     if user.mfa_enabled:
         raise AppError("MFA_ALREADY_ENABLED")
     pending = (
@@ -162,7 +179,7 @@ def confirm_setup(auth: Authorized, code: str, settings: Settings, limiters: Aut
     user.mfa_enabled = True
     user.mfa_enabled_at = now
     user.mfa_last_step = step
-    codes = _new_recovery(user)
+    codes = _new_recovery(user, settings)
     # La session courante vient de prouver le second facteur ; les autres (mot de passe seul) sont fermées.
     db.execute(
         update(AuthSession)
@@ -202,7 +219,7 @@ def regenerate_recovery(auth: Authorized, code: str, settings: Settings, limiter
         key=f"mfa-manage:{auth.user_id}",
         limiters=limiters,
     )
-    codes = _new_recovery(user)
+    codes = _new_recovery(user, settings)
     record(
         db,
         tenant_id=auth.tenant_id,
@@ -294,14 +311,16 @@ def verify_challenge(
         raise AppError("MFA_CODE_INVALID")
     key = f"mfa-login:{challenge.user_id}"
     source = f"ip:{_client_key()}"
-    if limiters.tokens.is_blocked(key, now) or limiters.source.is_blocked(source, now):
-        raise _rate_limited(settings)
     set_tenant_context(db, challenge.tenant_id)
     user = db.execute(
         select(UserAccount)
         .where(UserAccount.user_account_id == challenge.user_id)
         .with_for_update(key_share=True)
     ).scalar_one_or_none()
+    # Limite contrôlée sous le verrou de ligne (revue MFA-R-02) : des essais parallèles du même compte
+    # sont sérialisés, chacun voit les échecs déjà enregistrés par les précédents.
+    if limiters.tokens.is_blocked(key, now) or limiters.source.is_blocked(source, now):
+        raise _rate_limited(settings)
     tenant = db.get(Tenant, challenge.tenant_id)
     if (
         user is None
@@ -318,7 +337,7 @@ def verify_challenge(
 
     method: str | None = None
     if totp.looks_like_recovery_code(code):
-        presented = totp.hash_recovery_code(code)
+        presented = totp.hash_recovery_code(code, _pepper(settings))
         remaining = [h for h in user.mfa_recovery_hashes if not constant_time_equals(h, presented)]
         if len(remaining) < len(user.mfa_recovery_hashes):
             user.mfa_recovery_hashes = remaining  # usage unique

@@ -50,6 +50,10 @@ class MfaVerifyRequest(StrictModel):
     code: str = Field(min_length=6, max_length=20)  # 6 chiffres TOTP ou code de récupération XXXXX-XXXXX
 
 
+class MfaSetupRequest(StrictModel):
+    password: str = Field(min_length=1, max_length=256)  # réauthentification (revue MFA-R-01)
+
+
 class MfaCodeRequest(StrictModel):
     code: str = Field(min_length=6, max_length=20)
 

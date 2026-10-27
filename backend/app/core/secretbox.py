@@ -32,6 +32,11 @@ def _key(settings: Settings) -> bytes:
     ).digest()
 
 
+def derive(label: str, settings: Settings) -> bytes:
+    """Sous-clé dédiée à un usage (ex. poivre des codes de récupération), jamais la clé elle-même."""
+    return hmac.new(_key(settings), f"minefleet:{label}".encode(), hashlib.sha256).digest()
+
+
 def seal(plaintext: bytes, *, context: str, settings: Settings) -> bytes:
     nonce = os.urandom(12)
     return _VERSION + nonce + AESGCM(_key(settings)).encrypt(nonce, plaintext, context.encode())

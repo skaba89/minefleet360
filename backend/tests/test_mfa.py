@@ -10,6 +10,7 @@ from sqlalchemy import create_engine, text
 from app.core import totp
 from app.core.clock import SystemClock
 from app.core.config import get_settings
+from app.core.email import MemoryEmailSender
 from tests.conftest import API, PASSWORD, Account, Api, TenantFixture, bearer
 
 
@@ -37,7 +38,7 @@ def _login(client: TestClient, t: TenantFixture, email: str):  # type: ignore[no
 
 
 def _enroll(client: TestClient, headers: dict[str, str]) -> tuple[bytes, list[str]]:
-    setup = client.post(f"{API}/me/mfa/setup", headers=headers)
+    setup = client.post(f"{API}/me/mfa/setup", headers=headers, json={"password": PASSWORD})
     assert setup.status_code == 200, setup.text
     secret = _secret(setup.json())
     confirmed = client.post(f"{API}/me/mfa/confirm", headers=headers, json={"code": _code(secret)})
@@ -71,7 +72,7 @@ def test_soft_enrollment_limits_a_sensitive_role_to_its_account(
     # Un rôle non concerné (dispatcher) n'est pas bloqué.
     assert client.get(f"{API}/drivers", headers=dispatcher.headers).status_code == 200
 
-    setup = client.post(f"{API}/me/mfa/setup", headers=hr.headers)
+    setup = client.post(f"{API}/me/mfa/setup", headers=hr.headers, json={"password": PASSWORD})
     assert setup.headers["Cache-Control"] == "no-store"
     assert setup.json()["otpauth_uri"].startswith("otpauth://totp/")
     wrong = client.post(f"{API}/me/mfa/confirm", headers=hr.headers, json={"code": "000000"})
@@ -83,7 +84,7 @@ def test_soft_enrollment_limits_a_sensitive_role_to_its_account(
     # La session qui a prouvé le second facteur continue ; l'autre (mot de passe seul) est fermée.
     assert client.get(f"{API}/drivers", headers=hr.headers).status_code == 200
     assert client.get(f"{API}/me", headers=other_session).status_code == 401
-    again = client.post(f"{API}/me/mfa/setup", headers=hr.headers)
+    again = client.post(f"{API}/me/mfa/setup", headers=hr.headers, json={"password": PASSWORD})
     assert (again.status_code, again.json()["code"]) == (409, "MFA_ALREADY_ENABLED")
 
 
@@ -224,7 +225,7 @@ def test_disable_only_for_optional_roles(client: TestClient, api: Api) -> None:
 def test_secret_is_never_stored_in_clear(client: TestClient, api: Api) -> None:
     t = api.tenant()
     hr = api.user(t, "HR")
-    setup = client.post(f"{API}/me/mfa/setup", headers=hr.headers).json()
+    setup = client.post(f"{API}/me/mfa/setup", headers=hr.headers, json={"password": PASSWORD}).json()
     client.post(f"{API}/me/mfa/confirm", headers=hr.headers, json={"code": _code(_secret(setup))})
     engine = create_engine(get_settings().database_url(), pool_size=1, max_overflow=0)
     with engine.connect() as conn:
@@ -278,3 +279,54 @@ def test_challenge_is_void_after_password_change(client: TestClient, api: Api) -
         f"{API}/auth/mfa/verify", json={"mfa_token": token, "code": _code(secret, timedelta(seconds=30))}
     )
     assert (stale.status_code, stale.json()["code"]) == (401, "MFA_CODE_INVALID")
+
+
+def test_enrollment_requires_the_password(client: TestClient, api: Api) -> None:
+    """Revue MFA-R-01 : un jeton d'accès volé ne suffit pas à enrôler un téléphone tiers."""
+    t = api.tenant()
+    hr = api.user(t, "HR")
+    missing = client.post(f"{API}/me/mfa/setup", headers=hr.headers, json={})
+    assert missing.status_code == 422
+    wrong = client.post(f"{API}/me/mfa/setup", headers=hr.headers, json={"password": "faux-mot-de-passe"})
+    assert (wrong.status_code, wrong.json()["code"]) == (401, "INVALID_CREDENTIALS")
+    assert client.get(f"{API}/me/mfa", headers=hr.headers).json()["enabled"] is False
+
+
+def test_security_notices_are_emailed(client: TestClient, api: Api, outbox: MemoryEmailSender) -> None:
+    """Activation et retrait du second facteur : l'utilisateur est prévenu (revue MFA-R-01/R-04)."""
+    t = api.tenant()
+    hr = api.user(t, "HR")
+    _enroll(client, hr.headers)
+    url = f"{API}/users/{hr.user_id}"
+    version = client.get(url, headers=t.admin.headers).headers["ETag"]
+    assert (
+        client.post(f"{url}/reset-mfa", headers={**t.admin.headers, "If-Match": version}).status_code == 200
+    )
+    notices = [m for m in outbox.outbox if m.to == hr.email and m.kind == "SECURITY_NOTICE"]
+    assert len(notices) == 2
+    assert "activée" in notices[0].body and "administrateur vient de retirer" in notices[1].body
+
+
+def test_parallel_guesses_do_not_exceed_the_limit(client: TestClient, api: Api) -> None:
+    """Revue MFA-R-02 : des essais simultanés sont sérialisés et comptés, le plafond tient."""
+    import threading
+
+    t = api.tenant()
+    hr = api.user(t, "HR")
+    _enroll(client, hr.headers)
+    token = _login(client, t, hr.email).json()["mfa_token"]
+    barrier = threading.Barrier(12)
+    statuses: list[int] = []
+
+    def guess(n: int) -> None:
+        barrier.wait(timeout=10)
+        resp = client.post(f"{API}/auth/mfa/verify", json={"mfa_token": token, "code": f"{n:06d}"})
+        statuses.append(resp.status_code)
+
+    threads = [threading.Thread(target=guess, args=(n,)) for n in range(12)]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join()
+    assert statuses.count(401) <= get_settings().login_max_failures
+    assert statuses.count(429) >= 12 - get_settings().login_max_failures

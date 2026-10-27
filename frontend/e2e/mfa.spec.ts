@@ -19,6 +19,7 @@ test("activer la double authentification puis se connecter avec un code", async 
 
   await login();
   await page.getByRole("link", { name: "Sécurité" }).click();
+  await page.getByLabel("Mot de passe actuel").fill(user.password); // réauthentification (MFA-R-01)
   await page.getByRole("button", { name: "Commencer" }).click();
   const secret = (await page.locator(".secret code").innerText()).replace(/\s/g, "");
   expect(secret).toMatch(/^[A-Z2-7]{32}$/);
