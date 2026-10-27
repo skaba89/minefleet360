@@ -424,11 +424,21 @@ def create_mission(auth: Authorized, body: MissionCreate) -> MissionOut:
             select(Mission).where(Mission.client_request_id == body.client_request_id)
         ).scalar_one_or_none()
         if replay is not None:
-            # Renvoi après coupure réseau (revue L2A-R-08) : la mission déjà créée, sans doublon.
-            if (
-                not auth.scope.covers_site(replay.site_id)
-                or replay.vehicle_assignment_id != body.vehicle_assignment_id
-            ):
+            # Renvoi après coupure réseau (revue L2A-R-08) : la mission déjà créée, sans doublon ;
+            # mêmes valeurs exigées, sinon conflit (revue L2B-R-07).
+            same = all(
+                getattr(replay, f) == getattr(body, f)
+                for f in (
+                    "vehicle_assignment_id",
+                    "origin_location_id",
+                    "destination_location_id",
+                    "material_id",
+                    "planned_start",
+                    "due_at",
+                    "planned_rotations",
+                )
+            )
+            if not auth.scope.covers_site(replay.site_id) or not same:
                 raise AppError("CONFLICT")
             out = missions_out(auth, [replay])[0]
             db.commit()

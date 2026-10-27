@@ -567,7 +567,9 @@ permissions:
     routes:
       - { method: POST, path: "/weighing-tickets/{weighing_ticket_id}/void", shape: item, success: 200 }
       - { method: POST, path: "/weighing-tickets/{weighing_ticket_id}/correct", shape: item, success: 201 }
-    audit: { action: weighing_ticket.void }
+    # Actions écrites : weighing_ticket.void (annulation, y compris celle de l'original lors d'une
+    # correction) et weighing_ticket.correct (nouveau ticket) — revue L2B-R-10.
+    audit: { action: weighing_ticket.correct }
     grants: { OPS_MANAGER: [TENANT, SITE] }
   dispatch.indicators.read:
     tranche: 1c

@@ -15,13 +15,13 @@
 - **Permissions** `dispatch.weighing.*`, `dispatch.indicators.read` (MATRICE_RBAC §2.5 bis), tests d'autorisation et d'isolation générés depuis la matrice (avec une vraie pesée).
 
 ## Réglages (valeurs de développement à valider avec l'exploitation)
-`MF_WEIGHING_BACKDATE_TOLERANCE` (7 jours), `MF_PAYLOAD_ALERT_PERCENT` (110), `MF_MISSION_MAX_ROTATIONS` (100), `MF_ROTATION_MIN_CYCLE` (5 min), `MF_INDICATORS_MAX_PERIOD` (92 jours).
+`MF_WEIGHING_BACKDATE_TOLERANCE` (7 jours), `MF_WEIGHING_CORRECTION_BACKDATE_TOLERANCE` (92 jours), `MF_PAYLOAD_ALERT_PERCENT` (110), `MF_MISSION_MAX_ROTATIONS` (100), `MF_ROTATION_MIN_CYCLE` (5 min), `MF_INDICATORS_MAX_PERIOD` (92 jours).
 
 ## Vérifications exécutées
 - Backend : `scripts/test.ps1` → ruff, format, mypy OK ; **1893 tests**, couverture 92,95 % ; `tests/test_weighing.py` (10 scénarios). Migration 0014 appliquée, défaite et réappliquée sur la base locale.
 - Frontend : `tsc`, Vitest 19, **Playwright 14** (dont `pesees.spec.ts` : saisie manuelle, approbation par un autre utilisateur, indicateurs), build, permissions à jour.
 
 ## Non fait / suite
-- Revue sécurité indépendante du lot 2b.
+- Revue sécurité : voir `docs/revues/REVUE_SECURITE_LOT2B.md` (12 constats corrigés ; L2B-R-02 corrigé en partie, risque résiduel accepté jusqu’à l’intégration des ponts-bascules ; L2B-R-14 accepté).
 - Intégration automatique des ponts-bascules (C-14, lot 5) ; « source approuvée » autre que le pont-bascule ; facturation des sous-traitants (RM-077).
 - Tranche 2c : relevés de compteurs et documents réglementaires des véhicules.

@@ -70,6 +70,52 @@ SELECT app.apply_tenant_rls('weighing_ticket', 'SELECT, INSERT');
 CREATE TRIGGER tg_weighing_ticket_append_only BEFORE UPDATE OR DELETE ON weighing_ticket
   FOR EACH ROW EXECUTE FUNCTION app.tg_append_only();
 
+-- Garde-fous en base, quel que soit le chemin d'écriture (revue L2B-R-01, R-04, R-05) :
+--   cohérence avec la rotation (mission, véhicule, site), une seule pesée non annulée par rotation,
+--   un numéro non annulé par pont-bascule (correctifs compris). La rotation est verrouillée ; le numéro
+--   est protégé par un verrou consultatif de transaction. L'annulation est lue dans la table des décisions.
+CREATE FUNCTION app.tg_weighing_ticket_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  r record;
+BEGIN
+  SELECT ro.mission_id, ro.vehicle_id, m.site_id INTO r
+    FROM rotation ro
+    JOIN mission m ON m.tenant_id = ro.tenant_id AND m.mission_id = ro.mission_id
+   WHERE ro.tenant_id = NEW.tenant_id AND ro.rotation_id = NEW.rotation_id
+   FOR UPDATE OF ro;
+  IF NOT FOUND OR r.mission_id <> NEW.mission_id OR r.vehicle_id <> NEW.vehicle_id
+     OR r.site_id <> NEW.site_id THEN
+    RAISE EXCEPTION 'weighing ticket inconsistent with its rotation'
+      USING ERRCODE = 'check_violation', CONSTRAINT = 'ck_wt_rotation_consistency';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM weighing_ticket t
+     WHERE t.tenant_id = NEW.tenant_id AND t.rotation_id = NEW.rotation_id
+       AND NOT EXISTS (SELECT 1 FROM weighing_ticket_decision d
+                        WHERE d.tenant_id = t.tenant_id AND d.weighing_ticket_id = t.weighing_ticket_id
+                          AND d.decision = 'VOIDED')
+  ) THEN
+    RAISE EXCEPTION 'rotation already has a live weighing ticket'
+      USING ERRCODE = 'unique_violation', CONSTRAINT = 'uq_wt_live_rotation';
+  END IF;
+  PERFORM pg_advisory_xact_lock(
+    hashtextextended(NEW.tenant_id::text || '/' || NEW.weighbridge_location_id::text || '/' || NEW.ticket_number, 14));
+  IF EXISTS (
+    SELECT 1 FROM weighing_ticket t
+     WHERE t.tenant_id = NEW.tenant_id AND t.weighbridge_location_id = NEW.weighbridge_location_id
+       AND t.ticket_number = NEW.ticket_number
+       AND NOT EXISTS (SELECT 1 FROM weighing_ticket_decision d
+                        WHERE d.tenant_id = t.tenant_id AND d.weighing_ticket_id = t.weighing_ticket_id
+                          AND d.decision = 'VOIDED')
+  ) THEN
+    RAISE EXCEPTION 'ticket number already used by a live weighing ticket'
+      USING ERRCODE = 'unique_violation', CONSTRAINT = 'uq_wt_live_number';
+  END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER tg_weighing_ticket_guard BEFORE INSERT ON weighing_ticket
+  FOR EACH ROW EXECUTE FUNCTION app.tg_weighing_ticket_guard();
+
 CREATE TABLE weighing_ticket_decision (
   weighing_ticket_decision_id uuid NOT NULL DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL,
@@ -93,6 +139,7 @@ CREATE TRIGGER tg_weighing_ticket_decision_append_only BEFORE UPDATE OR DELETE O
 DOWNGRADE = r"""
 DROP TABLE weighing_ticket_decision;
 DROP TABLE weighing_ticket;
+DROP FUNCTION IF EXISTS app.tg_weighing_ticket_guard();
 ALTER TABLE mission DROP CONSTRAINT uq_mission_client_request;
 ALTER TABLE mission DROP COLUMN client_request_id;
 ALTER TABLE rotation DROP CONSTRAINT uq_rotation_tenant_id;

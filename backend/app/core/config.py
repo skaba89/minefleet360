@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     compliance_scan_max: int = 2000
     # Dispatch (lot 2b, PLAN_LOT2 §7) : valeurs de développement à valider avec l'exploitation.
     weighing_backdate_tolerance: timedelta = timedelta(days=7)  # saisie de tickets papier
+    weighing_correction_backdate_tolerance: timedelta = timedelta(days=92)  # revue L2B-R-12
     payload_alert_percent: int = Field(default=110, ge=100, le=200)  # RM-076, à valider (HSE)
     mission_max_rotations: int = Field(default=100, ge=1, le=1000)  # revue L2A-R-04
     rotation_min_cycle: timedelta = timedelta(minutes=5)  # en deçà : cycle suspect (indicateurs)

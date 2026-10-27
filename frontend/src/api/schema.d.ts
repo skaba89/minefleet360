@@ -6000,6 +6000,7 @@ export interface operations {
                 mission_id?: string | null;
                 status?: ("VALID" | "PENDING_APPROVAL" | "VOIDED") | null;
                 overload?: boolean | null;
+                live_only?: boolean;
                 period_start?: string | null;
                 period_end?: string | null;
                 page?: number;

@@ -159,6 +159,7 @@ def list_weighing_tickets(
     mission_id: uuid.UUID | None = None,
     status_filter: Annotated[WeighingStatus | None, Query(alias="status")] = None,
     overload: bool | None = None,
+    live_only: bool = False,
     period_start: AwareDatetime | None = None,
     period_end: AwareDatetime | None = None,
 ) -> Page[WeighingOut]:
@@ -169,6 +170,7 @@ def list_weighing_tickets(
         mission_id=mission_id,
         status=status_filter,
         overload=overload,
+        live_only=live_only,
         period_start=period_start,
         period_end=period_end,
     )
@@ -215,9 +217,12 @@ def void_weighing_ticket(
     response_model=WeighingOut,
 )
 def correct_weighing_ticket(
-    weighing_ticket_id: uuid.UUID, body: WeighingCorrection, auth: WeighingCorrect
+    weighing_ticket_id: uuid.UUID, body: WeighingCorrection, auth: WeighingCorrect, response: Response
 ) -> WeighingOut:
-    return weighing.correct(auth, weighing_ticket_id, body)
+    out, created = weighing.correct(auth, weighing_ticket_id, body)
+    if not created:
+        response.status_code = status.HTTP_200_OK  # renvoi identique après coupure (revue L2B-R-09)
+    return out
 
 
 @router.get("/dispatch-indicators", response_model=IndicatorsOut)

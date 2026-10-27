@@ -164,6 +164,7 @@ def list_tickets(
     mission_id: uuid.UUID | None,
     status: str | None,
     overload: bool | None,
+    live_only: bool = False,
     period_start: datetime | None,
     period_end: datetime | None,
 ) -> tuple[list[WeighingTicket], int]:
@@ -176,6 +177,8 @@ def list_tickets(
         stmt = stmt.where(T.mission_id == mission_id)
     if status is not None:
         stmt = stmt.where(STATUS == status)
+    if live_only:
+        stmt = stmt.where(~VOIDED)
     if overload is not None:
         stmt = stmt.where(T.overload.is_(overload))
     if period_start is not None:
@@ -192,51 +195,78 @@ def list_tickets(
 # --- Écritures ----------------------------------------------------------------------------------------
 
 
-def _locked_rotation(auth: Authorized, rotation_id: uuid.UUID) -> tuple[Rotation, Mission]:
-    """Rotation verrouillée (une pesée vivante au plus, RM-091) et sa mission, dans la portée."""
+def _rotation_in_scope(auth: Authorized, rotation_id: uuid.UUID) -> tuple[Rotation, Mission]:
+    """Rotation et mission dans la portée de l'appelant ; lecture SANS verrou (revue L2B-R-06)."""
     found = auth.db.execute(
         select(Rotation, Mission)
         .join(Mission, Mission.mission_id == Rotation.mission_id)
         .where(Rotation.rotation_id == rotation_id)
-        .with_for_update(of=Rotation)
     ).one_or_none()
     if found is None or not auth.scope.covers_site(found[1].site_id):
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "rotation_id"}])
-    rotation, mission = found
+    return found[0], found[1]
+
+
+def _lock_rotation(auth: Authorized, rotation_id: uuid.UUID) -> Rotation:
+    """Verrou de la rotation : pesées et décisions d'une rotation sérialisées (RM-091), état relu."""
+    return auth.db.execute(
+        select(Rotation)
+        .where(Rotation.rotation_id == rotation_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).scalar_one()
+
+
+def _ensure_weighable(rotation: Rotation) -> None:
     # RM-090 : une rotation chargée, terminée ou en cours, jamais abandonnée.
     if rotation.status == "ABORTED" or (rotation.status == "OPEN" and rotation.loaded_at is None):
         raise AppError("ROTATION_NOT_WEIGHABLE", details={"rotation_status": rotation.status})
-    return rotation, mission
 
 
 def _live_ticket(db: Session, rotation_id: uuid.UUID) -> WeighingTicket | None:
     return db.execute(select(T).where(T.rotation_id == rotation_id, ~VOIDED)).scalars().first()
 
 
-def _check_fields(
-    auth: Authorized, body: WeighingFields, rotation: Rotation, mission: Mission, *, correction: bool
-) -> None:
-    settings = get_settings()
-    weighbridge = auth.db.get(SiteLocation, body.weighbridge_location_id)
+def _number_taken(db: Session, bridge: uuid.UUID, number: str, *, except_id: uuid.UUID | None = None) -> bool:
+    """Numéro porté par une pesée NON ANNULÉE du pont, correctifs compris (revue L2B-R-01)."""
+    stmt = select(T.weighing_ticket_id).where(
+        T.weighbridge_location_id == bridge, T.ticket_number == number, ~VOIDED
+    )
+    if except_id is not None:
+        stmt = stmt.where(T.weighing_ticket_id != except_id)
+    return db.execute(stmt.limit(1)).first() is not None
+
+
+def _check_bridge(auth: Authorized, bridge_id: uuid.UUID, site_id: uuid.UUID) -> None:
+    weighbridge = auth.db.get(SiteLocation, bridge_id)
     if (
         weighbridge is None
-        or weighbridge.site_id != mission.site_id
+        or weighbridge.site_id != site_id
         or weighbridge.kind != "WEIGHBRIDGE"
         or weighbridge.status != "ACTIVE"
     ):
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "weighbridge_location_id"}])
+
+
+def _check_fields(auth: Authorized, body: WeighingFields, rotation: Rotation, *, correction: bool) -> None:
+    settings = get_settings()
     if (body.source == "MANUAL_DEGRADED") != (body.degraded_reason is not None):
         raise AppError("VALIDATION_ERROR", details=[{"field": "degraded_reason", "type": "source_mismatch"}])
     if body.gross_kg <= body.tare_kg:
         raise AppError("VALIDATION_ERROR", details=[{"field": "gross_kg", "type": "not_above_tare"}])
-    # RM-093 : pas dans le futur, pas avant le chargement ; saisie papier tardive bornée (sauf correction).
+    # RM-093 : pas dans le futur, pas avant le chargement ; antidatage borné, plus largement pour une
+    # correction (revue L2B-R-12), sans jamais rouvrir sans limite une période ancienne.
     now = auth.clock.now()
     loaded = rotation.loaded_at or rotation.loading_started_at
-    too_old = not correction and body.weighed_at < now - settings.weighing_backdate_tolerance
+    window = (
+        settings.weighing_correction_backdate_tolerance
+        if correction
+        else settings.weighing_backdate_tolerance
+    )
     if (
         body.weighed_at > now + settings.clock_skew_tolerance
         or body.weighed_at < loaded - settings.clock_skew_tolerance
-        or too_old
+        or body.weighed_at < now - window
     ):
         raise AppError("VALIDATION_ERROR", details=[{"field": "weighed_at", "type": "out_of_tolerance"}])
 
@@ -278,6 +308,33 @@ def _new_ticket(
     return ticket
 
 
+TRACED = (
+    "rotation_id",
+    "weighbridge_location_id",
+    "ticket_number",
+    "source",
+    "weighed_at",
+    "gross_kg",
+    "tare_kg",
+)
+COMPARED = (
+    "weighbridge_location_id",
+    "ticket_number",
+    "source",
+    "degraded_reason",
+    "weighed_at",
+    "gross_kg",
+    "tare_kg",
+)
+
+
+def _values(ticket: WeighingTicket) -> dict[str, Any]:
+    """Valeurs tracées dans l'audit (revue L2B-R-10) : aucune donnée personnelle."""
+    values: dict[str, Any] = {f: getattr(ticket, f) for f in TRACED}
+    values |= {"net_kg": ticket.net_kg, "overload": ticket.overload}
+    return {k: str(v) if isinstance(v, (uuid.UUID, datetime)) else v for k, v in values.items()}
+
+
 def _audit(auth: Authorized, action: str, ticket: WeighingTicket, **extra: Any) -> None:
     record(
         auth.db,
@@ -291,21 +348,17 @@ def _audit(auth: Authorized, action: str, ticket: WeighingTicket, **extra: Any) 
     )
 
 
-def _same(ticket: WeighingTicket, body: WeighingCreate) -> bool:
-    return (
-        ticket.rotation_id == body.rotation_id
-        and ticket.gross_kg == body.gross_kg
-        and ticket.tare_kg == body.tare_kg
-        and ticket.source == body.source
-        and ticket.weighed_at == body.weighed_at
-    )
+def _same(ticket: WeighingTicket, body: WeighingFields, rotation_id: uuid.UUID) -> bool:
+    """Renvoi identique (RM-074) : toutes les valeurs saisies concordent."""
+    return ticket.rotation_id == rotation_id and all(getattr(ticket, f) == getattr(body, f) for f in COMPARED)
 
 
 def record_ticket(auth: Authorized, body: WeighingCreate) -> tuple[WeighingOut, bool]:
     """US-2.05 : pesée d'une rotation. Renvoie (ticket, créé) ; un renvoi identique rend le même ticket."""
     db = auth.db
-    rotation, mission = _locked_rotation(auth, body.rotation_id)
-    _check_fields(auth, body, rotation, mission, correction=False)
+    rotation, mission = _rotation_in_scope(auth, body.rotation_id)
+    _check_bridge(auth, body.weighbridge_location_id, mission.site_id)
+    rotation = _lock_rotation(auth, rotation.rotation_id)
     existing = db.execute(
         select(T).where(
             T.weighbridge_location_id == body.weighbridge_location_id,
@@ -314,21 +367,20 @@ def record_ticket(auth: Authorized, body: WeighingCreate) -> tuple[WeighingOut, 
         )
     ).scalar_one_or_none()
     if existing is not None:
-        # RM-074 : renvoi hors ligne tardif → aucun doublon ; numéro réutilisé autrement → conflit.
-        if _same(existing, body):
+        # RM-074 : renvoi tardif (même hors délai, revue L2B-R-08) → même ticket ; sinon conflit.
+        if _same(existing, body, body.rotation_id):
             out = tickets_out(auth, [existing])[0]
             db.commit()
             return out, False
         raise AppError("DUPLICATE_TICKET_NUMBER")
+    _ensure_weighable(rotation)
+    _check_fields(auth, body, rotation, correction=False)
+    if _number_taken(db, body.weighbridge_location_id, body.ticket_number):
+        raise AppError("DUPLICATE_TICKET_NUMBER")
     if _live_ticket(db, rotation.rotation_id) is not None:
         raise AppError("ROTATION_ALREADY_WEIGHED")
     ticket = _new_ticket(auth, body, rotation, mission, replaces=None)
-    _audit(
-        auth,
-        "weighing_ticket.create",
-        ticket,
-        after={"source": ticket.source, "net_kg": ticket.net_kg, "overload": ticket.overload},
-    )
+    _audit(auth, "weighing_ticket.create", ticket, after=_values(ticket))
     out = tickets_out(auth, [ticket])[0]
     db.commit()
     return out, True
@@ -353,89 +405,126 @@ def _ticket_status(db: Session, ticket: WeighingTicket) -> str:
     )
 
 
+def _chain_people(db: Session, ticket: WeighingTicket) -> set[uuid.UUID]:
+    """Toutes les personnes ayant saisi ou décidé sur la chaîne des correctifs (revue L2B-R-03)."""
+    people: set[uuid.UUID] = set()
+    current: WeighingTicket | None = ticket
+    for _ in range(100):  # garde-fou : la chaîne ne peut pas boucler (FK, CHECK, un correctif par ticket)
+        if current is None:
+            break
+        people.add(current.recorded_by)
+        people |= set(
+            db.execute(
+                select(D.decided_by).where(D.weighing_ticket_id == current.weighing_ticket_id)
+            ).scalars()
+        )
+        current = db.get(T, current.replaces_ticket_id) if current.replaces_ticket_id else None
+    return people
+
+
 def approve(auth: Authorized, ticket_id: uuid.UUID) -> WeighingOut:
     """RM-075 : une saisie dégradée devient mesurée après approbation par une AUTRE personne."""
     db = auth.db
     ticket = ticket_in_scope(auth, ticket_id)
-    _locked_rotation_any(auth, ticket.rotation_id)
+    _lock_rotation(auth, ticket.rotation_id)
     status = _ticket_status(db, ticket)
     if status != "PENDING_APPROVAL":
         raise AppError("WEIGHING_STATE_INVALID", details={"status": status})
-    if ticket.recorded_by == auth.user_id:
+    if auth.user_id in _chain_people(db, ticket):
         raise AppError("SELF_APPROVAL_FORBIDDEN")
     _decide(auth, ticket, "APPROVED", None)
-    _audit(auth, "weighing_ticket.approve", ticket, after={"net_kg": ticket.net_kg})
+    _audit(
+        auth,
+        "weighing_ticket.approve",
+        ticket,
+        before={"status": status},
+        after={"status": "VALID", "net_kg": ticket.net_kg, "approved_by": str(auth.user_id)},
+    )
     out = tickets_out(auth, [ticket])[0]
     db.commit()
     return out
-
-
-def _locked_rotation_any(auth: Authorized, rotation_id: uuid.UUID) -> Rotation:
-    """Verrou de la rotation d'un ticket existant, quel que soit son état (décisions sérialisées)."""
-    return auth.db.execute(
-        select(Rotation).where(Rotation.rotation_id == rotation_id).with_for_update()
-    ).scalar_one()
 
 
 def void(auth: Authorized, ticket_id: uuid.UUID, reason: str) -> WeighingOut:
     db = auth.db
     ticket = ticket_in_scope(auth, ticket_id)
-    _locked_rotation_any(auth, ticket.rotation_id)
-    if _ticket_status(db, ticket) == "VOIDED":
+    _lock_rotation(auth, ticket.rotation_id)
+    status = _ticket_status(db, ticket)
+    if status == "VOIDED":
         raise AppError("WEIGHING_STATE_INVALID", details={"status": "VOIDED"})
     _decide(auth, ticket, "VOIDED", reason)
-    _audit(auth, "weighing_ticket.void", ticket, reason=reason, after={"status": "VOIDED"})
+    _audit(
+        auth,
+        "weighing_ticket.void",
+        ticket,
+        reason=reason,
+        before={"status": status},
+        after={"status": "VOIDED"},
+    )
     out = tickets_out(auth, [ticket])[0]
     db.commit()
     return out
 
 
-def correct(auth: Authorized, ticket_id: uuid.UUID, body: WeighingCorrection) -> WeighingOut:
-    """US-2.06 : annulation de l'original et ticket correctif qui le référence, dans la même transaction."""
+def correct(auth: Authorized, ticket_id: uuid.UUID, body: WeighingCorrection) -> tuple[WeighingOut, bool]:
+    """US-2.06 : annulation de l'original et ticket correctif qui le référence, dans la même transaction.
+
+    Renvoie (correctif, créé) : un renvoi identique après coupure réseau rend le même correctif (L2B-R-09).
+    """
     db = auth.db
     original = ticket_in_scope(auth, ticket_id)
-    target_id = body.rotation_id or original.rotation_id
+    target, mission = _rotation_in_scope(auth, body.rotation_id or original.rotation_id)
+    _check_bridge(auth, body.weighbridge_location_id, mission.site_id)
     # Verrous dans un ordre stable : pas d'interblocage entre deux corrections croisées.
-    locked: tuple[Rotation, Mission] | None = None
-    for rotation_id in sorted({original.rotation_id, target_id}):
-        if rotation_id == target_id:
-            locked = _locked_rotation(auth, rotation_id)
-        else:
-            _locked_rotation_any(auth, rotation_id)
-    assert locked is not None
-    rotation, mission = locked
-    if _ticket_status(db, original) == "VOIDED":
+    for rotation_id in sorted({original.rotation_id, target.rotation_id}):
+        locked = _lock_rotation(auth, rotation_id)
+        if rotation_id == target.rotation_id:
+            target = locked
+    status = _ticket_status(db, original)
+    if status == "VOIDED":
+        replacement = db.execute(
+            select(T).where(T.replaces_ticket_id == original.weighing_ticket_id)
+        ).scalar_one_or_none()
+        if replacement is not None and _same(replacement, body, target.rotation_id):
+            out = tickets_out(auth, [replacement])[0]
+            db.commit()
+            return out, False
         raise AppError("WEIGHING_STATE_INVALID", details={"status": "VOIDED"})
-    _check_fields(auth, body, rotation, mission, correction=True)
-    if (
-        body.ticket_number != original.ticket_number
-        or body.weighbridge_location_id != original.weighbridge_location_id
+    # Revue L2B-R-02 : une saisie dégradée ne devient pas « pont-bascule » par correction ; il faut
+    # l'annuler et saisir le vrai ticket du pont, ou la faire approuver.
+    if original.source == "MANUAL_DEGRADED" and body.source == "WEIGHBRIDGE":
+        raise AppError("VALIDATION_ERROR", details=[{"field": "source", "type": "degraded_to_weighbridge"}])
+    _ensure_weighable(target)
+    _check_fields(auth, body, target, correction=True)
+    if _number_taken(
+        db, body.weighbridge_location_id, body.ticket_number, except_id=original.weighing_ticket_id
     ):
-        taken = db.execute(
-            select(T.weighing_ticket_id).where(
-                T.weighbridge_location_id == body.weighbridge_location_id,
-                T.ticket_number == body.ticket_number,
-                T.replaces_ticket_id.is_(None),
-            )
-        ).first()
-        if taken is not None:
-            raise AppError("DUPLICATE_TICKET_NUMBER")
+        raise AppError("DUPLICATE_TICKET_NUMBER")
     _decide(auth, original, "VOIDED", body.reason_code)
-    if _live_ticket(db, rotation.rotation_id) is not None:
+    _audit(
+        auth,
+        "weighing_ticket.void",
+        original,
+        reason=body.reason_code,
+        before={"status": status},
+        after={"status": "VOIDED", "by_correction": True},
+    )
+    if _live_ticket(db, target.rotation_id) is not None:
         raise AppError("ROTATION_ALREADY_WEIGHED")
-    ticket = _new_ticket(auth, body, rotation, mission, replaces=original.weighing_ticket_id)
+    ticket = _new_ticket(auth, body, target, mission, replaces=original.weighing_ticket_id)
+    before, after = _values(original), _values(ticket)
     _audit(
         auth,
         "weighing_ticket.correct",
         ticket,
         reason=body.reason_code,
-        before={"weighing_ticket_id": str(original.weighing_ticket_id), "net_kg": original.net_kg},
-        after={"net_kg": ticket.net_kg, "rotation_id": str(ticket.rotation_id)},
-        changed_fields=("net_kg", "rotation_id"),
+        before={"weighing_ticket_id": str(original.weighing_ticket_id), **before},
+        after=after,
+        changed_fields=tuple(sorted(k for k in after if after[k] != before.get(k))),
     )
     out = tickets_out(auth, [ticket])[0]
     db.commit()
-    return out
+    return out, True
 
 
 # --- Indicateurs (US-2.08) ----------------------------------------------------------------------------
@@ -462,6 +551,10 @@ def indicators(
             stmt = stmt.where(Mission.site_id == site_id)
         return stmt
 
+    # Revue L2B-R-11 : seules les pesées des rotations terminées sur la période sont lues.
+    period_rotations = select(Rotation.rotation_id).where(
+        Rotation.status == "COMPLETED", Rotation.unloaded_at >= start, Rotation.unloaded_at < end
+    )
     live = (
         select(
             T.rotation_id,
@@ -471,7 +564,7 @@ def indicators(
                 (or_(T.source == "WEIGHBRIDGE", APPROVED), literal("VALID")), else_=literal("PENDING")
             ).label("state"),
         )
-        .where(~VOIDED)
+        .where(~VOIDED, T.rotation_id.in_(period_rotations))
         .subquery()
     )
     cycle = func.extract("epoch", Rotation.unloaded_at - Rotation.loading_started_at)

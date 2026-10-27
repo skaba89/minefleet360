@@ -73,7 +73,7 @@ export function MissionDetailPage() {
   const tickets = useQuery({
     queryKey: ["weighing-tickets", "mission", missionId],
     enabled: Boolean(m) && can(me.grants, "dispatch.weighing.read", m?.site_id),
-    queryFn: () => read("/weighing-tickets", { query: { mission_id: missionId, page_size: 200 } }),
+    queryFn: () => read("/weighing-tickets", { query: { mission_id: missionId, live_only: true, page_size: 200 } }),
   });
   const liveTicket = new Map(
     (tickets.data?.items ?? []).filter((t) => t.status !== "VOIDED").map((t) => [t.rotation_id, t]),

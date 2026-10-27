@@ -138,6 +138,8 @@ CONSTRAINT_CODES: dict[str, str] = {
     "uq_material_code": "DUPLICATE_MATERIAL_CODE",
     "uq_me_client_event": "CONFLICT",
     "uq_wt_number": "DUPLICATE_TICKET_NUMBER",
+    "uq_wt_live_number": "DUPLICATE_TICKET_NUMBER",
+    "uq_wt_live_rotation": "ROTATION_ALREADY_WEIGHED",
     "uq_wt_replaces": "WEIGHING_STATE_INVALID",
     "uq_wtd_once": "WEIGHING_STATE_INVALID",
     "uq_mission_client_request": "CONFLICT",

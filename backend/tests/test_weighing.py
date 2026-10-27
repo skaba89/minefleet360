@@ -336,3 +336,167 @@ def test_mission_creation_resend_is_idempotent(client: TestClient, w: World) -> 
         json={**body, "vehicle_assignment_id": other["vehicle_assignment_id"]},
     )
     assert (clash.status_code, clash.json()["code"]) == (409, "CONFLICT")
+    changed = client.post(
+        f"{API}/missions", headers=w.ops.headers, json={**body, "destination_location_id": refs["origin"]}
+    )
+    assert (changed.status_code, changed.json()["code"]) == (409, "CONFLICT")  # revue L2B-R-07
+
+
+# --- Revue sécurité du lot 2b ----------------------------------------------------------------------------
+
+
+def _weighed(client: TestClient, w: World, bridge: str, number: str, **extra: object) -> dict:  # type: ignore[type-arg]  # noqa: F811
+    _, mission = _loaded_mission(client, w)
+    resp = client.post(
+        f"{API}/weighing-tickets",
+        headers=w.ops.headers,
+        json=_ticket(mission["rotations"][0]["rotation_id"], bridge, number, **extra),
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()
+
+
+def _correction(ticket: dict, **changes: object) -> dict[str, object]:  # type: ignore[type-arg]
+    fields = (
+        "weighbridge_location_id",
+        "ticket_number",
+        "source",
+        "degraded_reason",
+        "weighed_at",
+        "gross_kg",
+        "tare_kg",
+    )
+    return {**{k: ticket[k] for k in fields}, "reason_code": "ENTRY_ERROR", **changes}
+
+
+def test_live_ticket_numbers_stay_unique_through_corrections(client: TestClient, w: World) -> None:  # noqa: F811
+    """L2B-R-01 : un numéro porté par un correctif vivant ne se réutilise ni en correction ni en saisie."""
+    bridge = _weighbridge(client, w)
+    first, second = _weighed(client, w, bridge, "A-1"), _weighed(client, w, bridge, "A-2")
+    moved = client.post(
+        f"{API}/weighing-tickets/{first['weighing_ticket_id']}/correct",
+        headers=w.ops.headers,
+        json=_correction(first, ticket_number="B-7"),
+    )
+    assert moved.status_code == 201, moved.text
+    clash = client.post(
+        f"{API}/weighing-tickets/{second['weighing_ticket_id']}/correct",
+        headers=w.ops.headers,
+        json=_correction(second, ticket_number="B-7"),
+    )
+    assert (clash.status_code, clash.json()["code"]) == (409, "DUPLICATE_TICKET_NUMBER")
+    _, mission = _loaded_mission(client, w)
+    fresh = client.post(
+        f"{API}/weighing-tickets",
+        headers=w.ops.headers,
+        json=_ticket(mission["rotations"][0]["rotation_id"], bridge, "B-7"),
+    )
+    assert (fresh.status_code, fresh.json()["code"]) == (409, "DUPLICATE_TICKET_NUMBER")
+    # Renvoi identique d'une correction réussie (coupure réseau) : même correctif (L2B-R-09).
+    again = client.post(
+        f"{API}/weighing-tickets/{first['weighing_ticket_id']}/correct",
+        headers=w.ops.headers,
+        json=_correction(first, ticket_number="B-7"),
+    )
+    assert (
+        again.status_code == 200 and again.json()["weighing_ticket_id"] == moved.json()["weighing_ticket_id"]
+    )
+    voids = client.get(
+        f"{API}/audit-events",
+        headers=w.t.admin.headers,
+        params={"entity_id": first["weighing_ticket_id"], "action": "weighing_ticket.void"},
+    ).json()
+    assert voids["total"] == 1  # l'annulation de l'original a sa propre trace (L2B-R-10)
+
+
+def test_degraded_entry_cannot_be_laundered(client: TestClient, w: World, api: Api) -> None:  # noqa: F811
+    """L2B-R-02 / R-03 : pas de passage en « pont-bascule » par correction, et nul de la chaîne n'approuve."""
+    bridge = _weighbridge(client, w)
+    degraded = _weighed(
+        client, w, bridge, "D-1", source="MANUAL_DEGRADED", degraded_reason="WEIGHBRIDGE_DOWN"
+    )
+    url = f"{API}/weighing-tickets/{degraded['weighing_ticket_id']}/correct"
+    laundered = client.post(
+        url, headers=w.ops.headers, json=_correction(degraded, source="WEIGHBRIDGE", degraded_reason=None)
+    )
+    assert laundered.status_code == 422
+    corrector = api.user(w.t, "OPS_MANAGER")
+    fixed = client.post(url, headers=corrector.headers, json=_correction(degraded, tare_kg=19_000))
+    assert fixed.status_code == 201 and fixed.json()["status"] == "PENDING_APPROVAL"
+    approve = f"{API}/weighing-tickets/{fixed.json()['weighing_ticket_id']}/approve"
+    for person in (w.ops, corrector):  # auteur de la saisie d'origine, puis auteur du correctif
+        refused = client.post(approve, headers=person.headers, json={})
+        assert (refused.status_code, refused.json()["code"]) == (422, "SELF_APPROVAL_FORBIDDEN")
+    assert client.post(approve, headers=api.user(w.t, "OPS_MANAGER").headers, json={}).status_code == 200
+
+
+def test_resend_is_recognised_after_the_entry_window(
+    client: TestClient,
+    w: World,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """L2B-R-08 : un renvoi identique tardif rend le ticket ; un motif différent est un conflit."""
+    _, mission = _loaded_mission(client, w)
+    bridge = _weighbridge(client, w)
+    body = _ticket(
+        mission["rotations"][0]["rotation_id"],
+        bridge,
+        source="MANUAL_DEGRADED",
+        degraded_reason="POWER_OUTAGE",
+    )
+    first = client.post(f"{API}/weighing-tickets", headers=w.ops.headers, json=body)
+    assert first.status_code == 201
+    monkeypatch.setattr(get_settings(), "weighing_backdate_tolerance", timedelta(0))
+    late = client.post(f"{API}/weighing-tickets", headers=w.ops.headers, json=body)
+    assert late.status_code == 200 and late.json()["weighing_ticket_id"] == first.json()["weighing_ticket_id"]
+    other_reason = client.post(
+        f"{API}/weighing-tickets", headers=w.ops.headers, json={**body, "degraded_reason": "CALIBRATION"}
+    )
+    assert (other_reason.status_code, other_reason.json()["code"]) == (409, "DUPLICATE_TICKET_NUMBER")
+
+
+def test_live_only_filter(client: TestClient, w: World) -> None:  # noqa: F811
+    """L2B-R-13 : la fiche mission ne lit que les pesées non annulées."""
+    bridge = _weighbridge(client, w)
+    ticket = _weighed(client, w, bridge, "L-1")
+    client.post(
+        f"{API}/weighing-tickets/{ticket['weighing_ticket_id']}/correct",
+        headers=w.ops.headers,
+        json=_correction(ticket, tare_kg=17_000),
+    )
+    live = client.get(
+        f"{API}/weighing-tickets",
+        headers=w.ops.headers,
+        params={"mission_id": ticket["mission_id"], "live_only": "true"},
+    ).json()
+    assert live["total"] == 1 and live["items"][0]["replaces_ticket_id"] == ticket["weighing_ticket_id"]
+
+
+def test_database_guards_live_tickets(client: TestClient, w: World) -> None:  # noqa: F811
+    """L2B-R-04 / R-05 : même hors de l'API, pas deux pesées vivantes par rotation ni de ticket incohérent."""
+    bridge = _weighbridge(client, w)
+    ticket = _weighed(client, w, bridge, "G-1")
+    engine = create_engine(get_settings().database_url(), pool_size=1, max_overflow=0)
+    insert = text(
+        "INSERT INTO weighing_ticket (tenant_id, site_id, mission_id, rotation_id, vehicle_id,"
+        " weighbridge_location_id, ticket_number, source, weighed_at, gross_kg, tare_kg, recorded_by)"
+        " SELECT tenant_id, site_id, mission_id, rotation_id, CAST(:vehicle AS uuid),"
+        " weighbridge_location_id,"
+        " :number, source, weighed_at, gross_kg, tare_kg, recorded_by"
+        " FROM weighing_ticket WHERE weighing_ticket_id = :i"
+    )
+    try:
+        for vehicle, number, expected in (
+            (ticket["vehicle_id"], "G-2", "uq_wt_live_rotation"),
+            (str(uuid.uuid4()), "G-3", "ck_wt_rotation_consistency"),
+        ):
+            with engine.connect() as conn:
+                conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(w.t.tenant_id)})
+                with pytest.raises(DBAPIError) as refused:
+                    conn.execute(
+                        insert, {"vehicle": vehicle, "number": number, "i": ticket["weighing_ticket_id"]}
+                    )
+                assert refused.value.orig.diag.constraint_name == expected  # type: ignore[union-attr]
+                conn.rollback()
+    finally:
+        engine.dispose()
