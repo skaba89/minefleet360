@@ -38,6 +38,17 @@ def _iso(instant: datetime) -> str:
     return instant.isoformat()
 
 
+@pytest.fixture
+def block_policy(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Politique D-41 « block » : comportement d'origine de D-11 (refus si une affectation est ouverte)."""
+    monkeypatch.setattr(get_settings(), "assignment_safety_policy", "block")
+
+
+@pytest.fixture
+def close_policy(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(get_settings(), "assignment_safety_policy", "close")
+
+
 @dataclass
 class World:
     t: TenantFixture
@@ -394,7 +405,7 @@ def test_us123_a9_stale_version_and_if_match_required(client: TestClient, w: Wor
 
 
 def test_d27_activation_rechecks_eligibility(
-    client: TestClient, w: World, monkeypatch: pytest.MonkeyPatch
+    client: TestClient, w: World, monkeypatch: pytest.MonkeyPatch, block_policy: None
 ) -> None:
     planned = _create(
         client, w, _vehicle(client, w), _driver(client, w), start=_now() + timedelta(minutes=10)
@@ -457,7 +468,9 @@ def test_d30_suspend_and_resume(client: TestClient, w: World) -> None:
 # --- D-11 / D-13 Blocages de statut et de site --------------------------------------------------------
 
 
-def test_d11_d13_open_assignment_blocks_status_and_site_changes(client: TestClient, w: World) -> None:
+def test_d11_d13_open_assignment_blocks_status_and_site_changes(
+    client: TestClient, w: World, block_policy: None
+) -> None:
     created = _create(client, w, _vehicle(client, w), _driver(client, w)).json()
     vurl = f"{API}/vehicles/{created['vehicle_id']}"
 
@@ -612,7 +625,9 @@ def test_db_guards_overlap_site_and_immutability(client: TestClient, w: World, a
 # --- SEC1C-05 / SEC1C-06 Divulgation limitée aux droits de lecture ------------------------------------
 
 
-def test_sec1c05_blocker_list_only_for_assignment_readers(client: TestClient, w: World) -> None:
+def test_sec1c05_blocker_list_only_for_assignment_readers(
+    client: TestClient, w: World, block_policy: None
+) -> None:
     """TENANT_ADMIN change le statut d'un véhicule sans lire les affectations (D-10) : total seulement."""
     created = _create(client, w, _vehicle(client, w), _driver(client, w)).json()
     vurl = f"{API}/vehicles/{created['vehicle_id']}"
@@ -748,3 +763,101 @@ def test_sec1c_r11_site_move_without_open_assignment_and_db_guard(
             )
         assert getattr(refused.value.orig, "sqlstate", None) == "MF004"
         conn.rollback()
+
+
+# --- D-41 Statut de sécurité d'une ressource affectée ------------------------------------------------
+
+
+def _vehicle_status(
+    client: TestClient, w: World, vehicle: str, status: str, reason: str | None = "BREAKDOWN"
+):  # type: ignore[no-untyped-def]
+    url = f"{API}/vehicles/{vehicle}"
+    body: dict[str, object] = {"status": status}
+    if reason:
+        body["reason_code"] = reason
+    return client.post(
+        f"{url}/status",
+        headers={**w.ops.headers, "If-Match": client.get(url, headers=w.ops.headers).headers["ETag"]},
+        json=body,
+    )
+
+
+def _driver_status(client: TestClient, w: World, driver: str, body: dict[str, object]):  # type: ignore[no-untyped-def]
+    url = f"{API}/drivers/{driver}"
+    return client.post(
+        f"{url}/status",
+        headers={**w.hr.headers, "If-Match": client.get(url, headers=w.hr.headers).headers["ETag"]},
+        json=body,
+    )
+
+
+def test_d41_flag_policy_accepts_safety_status_and_flags_assignment(client: TestClient, w: World) -> None:
+    """Défaut « flag » : la sécurité prime, l'affectation reste ouverte mais apparaît non conforme."""
+    created = _create(client, w, _vehicle(client, w), _driver(client, w)).json()
+    immobilized = _vehicle_status(client, w, created["vehicle_id"], "IMMOBILIZED")
+    assert immobilized.status_code == 200, immobilized.text
+    read = client.get(
+        f"{API}/vehicle-assignments/{created['vehicle_assignment_id']}", headers=w.ops.headers
+    ).json()
+    assert read["status"] == "ACTIVE"
+    assert read["compliance"]["status"] == "NON_COMPLIANT"
+    assert [r["code"] for r in read["compliance"]["reasons"]] == ["VEHICLE_NOT_AVAILABLE"]
+    # Changements définitifs toujours bloqués : réforme et changement de site exigent une clôture.
+    url = f"{API}/vehicles/{created['vehicle_id']}"
+    retired = client.post(
+        f"{url}/retire",
+        headers={**w.ops.headers, "If-Match": client.get(url, headers=w.ops.headers).headers["ETag"]},
+        json={"reason_code": "SOLD"},
+    )
+    assert (retired.status_code, retired.json()["code"]) == (409, "OPEN_ASSIGNMENTS_EXIST")
+    # Conducteur suspendu : accepté aussi, sortie définitive refusée.
+    suspended = _driver_status(
+        client, w, created["driver_id"], {"status": "SUSPENDED", "suspension_reason_code": "HSE_DECISION"}
+    )
+    assert suspended.status_code == 200, suspended.text
+    exit_ = _driver_status(client, w, created["driver_id"], {"status": "INACTIVE", "exit_date": "2026-12-31"})
+    assert (exit_.status_code, exit_.json()["code"]) == (409, "OPEN_ASSIGNMENTS_EXIST")
+
+
+def test_d41_flag_policy_refuses_activation_of_planned_assignment(client: TestClient, w: World) -> None:
+    planned = _create(
+        client, w, _vehicle(client, w), _driver(client, w), start=_now() + timedelta(days=1)
+    ).json()
+    assert _vehicle_status(client, w, planned["vehicle_id"], "IN_MAINTENANCE", None).status_code == 200
+    # Toute nouvelle affectation de ce véhicule est refusée tant qu'il n'est pas disponible.
+    again = _create(client, w, planned["vehicle_id"], _driver(client, w))
+    assert "VEHICLE_NOT_AVAILABLE" in _reasons(again)
+
+
+def test_d41_close_policy_closes_or_cancels_open_assignments(
+    client: TestClient, w: World, close_policy: None
+) -> None:
+    active = _create(client, w, _vehicle(client, w), _driver(client, w)).json()
+    immobilized = _vehicle_status(client, w, active["vehicle_id"], "IMMOBILIZED")
+    assert immobilized.status_code == 200, immobilized.text
+    closed = client.get(
+        f"{API}/vehicle-assignments/{active['vehicle_assignment_id']}", headers=w.ops.headers
+    ).json()
+    assert (closed["status"], closed["status_reason"]) == ("COMPLETED", "SAFETY_STOP")
+    assert closed["valid_to"] is not None
+
+    planned = _create(
+        client, w, _vehicle(client, w), _driver(client, w), start=_now() + timedelta(days=1)
+    ).json()
+    suspended = _driver_status(
+        client, w, planned["driver_id"], {"status": "SUSPENDED", "suspension_reason_code": "HSE_DECISION"}
+    )
+    assert suspended.status_code == 200, suspended.text
+    cancelled = client.get(
+        f"{API}/vehicle-assignments/{planned['vehicle_assignment_id']}", headers=w.ops.headers
+    ).json()
+    assert (cancelled["status"], cancelled["status_reason"]) == ("CANCELLED", "DRIVER_UNAVAILABLE")
+
+    events = client.get(
+        f"{API}/audit-events", headers=w.t.admin.headers, params={"action": "vehicle_assignment.auto_close"}
+    ).json()["items"]
+    assert {e["entity_id"] for e in events} == {
+        active["vehicle_assignment_id"],
+        planned["vehicle_assignment_id"],
+    }
+    assert {e["actor_user_id"] for e in events} == {str(w.ops.user_id), str(w.hr.user_id)}

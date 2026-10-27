@@ -283,7 +283,8 @@ function ChangeStatus({
         </select>
       </label>
       <p className="muted small">
-        Refusé tant qu'une affectation planifiée, active ou suspendue existe : clôturez-la d'abord.
+        Si le véhicule est affecté, l'affectation est signalée non conforme (ou clôturée, selon la configuration
+        de votre société). Pour une réforme, clôturez d'abord ses affectations.
       </p>
     </ActionForm>
   );

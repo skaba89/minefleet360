@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     assignment_backdate_tolerance: timedelta = timedelta(minutes=15)
     assignment_end_future_tolerance: timedelta = timedelta(minutes=5)
     clock_skew_tolerance: timedelta = timedelta(minutes=5)
+    # Statut de sécurité (immobilisation, atelier, suspension…) d'une ressource affectée (D-41) :
+    #   block : refusé tant qu'une affectation est ouverte (D-11 d'origine) ;
+    #   flag  : accepté, l'affectation reste ouverte et apparaît non conforme (défaut : la sécurité prime) ;
+    #   close : accepté, les affectations ouvertes sont clôturées ou annulées automatiquement (audité).
+    assignment_safety_policy: Literal["block", "flag", "close"] = "flag"
     # Horizon de planification (SEC1C-03) : valeur de développement, à arbitrer avec l'exploitation (C-11).
     assignment_max_horizon: timedelta = timedelta(days=31)
     # Filtre de conformité calculé en mémoire au lot 1 (D-12) : plafond des affectations actives évaluées.
@@ -73,7 +78,15 @@ class Settings(BaseSettings):
     mfa_encryption_key: SecretStr | None = Field(default=None, validation_alias="MF_MFA_ENCRYPTION_KEY")
     # « enroll » : un rôle concerné sans second facteur n'accède qu'à son compte jusqu'à l'enrôlement.
     mfa_enforcement: Literal["enroll", "off"] = "enroll"
-    mfa_required_roles: tuple[str, ...] = ("PLATFORM_ADMIN", "TENANT_ADMIN", "HR", "FINANCE")
+    # D-41 : direction et responsable des opérations ajoutés (vision large des données) ; modifiable.
+    mfa_required_roles: tuple[str, ...] = (
+        "PLATFORM_ADMIN",
+        "TENANT_ADMIN",
+        "DIRECTION",
+        "OPS_MANAGER",
+        "HR",
+        "FINANCE",
+    )
     mfa_challenge_ttl: timedelta = timedelta(minutes=5)
     mfa_issuer: str = "MINEFLEET 360"
     platform_tenant_code: str = "mf-platform"
