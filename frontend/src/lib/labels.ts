@@ -37,6 +37,7 @@ export const END_REASONS: Record<string, string> = {
   BREAKDOWN: "Panne",
   REASSIGNMENT: "Réaffectation",
   NON_COMPLIANCE: "Non-conformité",
+  SAFETY_STOP: "Arrêt pour raison de sécurité (automatique)",
   OTHER: "Autre",
 };
 

@@ -6,7 +6,11 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.assignment.contracts import ensure_no_open_assignments
+from app.assignment.contracts import (
+    SAFETY_VEHICLE_STATUSES,
+    apply_safety_policy,
+    ensure_no_open_assignments,
+)
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.authz.principal import mask
@@ -270,8 +274,12 @@ def _apply_status(
     source = vehicle.status
     if target in REASON_REQUIRED and reason is None:
         raise AppError("STATUS_REASON_REQUIRED")
-    if target != "AVAILABLE":
-        _ensure_no_open_assignments(auth, vehicle)  # D-11
+    if target in SAFETY_VEHICLE_STATUSES:
+        apply_safety_policy(  # D-41 : bloquer, signaler ou clôturer selon la configuration
+            auth.db, auth.principal, vehicle.site_id, now=auth.clock.now(), vehicle_id=vehicle.vehicle_id
+        )
+    elif target != "AVAILABLE":
+        _ensure_no_open_assignments(auth, vehicle)  # D-11 : la réforme exige une clôture explicite
     # Calculé AVANT toute mutation : la requête déclencherait un autoflush partiel (ck_vehicle_retired).
     decommissioned = local_date(db, vehicle.site_id, auth.clock.now()) if target == "RETIRED" else None
     vehicle.status = target

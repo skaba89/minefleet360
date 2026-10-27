@@ -1,11 +1,36 @@
 #!/bin/bash
 # Sauvegarde quotidienne de la base (cron). Rétention locale : 7 fichiers.
-# Copie hors machine (OVH Object Storage) : à décider (C-09, coût) ; chiffrer avant tout transfert.
+# Copie hors machine (D-41, C-09) : chiffrée AES-256 (gpg) puis envoyée par rclone vers la destination
+# choisie (OVH Object Storage, autre S3, SFTP…), UNIQUEMENT si offsite.env existe (voir offsite.env.example).
 set -euo pipefail
 umask 077  # dumps lisibles par le seul propriétaire (données, même fictives)
 cd "$(dirname "$0")"
 mkdir -p backups
 chmod 700 backups
+dump="backups/minefleet-$(date -u +%Y%m%dT%H%M%SZ).dump"
 docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T db \
-  pg_dump -U postgres -Fc minefleet > "backups/minefleet-$(date -u +%Y%m%dT%H%M%SZ).dump"
+  pg_dump -U postgres -Fc minefleet > "$dump" </dev/null
 ls -1t backups/*.dump | tail -n +8 | xargs -r rm --
+
+if [ ! -f offsite.env ]; then
+  echo "copie hors machine : non configurée (offsite.env absent)"
+  exit 0
+fi
+# shellcheck source=/dev/null
+. ./offsite.env
+: "${MF_OFFSITE_REMOTE:?MF_OFFSITE_REMOTE manquant dans offsite.env}"
+: "${MF_OFFSITE_PASSPHRASE_FILE:?MF_OFFSITE_PASSPHRASE_FILE manquant dans offsite.env}"
+retention="${MF_OFFSITE_RETENTION_DAYS:-30}"
+if [ ! -r "$MF_OFFSITE_PASSPHRASE_FILE" ]; then
+  echo "phrase de chiffrement illisible : $MF_OFFSITE_PASSPHRASE_FILE" >&2
+  exit 1
+fi
+# Jamais de dump en clair hors du serveur : chiffrement symétrique authentifié (MDC) avant tout envoi.
+encrypted="$dump.gpg"
+gpg --batch --yes --quiet --pinentry-mode loopback --symmetric --cipher-algo AES256 \
+  --passphrase-file "$MF_OFFSITE_PASSPHRASE_FILE" --output "$encrypted" "$dump"
+rclone copy --quiet "$encrypted" "$MF_OFFSITE_REMOTE" </dev/null
+rm -f -- "$encrypted"
+# Rétention distante (jours) : les copies plus anciennes sont supprimées de la destination.
+rclone delete --quiet --min-age "${retention}d" "$MF_OFFSITE_REMOTE" </dev/null
+echo "copie hors machine : $(basename "$encrypted") envoyée vers $MF_OFFSITE_REMOTE (rétention ${retention} j)"

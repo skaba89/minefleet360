@@ -299,7 +299,8 @@ function ChangeDriverStatus({ driver: d, etag, onDone, onCancel }: PanelProps & 
         </label>
       )}
       <p className="muted small">
-        Un passage hors « Actif » est refusé tant qu'une affectation ouverte existe : clôturez-la d'abord.
+        Indisponibilité ou suspension : une affectation en cours est signalée non conforme (ou clôturée, selon la
+        configuration). Pour une sortie définitive, clôturez d'abord ses affectations.
       </p>
     </ActionForm>
   );

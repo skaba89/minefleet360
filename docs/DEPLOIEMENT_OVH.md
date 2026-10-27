@@ -49,7 +49,7 @@ Services :
 |---|---|
 | ~~MFA (TOTP) pour `PLATFORM_ADMIN`, `TENANT_ADMIN`, `HR`, `FINANCE`~~ — **livré (D-40)**, à valider en recette avec de vrais téléphones | C-03, SEC-04 |
 | Avis juridique guinéen : base légale, hébergement hors Guinée, durées de conservation | C-01, C-08, C-09 |
-| Sauvegardes chiffrées hors machine + test de restauration | SEC-15 |
+| Sauvegardes chiffrées hors machine + test de restauration — **mécanisme livré (D-41)**, destination à choisir et à activer (§8) | SEC-15 |
 | Limitation de débit partagée (pas en mémoire) et supervision/alertes | SEC-07, QA-32 |
 | Envoi d'e-mails réel (fournisseur) au lieu de la capture locale | D-28, SEC-08 |
 | Interface web et tests E2E (tranche 1c), revue sécurité finale | PLAN_LOT1 |
@@ -95,3 +95,10 @@ Incidents pendant le déploiement : (1) `docker compose run` sans `-T` lisait l'
 1. ~~Exposition HTTPS~~ — **fait le 2026-10-26** : site copié dans `~/vps-proxy/sites/minefleet.caddy`, proxy commun rechargé, certificat Let's Encrypt obtenu ; `https://minefleet.51-75-248-4.sslip.io/api/v1/health` 200 depuis l'extérieur, autres sites du proxy toujours servis.
 2. ~~Sauvegarde quotidienne~~ — **fait le 2026-10-26** : crontab de `ubuntu` = `17 2 * * * $HOME/minefleet360/infra/deploy/backup.sh >> $HOME/minefleet360/infra/deploy/backup.log 2>&1` (script testé en environnement minimal ; rétention locale 7 fichiers).
 3. Copie hors machine chiffrée des sauvegardes (§5).
+
+## 8. Copie des sauvegardes hors du serveur (D-41)
+`backup.sh` chiffre le dernier dump (gpg, AES-256) puis l'envoie par `rclone` vers la destination configurée, et supprime les copies distantes de plus de `MF_OFFSITE_RETENTION_DAYS` jours. Inactif tant que `offsite.env` n'existe pas.
+1. Choisir la destination (OVH Object Storage, autre S3, serveur SFTP) et la déclarer : `rclone config` (nom du remote, ex. `ovh-s3`).
+2. Phrase de chiffrement : `head -c 48 /dev/urandom | base64 > ~/.minefleet-offsite-passphrase && chmod 600 ~/.minefleet-offsite-passphrase` — **la conserver aussi dans un coffre** : sans elle, les copies sont illisibles.
+3. `cp offsite.env.example offsite.env && chmod 600 offsite.env`, renseigner `MF_OFFSITE_REMOTE` et `MF_OFFSITE_PASSPHRASE_FILE`, puis lancer `./backup.sh` une fois.
+4. **Test de restauration** (à faire après activation, puis chaque trimestre) : récupérer une copie (`rclone copy <remote>:<fichier>.gpg /tmp/restau/`), la déchiffrer (`gpg --decrypt --pinentry-mode loopback --passphrase-file … > /tmp/restau/test.dump`), la restaurer dans une base jetable (`docker run --rm -d --name pg-restau postgis/postgis:16-3.4` puis `pg_restore --list` et `pg_restore -d …`), vérifier le nombre de véhicules, puis supprimer la base jetable et les fichiers.

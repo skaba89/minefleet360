@@ -11,6 +11,7 @@ AssignmentStatus = Literal["PLANNED", "ACTIVE", "SUSPENDED", "COMPLETED", "CANCE
 Compliance = Literal["COMPLIANT", "NON_COMPLIANT"]
 # Codes de motif (pas de texte libre : pas de donnée personnelle dans un motif).
 SuspendReason = Literal["BREAKDOWN", "DRIVER_ABSENT", "SAFETY", "WEATHER", "OPERATIONS", "OTHER"]
+# SAFETY_STOP : clôture automatique sur statut de sécurité (politique « close », D-41), jamais saisi.
 EndReason = Literal["END_OF_SHIFT", "BREAKDOWN", "REASSIGNMENT", "NON_COMPLIANCE", "OTHER"]
 CancelReason = Literal["PLAN_CHANGED", "DRIVER_UNAVAILABLE", "VEHICLE_UNAVAILABLE", "ENTRY_ERROR", "OTHER"]
 

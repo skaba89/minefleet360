@@ -43,6 +43,8 @@ services:
       # Chiffrement des secrets TOTP (C-03) : à sauvegarder hors serveur, sa perte invalide tous les seconds facteurs.
       MF_MFA_ENCRYPTION_KEY: ${MF_MFA_ENCRYPTION_KEY:?MF_MFA_ENCRYPTION_KEY manquant (32 octets base64url)}
       MF_MFA_ENFORCEMENT: ${MF_MFA_ENFORCEMENT:-enroll}
+      # D-41 : statut de sécurité d'une ressource affectée (flag, block ou close).
+      MF_ASSIGNMENT_SAFETY_POLICY: ${MF_ASSIGNMENT_SAFETY_POLICY:-flag}
       MF_ALLOWED_ORIGINS: ${MF_ALLOWED_ORIGINS:-}
       MF_ENV: ${MF_ENV:?MF_ENV manquant (staging ou production)}
       MF_DB_HOST: minefleet-db

@@ -11,7 +11,11 @@ from typing import Any
 
 from sqlalchemy import func, select
 
-from app.assignment.contracts import ensure_no_open_assignments
+from app.assignment.contracts import (
+    SAFETY_DRIVER_STATUSES,
+    apply_safety_policy,
+    ensure_no_open_assignments,
+)
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.authz.principal import mask, restricted_fields
@@ -308,8 +312,12 @@ def change_driver_status(
     }
     if target in required and required[target] is None:
         raise AppError("STATUS_REASON_REQUIRED")
-    if target != "ACTIVE":
-        _ensure_no_open_assignments(auth, driver)
+    if target in SAFETY_DRIVER_STATUSES:
+        apply_safety_policy(  # D-41 : bloquer, signaler ou clôturer selon la configuration
+            db, auth.principal, driver.site_id, now=auth.clock.now(), driver_id=driver.driver_id
+        )
+    elif target != "ACTIVE":
+        _ensure_no_open_assignments(auth, driver)  # D-11 : la sortie définitive exige une clôture explicite
     if target != "INACTIVE" and active_site_in_scope(db, auth.scope, driver.site_id) is None:
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
     driver.status = target
