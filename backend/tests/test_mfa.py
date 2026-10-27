@@ -114,7 +114,9 @@ def test_login_requires_second_factor_and_refuses_replay(client: TestClient, api
     assert ok.status_code == 200, ok.text
     assert "mf_refresh=" in ok.headers["set-cookie"]
     assert client.get(f"{API}/drivers", headers=bearer(ok.json()["access_token"])).status_code == 200
-    refreshed = client.post(f"{API}/auth/refresh")
+    # Cookie transmis explicitement : il est « Secure » en CI et le client de test parle en http.
+    refreshed = client.post(f"{API}/auth/refresh", cookies={"mf_refresh": ok.cookies["mf_refresh"]})
+    client.cookies.clear()
     assert refreshed.status_code == 200  # session marquée otp : le rafraîchissement reste possible
 
     events = client.get(
@@ -203,7 +205,12 @@ def test_disable_only_for_optional_roles(client: TestClient, api: Api) -> None:
     bad_password = client.post(
         f"{API}/me/mfa/disable", headers=dispatcher.headers, json={"password": "faux", "code": "000000"}
     )
-    assert bad_password.status_code == 401
+    bad_code = client.post(
+        f"{API}/me/mfa/disable", headers=dispatcher.headers, json={"password": PASSWORD, "code": "000000"}
+    )
+    # Même réponse que le mot de passe ou le code soit faux (aucun oracle sur le mot de passe).
+    assert bad_password.status_code == bad_code.status_code == 401
+    assert bad_password.json()["code"] == bad_code.json()["code"] == "INVALID_CREDENTIALS"
     # Le code de l'enrôlement est déjà consommé : il faut le pas suivant (anti-rejeu).
     replay = client.post(
         f"{API}/me/mfa/disable",
@@ -253,3 +260,21 @@ def test_ops_command_resets_platform_admin_second_factor(client: TestClient, api
     api._platform = bearer(fresh.json()["access_token"])  # session partagée du harnais
     assert main(["reset-platform-mfa", "--email", PLATFORM_EMAIL]) == 3  # plus rien à retirer
     del secret
+
+
+def test_challenge_is_void_after_password_change(client: TestClient, api: Api) -> None:
+    """Un défi obtenu avec l'ancien mot de passe ne vaut plus après un changement de mot de passe."""
+    t = api.tenant()
+    hr = api.user(t, "HR")
+    secret, _ = _enroll(client, hr.headers)
+    token = _login(client, t, hr.email).json()["mfa_token"]
+    changed = client.post(
+        f"{API}/me/password",
+        headers=hr.headers,
+        json={"current_password": PASSWORD, "new_password": "Nouveau-mot-de-passe-2026"},
+    )
+    assert changed.status_code == 204, changed.text
+    stale = client.post(
+        f"{API}/auth/mfa/verify", json={"mfa_token": token, "code": _code(secret, timedelta(seconds=30))}
+    )
+    assert (stale.status_code, stale.json()["code"]) == (401, "MFA_CODE_INVALID")
