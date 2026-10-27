@@ -67,6 +67,13 @@ CATALOG: dict[str, ErrorDef] = {
     "ASSIGNMENT_STATE_INVALID": ErrorDef(
         409, "Cette action n'est pas possible dans l'état de l'affectation."
     ),
+    "MISSION_STATE_INVALID": ErrorDef(
+        409, "Cette étape n'est pas possible dans l'état actuel de la mission."
+    ),
+    "VEHICLE_ON_MISSION": ErrorDef(409, "Le véhicule est déjà en cours de mission."),
+    "DRIVER_ON_MISSION": ErrorDef(409, "Le conducteur est déjà en cours de mission."),
+    "DUPLICATE_LOCATION_CODE": ErrorDef(409, "Un lieu de ce site porte déjà ce code."),
+    "DUPLICATE_MATERIAL_CODE": ErrorDef(409, "Une matière porte déjà ce code."),
     # 422
     "VALIDATION_ERROR": ErrorDef(422, "Les données envoyées sont invalides."),
     "IF_MATCH_REQUIRED": ErrorDef(422, "L'en-tête If-Match est obligatoire pour une modification."),
@@ -88,6 +95,9 @@ CATALOG: dict[str, ErrorDef] = {
     # D-29 : un seul code d'inéligibilité, `details.reasons[]` liste tous les motifs.
     "ASSIGNMENT_NOT_ELIGIBLE": ErrorDef(422, "L'affectation ne respecte pas les conditions d'éligibilité."),
     "END_BEFORE_START": ErrorDef(422, "La fin doit être postérieure au début."),
+    "MISSION_NOT_ELIGIBLE": ErrorDef(
+        422, "Départ impossible : l'affectation n'est pas active ou n'est pas conforme."
+    ),
     "END_IN_FUTURE": ErrorDef(422, "La date de fin ne peut pas être dans le futur."),
     "END_BACKDATED": ErrorDef(
         422, "La fin ne peut pas être antérieure à maintenant, sauf à la date de fin prévue."
@@ -115,6 +125,10 @@ CONSTRAINT_CODES: dict[str, str] = {
     "ex_dq_no_overlap": "DUPLICATE_QUALIFICATION",
     "ex_va_vehicle_no_overlap": "VEHICLE_ASSIGNMENT_OVERLAP",
     "ex_va_driver_no_overlap": "DRIVER_ASSIGNMENT_OVERLAP",
+    "uq_mission_vehicle_running": "VEHICLE_ON_MISSION",
+    "uq_mission_driver_running": "DRIVER_ON_MISSION",
+    "uq_sl_site_code": "DUPLICATE_LOCATION_CODE",
+    "uq_material_code": "DUPLICATE_MATERIAL_CODE",
 }
 
 

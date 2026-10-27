@@ -20,6 +20,9 @@ TENANT_TABLES = (
     "vehicle",
     "driver",
     "vehicle_assignment",
+    "mission",
+    "mission_event",
+    "rotation",
 )
 GLOBAL_TABLES = {
     "role",

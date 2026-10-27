@@ -1,17 +1,22 @@
 """Contrat public du module assignment : affectations ouvertes bloquant statut et site (D-11, D-13)."""
 
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.assignment.eligibility import compliance
 from app.assignment.models import VehicleAssignment
 from app.audit.contracts import record
 from app.authz.principal import Principal, evaluate
 from app.core.config import get_settings
 from app.core.errors import AppError
+from app.fleet.contracts import vehicle_facts
+from app.organization.contracts import site_timezone
+from app.workforce.contracts import driver_facts
 
 # SUSPENDED occupe toujours le créneau (D-30) : il bloque comme PLANNED et ACTIVE.
 OPEN_STATUSES = ("PLANNED", "ACTIVE", "SUSPENDED")
@@ -125,3 +130,54 @@ def apply_safety_policy(
             changed_fields=("status", "status_reason"),
         )
     db.flush()
+
+
+# --- Contrat pour le dispatch (lot 2) : affectation porteuse d'une mission ------------------------------
+
+
+@dataclass(frozen=True)
+class AssignmentFacts:
+    vehicle_assignment_id: uuid.UUID
+    site_id: uuid.UUID
+    vehicle_id: uuid.UUID
+    driver_id: uuid.UUID
+    status: str
+    valid_from: datetime
+    valid_to: datetime | None
+
+
+def assignment_facts(db: Session, assignment_id: uuid.UUID) -> AssignmentFacts | None:
+    """Affectation du tenant courant (RLS) ; la portée site est contrôlée par l'appelant."""
+    row = db.get(VehicleAssignment, assignment_id)
+    if row is None:
+        return None
+    return AssignmentFacts(
+        row.vehicle_assignment_id,
+        row.site_id,
+        row.vehicle_id,
+        row.driver_id,
+        row.status,
+        row.valid_from,
+        row.valid_to,
+    )
+
+
+def running_blockers(db: Session, facts: AssignmentFacts, now: datetime) -> list[str]:
+    """Motifs empêchant de rouler maintenant (RM-080) : affectation non active ou non conforme."""
+    reasons: list[str] = []
+    if facts.status != "ACTIVE":
+        reasons.append("ASSIGNMENT_NOT_ACTIVE")
+    if facts.valid_to is not None and facts.valid_to <= now:
+        reasons.append("ASSIGNMENT_ENDED")
+    vehicle = vehicle_facts(db, [facts.vehicle_id]).get(facts.vehicle_id)
+    driver = driver_facts(db, [facts.driver_id]).get(facts.driver_id)
+    if vehicle is None or driver is None:
+        return [*reasons, "REFERENCE_NOT_FOUND"]
+    found, _ = compliance(
+        vehicle,
+        driver,
+        now=now,
+        tz=site_timezone(db, facts.site_id),
+        warning_days=get_settings().expiry_warning_days,
+    )
+    return reasons + [f.code for f in found]

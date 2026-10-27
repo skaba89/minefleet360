@@ -19,6 +19,7 @@ from app.core.email import EmailSender, build_email_sender
 from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
 from app.core.request_context import RequestMeta, set_request_meta
+from app.dispatch.router import router as dispatch_router
 from app.fleet.router import router as fleet_router
 from app.identity.auth_service import AuthLimiters
 from app.identity.router import auth_router, me_router, role_router, user_router
@@ -119,6 +120,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         fleet_router,
         workforce_router,
         assignment_router,
+        dispatch_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     return app
