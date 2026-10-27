@@ -3,6 +3,7 @@ import { NavLink, Outlet } from "react-router";
 
 import { useAuth, useMe } from "../auth/AuthContext";
 import { can } from "../lib/permissions";
+import { canAdminister } from "../pages/AdminPages";
 import { useSites } from "../site/SiteContext";
 
 export function Layout() {
@@ -14,6 +15,7 @@ export function Layout() {
     { to: "/vehicules", text: "Véhicules", show: can(me.grants, "fleet.vehicle.read") },
     { to: "/conducteurs", text: "Conducteurs", show: can(me.grants, "workforce.driver.read") },
     { to: "/affectations", text: "Affectations", show: can(me.grants, "assignment.vehicle_assignment.read") },
+    { to: "/administration", text: "Administration", show: canAdminister(me.grants) },
   ];
   return (
     <div className="shell">

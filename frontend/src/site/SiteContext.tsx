@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
-import { get, type Schemas } from "../api/client";
+import { read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 
 type Site = Schemas["SiteOut"];
@@ -22,7 +22,7 @@ export function SiteProvider({ children }: { children: ReactNode }) {
   const [siteId, setSiteId] = useState<string | null>(null);
   const { data } = useQuery({
     queryKey: ["sites"],
-    queryFn: () => get<Schemas["Page_SiteOut_"]>("/sites", { page_size: 200 }),
+    queryFn: () => read("/sites", { query: { page_size: 200 } }),
   });
   const value = useMemo<SiteState>(() => {
     const sites = data?.items ?? [];

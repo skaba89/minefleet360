@@ -74,6 +74,11 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Permissions de l'interface alignées sur authz_matrix.yaml
+        run: pip install pyyaml==6.0.3 && python ../scripts/gen_permissions.py --check
       - run: npm ci
       - name: Types
         run: npm run typecheck

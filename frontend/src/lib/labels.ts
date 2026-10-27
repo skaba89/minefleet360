@@ -74,3 +74,87 @@ export function label(map: Record<string, string>, code: string | null | undefin
   if (!code) return "—";
   return map[code] ?? code;
 }
+
+// --- Parc ----------------------------------------------------------------------------------------------
+
+export const VEHICLE_REASONS: Record<string, string> = {
+  BREAKDOWN: "Panne",
+  ACCIDENT: "Accident",
+  DOCUMENT_EXPIRED: "Document expiré",
+  AWAITING_PARTS: "En attente de pièces",
+  SAFETY_BAN: "Interdiction de sécurité",
+  PREVENTIVE_MAINTENANCE: "Maintenance préventive",
+  RECEPTION_IN_PROGRESS: "Réception en cours",
+  END_OF_LIFE: "Fin de vie",
+  TOTAL_LOSS: "Perte totale",
+  SOLD: "Vendu",
+  OTHER: "Autre",
+};
+
+export const OWNERSHIP: Record<string, string> = {
+  OWNED: "En propre",
+  LEASED: "En location",
+  SUBCONTRACTED: "Sous-traité",
+};
+
+export const FUEL: Record<string, string> = {
+  DIESEL: "Gazole",
+  PETROL: "Essence",
+  ELECTRIC: "Électrique",
+  OTHER: "Autre",
+};
+
+// --- Personnel -----------------------------------------------------------------------------------------
+
+export const EMPLOYMENT: Record<string, string> = {
+  EMPLOYEE: "Salarié",
+  TEMP_AGENCY: "Intérimaire",
+  SUBCONTRACTOR: "Sous-traitant",
+};
+
+export const UNAVAILABILITY_REASONS: Record<string, string> = {
+  LEAVE: "Congé",
+  TRAINING: "Formation",
+  OTHER: "Autre",
+};
+
+export const SUSPENSION_REASONS: Record<string, string> = {
+  HSE_DECISION: "Décision HSE",
+  INVESTIGATION: "Enquête en cours",
+  LICENSE_ISSUE: "Problème de permis",
+  OTHER: "Autre",
+};
+
+export const QUALIFICATION_TYPES: Record<string, string> = {
+  DRIVING_AUTHORIZATION: "Habilitation de conduite",
+  SAFETY_TRAINING: "Formation sécurité",
+  OTHER: "Autre",
+};
+
+export const DOCUMENT_STATUS: Record<string, string> = {
+  VALID: "Valide",
+  SUSPENDED: "Suspendu",
+  WITHDRAWN: "Retiré",
+  REVOKED: "Révoqué",
+};
+
+// Validité DÉRIVÉE des dates et du statut (D-03), calculée par le serveur.
+export const VALIDITY: Record<string, string> = {
+  VALID: "Valide",
+  EXPIRING: "Expire bientôt",
+  EXPIRED: "Expiré",
+  NOT_YET_VALID: "Pas encore valide",
+  SUSPENDED: "Suspendu",
+  WITHDRAWN: "Retiré",
+  REVOKED: "Révoqué",
+};
+
+export const VALIDITY_TONE: Record<string, "ok" | "warn" | "bad" | "neutral"> = {
+  VALID: "ok",
+  EXPIRING: "warn",
+  EXPIRED: "bad",
+  NOT_YET_VALID: "neutral",
+  SUSPENDED: "bad",
+  WITHDRAWN: "bad",
+  REVOKED: "bad",
+};

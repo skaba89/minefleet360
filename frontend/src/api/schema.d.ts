@@ -1025,6 +1025,8 @@ export interface components {
             status: "PLANNED" | "ACTIVE" | "SUSPENDED" | "COMPLETED" | "CANCELLED";
             /** Status Reason */
             status_reason: string | null;
+            /** Activated At */
+            activated_at: string | null;
             /** Activation Overdue */
             activation_overdue: boolean;
             /** End Overdue */

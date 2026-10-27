@@ -1,7 +1,7 @@
 // Client HTTP de l'API MINEFLEET 360.
 // Jeton d'accès gardé en mémoire uniquement (jamais localStorage) ; le jeton de rafraîchissement est un
 // cookie httpOnly que le navigateur envoie seul à /api/v1/auth/refresh (ADR-003).
-import type { components } from "./schema";
+import type { components, paths } from "./schema";
 
 export type Schemas = components["schemas"];
 
@@ -131,4 +131,57 @@ export async function request<T>(path: string, options: RequestOptions = {}, ret
 
 export async function get<T>(path: string, query?: RequestOptions["query"]): Promise<T> {
   return (await request<T>(path, { query })).data;
+}
+
+// --- Appels typés depuis le schéma OpenAPI (chemins, paramètres, corps, réponses) --------------------
+// Un paramètre de requête inconnu (ex. `search` au lieu de `q`) est une erreur de compilation.
+
+type Method = "get" | "post" | "patch";
+export type ApiPath = keyof paths extends infer K ? (K extends `/api/v1${infer R}` ? R : never) : never;
+type Operation<P extends ApiPath, M extends Method> = NonNullable<paths[`/api/v1${P}`][M]>;
+type MethodsOf<P extends ApiPath> = {
+  [M in Method]: paths[`/api/v1${P}`][M] extends undefined ? never : M;
+}[Method];
+type QueryOf<O> = O extends { parameters: { query?: infer Q } } ? NonNullable<Q> : never;
+type PathOf<O> = O extends { parameters: { path: infer T } } ? T : never;
+type BodyOf<O> = O extends { requestBody?: { content: { "application/json": infer B } } } ? B : never;
+type Success<R> = R extends { 200: { content: { "application/json": infer J } } }
+  ? J
+  : R extends { 201: { content: { "application/json": infer J } } }
+    ? J
+    : undefined;
+export type ResponseOf<P extends ApiPath, M extends Method> = Operation<P, M> extends { responses: infer R }
+  ? Success<R>
+  : never;
+
+export interface CallOptions<O> {
+  path?: PathOf<O>;
+  query?: QueryOf<O>;
+  body?: BodyOf<O>;
+  ifMatch?: string | null;
+}
+
+/** Appel typé : `call("get", "/vehicles/{vehicle_id}", { path: { vehicle_id } })`. */
+export function call<P extends ApiPath, M extends MethodsOf<P>>(
+  method: M,
+  template: P,
+  options: CallOptions<Operation<P, M>> = {},
+): Promise<ApiResponse<ResponseOf<P, M>>> {
+  const params = (options.path ?? {}) as Record<string, string>;
+  const path = template.replace(/\{(\w+)\}/g, (_, name: string) => encodeURIComponent(params[name] ?? ""));
+  return request<ResponseOf<P, M>>(path, {
+    method: method.toUpperCase() as RequestOptions["method"],
+    query: options.query as RequestOptions["query"],
+    body: options.body,
+    ifMatch: options.ifMatch,
+  });
+}
+
+/** Lecture typée renvoyant directement le corps. */
+export async function read<P extends ApiPath>(
+  template: P,
+  options: CallOptions<Operation<P, "get">> = {},
+): Promise<ResponseOf<P, "get">> {
+  const response = await call<P, MethodsOf<P>>("get" as MethodsOf<P>, template, options as never);
+  return response.data as ResponseOf<P, "get">;
 }
