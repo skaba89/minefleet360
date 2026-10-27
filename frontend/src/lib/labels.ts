@@ -236,3 +236,45 @@ export function formatDuration(seconds: number | null | undefined): string {
   const minutes = Math.round(seconds / 60);
   return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, "0")}`;
 }
+
+// --- Pesées (lot 2b) -----------------------------------------------------------------------------------
+
+export const WEIGHING_SOURCE: Record<string, string> = {
+  WEIGHBRIDGE: "Pont-bascule",
+  MANUAL_DEGRADED: "Saisie manuelle (pont en panne)",
+};
+
+export const WEIGHING_STATUS: Record<string, string> = {
+  VALID: "Valide",
+  PENDING_APPROVAL: "À approuver",
+  VOIDED: "Annulée",
+};
+
+export const WEIGHING_TONE: Record<string, "ok" | "warn" | "bad" | "neutral"> = {
+  VALID: "ok",
+  PENDING_APPROVAL: "warn",
+  VOIDED: "neutral",
+};
+
+export const DEGRADED_REASONS: Record<string, string> = {
+  WEIGHBRIDGE_DOWN: "Pont-bascule en panne",
+  POWER_OUTAGE: "Coupure de courant",
+  CALIBRATION: "Étalonnage en cours",
+  NETWORK_DOWN: "Réseau indisponible",
+  OTHER: "Autre",
+};
+
+export const VOID_REASONS: Record<string, string> = {
+  ENTRY_ERROR: "Erreur de saisie",
+  WRONG_ROTATION: "Mauvaise rotation",
+  WRONG_VEHICLE: "Mauvais véhicule",
+  DUPLICATE: "Doublon",
+  CALIBRATION_ISSUE: "Pont mal étalonné",
+  OTHER: "Autre",
+};
+
+/** Masse en tonnes (affichage) à partir de kilogrammes entiers (stockage). */
+export function formatTonnes(kg: number | null | undefined): string {
+  if (kg === null || kg === undefined) return "—";
+  return `${(kg / 1000).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} t`;
+}

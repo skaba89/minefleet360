@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     assignment_max_horizon: timedelta = timedelta(days=31)
     # Filtre de conformité calculé en mémoire au lot 1 (D-12) : plafond des affectations actives évaluées.
     compliance_scan_max: int = 2000
+    # Dispatch (lot 2b, PLAN_LOT2 §7) : valeurs de développement à valider avec l'exploitation.
+    weighing_backdate_tolerance: timedelta = timedelta(days=7)  # saisie de tickets papier
+    payload_alert_percent: int = Field(default=110, ge=100, le=200)  # RM-076, à valider (HSE)
+    mission_max_rotations: int = Field(default=100, ge=1, le=1000)  # revue L2A-R-04
+    rotation_min_cycle: timedelta = timedelta(minutes=5)  # en deçà : cycle suspect (indicateurs)
+    indicators_max_period: timedelta = timedelta(days=92)
 
     # Délai max d'attente d'un verrou : échec rapide (409/500) plutôt qu'un blocage indéfini.
     db_lock_timeout_ms: int = 5000

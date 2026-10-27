@@ -419,6 +419,20 @@ def _event(
 def create_mission(auth: Authorized, body: MissionCreate) -> MissionOut:
     """US-2.01 : mission « Affectée » sur une affectation planifiée ou active du site (RM-080, RM-082)."""
     db = auth.db
+    if body.client_request_id is not None:
+        replay = db.execute(
+            select(Mission).where(Mission.client_request_id == body.client_request_id)
+        ).scalar_one_or_none()
+        if replay is not None:
+            # Renvoi après coupure réseau (revue L2A-R-08) : la mission déjà créée, sans doublon.
+            if (
+                not auth.scope.covers_site(replay.site_id)
+                or replay.vehicle_assignment_id != body.vehicle_assignment_id
+            ):
+                raise AppError("CONFLICT")
+            out = missions_out(auth, [replay])[0]
+            db.commit()
+            return out
     facts = _assignment_for(auth, body.vehicle_assignment_id, None)
     if body.origin_location_id == body.destination_location_id:
         raise AppError(
@@ -444,6 +458,7 @@ def create_mission(auth: Authorized, body: MissionCreate) -> MissionOut:
         due_at=body.due_at,
         planned_rotations=body.planned_rotations,
         notes=body.notes,
+        client_request_id=body.client_request_id,
         status="ASSIGNED",
         created_by=auth.user_id,
         updated_by=auth.user_id,
@@ -505,6 +520,28 @@ def _ensure_can_run(auth: Authorized, mission: Mission) -> None:
         raise AppError("MISSION_NOT_ELIGIBLE", details={"reasons": [{"code": r} for r in reasons]})
 
 
+def _ensure_can_cycle(auth: Authorized, mission: Mission) -> None:
+    """Nouveau cycle : affectation encore active et non échue (revue L2A-R-07), plafond de rotations (R-04).
+
+    Le cycle en cours peut se terminer ; ensuite, suspension et réaffectation.
+    """
+    facts = assignment_facts(auth.db, mission.vehicle_assignment_id)
+    now = auth.clock.now()
+    reasons = []
+    if facts is None or facts.status != "ACTIVE":
+        reasons.append("ASSIGNMENT_NOT_ACTIVE")
+    elif facts.valid_to is not None and facts.valid_to <= now:
+        reasons.append("ASSIGNMENT_ENDED")
+    if reasons:
+        raise AppError("MISSION_NOT_ELIGIBLE", details={"reasons": [{"code": r} for r in reasons]})
+    limit = get_settings().mission_max_rotations
+    cycles = auth.db.execute(
+        select(func.count()).where(Rotation.mission_id == mission.mission_id, Rotation.status != "ABORTED")
+    ).scalar_one()
+    if cycles >= limit:
+        raise AppError("MISSION_STATE_INVALID", details={"reason": "max_rotations", "limit": limit})
+
+
 def record_event(
     auth: Authorized, mission_id: uuid.UUID, body: MissionEventCreate, version: int
 ) -> MissionOut:
@@ -552,6 +589,7 @@ def record_event(
         if kind == "DEPARTED":
             _ensure_can_run(auth, mission)
         if kind == "ARRIVED_LOADING":
+            _ensure_can_cycle(auth, mission)
             sequence = (
                 db.execute(
                     select(func.max(Rotation.sequence)).where(Rotation.mission_id == mission.mission_id)

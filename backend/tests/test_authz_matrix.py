@@ -47,6 +47,16 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
     ("PATCH", "/site-locations/{site_location_id}"): {"name": "Lieu modifié"},
     ("PATCH", "/materials/{material_id}"): {"name": "Matière modifiée"},
     ("POST", "/missions/{mission_id}/events"): {"event_type": "SUSPENDED", "reason_code": "WEATHER"},
+    ("POST", "/weighing-tickets/{weighing_ticket_id}/approve"): {},
+    ("POST", "/weighing-tickets/{weighing_ticket_id}/void"): {"reason_code": "ENTRY_ERROR"},
+    ("POST", "/weighing-tickets/{weighing_ticket_id}/correct"): {
+        "weighbridge_location_id": str(uuid.uuid4()),
+        "ticket_number": "T-CORR-1",
+        "weighed_at": "2026-01-01T10:00:00+00:00",
+        "gross_kg": 50000,
+        "tare_kg": 20000,
+        "reason_code": "ENTRY_ERROR",
+    },
 }
 
 
@@ -157,7 +167,9 @@ def world(api: Api, client: TestClient) -> World:
         },
     )
     assert mission.status_code == 201, mission.text
+    weighing_ticket = _weighed_rotation(client, a, hr, ops, category, places, material)
     objects = {
+        "weighing_ticket_id": weighing_ticket,
         "site_location_id": uuid.UUID(places[0]),
         "material_id": uuid.UUID(material),
         "mission_id": uuid.UUID(mission.json()["mission_id"]),
@@ -174,6 +186,90 @@ def world(api: Api, client: TestClient) -> World:
         "tenant_id": a.tenant_id,
     }
     return World(a, b, personas, b_personas, objects)
+
+
+def _weighed_rotation(  # type: ignore[no-untyped-def]
+    client: TestClient, a: TenantFixture, hr, ops: Persona, category: str, places: list[str], material: str
+) -> uuid.UUID:
+    """Lot 2b : affectation active, mission chargée et pesée en saisie dégradée (approbation testable)."""
+    vehicle = client.post(
+        f"{API}/vehicles",
+        headers=a.admin.headers,
+        json={"site_id": str(a.sites["S1"]), "vehicle_category_id": category, "fleet_number": "PARC-002"},
+    ).json()["vehicle_id"]
+    driver = client.post(
+        f"{API}/drivers",
+        headers=hr.headers,
+        json={
+            "site_id": str(a.sites["S1"]),
+            "employee_number": "MAT-002",
+            "last_name": "Nom-Test",
+            "first_name": "B",
+        },
+    ).json()["driver_id"]
+    client.post(
+        f"{API}/drivers/{driver}/licenses",
+        headers=hr.headers,
+        json={
+            **SAMPLE_BODIES[("POST", "/drivers/{driver_id}/licenses")],
+            "license_number": "PERMIS-FICTIF-9998",
+        },
+    )
+    client.post(
+        f"{API}/drivers/{driver}/qualifications",
+        headers=hr.headers,
+        json={
+            "qualification_type": "DRIVING_AUTHORIZATION",
+            "vehicle_category_id": category,
+            "valid_from": "2024-01-01",
+        },
+    )
+    assignment = client.post(
+        f"{API}/vehicle-assignments",
+        headers=ops.headers,
+        json={"vehicle_id": vehicle, "driver_id": driver, "valid_from": datetime.now(UTC).isoformat()},
+    )
+    assert assignment.status_code == 201, assignment.text
+    mission = client.post(
+        f"{API}/missions",
+        headers=ops.headers,
+        json={
+            "vehicle_assignment_id": assignment.json()["vehicle_assignment_id"],
+            "origin_location_id": places[0],
+            "destination_location_id": places[1],
+            "material_id": material,
+            "planned_start": datetime.now(UTC).isoformat(),
+        },
+    ).json()
+    url = f"{API}/missions/{mission['mission_id']}"
+    for event in ("DEPARTED", "ARRIVED_LOADING", "LOADED"):
+        version = client.get(url, headers=ops.headers).headers["ETag"]
+        done = client.post(
+            f"{url}/events", headers={**ops.headers, "If-Match": version}, json={"event_type": event}
+        )
+        assert done.status_code == 200, done.text
+    rotation = client.get(url, headers=ops.headers).json()["rotations"][0]["rotation_id"]
+    bridge = client.post(
+        f"{API}/site-locations",
+        headers=a.admin.headers,
+        json={"site_id": str(a.sites["S1"]), "code": "PONT-1", "name": "Pont 1", "kind": "WEIGHBRIDGE"},
+    ).json()["site_location_id"]
+    ticket = client.post(
+        f"{API}/weighing-tickets",
+        headers=ops.headers,
+        json={
+            "rotation_id": rotation,
+            "weighbridge_location_id": bridge,
+            "ticket_number": "T-0001",
+            "source": "MANUAL_DEGRADED",
+            "degraded_reason": "WEIGHBRIDGE_DOWN",
+            "weighed_at": datetime.now(UTC).isoformat(),
+            "gross_kg": 50000,
+            "tare_kg": 20000,
+        },
+    )
+    assert ticket.status_code == 201, ticket.text
+    return uuid.UUID(ticket.json()["weighing_ticket_id"])
 
 
 def _routes() -> list[tuple[str, str, str]]:

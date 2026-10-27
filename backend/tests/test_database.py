@@ -23,6 +23,8 @@ TENANT_TABLES = (
     "mission",
     "mission_event",
     "rotation",
+    "weighing_ticket",
+    "weighing_ticket_decision",
 )
 GLOBAL_TABLES = {
     "role",

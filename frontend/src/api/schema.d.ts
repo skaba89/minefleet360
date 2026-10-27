@@ -1183,6 +1183,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/weighing-tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Weighing Tickets */
+        get: operations["list_weighing_tickets_api_v1_weighing_tickets_get"];
+        put?: never;
+        /** Record Weighing Ticket */
+        post: operations["record_weighing_ticket_api_v1_weighing_tickets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weighing-tickets/{weighing_ticket_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Weighing Ticket */
+        get: operations["get_weighing_ticket_api_v1_weighing_tickets__weighing_ticket_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weighing-tickets/{weighing_ticket_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Weighing Ticket */
+        post: operations["approve_weighing_ticket_api_v1_weighing_tickets__weighing_ticket_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weighing-tickets/{weighing_ticket_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void Weighing Ticket */
+        post: operations["void_weighing_ticket_api_v1_weighing_tickets__weighing_ticket_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/weighing-tickets/{weighing_ticket_id}/correct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Correct Weighing Ticket */
+        post: operations["correct_weighing_ticket_api_v1_weighing_tickets__weighing_ticket_id__correct_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dispatch-indicators": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dispatch Indicators */
+        get: operations["dispatch_indicators_api_v1_dispatch_indicators_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1559,6 +1662,63 @@ export interface components {
             detail?: components["schemas"]["ValidationError"][];
         };
         /**
+         * IndicatorRow
+         * @description Activité d'un site pour une matière sur la période : mesuré, en attente et estimé SÉPARÉS (RM-072).
+         */
+        IndicatorRow: {
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Material Id
+             * Format: uuid
+             */
+            material_id: string;
+            /** Material Name */
+            material_name: string;
+            /** Missions Completed */
+            missions_completed: number;
+            /** Rotations Completed */
+            rotations_completed: number;
+            /** Avg Cycle Seconds */
+            avg_cycle_seconds: number | null;
+            /** Short Cycles */
+            short_cycles: number;
+            /** Measured Net Kg */
+            measured_net_kg: number;
+            /** Measured Rotations */
+            measured_rotations: number;
+            /** Pending Net Kg */
+            pending_net_kg: number;
+            /** Pending Rotations */
+            pending_rotations: number;
+            /** Estimated Kg */
+            estimated_kg: number;
+            /** Estimated Rotations */
+            estimated_rotations: number;
+            /** Rotations Without Estimate */
+            rotations_without_estimate: number;
+            /** Overload Tickets */
+            overload_tickets: number;
+        };
+        /** IndicatorsOut */
+        IndicatorsOut: {
+            /**
+             * Period Start
+             * Format: date-time
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date-time
+             */
+            period_end: string;
+            /** Rows */
+            rows: components["schemas"]["IndicatorRow"][];
+        };
+        /**
          * Issue
          * @description Motif d'inéligibilité, de non-conformité ou avertissement ; `date` = échéance concernée.
          */
@@ -1862,6 +2022,8 @@ export interface components {
             planned_rotations?: number | null;
             /** Notes */
             notes?: string | null;
+            /** Client Request Id */
+            client_request_id?: string | null;
         };
         /** MissionEventCreate */
         MissionEventCreate: {
@@ -2061,6 +2223,17 @@ export interface components {
         Page_VehicleOut_: {
             /** Items */
             items: components["schemas"]["VehicleOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[WeighingOut] */
+        Page_WeighingOut_: {
+            /** Items */
+            items: components["schemas"]["WeighingOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -2676,6 +2849,180 @@ export interface components {
             commissioned_on?: string | null;
             /** Notes */
             notes?: string | null;
+        };
+        /** WeighingCorrection */
+        WeighingCorrection: {
+            /**
+             * Weighbridge Location Id
+             * Format: uuid
+             */
+            weighbridge_location_id: string;
+            /** Ticket Number */
+            ticket_number: string;
+            /**
+             * Source
+             * @default WEIGHBRIDGE
+             * @enum {string}
+             */
+            source: "WEIGHBRIDGE" | "MANUAL_DEGRADED";
+            /** Degraded Reason */
+            degraded_reason?: ("WEIGHBRIDGE_DOWN" | "POWER_OUTAGE" | "CALIBRATION" | "NETWORK_DOWN" | "OTHER") | null;
+            /**
+             * Weighed At
+             * Format: date-time
+             */
+            weighed_at: string;
+            /** Gross Kg */
+            gross_kg: number;
+            /** Tare Kg */
+            tare_kg: number;
+            /**
+             * Reason Code
+             * @enum {string}
+             */
+            reason_code: "ENTRY_ERROR" | "WRONG_ROTATION" | "WRONG_VEHICLE" | "DUPLICATE" | "CALIBRATION_ISSUE" | "OTHER";
+            /** Rotation Id */
+            rotation_id?: string | null;
+        };
+        /** WeighingCreate */
+        WeighingCreate: {
+            /**
+             * Weighbridge Location Id
+             * Format: uuid
+             */
+            weighbridge_location_id: string;
+            /** Ticket Number */
+            ticket_number: string;
+            /**
+             * Source
+             * @default WEIGHBRIDGE
+             * @enum {string}
+             */
+            source: "WEIGHBRIDGE" | "MANUAL_DEGRADED";
+            /** Degraded Reason */
+            degraded_reason?: ("WEIGHBRIDGE_DOWN" | "POWER_OUTAGE" | "CALIBRATION" | "NETWORK_DOWN" | "OTHER") | null;
+            /**
+             * Weighed At
+             * Format: date-time
+             */
+            weighed_at: string;
+            /** Gross Kg */
+            gross_kg: number;
+            /** Tare Kg */
+            tare_kg: number;
+            /**
+             * Rotation Id
+             * Format: uuid
+             */
+            rotation_id: string;
+        };
+        /** WeighingDecisionOut */
+        WeighingDecisionOut: {
+            /** Decision */
+            decision: string;
+            /** Reason */
+            reason: string | null;
+            /**
+             * Decided By
+             * Format: uuid
+             */
+            decided_by: string;
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string;
+        };
+        /** WeighingOut */
+        WeighingOut: {
+            /**
+             * Weighing Ticket Id
+             * Format: uuid
+             */
+            weighing_ticket_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Mission Id
+             * Format: uuid
+             */
+            mission_id: string;
+            /**
+             * Rotation Id
+             * Format: uuid
+             */
+            rotation_id: string;
+            /** Rotation Sequence */
+            rotation_sequence: number;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /** Vehicle Fleet Number */
+            vehicle_fleet_number: string;
+            /** Material Name */
+            material_name: string;
+            /**
+             * Weighbridge Location Id
+             * Format: uuid
+             */
+            weighbridge_location_id: string;
+            /** Weighbridge Name */
+            weighbridge_name: string;
+            /** Ticket Number */
+            ticket_number: string;
+            /** Source */
+            source: string;
+            /** Degraded Reason */
+            degraded_reason: string | null;
+            /**
+             * Weighed At
+             * Format: date-time
+             */
+            weighed_at: string;
+            /** Gross Kg */
+            gross_kg: number;
+            /** Tare Kg */
+            tare_kg: number;
+            /** Net Kg */
+            net_kg: number;
+            /** Rated Payload Kg */
+            rated_payload_kg: number | null;
+            /** Overload */
+            overload: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "VALID" | "PENDING_APPROVAL" | "VOIDED";
+            /** Replaces Ticket Id */
+            replaces_ticket_id: string | null;
+            /** Replaced By Ticket Id */
+            replaced_by_ticket_id: string | null;
+            /**
+             * Recorded By
+             * Format: uuid
+             */
+            recorded_by: string;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /** Decisions */
+            decisions: components["schemas"]["WeighingDecisionOut"][];
+        };
+        /** WeighingVoid */
+        WeighingVoid: {
+            /**
+             * Reason Code
+             * @enum {string}
+             */
+            reason_code: "ENTRY_ERROR" | "WRONG_ROTATION" | "WRONG_VEHICLE" | "DUPLICATE" | "CALIBRATION_ISSUE" | "OTHER";
         };
     };
     responses: never;
@@ -5633,6 +5980,256 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MissionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_weighing_tickets_api_v1_weighing_tickets_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                mission_id?: string | null;
+                status?: ("VALID" | "PENDING_APPROVAL" | "VOIDED") | null;
+                overload?: boolean | null;
+                period_start?: string | null;
+                period_end?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WeighingOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_weighing_ticket_api_v1_weighing_tickets_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WeighingCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeighingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_weighing_ticket_api_v1_weighing_tickets__weighing_ticket_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                weighing_ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeighingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_weighing_ticket_api_v1_weighing_tickets__weighing_ticket_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                weighing_ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeighingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    void_weighing_ticket_api_v1_weighing_tickets__weighing_ticket_id__void_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                weighing_ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WeighingVoid"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeighingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    correct_weighing_ticket_api_v1_weighing_tickets__weighing_ticket_id__correct_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                weighing_ticket_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WeighingCorrection"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeighingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dispatch_indicators_api_v1_dispatch_indicators_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                period_start?: string | null;
+                period_end?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndicatorsOut"];
                 };
             };
             /** @description Validation Error */

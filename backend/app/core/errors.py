@@ -74,6 +74,10 @@ CATALOG: dict[str, ErrorDef] = {
     "DRIVER_ON_MISSION": ErrorDef(409, "Le conducteur est déjà en cours de mission."),
     "DUPLICATE_LOCATION_CODE": ErrorDef(409, "Un lieu de ce site porte déjà ce code."),
     "DUPLICATE_MATERIAL_CODE": ErrorDef(409, "Une matière porte déjà ce code."),
+    "DUPLICATE_TICKET_NUMBER": ErrorDef(409, "Ce numéro de ticket existe déjà pour ce pont-bascule."),
+    "ROTATION_ALREADY_WEIGHED": ErrorDef(409, "Cette rotation a déjà une pesée : corrigez-la plutôt."),
+    "ROTATION_NOT_WEIGHABLE": ErrorDef(409, "Seule une rotation chargée et non abandonnée peut être pesée."),
+    "WEIGHING_STATE_INVALID": ErrorDef(409, "Cette action n'est pas possible dans l'état de la pesée."),
     # 422
     "VALIDATION_ERROR": ErrorDef(422, "Les données envoyées sont invalides."),
     "IF_MATCH_REQUIRED": ErrorDef(422, "L'en-tête If-Match est obligatoire pour une modification."),
@@ -92,11 +96,14 @@ CATALOG: dict[str, ErrorDef] = {
         422, "Ce changement de statut du véhicule n'est pas autorisé."
     ),
     "STATUS_REASON_REQUIRED": ErrorDef(422, "Un motif est obligatoire pour ce statut."),
+    "SELF_APPROVAL_FORBIDDEN": ErrorDef(
+        422, "Une saisie dégradée doit être approuvée par une autre personne que celle qui l'a saisie."
+    ),
     # D-29 : un seul code d'inéligibilité, `details.reasons[]` liste tous les motifs.
     "ASSIGNMENT_NOT_ELIGIBLE": ErrorDef(422, "L'affectation ne respecte pas les conditions d'éligibilité."),
     "END_BEFORE_START": ErrorDef(422, "La fin doit être postérieure au début."),
     "MISSION_NOT_ELIGIBLE": ErrorDef(
-        422, "Départ impossible : l'affectation n'est pas active ou n'est pas conforme."
+        422, "Étape impossible : l'affectation n'est pas active ou n'est pas conforme."
     ),
     "END_IN_FUTURE": ErrorDef(422, "La date de fin ne peut pas être dans le futur."),
     "END_BACKDATED": ErrorDef(
@@ -130,6 +137,10 @@ CONSTRAINT_CODES: dict[str, str] = {
     "uq_sl_site_code": "DUPLICATE_LOCATION_CODE",
     "uq_material_code": "DUPLICATE_MATERIAL_CODE",
     "uq_me_client_event": "CONFLICT",
+    "uq_wt_number": "DUPLICATE_TICKET_NUMBER",
+    "uq_wt_replaces": "WEIGHING_STATE_INVALID",
+    "uq_wtd_once": "WEIGHING_STATE_INVALID",
+    "uq_mission_client_request": "CONFLICT",
 }
 
 

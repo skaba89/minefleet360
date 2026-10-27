@@ -52,3 +52,45 @@
 7. `mission_event` : UPDATE/DELETE refusés en base ; RLS forcée sur les quatre tables ; tests d'isolation générés depuis la matrice.
 8. Interface dispatcher en français : liste filtrable (site, statut), création, boutons d'avancement selon l'état, suspension/reprise/réaffectation, fiche avec chronologie et rotations ; dates au fuseau du site.
 9. Aucun champ de tonnage ni de position GPS dans la tranche 2a.
+
+## 7. Tranche 2b — pesées et indicateurs (cadrage délégué, 2026-10-27)
+
+### 7.1 Modèle (migration `0014_weighing`)
+- **Pont-bascule** = lieu du site de type `WEIGHBRIDGE` (référentiel 2a, pas de nouvelle table).
+- `weighing_ticket` (**ajout seul**, trigger) : site, mission, **rotation**, véhicule (copié de la rotation), pont-bascule, `ticket_number`, `source` ∈ `WEIGHBRIDGE` | `MANUAL_DEGRADED`, `weighed_at`, `gross_kg` et `tare_kg` (kg entiers), `net_kg` **calculé par la base** (brut − tare), capacité nominale du véhicule au moment de la pesée, indicateur de surcharge, motif codé de saisie dégradée, `replaces_ticket_id` (ticket correctif), `recorded_by`, `recorded_at`.
+- `weighing_ticket_decision` (**ajout seul**) : `APPROVED` (saisie dégradée) ou `VOIDED` (annulation, motif obligatoire), une seule de chaque par ticket.
+- Statut **dérivé** : `VOIDED` si annulé ; sinon `PENDING_APPROVAL` pour une saisie dégradée non approuvée ; sinon `VALID`.
+- `mission.client_request_id` (création de mission idempotente, revue L2A-R-08).
+
+### 7.2 Règles
+| ID | Règle |
+|---|---|
+| RM-090 | Un ticket se rattache à une rotation **chargée** (`OPEN` avec `loaded_at`, ou `COMPLETED`) d'une mission du site ; pont-bascule actif du **même site**. |
+| RM-091 | Au plus **un ticket non annulé par rotation** (contrôle sous verrou de la rotation). |
+| RM-092 | Brut > tare > 0, brut ≤ 500 000 kg ; net calculé par la base, jamais saisi. |
+| RM-093 | `weighed_at` : pas dans le futur (tolérance d'horloge), pas avant le chargement, antidatage borné par `MF_WEIGHING_BACKDATE_TOLERANCE` (7 jours : saisie de tickets papier). |
+| RM-074 | Unicité `(tenant, pont-bascule, numéro)` pour les tickets d'origine ; **renvoi identique → même ticket (200)**, numéro réutilisé avec d'autres valeurs → 409 `DUPLICATE_TICKET_NUMBER`. |
+| RM-073 | Correction = annulation + nouveau ticket `replaces_ticket_id` dans la même transaction (le numéro peut être conservé) ; jamais de modification. |
+| RM-075 | Saisie dégradée : motif codé obligatoire ; comptée à part (« en attente ») tant qu'elle n'est pas **approuvée par une autre personne** que celle qui l'a saisie (422 `SELF_APPROVAL_FORBIDDEN`). |
+| RM-076 | Surcharge : net > capacité nominale × `MF_PAYLOAD_ALERT_PERCENT` % (110 par défaut, **à valider**) → ticket marqué, filtrable (HSE). |
+| RM-072 | Indicateurs : **mesuré** (tickets valides), **en attente** (dégradés non approuvés) et **estimé** (capacité nominale × rotations sans aucune pesée) toujours séparés, jamais additionnés. |
+| L2A-R-04 | Plafond de rotations par mission (`MF_MISSION_MAX_ROTATIONS`, 100) ; cycles plus courts que `MF_ROTATION_MIN_CYCLE` (5 min) comptés comme « cycles suspects » dans les indicateurs. |
+| L2A-R-07 | Nouveau cycle (`ARRIVED_LOADING`) refusé si l'affectation n'est plus active ou est échue ; le cycle en cours peut se terminer, puis suspension et réaffectation. |
+
+### 7.3 Autorisations
+| Permission | Rôles |
+|---|---|
+| `dispatch.weighing.read` | DIRECTION, OPS_MANAGER, DISPATCHER (site), HSE, FINANCE, AUDITOR |
+| `dispatch.weighing.record` | OPS_MANAGER, DISPATCHER (site) |
+| `dispatch.weighing.approve` | OPS_MANAGER |
+| `dispatch.weighing.correct` (annuler, corriger) | OPS_MANAGER |
+| `dispatch.indicators.read` | DIRECTION, OPS_MANAGER, DISPATCHER (site), HSE, FINANCE, AUDITOR |
+
+### 7.4 Critères d'acceptation (2b)
+1. Pesée au pont-bascule sur une rotation chargée : 201, net calculé, audit ; rotation non chargée, annulée, d'un autre site ou hors portée → 409/422 sans fuite.
+2. Second ticket sur la même rotation → 409 ; renvoi identique → même ticket ; numéro réutilisé autrement → 409.
+3. Ticket : UPDATE/DELETE refusés en base ; RLS forcée ; tests d'isolation générés depuis la matrice.
+4. Correction : l'original passe `VOIDED`, le nouveau référence l'original, les deux restent consultables.
+5. Saisie dégradée : exclue du mesuré jusqu'à approbation par une autre personne ; auto-approbation refusée.
+6. Indicateurs par site et matière sur une période (92 jours max) : mesuré, en attente et estimé séparés ; aucune donnée GPS.
+7. Interface : saisie depuis la fiche mission, page Pesées (filtres, approbation, annulation, correction), page Indicateurs.
