@@ -4,6 +4,9 @@ minefleet create-platform-admin --email <e-mail> --name "<nom>"
     US-1.32 : premier PLATFORM_ADMIN ; mot de passe lu dans MF_BOOTSTRAP_PASSWORD (jamais en argument).
 minefleet seed-fictif
     US-1.30 : jeu de données FICTIF de recette (refusé en production et en cas de réexécution).
+minefleet reset-platform-mfa --email <e-mail>
+    C-03 : retire le second facteur d'un PLATFORM_ADMIN qui a perdu téléphone ET codes de récupération
+    (aucun compte au-dessus de lui ne peut le faire par l'API). Sessions fermées, action auditée.
 """
 
 import argparse
@@ -78,6 +81,43 @@ def create_platform_admin(email: str, display_name: str, password: str) -> int:
         db.close()
 
 
+def reset_platform_mfa(email: str) -> int:
+    from app.identity.contracts import revoke_sessions
+
+    db = new_session()
+    try:
+        set_tenant_context(db, PLATFORM_TENANT_ID)
+        user = db.execute(
+            select(UserAccount).where(UserAccount.email == email.strip().lower()).with_for_update()
+        ).scalar_one_or_none()
+        if user is None or not user.mfa_enabled:
+            print("Refusé : compte plateforme inconnu ou sans double authentification.", file=sys.stderr)
+            return 3
+        user.mfa_enabled = False
+        user.mfa_enabled_at = None
+        user.mfa_secret_encrypted = None
+        user.mfa_pending_secret_encrypted = None
+        user.mfa_pending_created_at = None
+        user.mfa_last_step = None
+        user.mfa_recovery_hashes = []
+        revoke_sessions(db, now=SystemClock().now(), reason="MFA_RESET", user_id=user.user_account_id)
+        record(
+            db,
+            tenant_id=PLATFORM_TENANT_ID,
+            action="user.mfa_reset",
+            entity_type="user_account",
+            entity_id=user.user_account_id,
+            actor_kind="SYSTEM",
+            reason="OPS_CLI",
+            changed_fields=("mfa_enabled",),
+        )
+        db.commit()
+        print("Double authentification retirée : réenrôlement exigé à la prochaine connexion.")
+        return 0
+    finally:
+        db.close()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="minefleet")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -85,6 +125,8 @@ def main(argv: list[str] | None = None) -> int:
     admin.add_argument("--email", required=True)
     admin.add_argument("--name", required=True)
     sub.add_parser("seed-fictif")
+    reset = sub.add_parser("reset-platform-mfa")
+    reset.add_argument("--email", required=True)
     args = parser.parse_args(argv)
     if args.command == "create-platform-admin":
         password = os.environ.get("MF_BOOTSTRAP_PASSWORD")
@@ -94,6 +136,8 @@ def main(argv: list[str] | None = None) -> int:
         return create_platform_admin(args.email, args.name, password)
     if args.command == "seed-fictif":
         return seed_fictitious()
+    if args.command == "reset-platform-mfa":
+        return reset_platform_mfa(args.email)
     return 1
 
 

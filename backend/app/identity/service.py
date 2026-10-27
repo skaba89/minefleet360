@@ -36,6 +36,7 @@ def user_out(user: UserAccount, scope: PermissionScope) -> UserOut:
         "user_account_id": user.user_account_id,
         "display_name": user.display_name,
         "status": user.status,
+        "mfa_enabled": user.mfa_enabled,
         "last_login_at": user.last_login_at,
         "created_at": user.created_at,
         "row_version": user.row_version,

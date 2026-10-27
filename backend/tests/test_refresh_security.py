@@ -117,7 +117,7 @@ def test_refresh_refuses_account_marked_mfa_after_login(client: TestClient, api:
         set_tenant_context(db, tenant.tenant_id)
         db.execute(
             text(
-                "UPDATE user_account SET mfa_enabled = true,"
+                "UPDATE user_account SET mfa_enabled = true, mfa_enabled_at = now(),"
                 " mfa_secret_encrypted = decode('00', 'hex')"
                 " WHERE user_account_id = :user_id"
             ),

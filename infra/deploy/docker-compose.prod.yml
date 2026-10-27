@@ -40,6 +40,9 @@ services:
     environment:
       MF_APP_PASSWORD: ${MF_APP_PASSWORD:?manquant}
       MF_JWT_SECRET: ${MF_JWT_SECRET:?manquant}
+      # Chiffrement des secrets TOTP (C-03) : à sauvegarder hors serveur, sa perte invalide tous les seconds facteurs.
+      MF_MFA_ENCRYPTION_KEY: ${MF_MFA_ENCRYPTION_KEY:?MF_MFA_ENCRYPTION_KEY manquant (32 octets base64url)}
+      MF_MFA_ENFORCEMENT: ${MF_MFA_ENFORCEMENT:-enroll}
       MF_ALLOWED_ORIGINS: ${MF_ALLOWED_ORIGINS:-}
       MF_ENV: ${MF_ENV:?MF_ENV manquant (staging ou production)}
       MF_DB_HOST: minefleet-db
@@ -94,6 +97,7 @@ services:
       MF_APP_PASSWORD: ${MF_APP_PASSWORD:?manquant}
       MF_OWNER_PASSWORD: ${MF_OWNER_PASSWORD:?manquant}
       MF_JWT_SECRET: ${MF_JWT_SECRET:?manquant}
+      MF_MFA_ENCRYPTION_KEY: ${MF_MFA_ENCRYPTION_KEY:?manquant}  # exigé par la configuration en recette/production
     command: ["alembic", "upgrade", "head"]
     depends_on:
       db:

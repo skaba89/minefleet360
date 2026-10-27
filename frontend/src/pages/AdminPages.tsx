@@ -325,7 +325,10 @@ function UsersAdmin() {
                     {label(USER_STATUS, u.status)}
                   </Badge>
                 </td>
-                <td>{formatDateTime(u.last_login_at, me.timezone)}</td>
+                <td>
+                  {formatDateTime(u.last_login_at, me.timezone)}
+                  {u.mfa_enabled && <div className="small muted">Double authentification active</div>}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -526,6 +529,20 @@ function UserPanel({ userId, onChanged }: { userId: string; onChanged: () => voi
             }
           >
             Réinitialiser le mot de passe
+          </button>
+        )}
+        {!self && u.mfa_enabled && can(me.grants, "identity.user.reset_mfa") && (
+          <button
+            type="button"
+            onClick={() =>
+              void run(
+                () =>
+                  call("post", "/users/{user_id}/reset-mfa", { ...path, ifMatch: `"${u.row_version}"` }),
+                "Double authentification retirée : l'utilisateur la reconfigurera à sa prochaine connexion.",
+              )
+            }
+          >
+            Réinitialiser la double authentification
           </button>
         )}
         {!self && can(me.grants, "identity.user.deactivate") && (

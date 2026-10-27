@@ -28,14 +28,20 @@ CATALOG: dict[str, ErrorDef] = {
     # 401
     "AUTH_REQUIRED": ErrorDef(401, "Authentification requise."),
     "INVALID_CREDENTIALS": ErrorDef(401, "Identifiants invalides."),
+    "MFA_CODE_INVALID": ErrorDef(401, "Code de vérification invalide ou expiré."),
     # 403
     "PERMISSION_DENIED": ErrorDef(403, "Vous n'avez pas l'autorisation d'effectuer cette action."),
+    "MFA_ENROLLMENT_REQUIRED": ErrorDef(
+        403, "Configurez la double authentification de votre compte avant de continuer."
+    ),
     # 404
     "NOT_FOUND": ErrorDef(404, "Ressource introuvable."),
     # 405 (méthode non prise en charge sur une route existante)
     "METHOD_NOT_ALLOWED": ErrorDef(405, "Méthode non autorisée."),
     # 409
     "VERSION_CONFLICT": ErrorDef(409, "La ressource a été modifiée entre-temps. Rechargez puis réessayez."),
+    "MFA_ALREADY_ENABLED": ErrorDef(409, "La double authentification est déjà activée."),
+    "MFA_NOT_ENABLED": ErrorDef(409, "La double authentification n'est pas activée."),
     "DUPLICATE_WORKSPACE_CODE": ErrorDef(409, "Ce code d'espace de travail est déjà utilisé."),
     "DUPLICATE_TENANT_NAME": ErrorDef(409, "Un tenant porte déjà ce nom."),
     "DUPLICATE_SITE_CODE": ErrorDef(409, "Un site porte déjà ce code."),
@@ -69,6 +75,8 @@ CATALOG: dict[str, ErrorDef] = {
         422, "Vous ne pouvez pas modifier vos propres droits ni désactiver votre propre compte."
     ),
     "ROLE_NOT_ASSIGNABLE": ErrorDef(422, "Ce rôle ne peut pas être attribué."),
+    "MFA_REQUIRED_FOR_ROLE": ErrorDef(422, "La double authentification est obligatoire pour vos rôles."),
+    "MFA_SETUP_EXPIRED": ErrorDef(422, "La configuration a expiré : recommencez l'enrôlement."),
     "SCOPE_NOT_ALLOWED_FOR_ROLE": ErrorDef(422, "Cette portée n'est pas autorisée pour ce rôle."),
     "PASSWORD_POLICY_VIOLATION": ErrorDef(422, "Le mot de passe ne respecte pas la politique de sécurité."),
     "TOKEN_INVALID": ErrorDef(422, "Ce lien est invalide ou a expiré."),

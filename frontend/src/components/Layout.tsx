@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { NavLink, Outlet } from "react-router";
+import { Link, NavLink, Outlet } from "react-router";
 
 import { useAuth, useMe } from "../auth/AuthContext";
 import { can } from "../lib/permissions";
 import { canAdminister } from "../pages/AdminPages";
+import { SecurityPage } from "../pages/SecurityPage";
 import { useSites } from "../site/SiteContext";
 
 export function Layout() {
@@ -37,6 +38,7 @@ export function Layout() {
         </label>
         <div className="user">
           <span>{me.display_name}</span>
+          <Link to="/mon-compte/securite">Sécurité</Link>
           <button
             type="button"
             className="link"
@@ -55,21 +57,30 @@ export function Layout() {
           réessayez avant de quitter ce poste.
         </p>
       )}
-      <nav className="mainnav" aria-label="Navigation principale">
-        <NavLink to="/" end>
-          Accueil
-        </NavLink>
-        {links
-          .filter((l) => l.show)
-          .map((l) => (
-            <NavLink key={l.to} to={l.to}>
-              {l.text}
+      {me.mfa_enrollment_required ? (
+        // Enrôlement doux (C-03) : seule la configuration du second facteur est accessible.
+        <main className="content">
+          <SecurityPage />
+        </main>
+      ) : (
+        <>
+          <nav className="mainnav" aria-label="Navigation principale">
+            <NavLink to="/" end>
+              Accueil
             </NavLink>
-          ))}
-      </nav>
-      <main className="content">
-        <Outlet />
-      </main>
+            {links
+              .filter((l) => l.show)
+              .map((l) => (
+                <NavLink key={l.to} to={l.to}>
+                  {l.text}
+                </NavLink>
+              ))}
+          </nav>
+          <main className="content">
+            <Outlet />
+          </main>
+        </>
+      )}
     </div>
   );
 }

@@ -110,3 +110,69 @@ describe("déconnexion", () => {
     expect(screen.getByRole("heading", { name: "Bonjour Awa Fictive" })).toBeTruthy();
   });
 });
+
+describe("double authentification", () => {
+  it("demande le code après le mot de passe puis ouvre la session", async () => {
+    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+      if (url.endsWith("/auth/refresh"))
+        return json(401, { code: "AUTH_REQUIRED", message_fr: "Authentification requise.", details: null, request_id: null });
+      if (url.endsWith("/auth/login")) return json(200, { mfa_required: true, mfa_token: "defi-fictif-123", expires_in: 300 });
+      if (url.endsWith("/auth/mfa/verify"))
+        return json(200, { access_token: "jeton", token_type: "bearer", expires_in: 900, user: {} });
+      if (url.endsWith("/me"))
+        return json(200, {
+          user_account_id: "u",
+          display_name: "Awa Fictive",
+          email: "awa@example.com",
+          workspace_code: "demo",
+          tenant_display_name: "Société fictive",
+          timezone: "Africa/Conakry",
+          grants: [],
+          mfa_enabled: true,
+          mfa_enrollment_required: false,
+        });
+      return json(200, { items: [], page: 1, page_size: 200, total: 0 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderApp();
+    await screen.findByRole("heading", { name: "MINEFLEET 360" });
+    fireEvent.change(screen.getByLabelText("Code de l'espace de travail"), { target: { value: "demo" } });
+    fireEvent.change(screen.getByLabelText("Adresse e-mail"), { target: { value: "a@example.com" } });
+    fireEvent.change(screen.getByLabelText("Mot de passe"), { target: { value: "secret-fictif" } });
+    fireEvent.click(screen.getByRole("button", { name: "Se connecter" }));
+    fireEvent.change(await screen.findByLabelText("Code de vérification"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Valider le code" }));
+    expect(await screen.findByRole("heading", { name: "Bonjour Awa Fictive" })).toBeTruthy();
+    const verify = fetchMock.mock.calls.find(([u]) => String(u).endsWith("/auth/mfa/verify"));
+    expect(JSON.parse(String(verify?.[1]?.body))).toEqual({ mfa_token: "defi-fictif-123", code: "123456" });
+  });
+
+  it("enrôlement exigé : seule la page Sécurité est proposée", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.endsWith("/auth/refresh"))
+          return json(200, { access_token: "jeton", token_type: "bearer", expires_in: 900, user: {} });
+        if (url.endsWith("/me/mfa"))
+          return json(200, { enabled: false, required: true, enabled_at: null, recovery_codes_remaining: 0 });
+        if (url.endsWith("/me"))
+          return json(200, {
+            user_account_id: "u",
+            display_name: "Admin Fictif",
+            email: "admin@example.com",
+            workspace_code: "demo",
+            tenant_display_name: "Société fictive",
+            timezone: "Africa/Conakry",
+            grants: [{ role_code: "TENANT_ADMIN", scope_type: "TENANT", site_id: null }],
+            mfa_enabled: false,
+            mfa_enrollment_required: true,
+          });
+        return json(200, { items: [], page: 1, page_size: 200, total: 0 });
+      }),
+    );
+    renderApp();
+    expect((await screen.findByRole("alert")).textContent).toContain("Votre rôle exige la double authentification");
+    expect(screen.queryByRole("navigation", { name: "Navigation principale" })).toBeNull();
+    expect(await screen.findByRole("button", { name: "Commencer" })).toBeTruthy();
+  });
+});

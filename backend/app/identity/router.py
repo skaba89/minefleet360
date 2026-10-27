@@ -11,14 +11,21 @@ from app.core.email import EmailMessage, EmailSender
 from app.core.errors import AppError
 from app.core.http import IfMatch, Page, Pagination, etag
 from app.core.logging import security_logger
-from app.identity import auth_service, service
-from app.identity.auth_service import AuthLimiters, IssuedSession
+from app.identity import auth_service, mfa_service, service
+from app.identity.auth_service import AuthLimiters, IssuedChallenge, IssuedSession
 from app.identity.models import UserAccount
 from app.identity.schemas import (
     ChangePasswordRequest,
     GrantOut,
     LoginRequest,
     MeOut,
+    MfaChallengeResponse,
+    MfaCodeRequest,
+    MfaDisableRequest,
+    MfaRecoveryCodesOut,
+    MfaSetupOut,
+    MfaStatusOut,
+    MfaVerifyRequest,
     PlatformLoginRequest,
     ResetRequest,
     RoleAssignmentCreate,
@@ -83,6 +90,15 @@ def _token_response(
     )
 
 
+def _login_response(
+    issued: IssuedSession | IssuedChallenge, response: Response, settings: Settings, clock: ClockDep
+) -> TokenResponse | MfaChallengeResponse:
+    if isinstance(issued, IssuedChallenge):
+        response.headers["Cache-Control"] = "no-store"
+        return MfaChallengeResponse(mfa_token=issued.mfa_token, expires_in=issued.expires_in)
+    return _token_response(issued, response, settings, clock)
+
+
 def _clear_cookie(response: Response, settings: Settings) -> None:
     response.delete_cookie(
         REFRESH_COOKIE, path=COOKIE_PATH, httponly=True, secure=settings.cookie_secure, samesite="strict"
@@ -92,7 +108,7 @@ def _clear_cookie(response: Response, settings: Settings) -> None:
 # --- Routes publiques (public_routes de authz_matrix.yaml) -------------------------------------------
 
 
-@auth_router.post("/login", response_model=TokenResponse)
+@auth_router.post("/login", response_model=TokenResponse | MfaChallengeResponse)
 def login(
     body: LoginRequest,
     db: DbSession,
@@ -100,7 +116,7 @@ def login(
     settings: SettingsDep,
     limiters: LimitersDep,
     response: Response,
-) -> TokenResponse:
+) -> TokenResponse | MfaChallengeResponse:
     issued = auth_service.login(
         db,
         code=body.workspace_code,
@@ -111,10 +127,10 @@ def login(
         settings=settings,
         limiters=limiters,
     )
-    return _token_response(issued, response, settings, clock)
+    return _login_response(issued, response, settings, clock)
 
 
-@auth_router.post("/platform/login", response_model=TokenResponse)
+@auth_router.post("/platform/login", response_model=TokenResponse | MfaChallengeResponse)
 def platform_login(
     body: PlatformLoginRequest,
     db: DbSession,
@@ -122,7 +138,7 @@ def platform_login(
     settings: SettingsDep,
     limiters: LimitersDep,
     response: Response,
-) -> TokenResponse:
+) -> TokenResponse | MfaChallengeResponse:
     issued = auth_service.login(
         db,
         code=settings.platform_tenant_code,
@@ -132,6 +148,22 @@ def platform_login(
         clock=clock,
         settings=settings,
         limiters=limiters,
+    )
+    return _login_response(issued, response, settings, clock)
+
+
+@auth_router.post("/mfa/verify", response_model=TokenResponse)
+def mfa_verify(
+    body: MfaVerifyRequest,
+    db: DbSession,
+    clock: ClockDep,
+    settings: SettingsDep,
+    limiters: LimitersDep,
+    response: Response,
+) -> TokenResponse:
+    """Seconde étape de connexion (C-03) : code TOTP ou code de récupération → session."""
+    issued = mfa_service.verify_challenge(
+        db, mfa_token=body.mfa_token, code=body.code, clock=clock, settings=settings, limiters=limiters
     )
     return _token_response(issued, response, settings, clock)
 
@@ -226,7 +258,50 @@ def read_me(auth: Annotated[Authorized, Depends(Require("identity.user.update_se
         tenant_display_name=tenant.display_name,
         timezone=tenant.default_timezone,
         grants=[GrantOut(role_code=g.role_code, scope_type=g.scope_type, site_id=g.site_id) for g in grants],
+        mfa_enabled=user.mfa_enabled,
+        mfa_enrollment_required=auth.principal.mfa_enrollment_pending,
     )
+
+
+# --- Double authentification (C-03) : gestion par l'utilisateur ----------------------------------------
+
+SelfService = Annotated[Authorized, Depends(Require("identity.user.update_self"))]
+
+
+@me_router.get("/mfa", response_model=MfaStatusOut)
+def mfa_status(auth: SelfService, settings: SettingsDep) -> MfaStatusOut:
+    return MfaStatusOut.model_validate(mfa_service.status(auth, settings))
+
+
+@me_router.post("/mfa/setup", response_model=MfaSetupOut)
+def mfa_setup(auth: SelfService, settings: SettingsDep, response: Response) -> MfaSetupOut:
+    response.headers["Cache-Control"] = "no-store"
+    return MfaSetupOut.model_validate(mfa_service.start_setup(auth, settings))
+
+
+@me_router.post("/mfa/confirm", response_model=MfaRecoveryCodesOut)
+def mfa_confirm(
+    body: MfaCodeRequest, auth: SelfService, settings: SettingsDep, limiters: LimitersDep, response: Response
+) -> MfaRecoveryCodesOut:
+    response.headers["Cache-Control"] = "no-store"
+    return MfaRecoveryCodesOut(recovery_codes=mfa_service.confirm_setup(auth, body.code, settings, limiters))
+
+
+@me_router.post("/mfa/recovery-codes", response_model=MfaRecoveryCodesOut)
+def mfa_recovery_codes(
+    body: MfaCodeRequest, auth: SelfService, settings: SettingsDep, limiters: LimitersDep, response: Response
+) -> MfaRecoveryCodesOut:
+    response.headers["Cache-Control"] = "no-store"
+    return MfaRecoveryCodesOut(
+        recovery_codes=mfa_service.regenerate_recovery(auth, body.code, settings, limiters)
+    )
+
+
+@me_router.post("/mfa/disable", status_code=status.HTTP_204_NO_CONTENT)
+def mfa_disable(
+    body: MfaDisableRequest, auth: SelfService, settings: SettingsDep, limiters: LimitersDep
+) -> None:
+    mfa_service.disable(auth, body.password, body.code, settings, limiters)
 
 
 @me_router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
@@ -331,6 +406,19 @@ def reactivate_user(
     version: IfMatch,
 ) -> UserOut:
     return service.user_out(service.change_user_status(auth, user_id, version, deactivate=False), auth.scope)
+
+
+@user_router.post("/{user_id}/reset-mfa", response_model=UserOut, response_model_exclude_unset=True)
+def reset_mfa(
+    user_id: uuid.UUID,
+    auth: Annotated[Authorized, Depends(Require("identity.user.reset_mfa"))],
+    version: IfMatch,
+    response: Response,
+) -> UserOut:
+    """Perte du second facteur : retrait par l'administrateur, sessions fermées, audité."""
+    user = mfa_service.admin_reset(auth, user_id, version)
+    response.headers["ETag"] = etag(user.row_version)
+    return service.user_out(user, auth.scope)
 
 
 @user_router.post("/{user_id}/reset-credentials", status_code=status.HTTP_202_ACCEPTED)
