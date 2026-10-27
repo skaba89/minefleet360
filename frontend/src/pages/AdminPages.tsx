@@ -32,7 +32,9 @@ export function AdminIndex() {
     ? "sites"
     : can(me.grants, "identity.user.read")
       ? "utilisateurs"
-      : "journal";
+      : can(me.grants, "audit.event.read")
+        ? "journal"
+        : "lieux-matieres";
   return <Navigate to={target} replace />;
 }
 
@@ -49,6 +51,11 @@ export function AdminLayout() {
   if (!canAdminister(me.grants)) return <Denied />;
   const tabs = [
     { to: "sites", text: "Sites", show: can(me.grants, "organization.site.create") },
+    {
+      to: "lieux-matieres",
+      text: "Lieux et matières",
+      show: can(me.grants, "dispatch.location.manage") || can(me.grants, "dispatch.material.manage"),
+    },
     { to: "utilisateurs", text: "Utilisateurs et rôles", show: can(me.grants, "identity.user.read") },
     { to: "journal", text: "Journal d'audit", show: can(me.grants, "audit.event.read") },
   ];
@@ -71,7 +78,11 @@ export function AdminLayout() {
 
 export function canAdminister(grants: Schemas["GrantOut"][]): boolean {
   return (
-    can(grants, "organization.site.create") || can(grants, "identity.user.read") || can(grants, "audit.event.read")
+    can(grants, "organization.site.create") ||
+    can(grants, "identity.user.read") ||
+    can(grants, "audit.event.read") ||
+    can(grants, "dispatch.location.manage") ||
+    can(grants, "dispatch.material.manage")
   );
 }
 

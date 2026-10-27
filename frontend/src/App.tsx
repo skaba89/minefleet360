@@ -4,6 +4,9 @@ import { useAuth } from "./auth/AuthContext";
 import { Layout } from "./components/Layout";
 import { AdminIndex, AdminLayout, AuditAdminPage, SitesAdminPage, UsersAdminPage } from "./pages/AdminPages";
 import { AssignmentsPage } from "./pages/AssignmentsPage";
+import { MissionDetailPage } from "./pages/MissionDetailPage";
+import { MissionsPage } from "./pages/MissionsPage";
+import { ReferentialsPage } from "./pages/ReferentialsPage";
 import { DriverDetailPage } from "./pages/DriverDetailPage";
 import { DriversPage } from "./pages/DriversPage";
 import { HomePage } from "./pages/HomePage";
@@ -39,12 +42,15 @@ export function App() {
         <Route path="conducteurs" element={<DriversPage />} />
         <Route path="conducteurs/:driverId" element={<DriverDetailPage />} />
         <Route path="affectations" element={<AssignmentsPage />} />
+        <Route path="missions" element={<MissionsPage />} />
+        <Route path="missions/:missionId" element={<MissionDetailPage />} />
         <Route path="mon-compte/securite" element={<SecurityPage />} />
         <Route path="administration" element={<AdminLayout />}>
           <Route index element={<AdminIndex />} />
           <Route path="sites" element={<SitesAdminPage />} />
           <Route path="utilisateurs" element={<UsersAdminPage />} />
           <Route path="journal" element={<AuditAdminPage />} />
+          <Route path="lieux-matieres" element={<ReferentialsPage />} />
         </Route>
         <Route path="*" element={<p>Page introuvable.</p>} />
       </Route>

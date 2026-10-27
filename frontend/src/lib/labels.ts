@@ -51,6 +51,8 @@ export const CANCEL_REASONS: Record<string, string> = {
 
 // Motifs d'inéligibilité (D-29), de non-conformité (US-1.25) et avertissements.
 export const ISSUES: Record<string, string> = {
+  ASSIGNMENT_NOT_ACTIVE: "Affectation pas encore active (prise de poste à faire)",
+  ASSIGNMENT_ENDED: "Affectation terminée",
   ASSIGNMENT_SITE_MISMATCH: "Véhicule et conducteur ne sont pas sur le même site",
   ASSIGNMENT_BACKDATED: "Début trop ancien (antidatage interdit)",
   ASSIGNMENT_TOO_FAR_AHEAD: "Début trop lointain (au-delà de l'horizon de planification)",
@@ -159,3 +161,78 @@ export const VALIDITY_TONE: Record<string, "ok" | "warn" | "bad" | "neutral"> = 
   WITHDRAWN: "bad",
   REVOKED: "bad",
 };
+
+// --- Dispatch (lot 2a) --------------------------------------------------------------------------------
+
+export const MISSION_STATUS: Record<string, string> = {
+  PLANNED: "Planifiée",
+  ASSIGNED: "Affectée",
+  EN_ROUTE_EMPTY: "En route à vide",
+  LOADING: "En chargement",
+  EN_ROUTE_LOADED: "En route chargé",
+  UNLOADING: "En déchargement",
+  SUSPENDED: "Suspendue",
+  COMPLETED: "Terminée",
+  CANCELLED: "Annulée",
+};
+
+export const MISSION_TONE: Record<string, "ok" | "warn" | "bad" | "neutral"> = {
+  PLANNED: "neutral",
+  ASSIGNED: "neutral",
+  EN_ROUTE_EMPTY: "ok",
+  LOADING: "ok",
+  EN_ROUTE_LOADED: "ok",
+  UNLOADING: "ok",
+  SUSPENDED: "warn",
+  COMPLETED: "neutral",
+  CANCELLED: "neutral",
+};
+
+// Libellé de l'action qui déclenche l'événement (boutons) et de l'événement lui-même (chronologie).
+export const MISSION_EVENTS: Record<string, string> = {
+  CREATED: "Mission créée",
+  DEPARTED: "Départ",
+  ARRIVED_LOADING: "Arrivée au chargement",
+  LOADED: "Chargement terminé",
+  ARRIVED_UNLOADING: "Arrivée au déchargement",
+  UNLOADED: "Déchargé, rotation suivante",
+  COMPLETED: "Mission terminée",
+  SUSPENDED: "Suspension",
+  RESUMED: "Reprise",
+  REASSIGNED: "Réaffectation",
+  CANCELLED: "Annulation",
+};
+
+export const MISSION_REASONS: Record<string, string> = {
+  BREAKDOWN: "Panne",
+  HSE_STOP: "Arrêt HSE",
+  WEATHER: "Météo",
+  ROAD_BLOCKED: "Piste coupée",
+  DRIVER_UNAVAILABLE: "Conducteur indisponible",
+  PLAN_CHANGED: "Planning modifié",
+  ENTRY_ERROR: "Erreur de saisie",
+  OTHER: "Autre",
+};
+
+export const LOCATION_KINDS: Record<string, string> = {
+  LOADING_POINT: "Point de chargement",
+  DUMP_POINT: "Point de déchargement",
+  STOCKPILE: "Stock",
+  CRUSHER: "Concasseur",
+  WEIGHBRIDGE: "Pont-bascule",
+  PORT: "Port",
+  OTHER: "Autre",
+};
+
+export const ROTATION_STATUS: Record<string, string> = {
+  OPEN: "En cours",
+  COMPLETED: "Terminée",
+  ABORTED: "Interrompue",
+};
+
+/** Durée en heures et minutes (cycle de rotation). */
+export function formatDuration(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined) return "—";
+  const minutes = Math.round(seconds / 60);
+  return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, "0")}`;
+}
