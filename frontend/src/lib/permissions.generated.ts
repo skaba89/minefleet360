@@ -65,6 +65,128 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "dispatch.location.manage": {
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "dispatch.location.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "dispatch.material.manage": {
+    "OPS_MANAGER": [
+      "TENANT"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "dispatch.material.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "dispatch.mission.create": {
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "dispatch.mission.progress": {
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "dispatch.mission.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "fleet.vehicle.create": {
     "OPS_MANAGER": [
       "TENANT",

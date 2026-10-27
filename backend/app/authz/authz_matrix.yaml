@@ -462,6 +462,75 @@ permissions:
     audit: { action: vehicle_assignment.end }
     grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
 
+  # --- dispatch (lot 2a, docs/PLAN_LOT2.md §5) ---------------------------------------------------------
+  dispatch.location.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes: [{ method: GET, path: /site-locations, shape: collection, success: 200 }]
+    grants: &dispatch_ref_readers
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  dispatch.location.manage:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes:
+      - { method: POST, path: /site-locations, shape: collection, success: 201 }
+      - { method: PATCH, path: "/site-locations/{site_location_id}", shape: item, success: 200 }
+    audit: { action: site_location.create }
+    grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT, SITE] }
+  dispatch.material.read:
+    tranche: 1c
+    kind: read
+    site_bound: false
+    routes: [{ method: GET, path: /materials, shape: collection, success: 200 }]
+    grants: *dispatch_ref_readers
+  dispatch.material.manage:
+    tranche: 1c
+    kind: create
+    site_bound: false
+    routes:
+      - { method: POST, path: /materials, shape: collection, success: 201 }
+      - { method: PATCH, path: "/materials/{material_id}", shape: item, success: 200 }
+    audit: { action: material.create }
+    grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT] }
+  dispatch.mission.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /missions, shape: collection, success: 200 }
+      - { method: GET, path: "/missions/{mission_id}", shape: item, success: 200 }
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  dispatch.mission.create:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /missions, shape: collection, success: 201 }]
+    audit: { action: mission.create }
+    grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
+  dispatch.mission.progress:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes: [{ method: POST, path: "/missions/{mission_id}/events", shape: item, success: 200 }]
+    audit: { action: mission.progress }
+    grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
+
 public_routes:
   - { method: GET, path: /health }
   - { method: POST, path: /auth/login }

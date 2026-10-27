@@ -44,6 +44,9 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
     ("POST", "/vehicle-assignments/{vehicle_assignment_id}/suspend"): {"reason_code": "WEATHER"},
     ("POST", "/vehicle-assignments/{vehicle_assignment_id}/complete"): {},
     ("POST", "/vehicle-assignments/{vehicle_assignment_id}/cancel"): {"reason_code": "PLAN_CHANGED"},
+    ("PATCH", "/site-locations/{site_location_id}"): {"name": "Lieu modifié"},
+    ("PATCH", "/materials/{material_id}"): {"name": "Matière modifiée"},
+    ("POST", "/missions/{mission_id}/events"): {"event_type": "SUSPENDED", "reason_code": "WEATHER"},
 }
 
 
@@ -131,7 +134,33 @@ def world(api: Api, client: TestClient) -> World:
         },
     )
     assert vehicle_assignment.status_code == 201, vehicle_assignment.text
+    places = [
+        client.post(
+            f"{API}/site-locations",
+            headers=a.admin.headers,
+            json={"site_id": str(a.sites["S1"]), "code": code, "name": f"Lieu {code}", "kind": kind},
+        ).json()["site_location_id"]
+        for code, kind in (("FOSSE-1", "LOADING_POINT"), ("VERSE-1", "DUMP_POINT"))
+    ]
+    material = client.post(
+        f"{API}/materials", headers=a.admin.headers, json={"code": "BAUX", "name": "Bauxite"}
+    ).json()["material_id"]
+    mission = client.post(
+        f"{API}/missions",
+        headers=ops.headers,
+        json={
+            "vehicle_assignment_id": vehicle_assignment.json()["vehicle_assignment_id"],
+            "origin_location_id": places[0],
+            "destination_location_id": places[1],
+            "material_id": material,
+            "planned_start": (datetime.now(UTC) + timedelta(days=7)).isoformat(),
+        },
+    )
+    assert mission.status_code == 201, mission.text
     objects = {
+        "site_location_id": uuid.UUID(places[0]),
+        "material_id": uuid.UUID(material),
+        "mission_id": uuid.UUID(mission.json()["mission_id"]),
         "vehicle_assignment_id": uuid.UUID(vehicle_assignment.json()["vehicle_assignment_id"]),
         "vehicle_id": uuid.UUID(vehicle),
         "category_id": uuid.UUID(category),

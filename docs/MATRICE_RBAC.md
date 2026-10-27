@@ -143,6 +143,17 @@ Statut conducteur : passage en non-`ACTIVE` refusé en **409** `DRIVER_HAS_OPEN_
 
 Règles (D-04, D-13) : `OPS_MANAGER` en portée `TENANT` ou `SITE` ; `DISPATCHER` **en portée `SITE` uniquement** (D-10). Véhicule, conducteur et affectation sont du **même site** (sinon `422` `ASSIGNMENT_SITE_MISMATCH`) ; pas d'antidatage au-delà de la tolérance configurable (`422` `ASSIGNMENT_BACKDATED`) ; éligibilité stricte, **sans dérogation** (`422` `DRIVER_LICENSE_EXPIRED`, `DRIVER_QUALIFICATION_MISSING`, `VEHICLE_NOT_AVAILABLE`…) ; chevauchement → `409`. `TENANT_ADMIN` : ❌ (D-10, données de conducteur). `FIN` : ⏭ (valorisation de coûts, pseudonymisation reportées avec le module coûts).
 
+### 2.5 bis `dispatch` (lot 2a, `PLAN_LOT2.md` §5)
+| Permission | PA | TA | DIR | OPS | DISP | HR | DRV | WSC | MEC | STK | FUEL | HSE | FIN | AUD |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `dispatch.location.read`, `dispatch.material.read` | ❌ | ✅ | ✅ | ✅ | 🔶 | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| `dispatch.location.manage` | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `dispatch.material.manage` (portée société seulement) | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `dispatch.mission.read` | ❌ | ❌ | ✅ | ✅ | 🔶 | ❌ | ⏭ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| `dispatch.mission.create`, `dispatch.mission.progress` | ❌ | ❌ | ❌ | ✅ | 🔶 | ❌ | ⏭ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+`TENANT_ADMIN` gère les référentiels mais ne lit pas les missions (données nominatives conducteur, D-10). `DRIVER` : sa propre mission au lot 4 (écran conducteur, C-12).
+
 ### 2.6 `audit` (1a)
 Il n'existe **aucune permission d'écriture, de modification ou de suppression** sur `audit_event` exposée par l'API : l'écriture est un effet interne des autres modules ; le journal est append-only (T-21), partitionné par mois dès la migration 0001 (D-17).
 

@@ -1061,6 +1061,128 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/site-locations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Locations */
+        get: operations["list_locations_api_v1_site_locations_get"];
+        put?: never;
+        /** Create Location */
+        post: operations["create_location_api_v1_site_locations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/site-locations/{site_location_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Location */
+        patch: operations["update_location_api_v1_site_locations__site_location_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/materials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Materials */
+        get: operations["list_materials_api_v1_materials_get"];
+        put?: never;
+        /** Create Material */
+        post: operations["create_material_api_v1_materials_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/materials/{material_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Material */
+        patch: operations["update_material_api_v1_materials__material_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/missions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Missions */
+        get: operations["list_missions_api_v1_missions_get"];
+        put?: never;
+        /** Create Mission */
+        post: operations["create_mission_api_v1_missions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{mission_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mission */
+        get: operations["get_mission_api_v1_missions__mission_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/missions/{mission_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Event */
+        post: operations["record_event_api_v1_missions__mission_id__events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1353,6 +1475,34 @@ export interface components {
             /** Hire Date */
             hire_date?: string | null;
         };
+        /** EventOut */
+        EventOut: {
+            /**
+             * Mission Event Id
+             * Format: uuid
+             */
+            mission_event_id: string;
+            /** Event Type */
+            event_type: string;
+            /** From Status */
+            from_status: string | null;
+            /** To Status */
+            to_status: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /** Source */
+            source: string;
+            /** Reason */
+            reason: string | null;
+        };
         /** ExpirationItem */
         ExpirationItem: {
             /**
@@ -1484,6 +1634,55 @@ export interface components {
             /** Document Reference */
             document_reference?: string | null;
         };
+        /** LocationCreate */
+        LocationCreate: {
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "LOADING_POINT" | "DUMP_POINT" | "STOCKPILE" | "CRUSHER" | "WEIGHBRIDGE" | "PORT" | "OTHER";
+        };
+        /** LocationOut */
+        LocationOut: {
+            /**
+             * Site Location Id
+             * Format: uuid
+             */
+            site_location_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Status */
+            status: string;
+            /** Row Version */
+            row_version: number;
+        };
+        /** LocationUpdate */
+        LocationUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Kind */
+            kind?: ("LOADING_POINT" | "DUMP_POINT" | "STOCKPILE" | "CRUSHER" | "WEIGHBRIDGE" | "PORT" | "OTHER") | null;
+            /** Status */
+            status?: ("ACTIVE" | "INACTIVE") | null;
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Workspace Code */
@@ -1492,6 +1691,45 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** MaterialCreate */
+        MaterialCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Is Waste
+             * @default false
+             */
+            is_waste: boolean;
+        };
+        /** MaterialOut */
+        MaterialOut: {
+            /**
+             * Material Id
+             * Format: uuid
+             */
+            material_id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Is Waste */
+            is_waste: boolean;
+            /** Status */
+            status: string;
+            /** Row Version */
+            row_version: number;
+        };
+        /** MaterialUpdate */
+        MaterialUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Is Waste */
+            is_waste?: boolean | null;
+            /** Status */
+            status?: ("ACTIVE" | "INACTIVE") | null;
         };
         /** MeOut */
         MeOut: {
@@ -1586,6 +1824,149 @@ export interface components {
             /** Code */
             code: string;
         };
+        /** MissionCreate */
+        MissionCreate: {
+            /**
+             * Vehicle Assignment Id
+             * Format: uuid
+             */
+            vehicle_assignment_id: string;
+            /**
+             * Origin Location Id
+             * Format: uuid
+             */
+            origin_location_id: string;
+            /**
+             * Destination Location Id
+             * Format: uuid
+             */
+            destination_location_id: string;
+            /**
+             * Material Id
+             * Format: uuid
+             */
+            material_id: string;
+            /**
+             * Planned Start
+             * Format: date-time
+             */
+            planned_start: string;
+            /** Due At */
+            due_at?: string | null;
+            /** Planned Rotations */
+            planned_rotations?: number | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** MissionEventCreate */
+        MissionEventCreate: {
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "DEPARTED" | "ARRIVED_LOADING" | "LOADED" | "ARRIVED_UNLOADING" | "UNLOADED" | "COMPLETED" | "SUSPENDED" | "RESUMED" | "REASSIGNED" | "CANCELLED";
+            /** Occurred At */
+            occurred_at?: string | null;
+            /** Client Event Id */
+            client_event_id?: string | null;
+            /** Reason Code */
+            reason_code?: ("BREAKDOWN" | "HSE_STOP" | "WEATHER" | "ROAD_BLOCKED" | "DRIVER_UNAVAILABLE" | "PLAN_CHANGED" | "ENTRY_ERROR" | "OTHER") | null;
+            /** Vehicle Assignment Id */
+            vehicle_assignment_id?: string | null;
+        };
+        /** MissionOut */
+        MissionOut: {
+            /**
+             * Mission Id
+             * Format: uuid
+             */
+            mission_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Vehicle Assignment Id
+             * Format: uuid
+             */
+            vehicle_assignment_id: string;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /** Vehicle Fleet Number */
+            vehicle_fleet_number: string;
+            /**
+             * Driver Id
+             * Format: uuid
+             */
+            driver_id: string;
+            /** Driver Display Name */
+            driver_display_name: string;
+            /**
+             * Origin Location Id
+             * Format: uuid
+             */
+            origin_location_id: string;
+            /** Origin Name */
+            origin_name: string;
+            /**
+             * Destination Location Id
+             * Format: uuid
+             */
+            destination_location_id: string;
+            /** Destination Name */
+            destination_name: string;
+            /**
+             * Material Id
+             * Format: uuid
+             */
+            material_id: string;
+            /** Material Name */
+            material_name: string;
+            /**
+             * Planned Start
+             * Format: date-time
+             */
+            planned_start: string;
+            /** Due At */
+            due_at: string | null;
+            /** Planned Rotations */
+            planned_rotations: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PLANNED" | "ASSIGNED" | "EN_ROUTE_EMPTY" | "LOADING" | "EN_ROUTE_LOADED" | "UNLOADING" | "SUSPENDED" | "COMPLETED" | "CANCELLED";
+            /** Status Before Suspension */
+            status_before_suspension: string | null;
+            /** Status Reason */
+            status_reason: string | null;
+            /** Notes */
+            notes: string | null;
+            /** Rotations Completed */
+            rotations_completed: number;
+            /** Overdue */
+            overdue: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Row Version */
+            row_version: number;
+            /** Events */
+            events?: components["schemas"]["EventOut"][] | null;
+            /** Rotations */
+            rotations?: components["schemas"]["RotationOut"][] | null;
+        };
         /** Page[AssignmentOut] */
         Page_AssignmentOut_: {
             /** Items */
@@ -1612,6 +1993,17 @@ export interface components {
         Page_DriverOut_: {
             /** Items */
             items: components["schemas"]["DriverOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[MissionOut] */
+        Page_MissionOut_: {
+            /** Items */
+            items: components["schemas"]["MissionOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -1823,6 +2215,36 @@ export interface components {
             allowed_scopes: string[];
             /** Is Optional */
             is_optional: boolean;
+        };
+        /** RotationOut */
+        RotationOut: {
+            /**
+             * Rotation Id
+             * Format: uuid
+             */
+            rotation_id: string;
+            /** Sequence */
+            sequence: number;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /**
+             * Loading Started At
+             * Format: date-time
+             */
+            loading_started_at: string;
+            /** Loaded At */
+            loaded_at: string | null;
+            /** Unloading Started At */
+            unloading_started_at: string | null;
+            /** Unloaded At */
+            unloaded_at: string | null;
+            /** Status */
+            status: string;
+            /** Cycle Seconds */
+            cycle_seconds: number | null;
         };
         /** SessionUser */
         SessionUser: {
@@ -4852,6 +5274,363 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AssignmentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_locations_api_v1_site_locations_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                include_inactive?: boolean;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_location_api_v1_site_locations_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_location_api_v1_site_locations__site_location_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                site_location_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_materials_api_v1_materials_get: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_material_api_v1_materials_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_material_api_v1_materials__material_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                material_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaterialUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaterialOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_missions_api_v1_missions_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                vehicle_id?: string | null;
+                status?: ("PLANNED" | "ASSIGNED" | "EN_ROUTE_EMPTY" | "LOADING" | "EN_ROUTE_LOADED" | "UNLOADING" | "SUSPENDED" | "COMPLETED" | "CANCELLED") | null;
+                open_only?: boolean;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_MissionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_mission_api_v1_missions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MissionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mission_api_v1_missions__mission_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                mission_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_event_api_v1_missions__mission_id__events_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                mission_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MissionEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionOut"];
                 };
             };
             /** @description Validation Error */
