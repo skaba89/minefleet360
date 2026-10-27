@@ -114,6 +114,8 @@ class MissionEventCreate(StrictModel):
 class EventOut(BaseModel):
     mission_event_id: uuid.UUID
     event_type: str
+    # Affectation en vigueur après l'événement : retrace les réaffectations (revue L2A-R-01).
+    vehicle_assignment_id: uuid.UUID
     from_status: str | None
     to_status: str
     occurred_at: datetime
@@ -141,8 +143,9 @@ class MissionOut(BaseModel):
     vehicle_assignment_id: uuid.UUID
     vehicle_id: uuid.UUID
     vehicle_fleet_number: str
-    driver_id: uuid.UUID
-    driver_display_name: str
+    # Données nominatives : None si l'appelant ne lit pas les affectations sur ce site (D-10, L2A-R-02).
+    driver_id: uuid.UUID | None
+    driver_display_name: str | None
     origin_location_id: uuid.UUID
     origin_name: str
     destination_location_id: uuid.UUID

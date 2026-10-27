@@ -152,7 +152,8 @@ Règles (D-04, D-13) : `OPS_MANAGER` en portée `TENANT` ou `SITE` ; `DISPATCHER
 | `dispatch.mission.read` | ❌ | ❌ | ✅ | ✅ | 🔶 | ❌ | ⏭ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
 | `dispatch.mission.create`, `dispatch.mission.progress` | ❌ | ❌ | ❌ | ✅ | 🔶 | ❌ | ⏭ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
-`TENANT_ADMIN` gère les référentiels mais ne lit pas les missions (données nominatives conducteur, D-10). `DRIVER` : sa propre mission au lot 4 (écran conducteur, C-12).
+`TENANT_ADMIN` gère les référentiels mais ne lit pas les missions (données nominatives conducteur, D-10).
+Le **nom et l'identifiant du conducteur** d'une mission suivent `assignment.vehicle_assignment.read` sur le site de la mission, pas `dispatch.mission.read` (revue L2A-R-02) : `FINANCE` et un `WORKSHOP_CHIEF` hors de son site lisent la mission avec ces deux champs à `null`. `DRIVER` : sa propre mission au lot 4 (écran conducteur, C-12).
 
 ### 2.6 `audit` (1a)
 Il n'existe **aucune permission d'écriture, de modification ou de suppression** sur `audit_event` exposée par l'API : l'écriture est un effet interne des autres modules ; le journal est append-only (T-21), partitionné par mois dès la migration 0001 (D-17).
