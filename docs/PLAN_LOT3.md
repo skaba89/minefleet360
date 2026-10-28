@@ -24,7 +24,7 @@
 | Signalement avec **panne bloquante** | Véhicule `AVAILABLE` → `IMMOBILIZED` (motif de la panne) ; **mission en cours suspendue** (motif « Panne », source système) ; politique D-41 appliquée aux affectations |
 | **Début d'intervention** | Véhicule → `IN_MAINTENANCE` |
 | **Clôture** après contrôle qualité conforme | Véhicule → `AVAILABLE` **seulement si aucun autre OT ouvert ne le garde à l'atelier** (en cours, attente de pièces, contrôle) |
-| Rejet, annulation | Aucun changement automatique : le chef d'atelier lève l'immobilisation explicitement (fiche véhicule) |
+| Rejet, annulation d'une panne bloquante | Véhicule `AVAILABLE` si aucun autre OT ne le retient (revue L3A-R-04) ; une immobilisation posée pour une autre raison n'est jamais levée |
 
 ## 4. Règles
 | ID | Règle |
@@ -33,8 +33,8 @@
 | RM-111 | Transitions strictes (§3) ; motif codé obligatoire pour rejet, annulation, attente de pièces et contrôle non conforme. |
 | RM-112 | Le mécanicien assigné a le rôle `MECHANIC` (ou `WORKSHOP_CHIEF`) sur le site du véhicule (ou toute la société), compte actif. |
 | RM-113 | Seul le mécanicien assigné (ou le chef d'atelier) démarre, met en attente, reprend, déclare terminé et saisit du temps. |
-| RM-114 | **Remise en service** : la clôture (contrôle conforme) est faite par une personne **différente du mécanicien assigné** (séparation des tâches) ; elle est tracée. |
-| RM-115 | Temps passé : minutes entières (1 à 960 par saisie), jour non futur, ajout seul ; un OT clôturé n'accepte plus de temps. |
+| RM-114 | **Remise en service** : la clôture (contrôle conforme) est faite par une personne qui n'a **pas agi** sur l'intervention (assignés successifs, exécution, compte rendu, temps passé) ; le compte rendu est figé pendant le contrôle. |
+| RM-115 | Temps passé : minutes entières (1 à 960 par saisie, 24 h au plus par mécanicien et par jour), jour non futur, ajout seul ; un OT clôturé n'accepte plus de temps. |
 | RM-116 | Événements et temps en ajout seul ; concurrence par `If-Match` ; audit de chaque transition. |
 
 ## 5. Autorisations

@@ -36,6 +36,8 @@ class WorkOrder(AuditedColumns, Base):
     description: Mapped[str | None] = mapped_column(String)
     # Panne bloquante : le véhicule est immobilisé au signalement (D-44).
     immobilize: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    # L'OT a lui-même immobilisé le véhicule : seul cas où il peut lever l'immobilisation (migration 0018).
+    immobilized_vehicle: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     status: Mapped[str] = mapped_column(String, nullable=False, server_default="REQUESTED")
     status_reason: Mapped[str | None] = mapped_column(String)
     assigned_to: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
@@ -69,6 +71,8 @@ class WorkOrderEvent(Base):
     to_status: Mapped[str] = mapped_column(String, nullable=False)
     reason: Mapped[str | None] = mapped_column(String)
     actor_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    # Mécanicien assigné par l'événement ASSIGNED (chaîne des assignés, revue L3A-R-08).
+    subject_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     occurred_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )

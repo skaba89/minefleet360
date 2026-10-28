@@ -24,7 +24,7 @@
 - **Permissions** `maintenance.work_order.*` (MATRICE_RBAC §2.5 ter) ; tests d'autorisation et d'isolation générés, avec un vrai ordre de travail.
 
 ## Vérifications exécutées
-- Backend : ruff, format, mypy OK ; **2239 tests**, couverture 93,52 %, dont `tests/test_maintenance.py` (4 scénarios) :
+- Backend : ruff, format, mypy OK ; **2243 tests**, couverture 93,65 %, dont `tests/test_maintenance.py` (8 scénarios, dont ceux de la revue) :
   - cycle complet avec panne bloquante et mission suspendue ;
   - auto-validation refusée et second ordre de travail qui retient le véhicule ;
   - actions interdites ;
@@ -33,6 +33,6 @@
 - Frontend : `tsc`, Vitest 19, **Playwright 17** (dont `atelier.spec.ts` : signalement par le dispatcher, intervention par le chef d'atelier, refus de son auto-validation, remise en service par l'exploitation), build, permissions à jour.
 
 ## Non fait / suite
-- Revue sécurité indépendante du lot 3a.
+- Revue sécurité : `docs/revues/REVUE_SECURITE_LOT3A.md` (15 constats corrigés ou vérifiés, L3A-R-03 accepté par D-44).
 - Tranche 3b : entretien préventif déclenché par les compteurs, indicateurs atelier (disponibilité, immobilisation, MTTR, MTBF).
 - Pièces et stock (lot Magasin) ; signalement par le conducteur (lot 4).

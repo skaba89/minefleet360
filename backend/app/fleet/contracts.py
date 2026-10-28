@@ -43,6 +43,7 @@ class VehicleFacts:
     required_license_categories: frozenset[str]
     # Capacité NOMINALE constructeur (kg) : base d'une estimation ou d'une alerte, jamais un tonnage mesuré.
     rated_payload_kg: int | None = None
+    status_reason_code: str | None = None
     # Documents exigés par la catégorie (D-42) et exemplaires de ces types (hors retraits pour erreur).
     required_documents: frozenset[str] = frozenset()
     documents: tuple[DocumentFact, ...] = ()
@@ -89,6 +90,7 @@ def vehicle_facts(
             requires_internal_authorization=category.requires_internal_authorization,
             required_license_categories=frozenset(licenses[category.vehicle_category_id]),
             rated_payload_kg=vehicle.rated_payload_kg,
+            status_reason_code=vehicle.status_reason_code,
             required_documents=required.get(category.vehicle_category_id, frozenset()),
             documents=tuple(
                 d

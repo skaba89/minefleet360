@@ -150,10 +150,15 @@ def test_release_requires_another_person_and_no_other_open_order(
     _act(client, "progress", first, colleague.headers, action="SUBMIT", work_done="Vérifié")
     laundered = _act(client, "decision", first, chief.headers, action="QC_PASS")
     assert (laundered.status_code, laundered.json()["code"]) == (422, "SELF_RELEASE_FORBIDDEN")
-    # Retoucher le compte rendu pendant le contrôle exclut aussi de la validation (événement tracé).
+    # Compte rendu figé pendant le contrôle (L3A-R-07) ; le retoucher pendant l'intervention exclut aussi
+    # de la validation, et l'événement est tracé.
     editor = api.user(w.t, "WORKSHOP_CHIEF")
+    frozen = _act(client, "progress", first, editor.headers, action="NOTE", work_done="Réécrit")
+    assert frozen.status_code == 409
+    _act(client, "decision", first, w.ops.headers, action="QC_FAIL", reason_code="INCOMPLETE_WORK")
     noted = _act(client, "progress", first, editor.headers, action="NOTE", work_done="Réécrit")
     assert noted.status_code == 200 and noted.json()["events"][-1]["event_type"] == "NOTED"
+    _act(client, "progress", first, colleague.headers, action="SUBMIT", work_done="Vérifié")
     edited = _act(client, "decision", first, editor.headers, action="QC_PASS")
     assert (edited.status_code, edited.json()["code"]) == (422, "SELF_RELEASE_FORBIDDEN")
     for step in ("APPROVE",):
@@ -228,3 +233,115 @@ def test_numbering_scope_and_append_only(client: TestClient, w: World, api: Api)
             conn.rollback()
     finally:
         engine.dispose()
+
+
+# --- Revue sécurité du lot 3a --------------------------------------------------------------------------
+
+
+def _set_status(client: TestClient, w: World, vehicle: str, status: str, reason: str | None = None) -> None:  # noqa: F811
+    url = f"{API}/vehicles/{vehicle}"
+    version = client.get(url, headers=w.ops.headers).headers["ETag"]
+    body: dict[str, object] = {"status": status}
+    if reason:
+        body["reason_code"] = reason
+    resp = client.post(f"{url}/status", headers={**w.ops.headers, "If-Match": version}, json=body)
+    assert resp.status_code == 200, resp.text
+
+
+def test_rejected_breakdown_releases_vehicle_and_mission_cannot_resume(
+    client: TestClient,
+    w: World,  # noqa: F811
+    api: Api,
+) -> None:
+    """L3A-R-04 : fausse alerte rejetée → véhicule libéré ; L3A-R-16 : pas de reprise tant qu'immobilisé."""
+    chief = api.user(w.t, "WORKSHOP_CHIEF")
+    assignment = _assignment(client, w)
+    mid = _mission(client, w, assignment, _refs(client, w)).json()["mission_id"]
+    assert _event(client, w, mid, "DEPARTED").status_code == 200
+    oid = _report(client, w, assignment["vehicle_id"], immobilize=True).json()["work_order_id"]
+    resumed = _event(client, w, mid, "RESUMED")
+    assert (resumed.status_code, resumed.json()["code"]) == (422, "MISSION_NOT_ELIGIBLE")
+    rejected = _act(client, "decision", oid, chief.headers, action="REJECT", reason_code="NOT_A_FAULT")
+    assert rejected.status_code == 200
+    assert _vehicle_status(client, w, assignment["vehicle_id"]) == "AVAILABLE"
+    assert _event(client, w, mid, "RESUMED").status_code == 200
+
+
+def test_manual_immobilization_is_not_overwritten(client: TestClient, w: World, api: Api) -> None:  # noqa: F811
+    """L3A-R-05 : un véhicule immobilisé pour une autre raison (accident) n'est pas remis à disposition."""
+    chief = api.user(w.t, "WORKSHOP_CHIEF")
+    mechanic = api.user(w.t, "MECHANIC", "SITE", "S1")
+    vehicle = _vehicle(client, w)
+    oid = _report(client, w, vehicle).json()["work_order_id"]
+    _act(client, "decision", oid, chief.headers, action="APPROVE")
+    _act(client, "decision", oid, chief.headers, action="ASSIGN", assigned_to=str(mechanic.user_id))
+    _act(client, "progress", oid, mechanic.headers, action="START")
+    _set_status(client, w, vehicle, "IMMOBILIZED", "ACCIDENT")
+    _act(client, "progress", oid, mechanic.headers, action="SUBMIT", work_done="Fait")
+    closed = _act(client, "decision", oid, chief.headers, action="QC_PASS")
+    assert closed.status_code == 200 and closed.json()["status"] == "CLOSED"
+    assert _vehicle_status(client, w, vehicle) == "IMMOBILIZED"
+
+
+def test_awaiting_parts_keeps_its_reason(client: TestClient, w: World, api: Api) -> None:  # noqa: F811
+    """L3A-R-06 : compte rendu et réassignation possibles en attente de pièces, motif conservé."""
+    chief = api.user(w.t, "WORKSHOP_CHIEF")
+    mechanic = api.user(w.t, "MECHANIC", "SITE", "S1")
+    other = api.user(w.t, "MECHANIC", "SITE", "S1")
+    oid = _report(client, w, _vehicle(client, w)).json()["work_order_id"]
+    _act(client, "decision", oid, chief.headers, action="APPROVE")
+    _act(client, "decision", oid, chief.headers, action="ASSIGN", assigned_to=str(mechanic.user_id))
+    _act(client, "progress", oid, mechanic.headers, action="START")
+    _act(client, "progress", oid, mechanic.headers, action="AWAIT_PARTS", reason_code="SUPPLIER_DELAY")
+    note = _act(client, "progress", oid, mechanic.headers, action="NOTE", parts_note="Pompe commandée")
+    assert note.status_code == 200 and note.json()["status_reason"] == "SUPPLIER_DELAY"
+    moved = _act(client, "decision", oid, chief.headers, action="ASSIGN", assigned_to=str(other.user_id))
+    assert moved.status_code == 200 and moved.json()["status_reason"] == "SUPPLIER_DELAY"
+    assigned = [e for e in moved.json()["events"] if e["event_type"] == "ASSIGNED"]
+    assert [e["subject_user_id"] for e in assigned] == [str(mechanic.user_id), str(other.user_id)]
+
+
+def test_moved_vehicle_daily_cap_and_names(client: TestClient, w: World, api: Api) -> None:  # noqa: F811
+    """L3A-R-09 : véhicule déplacé ; L3A-R-11 : 24 h par jour ; L3A-R-13 : noms réservés à l'atelier."""
+    chief = api.user(w.t, "WORKSHOP_CHIEF")
+    mechanic = api.user(w.t, "MECHANIC", "SITE", "S1")
+    vehicle = _vehicle(client, w)
+    oid = _report(client, w, vehicle).json()["work_order_id"]
+    _act(client, "decision", oid, chief.headers, action="APPROVE")
+    _act(client, "decision", oid, chief.headers, action="ASSIGN", assigned_to=str(mechanic.user_id))
+    seen_by_dispatcher = client.get(f"{API}/work-orders/{oid}", headers=w.dispatcher.headers).json()
+    assert seen_by_dispatcher["assigned_name"] is None
+    assert seen_by_dispatcher["assigned_to"] is None and seen_by_dispatcher["reported_by"] is None
+    assert seen_by_dispatcher["labour"] is None
+    assert all(e["actor_user_id"] is None for e in seen_by_dispatcher["events"])
+    assert all(e["actor_name"] is None for e in seen_by_dispatcher["events"])
+    assert client.get(f"{API}/work-orders/{oid}", headers=chief.headers).json()["assigned_name"]
+    today = date.today().isoformat()
+    for minutes, expected in ((960, 201), (480, 201), (1, 422)):
+        resp = client.post(
+            f"{API}/work-orders/{oid}/labour",
+            headers=mechanic.headers,
+            json={"minutes": minutes, "performed_on": today},
+        )
+        assert resp.status_code == expected, resp.text
+    url = f"{API}/vehicles/{vehicle}"
+    version = client.get(url, headers=w.ops.headers).headers["ETag"]
+    patched = client.patch(
+        url, headers={**w.ops.headers, "If-Match": version}, json={"site_id": str(w.t.sites["S2"])}
+    )
+    assert patched.status_code == 200, patched.text
+    start = _act(client, "progress", oid, chief.headers, action="START")
+    assert (start.status_code, start.json()["code"]) == (409, "WORK_ORDER_STATE_INVALID")
+
+
+def test_reject_only_lifts_its_own_immobilization(client: TestClient, w: World, api: Api) -> None:  # noqa: F811
+    """Revue automatique : une immobilisation posée par quelqu'un d'autre n'est jamais levée."""
+    chief = api.user(w.t, "WORKSHOP_CHIEF")
+    vehicle = _vehicle(client, w)
+    _set_status(client, w, vehicle, "IMMOBILIZED", "BREAKDOWN")
+    oid = _report(client, w, vehicle, immobilize=True).json()["work_order_id"]
+    assert (
+        _act(client, "decision", oid, chief.headers, action="REJECT", reason_code="DUPLICATE").status_code
+        == 200
+    )
+    assert _vehicle_status(client, w, vehicle) == "IMMOBILIZED"

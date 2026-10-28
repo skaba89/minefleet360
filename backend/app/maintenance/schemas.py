@@ -89,8 +89,11 @@ class EventOut(BaseModel):
     from_status: str | None
     to_status: str
     reason: str | None
-    actor_user_id: uuid.UUID
+    # Identités masquées (None) hors atelier, exploitation qui décide et audit (revue L3A-R-13).
+    actor_user_id: uuid.UUID | None
     actor_name: str | None
+    subject_user_id: uuid.UUID | None
+    subject_name: str | None
     occurred_at: datetime
 
 
@@ -127,7 +130,7 @@ class WorkOrderOut(BaseModel):
     work_done: str | None
     parts_note: str | None
     reported_at: datetime
-    reported_by: uuid.UUID
+    reported_by: uuid.UUID | None
     approved_at: datetime | None
     started_at: datetime | None
     submitted_at: datetime | None
