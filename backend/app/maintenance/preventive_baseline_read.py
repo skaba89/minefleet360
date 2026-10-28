@@ -14,9 +14,7 @@ from app.maintenance.models import WorkOrder
 from app.maintenance.preventive import ServiceBaseline
 
 
-def completed_preventive_orders_query(
-    tenant_id: uuid.UUID, vehicle_id: uuid.UUID
-) -> Select[WorkOrder]:
+def completed_preventive_orders_query(tenant_id: uuid.UUID, vehicle_id: uuid.UUID) -> Select[WorkOrder]:
     return (
         select(WorkOrder)
         .where(
