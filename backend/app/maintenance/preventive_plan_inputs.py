@@ -24,10 +24,7 @@ class PreventivePlanCreate(StrictModel):
 
     @model_validator(mode="after")
     def require_threshold(self) -> "PreventivePlanCreate":
-        if all(
-            value is None
-            for value in (self.km_interval, self.hours_interval, self.days_interval)
-        ):
+        if all(value is None for value in (self.km_interval, self.hours_interval, self.days_interval)):
             raise ValueError("au moins une périodicité est requise")
         return self
 
