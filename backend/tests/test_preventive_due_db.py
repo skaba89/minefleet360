@@ -12,7 +12,8 @@ from tests.test_assignment import World, _vehicle, w  # noqa: F401 (fixture w)
 
 
 def test_due_insert_is_idempotent_and_invisible_from_other_tenant(
-    client: TestClient, w: World,  # noqa: F811 (fixture w)
+    client: TestClient,
+    w: World,  # noqa: F811 (fixture w)
     api: Api,
 ) -> None:
     vehicle_id = _vehicle(client, w)
