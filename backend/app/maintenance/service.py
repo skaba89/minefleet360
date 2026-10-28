@@ -330,7 +330,7 @@ def _release_if_free(auth: Authorized, order: WorkOrder, facts: VehicleFacts) ->
 
 
 def _create_work_order_uncommitted(auth: Authorized, body: WorkOrderCreate) -> WorkOrderOut:
-    """Construction interne de l’OT, événement et audit, sans commit.""".replace("’", "'")
+    """Construire l’OT, son evenement et son audit sans commit."""
     db = auth.db
     facts = vehicle_facts(db, [body.vehicle_id]).get(body.vehicle_id)
     if facts is None or not auth.scope.covers_site(facts.site_id) or facts.status == "RETIRED":
