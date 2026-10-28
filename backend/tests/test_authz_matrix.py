@@ -47,6 +47,13 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
     ("PATCH", "/site-locations/{site_location_id}"): {"name": "Lieu modifié"},
     ("PATCH", "/materials/{material_id}"): {"name": "Matière modifiée"},
     ("POST", "/missions/{mission_id}/events"): {"event_type": "SUSPENDED", "reason_code": "WEATHER"},
+    ("POST", "/vehicles/{vehicle_id}/meter-readings"): {"meter_kind": "ODOMETER_KM", "value": 10},
+    ("POST", "/vehicles/{vehicle_id}/documents"): {
+        "doc_type": "SITE_ACCESS_PERMIT",
+        "reference": "ACCES-FICTIF-1",
+    },
+    ("PATCH", "/vehicle-documents/{vehicle_document_id}"): {"issuer": "Autorité fictive"},
+    ("POST", "/vehicle-documents/{vehicle_document_id}/withdraw"): {"reason_code": "ENTRY_ERROR"},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/approve"): {},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/void"): {"reason_code": "ENTRY_ERROR"},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/correct"): {
@@ -168,7 +175,14 @@ def world(api: Api, client: TestClient) -> World:
     )
     assert mission.status_code == 201, mission.text
     weighing_ticket = _weighed_rotation(client, a, hr, ops, category, places, material)
+    document = client.post(
+        f"{API}/vehicles/{vehicle}/documents",
+        headers=a.admin.headers,
+        json={"doc_type": "ROAD_PERMIT", "reference": "RP-FICTIF-1", "valid_until": "2030-01-01"},
+    )
+    assert document.status_code == 201, document.text
     objects = {
+        "vehicle_document_id": uuid.UUID(document.json()["vehicle_document_id"]),
         "weighing_ticket_id": weighing_ticket,
         "site_location_id": uuid.UUID(places[0]),
         "material_id": uuid.UUID(material),

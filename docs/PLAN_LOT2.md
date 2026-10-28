@@ -94,3 +94,33 @@
 5. Saisie dégradée : exclue du mesuré jusqu'à approbation par une autre personne ; auto-approbation refusée.
 6. Indicateurs par site et matière sur une période (92 jours max) : mesuré, en attente et estimé séparés ; aucune donnée GPS.
 7. Interface : saisie depuis la fiche mission, page Pesées (filtres, approbation, annulation, correction), page Indicateurs.
+
+## 8. Tranche 2c — compteurs et documents des véhicules (cadrage délégué, 2026-10-28)
+
+### 8.1 Modèle (migration `0015_vehicle_meters_documents`)
+- `vehicle_meter_reading` (**ajout seul**) : véhicule, site (copié), `meter_kind` ∈ `ODOMETER_KM` | `HOUR_METER`, `value` (dixième), `read_at`, `source` (`MANUAL` ; télématique au lot 5), `reset_reason` (remise à zéro motivée), `recorded_by`, `recorded_at`.
+- `vehicle_document` : véhicule, `doc_type` ∈ `INSURANCE`, `TECHNICAL_INSPECTION`, `ROAD_PERMIT`, `REGISTRATION`, `SITE_ACCESS_PERMIT`, `OTHER`, `reference` (sans donnée personnelle), `issuer`, `valid_from`, `valid_until`, `status` (`VALID` | `WITHDRAWN`), **`blocks_assignment`** (décision C-06 prise document par document ; par défaut vrai pour l'assurance et la visite technique), `row_version`. Validité **dérivée** des dates comme pour les permis (D-03).
+
+### 8.2 Règles
+| ID | Règle |
+|---|---|
+| RM-100 | Compteur seulement si la catégorie du véhicule l'a (`has_odometer`, `has_hour_meter`) ; véhicule non réformé. |
+| RM-101 | Relevés ordonnés : `read_at` jamais avant le dernier relevé du même compteur, pas dans le futur (tolérance d'horloge), antidatage borné (`MF_METER_BACKDATE_TOLERANCE`, 7 jours). |
+| RM-102 | Valeur jamais inférieure au relevé précédent, sauf **remise à zéro motivée** (`METER_REPLACED`, `ROLLOVER`, `ENTRY_ERROR`), tracée. |
+| RM-103 | Progression plausible : heures moteur ≤ temps écoulé (+ 5 %), kilomètres ≤ `MF_METER_MAX_KMH` (120) × heures écoulées ; sinon refus (fraude ou erreur de saisie). |
+| RM-104 | Pour chaque type de document dont au moins un exemplaire est **bloquant**, le véhicule doit avoir un exemplaire valide : sinon l'affectation est refusée (`VEHICLE_DOCUMENT_EXPIRED`, `VEHICLE_DOCUMENT_EXPIRES_BEFORE_END`) et une affectation en cours devient **non conforme** (départ refusé). Échéance proche : avertissement. |
+| RM-105 | Un document ne se supprime pas : il est **retiré** (motif tracé) ou remplacé par un nouvel exemplaire. |
+
+### 8.3 Autorisations
+| Permission | Rôles |
+|---|---|
+| `fleet.meter.read`, `fleet.document.read` | lecteurs des véhicules (`fleet.vehicle.read`) |
+| `fleet.meter.record` | OPS_MANAGER, DISPATCHER (site), WORKSHOP_CHIEF (site), MECHANIC (site) |
+| `fleet.document.manage` | TENANT_ADMIN, OPS_MANAGER, HSE |
+
+### 8.4 Critères d'acceptation (2c)
+1. Relevé accepté dans l'ordre et en progression plausible ; valeur en baisse sans motif, relevé antérieur au dernier, progression impossible, compteur absent de la catégorie → 422.
+2. Relevés en ajout seul (UPDATE/DELETE refusés en base), RLS forcée, isolation testée depuis la matrice.
+3. Document bloquant expiré : affectation refusée, affectation en cours non conforme et départ de mission refusé ; renouvellement → de nouveau éligible.
+4. Document non bloquant expiré : simple alerte ; retrait d'un document tracé dans l'audit.
+5. Interface : fiche véhicule avec relevés (saisie) et documents (ajout, retrait, échéances) ; liste des documents à échéance.

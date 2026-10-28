@@ -3,11 +3,12 @@
 import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import date
 
-from sqlalchemy import func, select, text
+from sqlalchemy import and_, func, select, text
 from sqlalchemy.orm import Session
 
-from app.fleet.models import Vehicle, VehicleCategory, VehicleCategoryLicense
+from app.fleet.models import Vehicle, VehicleCategory, VehicleCategoryLicense, VehicleDocument
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,17 @@ class VehicleFacts:
     required_license_categories: frozenset[str]
     # Capacité NOMINALE constructeur (kg) : base d'une estimation ou d'une alerte, jamais un tonnage mesuré.
     rated_payload_kg: int | None = None
+    # Documents des types dont au moins un exemplaire est bloquant (RM-104), tous exemplaires confondus.
+    documents: tuple["DocumentFact", ...] = ()
+
+
+@dataclass(frozen=True)
+class DocumentFact:
+    vehicle_document_id: uuid.UUID
+    doc_type: str
+    status: str
+    valid_from: date | None
+    valid_until: date | None
 
 
 def vehicle_facts(
@@ -51,6 +63,7 @@ def vehicle_facts(
         ).where(VehicleCategoryLicense.vehicle_category_id.in_(category_ids))
     ):
         licenses[category_id].add(code)
+    documents = blocking_documents(db, [vehicle.vehicle_id for vehicle, _ in rows])
     return {
         vehicle.vehicle_id: VehicleFacts(
             vehicle_id=vehicle.vehicle_id,
@@ -62,9 +75,46 @@ def vehicle_facts(
             requires_internal_authorization=category.requires_internal_authorization,
             required_license_categories=frozenset(licenses[category.vehicle_category_id]),
             rated_payload_kg=vehicle.rated_payload_kg,
+            documents=tuple(documents.get(vehicle.vehicle_id, ())),
         )
         for vehicle, category in rows
     }
+
+
+# Un document retiré pour erreur de saisie n'a jamais existé pour l'éligibilité ; les autres retraits
+# (perte, retrait par l'autorité…) laissent le type exigé tant qu'aucun exemplaire valide ne le remplace.
+ENTRY_ERROR = and_(VehicleDocument.status == "WITHDRAWN", VehicleDocument.status_reason == "ENTRY_ERROR")
+
+
+def blocking_documents(db: Session, vehicle_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, list[DocumentFact]]:
+    """Pour chaque véhicule, tous les exemplaires des types de document dont un exemplaire est bloquant."""
+    ids = sorted(set(vehicle_ids))
+    if not ids:
+        return {}
+    blocking = (
+        select(VehicleDocument.vehicle_id, VehicleDocument.doc_type)
+        .where(VehicleDocument.vehicle_id.in_(ids), VehicleDocument.blocks_assignment.is_(True))
+        .where(~ENTRY_ERROR)
+        .distinct()
+        .subquery()
+    )
+    rows = db.execute(
+        select(VehicleDocument)
+        .where(~ENTRY_ERROR)
+        .join(
+            blocking,
+            and_(
+                blocking.c.vehicle_id == VehicleDocument.vehicle_id,
+                blocking.c.doc_type == VehicleDocument.doc_type,
+            ),
+        )
+    ).scalars()
+    out: dict[uuid.UUID, list[DocumentFact]] = {}
+    for d in rows:
+        out.setdefault(d.vehicle_id, []).append(
+            DocumentFact(d.vehicle_document_id, d.doc_type, d.status, d.valid_from, d.valid_until)
+        )
+    return out
 
 
 def site_blockers(db: Session, site_id: uuid.UUID, limit: int) -> tuple[int, list[dict[str, str]]]:

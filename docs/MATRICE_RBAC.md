@@ -105,6 +105,9 @@ Les routes de réinitialisation **en libre-service** (`/auth/password/reset-requ
 | `fleet.vehicle.update` | ❌ | ✅⁴ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `fleet.vehicle.update_status` | ❌ | ✅ | ❌ | ✅ | 🔶 | ❌ | ❌ | 🔶 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `fleet.vehicle.deactivate` (passage à `RETIRED`, terminal, C-13) | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `fleet.meter.read`, `fleet.document.read` (2c) | ❌ | ✅ | ✅ | ✅ | 🔶 | ❌ | ❌ | 🔶 | 🔶 | 🔶 | 🔶 | ✅ | ✅ | ✅ |
+| `fleet.meter.record` (2c) | ❌ | ❌ | ❌ | ✅ | 🔶 | ❌ | ❌ | 🔶 | 🔶 | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `fleet.document.manage` (2c : ajout, modification, retrait) | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | `fleet.vehicle_category.read` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `fleet.vehicle_category.manage` | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 

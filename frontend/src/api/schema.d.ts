@@ -767,6 +767,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/vehicles/{vehicle_id}/meter-readings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Meter Readings */
+        get: operations["list_meter_readings_api_v1_vehicles__vehicle_id__meter_readings_get"];
+        put?: never;
+        /** Record Meter Reading */
+        post: operations["record_meter_reading_api_v1_vehicles__vehicle_id__meter_readings_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vehicles/{vehicle_id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Vehicle Documents */
+        get: operations["list_vehicle_documents_api_v1_vehicles__vehicle_id__documents_get"];
+        put?: never;
+        /** Create Vehicle Document */
+        post: operations["create_vehicle_document_api_v1_vehicles__vehicle_id__documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vehicle-documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Due Vehicle Documents */
+        get: operations["due_vehicle_documents_api_v1_vehicle_documents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vehicle-documents/{vehicle_document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Vehicle Document */
+        patch: operations["update_vehicle_document_api_v1_vehicle_documents__vehicle_document_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/vehicle-documents/{vehicle_document_id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw Vehicle Document */
+        post: operations["withdraw_vehicle_document_api_v1_vehicle_documents__vehicle_document_id__withdraw_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/drivers": {
         parameters: {
             query?: never;
@@ -1465,6 +1552,85 @@ export interface components {
             /** Warnings */
             warnings: components["schemas"]["Issue"][];
         };
+        /** DocumentCreate */
+        DocumentCreate: {
+            /**
+             * Doc Type
+             * @enum {string}
+             */
+            doc_type: "INSURANCE" | "TECHNICAL_INSPECTION" | "ROAD_PERMIT" | "REGISTRATION" | "SITE_ACCESS_PERMIT" | "OTHER";
+            /** Reference */
+            reference: string;
+            /** Issuer */
+            issuer?: string | null;
+            /** Valid From */
+            valid_from?: string | null;
+            /** Valid Until */
+            valid_until?: string | null;
+            /** Blocks Assignment */
+            blocks_assignment?: boolean | null;
+        };
+        /** DocumentOut */
+        DocumentOut: {
+            /**
+             * Vehicle Document Id
+             * Format: uuid
+             */
+            vehicle_document_id: string;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /** Vehicle Fleet Number */
+            vehicle_fleet_number: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Doc Type */
+            doc_type: string;
+            /** Reference */
+            reference: string;
+            /** Issuer */
+            issuer: string | null;
+            /** Valid From */
+            valid_from: string | null;
+            /** Valid Until */
+            valid_until: string | null;
+            /** Status */
+            status: string;
+            /** Status Reason */
+            status_reason: string | null;
+            /** Blocks Assignment */
+            blocks_assignment: boolean;
+            /** Validity */
+            validity: string;
+            /** Row Version */
+            row_version: number;
+        };
+        /** DocumentUpdate */
+        DocumentUpdate: {
+            /** Reference */
+            reference?: string | null;
+            /** Issuer */
+            issuer?: string | null;
+            /** Valid From */
+            valid_from?: string | null;
+            /** Valid Until */
+            valid_until?: string | null;
+            /** Blocks Assignment */
+            blocks_assignment?: boolean | null;
+        };
+        /** DocumentWithdraw */
+        DocumentWithdraw: {
+            /**
+             * Reason Code
+             * @enum {string}
+             */
+            reason_code: "REPLACED" | "LOST" | "REVOKED_BY_AUTHORITY" | "ENTRY_ERROR" | "OTHER";
+        };
         /** DriverCreate */
         DriverCreate: {
             /**
@@ -1920,6 +2086,56 @@ export interface components {
             /** Mfa Enrollment Required */
             mfa_enrollment_required: boolean;
         };
+        /** MeterReadingCreate */
+        MeterReadingCreate: {
+            /**
+             * Meter Kind
+             * @enum {string}
+             */
+            meter_kind: "ODOMETER_KM" | "HOUR_METER";
+            /** Value */
+            value: number | string;
+            /** Read At */
+            read_at?: string | null;
+            /** Reset Reason */
+            reset_reason?: ("METER_REPLACED" | "ROLLOVER" | "ENTRY_ERROR") | null;
+        };
+        /** MeterReadingOut */
+        MeterReadingOut: {
+            /**
+             * Vehicle Meter Reading Id
+             * Format: uuid
+             */
+            vehicle_meter_reading_id: string;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /** Meter Kind */
+            meter_kind: string;
+            /** Value */
+            value: number;
+            /**
+             * Read At
+             * Format: date-time
+             */
+            read_at: string;
+            /** Source */
+            source: string;
+            /** Reset Reason */
+            reset_reason: string | null;
+            /**
+             * Recorded By
+             * Format: uuid
+             */
+            recorded_by: string;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+        };
         /**
          * MfaChallengeResponse
          * @description Mot de passe correct, second facteur attendu : aucune session n'est ouverte à ce stade.
@@ -2157,6 +2373,17 @@ export interface components {
         Page_DriverOut_: {
             /** Items */
             items: components["schemas"]["DriverOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[MeterReadingOut] */
+        Page_MeterReadingOut_: {
+            /** Items */
+            items: components["schemas"]["MeterReadingOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -4831,6 +5058,260 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VehicleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_meter_readings_api_v1_vehicles__vehicle_id__meter_readings_get: {
+        parameters: {
+            query?: {
+                meter_kind?: ("ODOMETER_KM" | "HOUR_METER") | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_MeterReadingOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_meter_reading_api_v1_vehicles__vehicle_id__meter_readings_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeterReadingCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeterReadingOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_vehicle_documents_api_v1_vehicles__vehicle_id__documents_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_vehicle_document_api_v1_vehicles__vehicle_id__documents_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    due_vehicle_documents_api_v1_vehicle_documents_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                within_days?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_vehicle_document_api_v1_vehicle_documents__vehicle_document_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                vehicle_document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    withdraw_vehicle_document_api_v1_vehicle_documents__vehicle_document_id__withdraw_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                vehicle_document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentWithdraw"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentOut"];
                 };
             };
             /** @description Validation Error */

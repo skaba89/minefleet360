@@ -1,7 +1,19 @@
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
-from sqlalchemy import Boolean, Computed, Date, DateTime, FetchedValue, Integer, SmallInteger, String, text
+from sqlalchemy import (
+    Boolean,
+    Computed,
+    Date,
+    DateTime,
+    FetchedValue,
+    Integer,
+    Numeric,
+    SmallInteger,
+    String,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -83,3 +95,48 @@ class VehicleStatusHistory(Base):
     reason_code: Mapped[str | None] = mapped_column(String)
     changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     changed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+
+
+class VehicleMeterReading(Base):
+    """Relevé de compteur, AJOUT SEUL (trigger) : une erreur se corrige par une remise à zéro motivée."""
+
+    __tablename__ = "vehicle_meter_reading"
+    __mapper_args__ = {"eager_defaults": True}
+
+    vehicle_meter_reading_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    vehicle_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    meter_kind: Mapped[str] = mapped_column(String, nullable=False)
+    value: Mapped[Decimal] = mapped_column(Numeric(12, 1), nullable=False)
+    read_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source: Mapped[str] = mapped_column(String, nullable=False, server_default="MANUAL")
+    reset_reason: Mapped[str | None] = mapped_column(String)
+    recorded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+
+
+class VehicleDocument(AuditedColumns, Base):
+    """Document réglementaire (assurance, visite technique…) ; validité dérivée des dates (D-03)."""
+
+    __tablename__ = "vehicle_document"
+    __mapper_args__ = {"eager_defaults": True}
+
+    vehicle_document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    vehicle_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    doc_type: Mapped[str] = mapped_column(String, nullable=False)
+    reference: Mapped[str] = mapped_column(String, nullable=False)
+    issuer: Mapped[str | None] = mapped_column(String)
+    valid_from: Mapped[date | None] = mapped_column(Date)
+    valid_until: Mapped[date | None] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default="VALID")
+    status_reason: Mapped[str | None] = mapped_column(String)
+    # Décision C-06 prise document par document : bloque l'affectation une fois échu (RM-104).
+    blocks_assignment: Mapped[bool] = mapped_column(Boolean, nullable=False)

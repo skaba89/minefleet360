@@ -25,6 +25,8 @@ TENANT_TABLES = (
     "rotation",
     "weighing_ticket",
     "weighing_ticket_decision",
+    "vehicle_meter_reading",
+    "vehicle_document",
 )
 GLOBAL_TABLES = {
     "role",
