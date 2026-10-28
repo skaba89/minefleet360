@@ -43,9 +43,7 @@ def due_candidates(
     if "DAYS" in result.due_triggers:
         assert baseline.serviced_on is not None
         assert result.due_on is not None
-        return (
-            DueCandidate("DAYS", "DAYS:" + baseline.serviced_on.isoformat(), result.due_on, None),
-        )
+        return (DueCandidate("DAYS", "DAYS:" + baseline.serviced_on.isoformat(), result.due_on, None),)
 
     if "KM" in result.due_triggers:
         assert baseline.cumulative_km is not None
