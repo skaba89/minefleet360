@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 
 import { get, request } from "../api/client";
 import { useMe } from "../auth/AuthContext";
@@ -37,7 +37,7 @@ export function VehiclePreventivePlans({ vehicleId, siteId }: { vehicleId: strin
 
   if (!allowed) return null;
 
-  async function createPlan(event: React.FormEvent<HTMLFormElement>) {
+  async function createPlan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     setError(null);
