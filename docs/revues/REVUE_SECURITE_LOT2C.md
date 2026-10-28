@@ -26,7 +26,7 @@ Les constats moyens portaient sur le **contournement du blocage par document**. 
 
 ## 3. Vérifications exécutées (2026-10-28)
 - Serveur : ruff, format, mypy OK ; `tests/test_vehicle_records.py` (10 scénarios) ; suite complète **2095 tests**, couverture 93,34 %.
-- Migration `0015` appliquée, défaite et réappliquée sur la base locale ; copie des documents exigés vérifiée (44 par tenant).
+- Migration `0016` (correctifs, la PR #16 ayant été fusionnée avant) : passage depuis 0015 vérifié avec un document existant ; copie des documents exigés vérifiée (44 par tenant) ; aller-retour OK.
 - Interface : `tsc`, Vitest 19, Playwright 16, build, permissions à jour.
 
 ## 4. Non vérifié

@@ -97,7 +97,7 @@
 
 ## 8. Tranche 2c — compteurs et documents des véhicules (cadrage délégué, 2026-10-28 ; révisé après revue)
 
-### 8.1 Modèle (migration `0015_vehicle_meters_documents`)
+### 8.1 Modèle (migrations `0015_vehicle_meters_documents` puis `0016_vehicle_documents_required`, la PR #16 ayant été fusionnée avant la revue)
 - `vehicle_meter_reading` (**ajout seul**) : véhicule, site (copié), `meter_kind` ∈ `ODOMETER_KM` | `HOUR_METER`, `value` (dixième), `read_at`, `source` (`MANUAL` ; télématique au lot 5), `reset_reason` (remise à zéro), `recorded_by`, `recorded_at`.
 - `vehicle_document` : véhicule, `doc_type` ∈ `INSURANCE`, `TECHNICAL_INSPECTION`, `INTERNAL_INSPECTION`, `LIFTING_INSPECTION`, `ROAD_PERMIT`, `REGISTRATION`, `SITE_ACCESS_PERMIT`, `OTHER`, `reference` (sans donnée personnelle), `issuer` (organisme), `valid_from`, `valid_until` (obligatoire sauf carte grise), `status` (`VALID` | `WITHDRAWN`, motif). **Immuable** une fois saisi (trigger) : seul le retrait est possible. Validité **dérivée** des dates (D-03).
 - `vehicle_category_document` (par tenant) et `vehicle_category_document_template` (global) : **documents exigés par catégorie** (D-42), copiés à la création du tenant comme les catégories (D-18).
