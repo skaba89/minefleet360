@@ -65,6 +65,29 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "dispatch.indicators.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "dispatch.location.manage": {
     "OPS_MANAGER": [
       "TENANT",
@@ -183,6 +206,50 @@ export const GRANTS = {
       "SITE"
     ],
     "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "dispatch.weighing.approve": {
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "dispatch.weighing.correct": {
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "dispatch.weighing.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "dispatch.weighing.record": {
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
       "TENANT",
       "SITE"
     ]

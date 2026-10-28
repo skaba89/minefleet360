@@ -98,6 +98,8 @@ class MissionCreate(StrictModel):
     due_at: AwareDatetime | None = None
     planned_rotations: int | None = Field(default=None, ge=1, le=500)
     notes: str | None = Field(default=None, max_length=1000)
+    # Renvoi après coupure réseau : même identifiant → même mission, aucun doublon (revue L2A-R-08).
+    client_request_id: uuid.UUID | None = None
 
 
 class MissionEventCreate(StrictModel):
@@ -167,3 +169,103 @@ class MissionOut(BaseModel):
     row_version: int
     events: list[EventOut] | None = None
     rotations: list[RotationOut] | None = None
+
+
+# --- Pesées (lot 2b, PLAN_LOT2 §7) ---------------------------------------------------------------------
+
+WeighingSource = Literal["WEIGHBRIDGE", "MANUAL_DEGRADED"]
+WeighingStatus = Literal["VALID", "PENDING_APPROVAL", "VOIDED"]
+# Motifs codés : pas de texte libre (pas de donnée personnelle dans un motif).
+DegradedReason = Literal["WEIGHBRIDGE_DOWN", "POWER_OUTAGE", "CALIBRATION", "NETWORK_DOWN", "OTHER"]
+VoidReason = Literal[
+    "ENTRY_ERROR", "WRONG_ROTATION", "WRONG_VEHICLE", "DUPLICATE", "CALIBRATION_ISSUE", "OTHER"
+]
+
+
+class WeighingFields(StrictModel):
+    weighbridge_location_id: uuid.UUID
+    ticket_number: str = Field(pattern=r"^[A-Za-z0-9/_-]{1,40}$")
+    source: WeighingSource = "WEIGHBRIDGE"
+    degraded_reason: DegradedReason | None = None
+    weighed_at: AwareDatetime
+    # Kilogrammes entiers (RM-071) ; le net est calculé par la base, jamais saisi.
+    gross_kg: int = Field(gt=0, le=500_000)
+    tare_kg: int = Field(gt=0, le=500_000)
+
+
+class WeighingCreate(WeighingFields):
+    rotation_id: uuid.UUID
+
+
+class WeighingCorrection(WeighingFields):
+    reason_code: VoidReason
+    # Facultatif : rattacher la pesée corrigée à une autre rotation (erreur de rotation).
+    rotation_id: uuid.UUID | None = None
+
+
+class WeighingVoid(StrictModel):
+    reason_code: VoidReason
+
+
+class WeighingDecisionOut(BaseModel):
+    decision: str
+    reason: str | None
+    decided_by: uuid.UUID
+    decided_at: datetime
+
+
+class WeighingOut(BaseModel):
+    weighing_ticket_id: uuid.UUID
+    site_id: uuid.UUID
+    mission_id: uuid.UUID
+    rotation_id: uuid.UUID
+    rotation_sequence: int
+    vehicle_id: uuid.UUID
+    vehicle_fleet_number: str
+    material_name: str
+    weighbridge_location_id: uuid.UUID
+    weighbridge_name: str
+    ticket_number: str
+    source: str
+    degraded_reason: str | None
+    weighed_at: datetime
+    gross_kg: int
+    tare_kg: int
+    net_kg: int
+    rated_payload_kg: int | None
+    # Net au-delà de la capacité nominale × seuil (RM-076) : alerte HSE.
+    overload: bool
+    status: WeighingStatus
+    replaces_ticket_id: uuid.UUID | None
+    replaced_by_ticket_id: uuid.UUID | None
+    recorded_by: uuid.UUID
+    recorded_at: datetime
+    decisions: list[WeighingDecisionOut]
+
+
+class IndicatorRow(BaseModel):
+    """Activité d'un site pour une matière sur la période : mesuré, en attente et estimé SÉPARÉS (RM-072)."""
+
+    site_id: uuid.UUID
+    material_id: uuid.UUID
+    material_name: str
+    missions_completed: int
+    rotations_completed: int
+    avg_cycle_seconds: int | None
+    # Cycles plus courts que le minimum paramétré : à vérifier (revue L2A-R-04).
+    short_cycles: int
+    measured_net_kg: int
+    measured_rotations: int
+    pending_net_kg: int
+    pending_rotations: int
+    # Capacité nominale × rotations sans aucune pesée : ESTIMATION, jamais additionnée au mesuré.
+    estimated_kg: int
+    estimated_rotations: int
+    rotations_without_estimate: int
+    overload_tickets: int
+
+
+class IndicatorsOut(BaseModel):
+    period_start: datetime
+    period_end: datetime
+    rows: list[IndicatorRow]

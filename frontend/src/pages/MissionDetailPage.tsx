@@ -8,16 +8,19 @@ import { Badge, DataState, ErrorMessage } from "../components/common";
 import { ActionForm, Fact, Options } from "../components/forms";
 import {
   formatDuration,
+  formatTonnes,
   label,
   MISSION_EVENTS,
   MISSION_REASONS,
   MISSION_STATUS,
   MISSION_TONE,
   ROTATION_STATUS,
+  WEIGHING_STATUS,
 } from "../lib/labels";
 import { can } from "../lib/permissions";
 import { formatDateTime } from "../lib/time";
 import { useSites } from "../site/SiteContext";
+import { WeighingForm } from "./WeighingPages";
 
 type Mission = Schemas["MissionOut"];
 type EventType = Schemas["MissionEventCreate"]["event_type"];
@@ -64,6 +67,17 @@ export function MissionDetailPage() {
   const etag = mission.data?.etag ?? null;
   const tz = timezoneOf(m?.site_id);
   const canProgress = m ? can(me.grants, "dispatch.mission.progress", m.site_id) : false;
+  const canWeigh = m ? can(me.grants, "dispatch.weighing.record", m.site_id) : false;
+  const [weighing, setWeighing] = useState<string | null>(null);
+  // Pesées de la mission (lot 2b) : seulement pour les rôles qui les lisent.
+  const tickets = useQuery({
+    queryKey: ["weighing-tickets", "mission", missionId],
+    enabled: Boolean(m) && can(me.grants, "dispatch.weighing.read", m?.site_id),
+    queryFn: () => read("/weighing-tickets", { query: { mission_id: missionId, live_only: true, page_size: 200 } }),
+  });
+  const liveTicket = new Map(
+    (tickets.data?.items ?? []).filter((t) => t.status !== "VOIDED").map((t) => [t.rotation_id, t]),
+  );
 
   async function send(event: EventType, extra: { reason_code?: Reason; vehicle_assignment_id?: string } = {}) {
     if (attempt.current?.event !== event) attempt.current = { event, id: crypto.randomUUID() };
@@ -191,6 +205,7 @@ export function MissionDetailPage() {
                     <th scope="col">Fin de déchargement</th>
                     <th scope="col">Durée du cycle</th>
                     <th scope="col">Statut</th>
+                    {tickets.isSuccess && <th scope="col">Pesée</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -201,11 +216,42 @@ export function MissionDetailPage() {
                       <td>{formatDateTime(r.unloaded_at, tz)}</td>
                       <td>{formatDuration(r.cycle_seconds)}</td>
                       <td>{label(ROTATION_STATUS, r.status)}</td>
+                      {tickets.isSuccess && (
+                        <td>
+                          {liveTicket.has(r.rotation_id) ? (
+                            <>
+                              {formatTonnes(liveTicket.get(r.rotation_id)?.net_kg)}{" "}
+                              <span className="small muted">
+                                ({label(WEIGHING_STATUS, liveTicket.get(r.rotation_id)?.status)})
+                              </span>
+                            </>
+                          ) : canWeigh && r.status !== "ABORTED" && r.loaded_at ? (
+                            <button type="button" onClick={() => setWeighing(r.rotation_id)}>
+                              Saisir la pesée
+                            </button>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </DataState>
+            {weighing && (
+              <WeighingForm
+                siteId={m.site_id}
+                title="Nouvelle pesée"
+                submitLabel="Enregistrer la pesée"
+                onCancel={() => setWeighing(null)}
+                onDone={() => {
+                  setWeighing(null);
+                  void queryClient.invalidateQueries({ queryKey: ["weighing-tickets"] });
+                }}
+                onSubmit={(fields) => call("post", "/weighing-tickets", { body: { ...fields, rotation_id: weighing } })}
+              />
+            )}
             <h2>Chronologie</h2>
             <ol className="timeline">
               {(m.events ?? []).map((e) => (

@@ -15,6 +15,7 @@ import { ActivationPage, ResetConfirmPage, ResetRequestPage } from "./pages/Pass
 import { SecurityPage } from "./pages/SecurityPage";
 import { VehicleDetailPage } from "./pages/VehicleDetailPage";
 import { VehiclesPage } from "./pages/VehiclesPage";
+import { IndicatorsPage, WeighingsPage } from "./pages/WeighingPages";
 import { SiteProvider } from "./site/SiteContext";
 
 function Protected() {
@@ -44,6 +45,8 @@ export function App() {
         <Route path="affectations" element={<AssignmentsPage />} />
         <Route path="missions" element={<MissionsPage />} />
         <Route path="missions/:missionId" element={<MissionDetailPage />} />
+        <Route path="pesees" element={<WeighingsPage />} />
+        <Route path="indicateurs" element={<IndicatorsPage />} />
         <Route path="mon-compte/securite" element={<SecurityPage />} />
         <Route path="administration" element={<AdminLayout />}>
           <Route index element={<AdminIndex />} />

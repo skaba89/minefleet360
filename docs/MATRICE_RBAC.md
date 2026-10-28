@@ -151,7 +151,11 @@ Règles (D-04, D-13) : `OPS_MANAGER` en portée `TENANT` ou `SITE` ; `DISPATCHER
 | `dispatch.material.manage` (portée société seulement) | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `dispatch.mission.read` | ❌ | ❌ | ✅ | ✅ | 🔶 | ❌ | ⏭ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
 | `dispatch.mission.create`, `dispatch.mission.progress` | ❌ | ❌ | ❌ | ✅ | 🔶 | ❌ | ⏭ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `dispatch.weighing.read`, `dispatch.indicators.read` (2b) | ❌ | ❌ | ✅ | ✅ | 🔶 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| `dispatch.weighing.record` (2b) | ❌ | ❌ | ❌ | ✅ | 🔶 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `dispatch.weighing.approve`, `dispatch.weighing.correct` (2b) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
+Pesées (2b) : une saisie manuelle dégradée est approuvée par une **autre personne** que celle qui l'a saisie (séparation des tâches, RM-075) ; les réponses de pesée ne contiennent aucune donnée nominative de conducteur.
 `TENANT_ADMIN` gère les référentiels mais ne lit pas les missions (données nominatives conducteur, D-10).
 Le **nom et l'identifiant du conducteur** d'une mission suivent `assignment.vehicle_assignment.read` sur le site de la mission, pas `dispatch.mission.read` (revue L2A-R-02) : `FINANCE` et un `WORKSHOP_CHIEF` hors de son site lisent la mission avec ces deux champs à `null`. `DRIVER` : sa propre mission au lot 4 (écran conducteur, C-12).
 

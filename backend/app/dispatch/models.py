@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, text
+from sqlalchemy import Boolean, Computed, DateTime, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -63,6 +63,8 @@ class Mission(AuditedColumns, Base):
     status_before_suspension: Mapped[str | None] = mapped_column(String)
     status_reason: Mapped[str | None] = mapped_column(String)
     notes: Mapped[str | None] = mapped_column(String)
+    # Identifiant fourni par le client : un renvoi de création ne crée pas de doublon (revue L2A-R-08).
+    client_request_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
 
 
 class MissionEvent(Base):
@@ -113,3 +115,56 @@ class Rotation(Base):
         DateTime(timezone=True), server_default=text("now()"), nullable=False
     )
     row_version: Mapped[int] = mapped_column(Integer, server_default=text("1"), nullable=False)
+
+
+class WeighingTicket(Base):
+    """Ticket de pesée, AJOUT SEUL (trigger) : correction = annulation + ticket correctif (RM-073).
+
+    Seul un ticket valide produit un tonnage MESURÉ (RM-071) ; le net est calculé par la base.
+    """
+
+    __tablename__ = "weighing_ticket"
+    __mapper_args__ = {"eager_defaults": True}
+
+    weighing_ticket_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    mission_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    rotation_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    vehicle_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    weighbridge_location_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    ticket_number: Mapped[str] = mapped_column(String, nullable=False)
+    source: Mapped[str] = mapped_column(String, nullable=False)
+    degraded_reason: Mapped[str | None] = mapped_column(String)
+    weighed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    gross_kg: Mapped[int] = mapped_column(Integer, nullable=False)
+    tare_kg: Mapped[int] = mapped_column(Integer, nullable=False)
+    net_kg: Mapped[int] = mapped_column(Integer, Computed("gross_kg - tare_kg", persisted=True))
+    rated_payload_kg: Mapped[int | None] = mapped_column(Integer)
+    overload: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    replaces_ticket_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    recorded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+
+
+class WeighingTicketDecision(Base):
+    """Approbation d'une saisie dégradée ou annulation d'un ticket ; ajout seul, une de chaque par ticket."""
+
+    __tablename__ = "weighing_ticket_decision"
+    __mapper_args__ = {"eager_defaults": True}
+
+    weighing_ticket_decision_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    weighing_ticket_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    decision: Mapped[str] = mapped_column(String, nullable=False)
+    reason: Mapped[str | None] = mapped_column(String)
+    decided_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    decided_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )

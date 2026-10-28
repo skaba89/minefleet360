@@ -2,13 +2,15 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
+from pydantic import AwareDatetime
 
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.http import IfMatch, Page, Pagination, etag
-from app.dispatch import service
+from app.dispatch import service, weighing
 from app.dispatch.models import Material, SiteLocation
 from app.dispatch.schemas import (
+    IndicatorsOut,
     LocationCreate,
     LocationOut,
     LocationUpdate,
@@ -19,6 +21,11 @@ from app.dispatch.schemas import (
     MissionEventCreate,
     MissionOut,
     MissionStatus,
+    WeighingCorrection,
+    WeighingCreate,
+    WeighingOut,
+    WeighingStatus,
+    WeighingVoid,
 )
 
 router = APIRouter(tags=["dispatch"], route_class=SecuredRoute)
@@ -136,3 +143,93 @@ def record_event(
     out = service.record_event(auth, mission_id, body, version)
     response.headers["ETag"] = etag(out.row_version)
     return out
+
+
+# --- Pesées et indicateurs (lot 2b) ---------------------------------------------------------------------
+
+WeighingRead = Annotated[Authorized, Depends(Require("dispatch.weighing.read"))]
+WeighingCorrect = Annotated[Authorized, Depends(Require("dispatch.weighing.correct"))]
+
+
+@router.get("/weighing-tickets", response_model=Page[WeighingOut])
+def list_weighing_tickets(
+    auth: WeighingRead,
+    page: Pagination,
+    site_id: uuid.UUID | None = None,
+    mission_id: uuid.UUID | None = None,
+    status_filter: Annotated[WeighingStatus | None, Query(alias="status")] = None,
+    overload: bool | None = None,
+    live_only: bool = False,
+    period_start: AwareDatetime | None = None,
+    period_end: AwareDatetime | None = None,
+) -> Page[WeighingOut]:
+    items, total = weighing.list_tickets(
+        auth,
+        page,
+        site_id=site_id,
+        mission_id=mission_id,
+        status=status_filter,
+        overload=overload,
+        live_only=live_only,
+        period_start=period_start,
+        period_end=period_end,
+    )
+    return Page(
+        items=weighing.tickets_out(auth, items), page=page.page, page_size=page.page_size, total=total
+    )
+
+
+@router.get("/weighing-tickets/{weighing_ticket_id}", response_model=WeighingOut)
+def get_weighing_ticket(weighing_ticket_id: uuid.UUID, auth: WeighingRead) -> WeighingOut:
+    return weighing.tickets_out(auth, [weighing.ticket_in_scope(auth, weighing_ticket_id)])[0]
+
+
+@router.post("/weighing-tickets", status_code=status.HTTP_201_CREATED, response_model=WeighingOut)
+def record_weighing_ticket(
+    body: WeighingCreate,
+    auth: Annotated[Authorized, Depends(Require("dispatch.weighing.record"))],
+    response: Response,
+) -> WeighingOut:
+    out, created = weighing.record_ticket(auth, body)
+    if not created:
+        response.status_code = status.HTTP_200_OK  # renvoi identique (RM-074)
+    return out
+
+
+@router.post("/weighing-tickets/{weighing_ticket_id}/approve", response_model=WeighingOut)
+def approve_weighing_ticket(
+    weighing_ticket_id: uuid.UUID,
+    auth: Annotated[Authorized, Depends(Require("dispatch.weighing.approve"))],
+) -> WeighingOut:
+    return weighing.approve(auth, weighing_ticket_id)
+
+
+@router.post("/weighing-tickets/{weighing_ticket_id}/void", response_model=WeighingOut)
+def void_weighing_ticket(
+    weighing_ticket_id: uuid.UUID, body: WeighingVoid, auth: WeighingCorrect
+) -> WeighingOut:
+    return weighing.void(auth, weighing_ticket_id, body.reason_code)
+
+
+@router.post(
+    "/weighing-tickets/{weighing_ticket_id}/correct",
+    status_code=status.HTTP_201_CREATED,
+    response_model=WeighingOut,
+)
+def correct_weighing_ticket(
+    weighing_ticket_id: uuid.UUID, body: WeighingCorrection, auth: WeighingCorrect, response: Response
+) -> WeighingOut:
+    out, created = weighing.correct(auth, weighing_ticket_id, body)
+    if not created:
+        response.status_code = status.HTTP_200_OK  # renvoi identique après coupure (revue L2B-R-09)
+    return out
+
+
+@router.get("/dispatch-indicators", response_model=IndicatorsOut)
+def dispatch_indicators(
+    auth: Annotated[Authorized, Depends(Require("dispatch.indicators.read"))],
+    site_id: uuid.UUID | None = None,
+    period_start: AwareDatetime | None = None,
+    period_end: AwareDatetime | None = None,
+) -> IndicatorsOut:
+    return weighing.indicators(auth, site_id=site_id, period_start=period_start, period_end=period_end)

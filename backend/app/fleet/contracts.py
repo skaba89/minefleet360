@@ -23,6 +23,8 @@ class VehicleFacts:
     requires_internal_authorization: bool
     # Vide = aucun permis d'État exigé par le catalogue (RM-022, valeurs fictives à valider : C-07).
     required_license_categories: frozenset[str]
+    # Capacité NOMINALE constructeur (kg) : base d'une estimation ou d'une alerte, jamais un tonnage mesuré.
+    rated_payload_kg: int | None = None
 
 
 def vehicle_facts(
@@ -59,6 +61,7 @@ def vehicle_facts(
             requires_driver=category.requires_driver,
             requires_internal_authorization=category.requires_internal_authorization,
             required_license_categories=frozenset(licenses[category.vehicle_category_id]),
+            rated_payload_kg=vehicle.rated_payload_kg,
         )
         for vehicle, category in rows
     }

@@ -531,6 +531,52 @@ permissions:
     # Action d'audit réellement écrite : mission.<événement> (mission.departed, mission.reassigned…).
     audit: { action: mission.progress }
     grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
+  # Lot 2b (PLAN_LOT2 §7) : pesées et indicateurs. Pas de nom de conducteur dans ces réponses.
+  dispatch.weighing.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /weighing-tickets, shape: collection, success: 200 }
+      - { method: GET, path: "/weighing-tickets/{weighing_ticket_id}", shape: item, success: 200 }
+    grants: &weighing_readers
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      HSE: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  dispatch.weighing.record:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /weighing-tickets, shape: collection, success: 201 }]
+    audit: { action: weighing_ticket.create }
+    grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
+  dispatch.weighing.approve:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes: [{ method: POST, path: "/weighing-tickets/{weighing_ticket_id}/approve", shape: item, success: 200 }]
+    audit: { action: weighing_ticket.approve }
+    grants: { OPS_MANAGER: [TENANT, SITE] }
+  dispatch.weighing.correct:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: "/weighing-tickets/{weighing_ticket_id}/void", shape: item, success: 200 }
+      - { method: POST, path: "/weighing-tickets/{weighing_ticket_id}/correct", shape: item, success: 201 }
+    # Actions écrites : weighing_ticket.void (annulation, y compris celle de l'original lors d'une
+    # correction) et weighing_ticket.correct (nouveau ticket) — revue L2B-R-10.
+    audit: { action: weighing_ticket.correct }
+    grants: { OPS_MANAGER: [TENANT, SITE] }
+  dispatch.indicators.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes: [{ method: GET, path: /dispatch-indicators, shape: collection, success: 200 }]
+    grants: *weighing_readers
 
 public_routes:
   - { method: GET, path: /health }
