@@ -8,6 +8,7 @@ from app.authz.routing import SecuredRoute
 from app.core.http import IfMatch, Page, Pagination, etag
 from app.maintenance import preventive_service, service
 from app.maintenance.preventive_plan_inputs import PreventivePlanCreate, PreventivePlanSuspend
+from app.maintenance.preventive_revise import revise_plan
 from app.maintenance.preventive_schemas import PreventiveDueOut, PreventivePlanOut
 from app.maintenance.preventive_suspend import suspend_plan
 from app.maintenance.preventive_write import create_plan
@@ -152,5 +153,18 @@ def suspend_preventive_plan(
     response: Response,
 ) -> PreventivePlanOut:
     plan = suspend_plan(auth, plan_id, body, version)
+    response.headers["ETag"] = etag(plan.row_version)
+    return PreventivePlanOut.model_validate(plan)
+
+
+@router.post("/preventive-plans/{plan_id}/revise", response_model=PreventivePlanOut)
+def revise_preventive_plan(
+    plan_id: uuid.UUID,
+    body: PreventivePlanCreate,
+    auth: PreventiveManage,
+    version: IfMatch,
+    response: Response,
+) -> PreventivePlanOut:
+    plan = revise_plan(auth, plan_id, body, version)
     response.headers["ETag"] = etag(plan.row_version)
     return PreventivePlanOut.model_validate(plan)
