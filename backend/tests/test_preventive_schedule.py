@@ -77,3 +77,73 @@ def test_schedule_refuses_inactive_or_missing_plan(active: bool | None) -> None:
         schedule_preventive_order(auth, uuid.uuid4())
     assert error.value.code == "STATE_TRANSITION_INVALID"
     db.commit.assert_not_called()
+
+
+def test_schedule_creates_preventive_order_and_commits_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """La création associe l'OT et l'échéance dans un unique commit."""
+    from app.maintenance import preventive_schedule
+
+    due_id, vehicle_id, order_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    due = SimpleNamespace(
+        maintenance_plan_id=uuid.uuid4(),
+        vehicle_id=vehicle_id,
+        work_order_id=None,
+        status="DUE",
+    )
+    vehicle = SimpleNamespace(site_id=uuid.uuid4())
+    plan = SimpleNamespace(active=True)
+    order = SimpleNamespace(work_order_id=order_id, kind="CORRECTIVE")
+    db = MagicMock()
+    db.execute.side_effect = [
+        MagicMock(scalar_one_or_none=lambda: due),
+        MagicMock(scalar_one_or_none=lambda: vehicle),
+        MagicMock(scalar_one_or_none=lambda: plan),
+        MagicMock(scalar_one=lambda: order),
+    ]
+    auth = SimpleNamespace(
+        db=db,
+        tenant_id=uuid.uuid4(),
+        scope=SimpleNamespace(permission="maintenance.preventive.manage", covers_site=lambda _: True),
+    )
+    create_order = MagicMock(return_value=SimpleNamespace(work_order_id=order_id))
+    monkeypatch.setattr(preventive_schedule, "_create_work_order_uncommitted", create_order)
+
+    assert schedule_preventive_order(auth, due_id) == order_id
+    create_order.assert_called_once()
+    assert order.kind == "PREVENTIVE"
+    assert due.work_order_id == order_id
+    assert due.status == "SCHEDULED"
+    db.flush.assert_called_once_with()
+    db.commit.assert_called_once_with()
+
+
+def test_schedule_flush_failure_never_commits(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Une erreur de flush est propagée ; aucun commit ne doit suivre."""
+    from app.maintenance import preventive_schedule
+
+    vehicle_id, order_id = uuid.uuid4(), uuid.uuid4()
+    due = SimpleNamespace(
+        maintenance_plan_id=uuid.uuid4(), vehicle_id=vehicle_id, work_order_id=None, status="DUE"
+    )
+    order = SimpleNamespace(work_order_id=order_id, kind="CORRECTIVE")
+    db = MagicMock()
+    db.execute.side_effect = [
+        MagicMock(scalar_one_or_none=lambda: due),
+        MagicMock(scalar_one_or_none=lambda: SimpleNamespace(site_id=uuid.uuid4())),
+        MagicMock(scalar_one_or_none=lambda: SimpleNamespace(active=True)),
+        MagicMock(scalar_one=lambda: order),
+    ]
+    db.flush.side_effect = RuntimeError("database flush failed")
+    auth = SimpleNamespace(
+        db=db, tenant_id=uuid.uuid4(),
+        scope=SimpleNamespace(permission="maintenance.preventive.manage", covers_site=lambda _: True),
+    )
+    monkeypatch.setattr(
+        preventive_schedule,
+        "_create_work_order_uncommitted",
+        MagicMock(return_value=SimpleNamespace(work_order_id=order_id)),
+    )
+
+    with pytest.raises(RuntimeError, match="database flush failed"):
+        schedule_preventive_order(auth, uuid.uuid4())
+    db.commit.assert_not_called()
