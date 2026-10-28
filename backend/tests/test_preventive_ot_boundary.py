@@ -21,15 +21,16 @@ def test_work_order_and_due_models_expose_linking_fields() -> None:
     assert "tenant_id" in WorkOrder.__table__.columns
 
 
-def test_existing_create_work_order_owns_commit_and_cannot_be_reused_directly() -> None:
-    source = inspect.getsource(service.create_work_order)
-    assert "db.commit()" in source, (
-        "Revoir l'architecture transactionnelle : le service de création OT a changé"
-    )
+def test_public_create_commits_but_internal_core_does_not() -> None:
+    public = inspect.getsource(service.create_work_order)
+    internal = inspect.getsource(service._create_work_order_uncommitted)
+    assert "auth.db.commit()" in public
+    assert "_create_work_order_uncommitted(auth, body)" in public
+    assert ".commit()" not in internal
 
 
-def test_existing_create_work_order_generates_event_and_audit() -> None:
-    source = inspect.getsource(service.create_work_order)
+def test_uncommitted_core_generates_event_and_audit() -> None:
+    source = inspect.getsource(service._create_work_order_uncommitted)
     assert "_next_number(auth)" in source
     assert '_event(auth, order, "REQUESTED"' in source
     assert '"work_order.request"' in source
