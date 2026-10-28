@@ -507,6 +507,20 @@ permissions:
     grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
 
   # --- maintenance (lot 3a, docs/PLAN_LOT3.md §5) ------------------------------------------------------
+  maintenance.preventive.read:
+    tranche: later
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: "/vehicles/{vehicle_id}/preventive-plans", shape: collection, success: 200 }
+      - { method: GET, path: "/vehicles/{vehicle_id}/preventive-dues", shape: collection, success: 200 }
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      MECHANIC: [SITE]
+      AUDITOR: [TENANT]
   maintenance.work_order.read:
     tranche: 1c
     kind: read
