@@ -126,4 +126,7 @@ def list_vehicle_preventive_plans(
 def list_vehicle_preventive_dues(
     vehicle_id: uuid.UUID, auth: PreventiveRead
 ) -> list[PreventiveDueOut]:
-    return [PreventiveDueOut.model_validate(item) for item in preventive_service.dues_for_vehicle(auth, vehicle_id)]
+    return [
+        PreventiveDueOut.model_validate(item)
+        for item in preventive_service.dues_for_vehicle(auth, vehicle_id)
+    ]
