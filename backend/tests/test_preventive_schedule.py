@@ -24,7 +24,8 @@ def test_schedule_missing_due_does_not_write() -> None:
     db = MagicMock()
     db.execute.return_value.scalar_one_or_none.return_value = None
     auth = SimpleNamespace(
-        db=db, tenant_id=uuid.uuid4(),
+        db=db,
+        tenant_id=uuid.uuid4(),
         scope=SimpleNamespace(permission="maintenance.preventive.manage"),
     )
     with pytest.raises(AppError) as error:
@@ -43,10 +44,9 @@ def test_schedule_replay_returns_existing_order_without_commit() -> None:
         MagicMock(scalar_one_or_none=lambda: vehicle),
     ]
     auth = SimpleNamespace(
-        db=db, tenant_id=uuid.uuid4(),
-        scope=SimpleNamespace(
-            permission="maintenance.preventive.manage", covers_site=lambda _: True
-        ),
+        db=db,
+        tenant_id=uuid.uuid4(),
+        scope=SimpleNamespace(permission="maintenance.preventive.manage", covers_site=lambda _: True),
     )
     assert schedule_preventive_order(auth, uuid.uuid4()) == order_id
     db.commit.assert_not_called()
