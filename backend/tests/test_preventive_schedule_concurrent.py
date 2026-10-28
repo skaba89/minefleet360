@@ -110,18 +110,14 @@ def test_two_concurrent_schedule_calls_return_one_work_order(
                 {"tenant": str(tenant_id)},
             )
             row = conn.execute(
-                text(
-                    "SELECT status, work_order_id FROM maintenance_due "
-                    "WHERE maintenance_due_id = :due"
-                ),
+                text("SELECT status, work_order_id FROM maintenance_due WHERE maintenance_due_id = :due"),
                 {"due": str(due_id)},
             ).one()
             assert row.status == "SCHEDULED"
             assert row.work_order_id == first_id
             count = conn.execute(
                 text(
-                    "SELECT count(*) FROM work_order WHERE tenant_id = :tenant "
-                    "AND work_order_id = :order_id"
+                    "SELECT count(*) FROM work_order WHERE tenant_id = :tenant AND work_order_id = :order_id"
                 ),
                 {"tenant": str(tenant_id), "order_id": str(first_id)},
             ).scalar_one()
