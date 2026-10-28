@@ -35,12 +35,18 @@ def test_schedule_missing_due_does_not_write() -> None:
 
 def test_schedule_replay_returns_existing_order_without_commit() -> None:
     order_id = uuid.uuid4()
-    due = SimpleNamespace(work_order_id=order_id, status="SCHEDULED")
+    due = SimpleNamespace(work_order_id=order_id, status="SCHEDULED", vehicle_id=uuid.uuid4())
+    vehicle = SimpleNamespace(site_id=uuid.uuid4())
     db = MagicMock()
-    db.execute.return_value.scalar_one_or_none.return_value = due
+    db.execute.side_effect = [
+        MagicMock(scalar_one_or_none=lambda: due),
+        MagicMock(scalar_one_or_none=lambda: vehicle),
+    ]
     auth = SimpleNamespace(
         db=db, tenant_id=uuid.uuid4(),
-        scope=SimpleNamespace(permission="maintenance.preventive.manage"),
+        scope=SimpleNamespace(
+            permission="maintenance.preventive.manage", covers_site=lambda _: True
+        ),
     )
     assert schedule_preventive_order(auth, uuid.uuid4()) == order_id
     db.commit.assert_not_called()
