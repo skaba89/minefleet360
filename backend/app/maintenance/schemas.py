@@ -91,6 +91,8 @@ class EventOut(BaseModel):
     reason: str | None
     actor_user_id: uuid.UUID
     actor_name: str | None
+    subject_user_id: uuid.UUID | None
+    subject_name: str | None
     occurred_at: datetime
 
 
