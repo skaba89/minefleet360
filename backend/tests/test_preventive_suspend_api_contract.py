@@ -12,8 +12,7 @@ def test_preventive_suspend_route_has_manage_permission() -> None:
     matches = [
         route
         for route in router.routes
-        if route.path == "/preventive-plans/{plan_id}/suspend"
-        and "POST" in getattr(route, "methods", ())
+        if route.path == "/preventive-plans/{plan_id}/suspend" and "POST" in getattr(route, "methods", ())
     ]
     assert len(matches) == 1
     assert matches[0].permission == "maintenance.preventive.manage"
