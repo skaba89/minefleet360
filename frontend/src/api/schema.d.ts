@@ -1391,6 +1391,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Work Orders */
+        get: operations["list_work_orders_api_v1_work_orders_get"];
+        put?: never;
+        /** Create Work Order */
+        post: operations["create_work_order_api_v1_work_orders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{work_order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Work Order */
+        get: operations["get_work_order_api_v1_work_orders__work_order_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{work_order_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Work Order */
+        post: operations["decide_work_order_api_v1_work_orders__work_order_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{work_order_id}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Progress Work Order */
+        post: operations["progress_work_order_api_v1_work_orders__work_order_id__progress_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{work_order_id}/labour": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Work Order Labour */
+        post: operations["add_work_order_labour_api_v1_work_orders__work_order_id__labour_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/maintenance-mechanics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Mechanics */
+        get: operations["list_mechanics_api_v1_maintenance_mechanics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1767,39 +1870,6 @@ export interface components {
             /** Hire Date */
             hire_date?: string | null;
         };
-        /** EventOut */
-        EventOut: {
-            /**
-             * Mission Event Id
-             * Format: uuid
-             */
-            mission_event_id: string;
-            /** Event Type */
-            event_type: string;
-            /**
-             * Vehicle Assignment Id
-             * Format: uuid
-             */
-            vehicle_assignment_id: string;
-            /** From Status */
-            from_status: string | null;
-            /** To Status */
-            to_status: string;
-            /**
-             * Occurred At
-             * Format: date-time
-             */
-            occurred_at: string;
-            /**
-             * Recorded At
-             * Format: date-time
-             */
-            recorded_at: string;
-            /** Source */
-            source: string;
-            /** Reason */
-            reason: string | null;
-        };
         /** ExpirationItem */
         ExpirationItem: {
             /**
@@ -1916,6 +1986,49 @@ export interface components {
             code: string;
             /** Date */
             date?: string | null;
+        };
+        /** LabourCreate */
+        LabourCreate: {
+            /** Minutes */
+            minutes: number;
+            /**
+             * Performed On
+             * Format: date
+             */
+            performed_on: string;
+            /** Mechanic Id */
+            mechanic_id?: string | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** LabourOut */
+        LabourOut: {
+            /**
+             * Work Order Labour Id
+             * Format: uuid
+             */
+            work_order_labour_id: string;
+            /**
+             * Mechanic Id
+             * Format: uuid
+             */
+            mechanic_id: string;
+            /** Mechanic Name */
+            mechanic_name: string | null;
+            /** Minutes */
+            minutes: number;
+            /**
+             * Performed On
+             * Format: date
+             */
+            performed_on: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
         };
         /** LicenseCreate */
         LicenseCreate: {
@@ -2108,6 +2221,16 @@ export interface components {
             mfa_enabled: boolean;
             /** Mfa Enrollment Required */
             mfa_enrollment_required: boolean;
+        };
+        /** MechanicOut */
+        MechanicOut: {
+            /**
+             * User Account Id
+             * Format: uuid
+             */
+            user_account_id: string;
+            /** Display Name */
+            display_name: string;
         };
         /** MeterReadingCreate */
         MeterReadingCreate: {
@@ -2378,7 +2501,7 @@ export interface components {
             /** Row Version */
             row_version: number;
             /** Events */
-            events?: components["schemas"]["EventOut"][] | null;
+            events?: components["schemas"]["app__dispatch__schemas__EventOut"][] | null;
             /** Rotations */
             rotations?: components["schemas"]["RotationOut"][] | null;
         };
@@ -2496,6 +2619,17 @@ export interface components {
         Page_WeighingOut_: {
             /** Items */
             items: components["schemas"]["WeighingOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[WorkOrderOut] */
+        Page_WorkOrderOut_: {
+            /** Items */
+            items: components["schemas"]["WorkOrderOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -3294,6 +3428,203 @@ export interface components {
              * @enum {string}
              */
             reason_code: "ENTRY_ERROR" | "WRONG_ROTATION" | "WRONG_VEHICLE" | "DUPLICATE" | "CALIBRATION_ISSUE" | "OTHER";
+        };
+        /** WorkOrderCreate */
+        WorkOrderCreate: {
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /**
+             * Symptom Code
+             * @enum {string}
+             */
+            symptom_code: "ENGINE" | "BRAKES" | "TYRES" | "HYDRAULICS" | "ELECTRICAL" | "TRANSMISSION" | "STEERING" | "COOLING" | "BODY" | "SAFETY_EQUIPMENT" | "SERVICE" | "OTHER";
+            /**
+             * Priority
+             * @default NORMAL
+             * @enum {string}
+             */
+            priority: "CRITICAL" | "HIGH" | "NORMAL" | "LOW";
+            /** Description */
+            description?: string | null;
+            /**
+             * Immobilize
+             * @default false
+             */
+            immobilize: boolean;
+            /** Mission Id */
+            mission_id?: string | null;
+        };
+        /** WorkOrderDecision */
+        WorkOrderDecision: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "APPROVE" | "REJECT" | "ASSIGN" | "CANCEL" | "QC_PASS" | "QC_FAIL";
+            /** Reason Code */
+            reason_code?: ("DUPLICATE" | "NOT_A_FAULT" | "OUT_OF_SCOPE" | "PLAN_CHANGED" | "PARTS_ORDERED" | "PARTS_OUT_OF_STOCK" | "SUPPLIER_DELAY" | "FAULT_PERSISTS" | "INCOMPLETE_WORK" | "SAFETY_CONCERN" | "OTHER") | null;
+            /** Assigned To */
+            assigned_to?: string | null;
+            /** Expected Ready At */
+            expected_ready_at?: string | null;
+        };
+        /** WorkOrderOut */
+        WorkOrderOut: {
+            /**
+             * Work Order Id
+             * Format: uuid
+             */
+            work_order_id: string;
+            /** Number */
+            number: number;
+            /** Reference */
+            reference: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /** Vehicle Fleet Number */
+            vehicle_fleet_number: string;
+            /** Mission Id */
+            mission_id: string | null;
+            /** Kind */
+            kind: string;
+            /** Priority */
+            priority: string;
+            /** Symptom Code */
+            symptom_code: string;
+            /** Description */
+            description: string | null;
+            /** Immobilize */
+            immobilize: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "REQUESTED" | "APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "AWAITING_PARTS" | "QUALITY_CHECK" | "CLOSED" | "REJECTED" | "CANCELLED";
+            /** Status Reason */
+            status_reason: string | null;
+            /** Assigned To */
+            assigned_to: string | null;
+            /** Assigned Name */
+            assigned_name: string | null;
+            /** Expected Ready At */
+            expected_ready_at: string | null;
+            /** Diagnosis */
+            diagnosis: string | null;
+            /** Work Done */
+            work_done: string | null;
+            /** Parts Note */
+            parts_note: string | null;
+            /**
+             * Reported At
+             * Format: date-time
+             */
+            reported_at: string;
+            /**
+             * Reported By
+             * Format: uuid
+             */
+            reported_by: string;
+            /** Approved At */
+            approved_at: string | null;
+            /** Started At */
+            started_at: string | null;
+            /** Submitted At */
+            submitted_at: string | null;
+            /** Closed At */
+            closed_at: string | null;
+            /** Closed By */
+            closed_by: string | null;
+            /** Labour Minutes */
+            labour_minutes: number;
+            /** Row Version */
+            row_version: number;
+            /** Events */
+            events?: components["schemas"]["app__maintenance__schemas__EventOut"][] | null;
+            /** Labour */
+            labour?: components["schemas"]["LabourOut"][] | null;
+        };
+        /** WorkOrderProgress */
+        WorkOrderProgress: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "START" | "AWAIT_PARTS" | "RESUME" | "SUBMIT" | "NOTE";
+            /** Reason Code */
+            reason_code?: ("DUPLICATE" | "NOT_A_FAULT" | "OUT_OF_SCOPE" | "PLAN_CHANGED" | "PARTS_ORDERED" | "PARTS_OUT_OF_STOCK" | "SUPPLIER_DELAY" | "FAULT_PERSISTS" | "INCOMPLETE_WORK" | "SAFETY_CONCERN" | "OTHER") | null;
+            /** Diagnosis */
+            diagnosis?: string | null;
+            /** Work Done */
+            work_done?: string | null;
+            /** Parts Note */
+            parts_note?: string | null;
+        };
+        /** EventOut */
+        app__dispatch__schemas__EventOut: {
+            /**
+             * Mission Event Id
+             * Format: uuid
+             */
+            mission_event_id: string;
+            /** Event Type */
+            event_type: string;
+            /**
+             * Vehicle Assignment Id
+             * Format: uuid
+             */
+            vehicle_assignment_id: string;
+            /** From Status */
+            from_status: string | null;
+            /** To Status */
+            to_status: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /** Source */
+            source: string;
+            /** Reason */
+            reason: string | null;
+        };
+        /** EventOut */
+        app__maintenance__schemas__EventOut: {
+            /** Event Type */
+            event_type: string;
+            /** From Status */
+            from_status: string | null;
+            /** To Status */
+            to_status: string;
+            /** Reason */
+            reason: string | null;
+            /**
+             * Actor User Id
+             * Format: uuid
+             */
+            actor_user_id: string;
+            /** Actor Name */
+            actor_name: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
         };
     };
     responses: never;
@@ -6825,6 +7156,258 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IndicatorsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_work_orders_api_v1_work_orders_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                vehicle_id?: string | null;
+                status?: ("REQUESTED" | "APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "AWAITING_PARTS" | "QUALITY_CHECK" | "CLOSED" | "REJECTED" | "CANCELLED") | null;
+                open_only?: boolean;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_WorkOrderOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_work_order_api_v1_work_orders_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkOrderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_work_order_api_v1_work_orders__work_order_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                work_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_work_order_api_v1_work_orders__work_order_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                work_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkOrderDecision"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    progress_work_order_api_v1_work_orders__work_order_id__progress_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                work_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkOrderProgress"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_work_order_labour_api_v1_work_orders__work_order_id__labour_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                work_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabourCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkOrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_mechanics_api_v1_maintenance_mechanics_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MechanicOut"][];
                 };
             };
             /** @description Validation Error */

@@ -315,3 +315,80 @@ export const WITHDRAW_REASONS: Record<string, string> = {
   ENTRY_ERROR: "Erreur de saisie",
   OTHER: "Autre",
 };
+
+// --- Atelier et maintenance (lot 3a) -------------------------------------------------------------------
+
+export const WORK_ORDER_STATUS: Record<string, string> = {
+  REQUESTED: "Demandé",
+  APPROVED: "Approuvé",
+  ASSIGNED: "Assigné",
+  IN_PROGRESS: "En cours",
+  AWAITING_PARTS: "En attente de pièces",
+  QUALITY_CHECK: "Contrôle qualité",
+  CLOSED: "Clôturé",
+  REJECTED: "Rejeté",
+  CANCELLED: "Annulé",
+};
+
+export const WORK_ORDER_TONE: Record<string, "ok" | "warn" | "bad" | "neutral"> = {
+  REQUESTED: "warn",
+  APPROVED: "warn",
+  ASSIGNED: "warn",
+  IN_PROGRESS: "ok",
+  AWAITING_PARTS: "bad",
+  QUALITY_CHECK: "ok",
+  CLOSED: "neutral",
+  REJECTED: "neutral",
+  CANCELLED: "neutral",
+};
+
+export const WORK_ORDER_PRIORITY: Record<string, string> = {
+  CRITICAL: "Critique",
+  HIGH: "Haute",
+  NORMAL: "Normale",
+  LOW: "Basse",
+};
+
+export const SYMPTOMS: Record<string, string> = {
+  ENGINE: "Moteur",
+  BRAKES: "Freinage",
+  TYRES: "Pneumatiques",
+  HYDRAULICS: "Hydraulique",
+  ELECTRICAL: "Électricité",
+  TRANSMISSION: "Transmission",
+  STEERING: "Direction",
+  COOLING: "Refroidissement",
+  BODY: "Carrosserie, benne",
+  SAFETY_EQUIPMENT: "Équipement de sécurité",
+  SERVICE: "Entretien",
+  OTHER: "Autre",
+};
+
+export const WORK_ORDER_REASONS: Record<string, string> = {
+  DUPLICATE: "Doublon",
+  NOT_A_FAULT: "Pas de panne constatée",
+  OUT_OF_SCOPE: "Hors du périmètre de l'atelier",
+  PLAN_CHANGED: "Planning modifié",
+  PARTS_ORDERED: "Pièces commandées",
+  PARTS_OUT_OF_STOCK: "Pièces en rupture",
+  SUPPLIER_DELAY: "Retard fournisseur",
+  FAULT_PERSISTS: "Défaut persistant",
+  INCOMPLETE_WORK: "Travaux incomplets",
+  SAFETY_CONCERN: "Problème de sécurité",
+  OTHER: "Autre",
+};
+
+export const WORK_ORDER_EVENTS: Record<string, string> = {
+  REQUESTED: "Signalement",
+  APPROVED: "Approbation",
+  REJECTED: "Rejet",
+  ASSIGNED: "Assignation",
+  STARTED: "Début d'intervention",
+  AWAITING_PARTS: "Attente de pièces",
+  RESUMED: "Reprise",
+  SUBMITTED: "Travaux terminés",
+  NOTED: "Compte rendu modifié",
+  QC_FAILED: "Contrôle non conforme",
+  CLOSED: "Remise en service",
+  CANCELLED: "Annulation",
+};

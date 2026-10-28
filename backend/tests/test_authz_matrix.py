@@ -60,6 +60,9 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
     },
     ("PUT", "/vehicle-categories/{category_id}/required-documents"): {"doc_types": ["INSURANCE"]},
     ("POST", "/vehicle-documents/{vehicle_document_id}/withdraw"): {"reason_code": "ENTRY_ERROR"},
+    ("POST", "/work-orders/{work_order_id}/decision"): {"action": "APPROVE"},
+    ("POST", "/work-orders/{work_order_id}/progress"): {"action": "NOTE", "diagnosis": "Diagnostic fictif"},
+    ("POST", "/work-orders/{work_order_id}/labour"): {"minutes": 10, "performed_on": "2026-01-01"},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/approve"): {},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/void"): {"reason_code": "ENTRY_ERROR"},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/correct"): {
@@ -187,7 +190,14 @@ def world(api: Api, client: TestClient) -> World:
         json={"doc_type": "ROAD_PERMIT", "reference": "RP-FICTIF-1", "valid_until": "2030-01-01"},
     )
     assert document.status_code == 201, document.text
+    work_order = client.post(
+        f"{API}/work-orders",
+        headers=ops.headers,
+        json={"vehicle_id": vehicle, "symptom_code": "OTHER", "priority": "LOW"},
+    )
+    assert work_order.status_code == 201, work_order.text
     objects = {
+        "work_order_id": uuid.UUID(work_order.json()["work_order_id"]),
         "vehicle_document_id": uuid.UUID(document.json()["vehicle_document_id"]),
         "weighing_ticket_id": weighing_ticket,
         "site_location_id": uuid.UUID(places[0]),

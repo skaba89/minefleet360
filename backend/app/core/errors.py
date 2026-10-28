@@ -30,6 +30,9 @@ CATALOG: dict[str, ErrorDef] = {
     "INVALID_CREDENTIALS": ErrorDef(401, "Identifiants invalides."),
     "MFA_CODE_INVALID": ErrorDef(401, "Code de vérification invalide ou expiré."),
     # 403
+    "WORK_ORDER_NOT_ASSIGNEE": ErrorDef(
+        403, "Seul le mécanicien assigné ou le chef d'atelier peut agir sur cette intervention."
+    ),
     "PERMISSION_DENIED": ErrorDef(403, "Vous n'avez pas l'autorisation d'effectuer cette action."),
     "MFA_ENROLLMENT_REQUIRED": ErrorDef(
         403, "Configurez la double authentification de votre compte avant de continuer."
@@ -78,6 +81,9 @@ CATALOG: dict[str, ErrorDef] = {
     "ROTATION_ALREADY_WEIGHED": ErrorDef(409, "Cette rotation a déjà une pesée : corrigez-la plutôt."),
     "ROTATION_NOT_WEIGHABLE": ErrorDef(409, "Seule une rotation chargée et non abandonnée peut être pesée."),
     "WEIGHING_STATE_INVALID": ErrorDef(409, "Cette action n'est pas possible dans l'état de la pesée."),
+    "WORK_ORDER_STATE_INVALID": ErrorDef(
+        409, "Cette action n'est pas possible dans l'état actuel de l'ordre de travail."
+    ),
     # 422
     "VALIDATION_ERROR": ErrorDef(422, "Les données envoyées sont invalides."),
     "IF_MATCH_REQUIRED": ErrorDef(422, "L'en-tête If-Match est obligatoire pour une modification."),
@@ -96,6 +102,13 @@ CATALOG: dict[str, ErrorDef] = {
         422, "Ce changement de statut du véhicule n'est pas autorisé."
     ),
     "STATUS_REASON_REQUIRED": ErrorDef(422, "Un motif est obligatoire pour ce statut."),
+    "MECHANIC_NOT_ELIGIBLE": ErrorDef(
+        422, "Cette personne n'est pas mécanicien ou chef d'atelier sur le site du véhicule."
+    ),
+    "SELF_RELEASE_FORBIDDEN": ErrorDef(
+        422,
+        "La remise en service doit être validée par une autre personne que le mécanicien de l'intervention.",
+    ),
     "SELF_APPROVAL_FORBIDDEN": ErrorDef(
         422, "Une saisie dégradée doit être approuvée par une autre personne que celle qui l'a saisie."
     ),

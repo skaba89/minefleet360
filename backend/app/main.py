@@ -23,6 +23,7 @@ from app.dispatch.router import router as dispatch_router
 from app.fleet.router import router as fleet_router
 from app.identity.auth_service import AuthLimiters
 from app.identity.router import auth_router, me_router, role_router, user_router
+from app.maintenance.router import router as maintenance_router
 from app.organization.router import platform_router, site_router, tenant_router
 from app.workforce.router import router as workforce_router
 
@@ -121,6 +122,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         workforce_router,
         assignment_router,
         dispatch_router,
+        maintenance_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     return app

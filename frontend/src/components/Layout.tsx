@@ -17,6 +17,7 @@ export function Layout() {
     { to: "/conducteurs", text: "Conducteurs", show: can(me.grants, "workforce.driver.read") },
     { to: "/affectations", text: "Affectations", show: can(me.grants, "assignment.vehicle_assignment.read") },
     { to: "/missions", text: "Missions", show: can(me.grants, "dispatch.mission.read") },
+    { to: "/atelier", text: "Atelier", show: can(me.grants, "maintenance.work_order.read") },
     { to: "/pesees", text: "Pesées", show: can(me.grants, "dispatch.weighing.read") },
     { to: "/indicateurs", text: "Indicateurs", show: can(me.grants, "dispatch.indicators.read") },
     { to: "/administration", text: "Administration", show: canAdminister(me.grants) },

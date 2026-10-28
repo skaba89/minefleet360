@@ -8,6 +8,7 @@ from datetime import date
 from sqlalchemy import and_, func, select, text
 from sqlalchemy.orm import Session
 
+from app.authz.dependencies import Authorized
 from app.core.config import get_settings
 from app.fleet.models import (
     Vehicle,
@@ -191,3 +192,25 @@ def seed_tenant_catalog(db: Session, tenant_id: uuid.UUID) -> int:
         {"tid": str(tenant_id)},
     )
     return int(getattr(created, "rowcount", 0) or 0)
+
+
+def change_status_for_maintenance(
+    auth: Authorized, vehicle_id: uuid.UUID, target: str, reason: str | None, action: str
+) -> bool:
+    """Transition pilotée par l'atelier (lot 3, D-44), dans la transaction de l'appelant (pas de commit).
+
+    Mêmes règles qu'un changement manuel (machine à états, motif, politique D-41, audit) ; renvoie False
+    sans rien changer si le véhicule est déjà dans l'état visé ou si la transition n'est pas prévue.
+    """
+    from app.fleet import service  # import local : le service dépend de modules qui dépendent de ce contrat
+
+    vehicle = auth.db.execute(
+        select(Vehicle)
+        .where(Vehicle.vehicle_id == vehicle_id)
+        .with_for_update(key_share=True)
+        .execution_options(populate_existing=True)
+    ).scalar_one()
+    if vehicle.status == target or target not in service.TRANSITIONS[vehicle.status]:
+        return False
+    service._apply_status(auth, vehicle, target, reason, action, commit=False)
+    return True
