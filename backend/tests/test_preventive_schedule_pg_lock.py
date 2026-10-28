@@ -53,8 +53,10 @@ def test_preventive_due_row_lock_blocks_competing_transaction(
         with engine.begin() as conn:
             set_tenant(conn)
             result = conn.execute(
-                text("SELECT maintenance_due_id FROM maintenance_due "
-                     "WHERE maintenance_due_id = :due_id FOR UPDATE"),
+                text(
+                    "SELECT maintenance_due_id FROM maintenance_due "
+                    "WHERE maintenance_due_id = :due_id FOR UPDATE"
+                ),
                 {"due_id": params["due_id"]},
             ).scalar_one()
             assert str(result) == params["due_id"]
@@ -83,8 +85,10 @@ def test_preventive_due_row_lock_blocks_competing_transaction(
                     with engine.begin() as conn:
                         set_tenant(conn)
                         conn.execute(
-                            text("SELECT maintenance_due_id FROM maintenance_due "
-                                 "WHERE maintenance_due_id = :due_id FOR UPDATE NOWAIT"),
+                            text(
+                                "SELECT maintenance_due_id FROM maintenance_due "
+                                "WHERE maintenance_due_id = :due_id FOR UPDATE NOWAIT"
+                            ),
                             {"due_id": params["due_id"]},
                         ).scalar_one()
                 assert error.value.orig.sqlstate == "55P03"
@@ -95,8 +99,10 @@ def test_preventive_due_row_lock_blocks_competing_transaction(
         with engine.begin() as conn:
             set_tenant(conn)
             result = conn.execute(
-                text("SELECT maintenance_due_id FROM maintenance_due "
-                     "WHERE maintenance_due_id = :due_id FOR UPDATE NOWAIT"),
+                text(
+                    "SELECT maintenance_due_id FROM maintenance_due "
+                    "WHERE maintenance_due_id = :due_id FOR UPDATE NOWAIT"
+                ),
                 {"due_id": params["due_id"]},
             ).scalar_one()
             assert str(result) == params["due_id"]
