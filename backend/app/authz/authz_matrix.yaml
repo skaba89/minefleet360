@@ -508,7 +508,7 @@ permissions:
 
   # --- maintenance (lot 3a, docs/PLAN_LOT3.md §5) ------------------------------------------------------
   maintenance.preventive.manage:
-    tranche: 1c
+    tranche: later
     kind: create
     site_bound: true
     routes:
@@ -521,7 +521,7 @@ permissions:
       OPS_MANAGER: [TENANT, SITE]
       WORKSHOP_CHIEF: [TENANT, SITE]
   maintenance.preventive.read:
-    tranche: 1c
+    tranche: later
     kind: read
     site_bound: true
     routes:
