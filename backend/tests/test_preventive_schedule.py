@@ -135,7 +135,8 @@ def test_schedule_flush_failure_never_commits(monkeypatch: pytest.MonkeyPatch) -
     ]
     db.flush.side_effect = RuntimeError("database flush failed")
     auth = SimpleNamespace(
-        db=db, tenant_id=uuid.uuid4(),
+        db=db,
+        tenant_id=uuid.uuid4(),
         scope=SimpleNamespace(permission="maintenance.preventive.manage", covers_site=lambda _: True),
     )
     monkeypatch.setattr(
