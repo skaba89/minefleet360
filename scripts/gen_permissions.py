@@ -36,6 +36,9 @@ def main() -> int:
     if "--check" in sys.argv:
         current = TARGET.read_text(encoding="utf-8") if TARGET.exists() else ""
         if current.replace("\r\n", "\n") != content:
+            import difflib
+
+            print("".join(difflib.unified_diff(current.splitlines(keepends=True), content.splitlines(keepends=True), fromfile="committed", tofile="expected")), file=sys.stderr)
             print(f"{TARGET} est périmé : lancer python scripts/gen_permissions.py", file=sys.stderr)
             return 1
         return 0
