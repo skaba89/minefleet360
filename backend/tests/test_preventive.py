@@ -62,10 +62,7 @@ def test_calendar_due_even_if_meter_unknown() -> None:
 
 
 def test_no_thresholds() -> None:
-    result = evaluate_due(ServiceRule(),
-        ServiceBaseline(),
-        CurrentMeters(),
-        date(2026, 10, 28))
+    result = evaluate_due(ServiceRule(), ServiceBaseline(), CurrentMeters(), date(2026, 10, 28))
     assert result.status == "NOT_CONFIGURED"
 
 
