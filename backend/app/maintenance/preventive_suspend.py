@@ -30,7 +30,10 @@ def suspend_plan(
 
     plan = auth.db.execute(
         select(MaintenancePlan)
-        .where(MaintenancePlan.tenant_id == auth.tenant_id, MaintenancePlan.maintenance_plan_id == plan_id)
+        .where(
+            MaintenancePlan.tenant_id == auth.tenant_id,
+            MaintenancePlan.maintenance_plan_id == plan_id,
+        )
         .with_for_update()
     ).scalar_one_or_none()
     if plan is None:
