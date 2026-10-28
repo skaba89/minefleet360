@@ -3,6 +3,7 @@
 Aucune écriture en base ni création d'ordre de travail : cette couche prépare les
 décisions métier avant branchement aux modèles et aux politiques RLS.
 """
+
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
