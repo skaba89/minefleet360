@@ -7,6 +7,8 @@ from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.http import IfMatch, Page, Pagination, etag
 from app.maintenance import preventive_service, service
+from app.maintenance.preventive_plan_inputs import PreventivePlanCreate
+from app.maintenance.preventive_write import create_plan
 from app.maintenance.preventive_schemas import PreventiveDueOut, PreventivePlanOut
 from app.maintenance.schemas import (
     LabourCreate,
@@ -24,6 +26,7 @@ WorkOrderRead = Annotated[Authorized, Depends(Require("maintenance.work_order.re
 WorkOrderManage = Annotated[Authorized, Depends(Require("maintenance.work_order.manage"))]
 WorkOrderExecute = Annotated[Authorized, Depends(Require("maintenance.work_order.execute"))]
 PreventiveRead = Annotated[Authorized, Depends(Require("maintenance.preventive.read"))]
+PreventiveManage = Annotated[Authorized, Depends(Require("maintenance.preventive.manage"))]
 
 
 def _tagged(out: WorkOrderOut, response: Response) -> WorkOrderOut:
@@ -128,3 +131,12 @@ def list_vehicle_preventive_dues(vehicle_id: uuid.UUID, auth: PreventiveRead) ->
         PreventiveDueOut.model_validate(item)
         for item in preventive_service.dues_for_vehicle(auth, vehicle_id)
     ]
+
+
+@router.post(
+    "/preventive-plans",
+    status_code=status.HTTP_201_CREATED,
+    response_model=PreventivePlanOut,
+)
+def create_preventive_plan(body: PreventivePlanCreate, auth: PreventiveManage) -> PreventivePlanOut:
+    return PreventivePlanOut.model_validate(create_plan(auth, body))
