@@ -37,12 +37,17 @@ def _login(client: TestClient, t: TenantFixture, email: str):  # type: ignore[no
     )
 
 
-def _enroll(client: TestClient, headers: dict[str, str]) -> tuple[bytes, list[str]]:
+def _enroll(
+    client: TestClient, headers: dict[str, str], *, used_code: list[str] | None = None
+) -> tuple[bytes, list[str]]:
     setup = client.post(f"{API}/me/mfa/setup", headers=headers, json={"password": PASSWORD})
     assert setup.status_code == 200, setup.text
     secret = _secret(setup.json())
-    confirmed = client.post(f"{API}/me/mfa/confirm", headers=headers, json={"code": _code(secret)})
+    enrollment_code = _code(secret)
+    confirmed = client.post(f"{API}/me/mfa/confirm", headers=headers, json={"code": enrollment_code})
     assert confirmed.status_code == 200, confirmed.text
+    if used_code is not None:
+        used_code.append(enrollment_code)
     return secret, confirmed.json()["recovery_codes"]
 
 
@@ -91,7 +96,8 @@ def test_soft_enrollment_limits_a_sensitive_role_to_its_account(
 def test_login_requires_second_factor_and_refuses_replay(client: TestClient, api: Api) -> None:
     t = api.tenant()
     hr = api.user(t, "HR")
-    secret, _ = _enroll(client, hr.headers)
+    enrollment_codes: list[str] = []
+    secret, _ = _enroll(client, hr.headers, used_code=enrollment_codes)
 
     challenge = _login(client, t, hr.email)
     body = challenge.json()
@@ -104,7 +110,7 @@ def test_login_requires_second_factor_and_refuses_replay(client: TestClient, api
 
     # Le code de l'enrôlement (même pas de 30 s) ne peut pas être rejoué.
     replay = client.post(
-        f"{API}/auth/mfa/verify", json={"mfa_token": body["mfa_token"], "code": _code(secret)}
+        f"{API}/auth/mfa/verify", json={"mfa_token": body["mfa_token"], "code": enrollment_codes[0]}
     )
     assert (replay.status_code, replay.json()["code"]) == (401, "MFA_CODE_INVALID")
     # Pas suivant : dans la fenêtre de tolérance (dérive d'horloge du téléphone) et jamais utilisé.
