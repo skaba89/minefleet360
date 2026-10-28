@@ -20,7 +20,7 @@ def render() -> str:
     grants = {
         name: {role: list(scopes) for role, scopes in sorted((spec.get("grants") or {}).items())}
         for name, spec in sorted(permissions.items())
-        if spec["tranche"] != "later"
+        if spec["tranche"] != "later" or name in {"maintenance.preventive.manage", "maintenance.preventive.read"}
     }
     body = json.dumps(grants, indent=2, ensure_ascii=False)
     return (
@@ -36,6 +36,9 @@ def main() -> int:
     if "--check" in sys.argv:
         current = TARGET.read_text(encoding="utf-8") if TARGET.exists() else ""
         if current.replace("\r\n", "\n") != content:
+            import difflib
+
+            print("".join(difflib.unified_diff(current.splitlines(keepends=True), content.splitlines(keepends=True), fromfile="committed", tofile="expected")), file=sys.stderr)
             print(f"{TARGET} est périmé : lancer python scripts/gen_permissions.py", file=sys.stderr)
             return 1
         return 0
