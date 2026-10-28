@@ -8,8 +8,8 @@ from app.authz.routing import SecuredRoute
 from app.core.http import IfMatch, Page, Pagination, etag
 from app.maintenance import preventive_service, service
 from app.maintenance.preventive_plan_inputs import PreventivePlanCreate
-from app.maintenance.preventive_write import create_plan
 from app.maintenance.preventive_schemas import PreventiveDueOut, PreventivePlanOut
+from app.maintenance.preventive_write import create_plan
 from app.maintenance.schemas import (
     LabourCreate,
     MechanicOut,
