@@ -40,6 +40,8 @@ TERMINAL = frozenset({"CLOSED", "REJECTED", "CANCELLED"})
 # OT qui retiennent le véhicule à l'atelier (pas de remise à disposition tant qu'il en reste un).
 IN_WORKSHOP = frozenset({"IN_PROGRESS", "AWAITING_PARTS", "QUALITY_CHECK"})
 MECHANIC_ROLES = ("MECHANIC", "WORKSHOP_CHIEF")
+# Toute personne ayant agi sur l'intervention est exclue de la remise en service (RM-114).
+EXECUTION_EVENTS = ("STARTED", "AWAITING_PARTS", "RESUMED", "SUBMITTED", "NOTED")
 # action → (états de départ, état d'arrivée, événement, motif obligatoire)
 DECISIONS: dict[str, tuple[frozenset[str], str | None, str, bool]] = {
     "APPROVE": (frozenset({"REQUESTED"}), "APPROVED", "APPROVED", False),
@@ -55,8 +57,8 @@ PROGRESS: dict[str, tuple[frozenset[str], str | None, str | None, bool]] = {
     "AWAIT_PARTS": (frozenset({"IN_PROGRESS"}), "AWAITING_PARTS", "AWAITING_PARTS", True),
     "RESUME": (frozenset({"AWAITING_PARTS"}), "IN_PROGRESS", "RESUMED", False),
     "SUBMIT": (frozenset({"IN_PROGRESS"}), "QUALITY_CHECK", "SUBMITTED", False),
-    # Mise à jour du diagnostic ou du compte rendu, sans changement d'état.
-    "NOTE": (frozenset({"ASSIGNED", "IN_PROGRESS", "AWAITING_PARTS", "QUALITY_CHECK"}), None, None, False),
+    # Mise à jour du diagnostic ou du compte rendu, sans changement d'état (tracée dans la chronologie).
+    "NOTE": (frozenset({"ASSIGNED", "IN_PROGRESS", "AWAITING_PARTS", "QUALITY_CHECK"}), None, "NOTED", False),
 }
 
 
@@ -340,15 +342,16 @@ def _executors(auth: Authorized, order: WorkOrder) -> set[uuid.UUID]:
         db.execute(
             select(WorkOrderEvent.actor_user_id).where(
                 WorkOrderEvent.work_order_id == order.work_order_id,
-                WorkOrderEvent.event_type.in_(("STARTED", "RESUMED", "SUBMITTED")),
+                WorkOrderEvent.event_type.in_(EXECUTION_EVENTS),
             )
         ).scalars()
     )
-    actors |= set(
-        db.execute(
-            select(WorkOrderLabour.mechanic_id).where(WorkOrderLabour.work_order_id == order.work_order_id)
-        ).scalars()
-    )
+    for mechanic, recorder in db.execute(
+        select(WorkOrderLabour.mechanic_id, WorkOrderLabour.recorded_by).where(
+            WorkOrderLabour.work_order_id == order.work_order_id
+        )
+    ).all():
+        actors |= {mechanic, recorder}
     if order.assigned_to is not None:
         actors.add(order.assigned_to)
     return actors
@@ -383,8 +386,8 @@ def decide(auth: Authorized, work_order_id: uuid.UUID, body: WorkOrderDecision, 
         if source == "APPROVED":
             target = "ASSIGNED"
     elif body.action == "QC_PASS":
-        # RM-114 : la remise en service n'est pas validée par qui a fait l'intervention, même après une
-        # réassignation (assigné actuel, auteurs du début, de la reprise, de la fin, temps passé).
+        # RM-114 : la remise en service n'est pas validée par qui a agi sur l'intervention, même après une
+        # réassignation (assigné, toute étape d'exécution ou modification du compte rendu, temps passé).
         if auth.user_id in _executors(auth, order):
             raise AppError("SELF_RELEASE_FORBIDDEN")
         order.closed_at, order.closed_by = now, auth.user_id

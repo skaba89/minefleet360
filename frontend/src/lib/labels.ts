@@ -387,6 +387,7 @@ export const WORK_ORDER_EVENTS: Record<string, string> = {
   AWAITING_PARTS: "Attente de pièces",
   RESUMED: "Reprise",
   SUBMITTED: "Travaux terminés",
+  NOTED: "Compte rendu modifié",
   QC_FAILED: "Contrôle non conforme",
   CLOSED: "Remise en service",
   CANCELLED: "Annulation",

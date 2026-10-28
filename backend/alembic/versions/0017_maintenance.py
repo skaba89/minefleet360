@@ -91,7 +91,7 @@ CREATE TABLE work_order_event (
   CONSTRAINT pk_work_order_event PRIMARY KEY (work_order_event_id),
   CONSTRAINT fk_woe__wo FOREIGN KEY (tenant_id, work_order_id) REFERENCES work_order (tenant_id, work_order_id) ON DELETE RESTRICT,
   CONSTRAINT ck_woe_type CHECK (event_type IN ('REQUESTED','APPROVED','REJECTED','ASSIGNED','STARTED','AWAITING_PARTS',
-                                               'RESUMED','SUBMITTED','QC_FAILED','CLOSED','CANCELLED'))
+                                               'RESUMED','SUBMITTED','NOTED','QC_FAILED','CLOSED','CANCELLED'))
 );
 CREATE INDEX ix_woe_wo ON work_order_event (tenant_id, work_order_id, occurred_at);
 SELECT app.apply_tenant_rls('work_order_event', 'SELECT, INSERT');

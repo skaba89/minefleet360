@@ -150,6 +150,12 @@ def test_release_requires_another_person_and_no_other_open_order(
     _act(client, "progress", first, colleague.headers, action="SUBMIT", work_done="Vérifié")
     laundered = _act(client, "decision", first, chief.headers, action="QC_PASS")
     assert (laundered.status_code, laundered.json()["code"]) == (422, "SELF_RELEASE_FORBIDDEN")
+    # Retoucher le compte rendu pendant le contrôle exclut aussi de la validation (événement tracé).
+    editor = api.user(w.t, "WORKSHOP_CHIEF")
+    noted = _act(client, "progress", first, editor.headers, action="NOTE", work_done="Réécrit")
+    assert noted.status_code == 200 and noted.json()["events"][-1]["event_type"] == "NOTED"
+    edited = _act(client, "decision", first, editor.headers, action="QC_PASS")
+    assert (edited.status_code, edited.json()["code"]) == (422, "SELF_RELEASE_FORBIDDEN")
     for step in ("APPROVE",):
         _act(client, "decision", second, chief.headers, action=step)
     _act(client, "decision", second, chief.headers, action="ASSIGN", assigned_to=str(chief.user_id))
