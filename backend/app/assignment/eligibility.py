@@ -143,14 +143,21 @@ def _check_documents(
     start: datetime,
     end: datetime | None,
     tz: ZoneInfo,
-    warning_days: int,
 ) -> date | None:
-    """RM-104 : un exemplaire valide par type de document bloquant ; renvoie l'échéance la plus proche."""
-    by_type: dict[str, list[DocumentFact]] = {}
+    """RM-104 / D-42 : un exemplaire valide de chaque document exigé par la catégorie du véhicule.
+
+    Manquant (jamais saisi) : avertissement ou blocage selon la politique ; échu, retiré ou pas encore
+    valide : toujours bloquant. Renvoie l'échéance la plus proche des exemplaires retenus.
+    """
+    by_type: dict[str, list[DocumentFact]] = {t: [] for t in vehicle.required_documents}
     for doc in vehicle.documents:
         by_type.setdefault(doc.doc_type, []).append(doc)
     ends: list[date] = []
     for docs in by_type.values():
+        if not docs:
+            finding = Finding("VEHICLE_DOCUMENT_MISSING")
+            (ev.reasons if vehicle.missing_documents_block else ev.warnings).append(finding)
+            continue
         validity = {
             d.vehicle_document_id: derive_validity(
                 stored_status=d.status,
@@ -158,14 +165,16 @@ def _check_documents(
                 valid_until=d.valid_until,
                 now=start,
                 tz=tz,
-                warning_days=warning_days,
+                warning_days=vehicle.document_warning_days,
             )
             for d in docs
         }
         valid = [d for d in docs if validity[d.vehicle_document_id] in ELIGIBLE]
         if not valid:
+            future = all(validity[d.vehicle_document_id] == "NOT_YET_VALID" for d in docs)
             dated = [d.valid_until for d in docs if d.valid_until is not None]
-            ev.reasons.append(Finding("VEHICLE_DOCUMENT_EXPIRED", max(dated) if dated else None))
+            code = "VEHICLE_DOCUMENT_NOT_YET_VALID" if future else "VEHICLE_DOCUMENT_EXPIRED"
+            ev.reasons.append(Finding(code, max(dated) if dated else None))
             continue
         covering = [d for d in valid if _covers(d.valid_until, end, tz)]
         if not covering:
@@ -199,7 +208,7 @@ def evaluate(
         ev.reasons.append(Finding("VEHICLE_CATEGORY_WITHOUT_DRIVER"))
     license_end = _check_licenses(ev, vehicle, driver, start, end, tz, warning_days)
     authorization_end = _check_authorization(ev, vehicle, driver, start, end, tz, warning_days)
-    document_end = _check_documents(ev, vehicle, start, end, tz, warning_days)
+    document_end = _check_documents(ev, vehicle, start, end, tz)
     if end is None and ev.eligible:
         # Intervalle ouvert : valable au début seulement ; la prochaine échéance est signalée (US-1.22 R5).
         ends = [d for d in (license_end, authorization_end, document_end) if d is not None]
@@ -218,6 +227,8 @@ _COMPLIANCE_CODES = {
     "DRIVER_QUALIFICATION_MISSING": "QUALIFICATION_EXPIRED",
     "DRIVER_QUALIFICATION_EXPIRED": "QUALIFICATION_EXPIRED",
     "VEHICLE_DOCUMENT_EXPIRED": "VEHICLE_DOCUMENT_EXPIRED",
+    "VEHICLE_DOCUMENT_NOT_YET_VALID": "VEHICLE_DOCUMENT_EXPIRED",
+    "VEHICLE_DOCUMENT_MISSING": "VEHICLE_DOCUMENT_MISSING",
 }
 
 

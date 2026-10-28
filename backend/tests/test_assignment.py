@@ -193,7 +193,9 @@ def test_us122_a1_create_active_or_planned_audited_and_compliant(client: TestCli
     planned = _create(client, w, other_vehicle, other_driver, start=_now() + timedelta(days=1))
     assert planned.status_code == 201 and planned.json()["status"] == "PLANNED"
     assert "compliance" not in planned.json()  # US-1.25 A6
-    assert planned.json()["warnings"] == [{"code": "NEXT_EXPIRY", "date": FAR}]
+    # Hors documents exigés jamais saisis (D-42, avertissement le temps de saisir le parc).
+    warnings = [x for x in planned.json()["warnings"] if x["code"] != "VEHICLE_DOCUMENT_MISSING"]
+    assert warnings == [{"code": "NEXT_EXPIRY", "date": FAR}]
 
 
 def test_us122_a2_a3_a13_overlaps_vehicle_then_driver(client: TestClient, w: World) -> None:
@@ -287,9 +289,10 @@ def test_us122_expiring_license_is_accepted_with_warning(client: TestClient, w: 
     soon = (_now() + timedelta(days=10)).date().isoformat()
     resp = _create(client, w, _vehicle(client, w), _driver(client, w, license_expiry=soon))
     assert resp.status_code == 201, resp.text
-    codes = {x["code"] for x in resp.json()["warnings"]}
+    codes = {x["code"] for x in resp.json()["warnings"]} - {"VEHICLE_DOCUMENT_MISSING"}  # D-42
     assert codes == {"LICENSE_EXPIRING", "NEXT_EXPIRY"}
-    assert resp.json()["compliance"]["warnings"] == [{"code": "LICENSE_EXPIRING", "date": soon}]
+    compliance = [x for x in resp.json()["compliance"]["warnings"] if x["code"] != "VEHICLE_DOCUMENT_MISSING"]
+    assert compliance == [{"code": "LICENSE_EXPIRING", "date": soon}]
 
 
 def test_us122_category_without_license_requirement(client: TestClient, w: World) -> None:

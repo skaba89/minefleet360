@@ -9,16 +9,19 @@ from app.core.http import IfMatch, Page, Pagination, etag
 from app.fleet import records, service
 from app.fleet.models import Vehicle
 from app.fleet.schemas import (
+    CategoryDocumentsIn,
+    CategoryDocumentsOut,
     DocumentCreate,
     DocumentOut,
-    DocumentUpdate,
     DocumentWithdraw,
     MeterKind,
     MeterReadingCreate,
     MeterReadingOut,
+    MeterReset,
     StatusHistoryOut,
     VehicleCategoryOut,
     VehicleCreate,
+    VehicleDocumentsOut,
     VehicleOut,
     VehicleRetire,
     VehicleStatus,
@@ -141,12 +144,6 @@ DocumentRead = Annotated[Authorized, Depends(Require("fleet.document.read"))]
 DocumentManage = Annotated[Authorized, Depends(Require("fleet.document.manage"))]
 
 
-def _document(out: DocumentOut, response: Response | None = None) -> DocumentOut:
-    if response is not None:
-        response.headers["ETag"] = etag(out.row_version)
-    return out
-
-
 @router.get("/vehicles/{vehicle_id}/meter-readings", response_model=Page[MeterReadingOut])
 def list_meter_readings(
     vehicle_id: uuid.UUID,
@@ -171,8 +168,19 @@ def record_meter_reading(
     return records.record_reading(auth, vehicle_id, body)
 
 
-@router.get("/vehicles/{vehicle_id}/documents", response_model=list[DocumentOut])
-def list_vehicle_documents(vehicle_id: uuid.UUID, auth: DocumentRead) -> list[DocumentOut]:
+@router.post(
+    "/vehicles/{vehicle_id}/meter-resets", status_code=status.HTTP_201_CREATED, response_model=MeterReadingOut
+)
+def reset_vehicle_meter(
+    vehicle_id: uuid.UUID,
+    body: MeterReset,
+    auth: Annotated[Authorized, Depends(Require("fleet.meter.reset"))],
+) -> MeterReadingOut:
+    return records.reset_meter(auth, vehicle_id, body)
+
+
+@router.get("/vehicles/{vehicle_id}/documents", response_model=VehicleDocumentsOut)
+def list_vehicle_documents(vehicle_id: uuid.UUID, auth: DocumentRead) -> VehicleDocumentsOut:
     return records.list_documents(auth, vehicle_id)
 
 
@@ -180,7 +188,7 @@ def list_vehicle_documents(vehicle_id: uuid.UUID, auth: DocumentRead) -> list[Do
 def due_vehicle_documents(
     auth: DocumentRead,
     site_id: uuid.UUID | None = None,
-    within_days: Annotated[int, Query(ge=0, le=365)] = 30,
+    within_days: Annotated[int, Query(ge=0, le=365)] = 45,
 ) -> list[DocumentOut]:
     return records.due_documents(auth, site_id=site_id, within_days=within_days)
 
@@ -191,18 +199,9 @@ def due_vehicle_documents(
 def create_vehicle_document(
     vehicle_id: uuid.UUID, body: DocumentCreate, auth: DocumentManage, response: Response
 ) -> DocumentOut:
-    return _document(records.create_document(auth, vehicle_id, body), response)
-
-
-@router.patch("/vehicle-documents/{vehicle_document_id}", response_model=DocumentOut)
-def update_vehicle_document(
-    vehicle_document_id: uuid.UUID,
-    body: DocumentUpdate,
-    auth: DocumentManage,
-    version: IfMatch,
-    response: Response,
-) -> DocumentOut:
-    return _document(records.update_document(auth, vehicle_document_id, body, version), response)
+    out = records.create_document(auth, vehicle_id, body)
+    response.headers["ETag"] = etag(out.row_version)
+    return out
 
 
 @router.post("/vehicle-documents/{vehicle_document_id}/withdraw", response_model=DocumentOut)
@@ -213,6 +212,23 @@ def withdraw_vehicle_document(
     version: IfMatch,
     response: Response,
 ) -> DocumentOut:
-    return _document(
-        records.withdraw_document(auth, vehicle_document_id, body.reason_code, version), response
-    )
+    out = records.withdraw_document(auth, vehicle_document_id, body.reason_code, version)
+    response.headers["ETag"] = etag(out.row_version)
+    return out
+
+
+@router.get("/vehicle-categories/{category_id}/required-documents", response_model=CategoryDocumentsOut)
+def get_category_documents(
+    category_id: uuid.UUID,
+    auth: Annotated[Authorized, Depends(Require("fleet.vehicle_category.read"))],
+) -> CategoryDocumentsOut:
+    return records.category_documents(auth, category_id)
+
+
+@router.put("/vehicle-categories/{category_id}/required-documents", response_model=CategoryDocumentsOut)
+def set_category_documents(
+    category_id: uuid.UUID,
+    body: CategoryDocumentsIn,
+    auth: Annotated[Authorized, Depends(Require("fleet.vehicle_category.manage"))],
+) -> CategoryDocumentsOut:
+    return records.set_category_documents(auth, category_id, list(body.doc_types))

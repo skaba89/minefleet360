@@ -1,35 +1,49 @@
 # Livraison — lot 2c (compteurs et documents réglementaires des véhicules)
 
-> Date : 2026-10-28. Cadrage : `PLAN_LOT2.md` §8. Stories : US-2.09, US-2.10 ; décision C-06 (documents bloquants).
+> Date : 2026-10-28. Cadrage : `PLAN_LOT2.md` §8. Stories : US-2.09, US-2.10. Décisions D-42 (documents exigés par catégorie, tranche C-06) et D-43 (compteurs), prises en tant qu'expert flotte.
 
 ## Contenu
-- **Migration 0015** : `vehicle_meter_reading` (ajout seul, trigger) et `vehicle_document` (jamais supprimé, retrait motivé), RLS forcée, clés étrangères composites.
-- **Relevés de compteur** (`app/fleet/records.py`) :
-  - seulement pour les compteurs prévus par la catégorie du véhicule ;
-  - ordonnés, sans relevé dans le futur, antidatage borné ;
-  - la valeur ne baisse jamais, sauf remise à zéro motivée (compteur remplacé, revenu à zéro, erreur de saisie) ;
-  - progression plausible : heures moteur ≤ temps écoulé, kilomètres ≤ 120 km/h × temps écoulé ;
-  - relevés d'un véhicule sérialisés par son verrou ; audit de chaque relevé.
-- **Documents réglementaires** :
-  - types : assurance, visite technique, autorisation de circuler, carte grise, accès au site, autre ;
-  - validité dérivée des dates au fuseau du site ;
-  - **bloquants par défaut : assurance et visite technique** (C-06, modifiable document par document) ; un document bloquant a obligatoirement une échéance ;
-  - document bloquant échu ou retiré sans exemplaire valide du même type : **affectation refusée**, affectation en cours **non conforme**, **départ de mission refusé** ; renouvellement → de nouveau éligible ;
-  - retrait pour erreur de saisie : le document est ignoré pour l'éligibilité ;
-  - liste des documents échus ou à échéance (alerte), hors documents déjà renouvelés.
-- Calcul de validité déplacé dans le socle commun (`app/core/validity.py`), réexporté par `workforce`.
-- **Interface** : fiche véhicule avec sections « Compteurs » et « Documents réglementaires » (saisie, retrait), page « Documents à échéance ».
-- **Permissions** `fleet.meter.*`, `fleet.document.*` (MATRICE_RBAC §2.3), tests d'autorisation et d'isolation générés (avec un vrai document).
+- **Migration 0015** :
+  - relevés de compteur en ajout seul ;
+  - documents immuables (trigger : seul le retrait motivé est possible) ;
+  - documents exigés par catégorie (modèle global, puis copie pour chaque client, existants compris) ;
+  - RLS forcée et clés étrangères composites.
+- **Compteurs** (`app/fleet/records.py`) :
+  - relevés ordonnés, jamais en baisse ;
+  - progression plausible par catégorie : 60, 100 ou 130 km/h, et heures moteur ≤ temps écoulé ;
+  - **remise à zéro** = action distincte réservée à l'exploitation et au chef d'atelier ;
+  - auteur du relevé masqué hors administration et audit.
+- **Documents** :
+  - types : assurance, visite technique, inspection interne, vérification de levage, autorisation de transport, carte grise, accès au site ;
+  - échéance obligatoire (sauf carte grise) ; validité dérivée ; alerte à 45 jours ;
+  - correction = retrait motivé + nouvel exemplaire ; « erreur de saisie » limitée à 24 h.
+- **Documents exigés par catégorie** (D-42), réglables par l'administrateur :
+  - document exigé échu, retiré ou pas encore valide → **affectation refusée, affectation en cours non conforme, départ de mission refusé** ;
+  - document exigé jamais saisi → avertissement (politique `warn`), puis refus une fois la politique passée à `block`.
+- **Interface** :
+  - fiche véhicule : compteurs, remise à zéro, documents, documents exigés manquants ;
+  - page « Documents à échéance » ;
+  - onglet Administration › « Documents exigés ».
+- **Permissions** : `fleet.meter.read`, `.record`, `.reset` ; `fleet.document.read`, `.manage` ; `fleet.vehicle_category.manage` (MATRICE_RBAC §2.3). Tests d'autorisation et d'isolation générés.
 
-## Réglages (valeurs de développement à valider avec l'atelier)
-`MF_METER_BACKDATE_TOLERANCE` (7 jours), `MF_METER_MAX_KMH` (120).
+## Réglages (valeurs de départ, à valider avec l'atelier et l'exploitation)
+| Réglage | Valeur |
+|---|---|
+| `MF_METER_BACKDATE_TOLERANCE` | 7 jours |
+| `MF_METER_MAX_KMH` | 120 (catégories propres au client) |
+| `MF_DOCUMENT_WARNING_DAYS` | 45 |
+| `MF_REQUIRED_DOCUMENTS_POLICY` | `warn`, puis `block` une fois le parc saisi |
+| `MF_DOCUMENT_ENTRY_ERROR_WINDOW` | 24 h |
 
 ## Vérifications exécutées
-- Backend : ruff, format, mypy OK ; `tests/test_vehicle_records.py` (6 scénarios), matrice et isolation ; suite complète **2044 tests**, couverture 93,21 %.
+- Backend : ruff, format, mypy OK ; `tests/test_vehicle_records.py` (10 scénarios, dont les contournements de la revue), matrice et isolation ; suite complète **2095 tests**, couverture 93,34 %.
 - Migration 0015 appliquée, défaite et réappliquée sur la base locale.
-- Frontend : `tsc`, Vitest 19, **Playwright 15** (dont `vehicule-documents.spec.ts`), build, permissions à jour.
+- Frontend : `tsc`, Vitest 19, **Playwright 16** (dont `vehicule-documents.spec.ts`), build, permissions à jour.
+
+## Revue sécurité
+`docs/revues/REVUE_SECURITE_LOT2C.md` : aucun constat critique ni élevé. Les 11 constats sont corrigés ou acceptés de façon motivée.
 
 ## Non fait / suite
-- Revue sécurité indépendante du lot 2c.
-- Relevés automatiques par télématique (lot 5) ; pièces jointes scannées des documents (stockage objet à justifier).
-- Liste des documents **exigés** par catégorie de véhicule (aujourd'hui : exigence née du premier document bloquant enregistré) — à arbitrer avec le client.
+- Relevés automatiques par télématique (lot 5) ; relevé à la prise de poste (écran conducteur, lot 4).
+- Pièces jointes scannées des documents (stockage objet à justifier).
+- Liste légale guinéenne des documents obligatoires : avis juridique local.

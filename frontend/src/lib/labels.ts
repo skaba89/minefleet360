@@ -74,6 +74,8 @@ export const ISSUES: Record<string, string> = {
   VEHICLE_DOCUMENT_EXPIRED: "Document du véhicule échu ou retiré (assurance, visite…)",
   VEHICLE_DOCUMENT_EXPIRES_BEFORE_END: "Un document du véhicule expire avant la fin de l'affectation",
   VEHICLE_DOCUMENT_EXPIRING: "Document du véhicule bientôt échu",
+  VEHICLE_DOCUMENT_MISSING: "Document exigé du véhicule jamais saisi",
+  VEHICLE_DOCUMENT_NOT_YET_VALID: "Document du véhicule pas encore valide",
 };
 
 export function label(map: Record<string, string>, code: string | null | undefined): string {
@@ -298,7 +300,9 @@ export const RESET_REASONS: Record<string, string> = {
 export const DOCUMENT_TYPES: Record<string, string> = {
   INSURANCE: "Assurance",
   TECHNICAL_INSPECTION: "Visite technique",
-  ROAD_PERMIT: "Autorisation de circuler",
+  INTERNAL_INSPECTION: "Inspection technique interne",
+  LIFTING_INSPECTION: "Vérification de levage",
+  ROAD_PERMIT: "Autorisation de transport / de circuler",
   REGISTRATION: "Carte grise",
   SITE_ACCESS_PERMIT: "Autorisation d'accès au site",
   OTHER: "Autre",

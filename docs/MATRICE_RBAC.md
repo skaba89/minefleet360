@@ -107,7 +107,9 @@ Les routes de réinitialisation **en libre-service** (`/auth/password/reset-requ
 | `fleet.vehicle.deactivate` (passage à `RETIRED`, terminal, C-13) | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `fleet.meter.read`, `fleet.document.read` (2c) | ❌ | ✅ | ✅ | ✅ | 🔶 | ❌ | ❌ | 🔶 | 🔶 | 🔶 | 🔶 | ✅ | ✅ | ✅ |
 | `fleet.meter.record` (2c) | ❌ | ❌ | ❌ | ✅ | 🔶 | ❌ | ❌ | 🔶 | 🔶 | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `fleet.document.manage` (2c : ajout, modification, retrait) | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `fleet.meter.reset` (2c : remise à zéro, D-43) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | 🔶 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `fleet.document.manage` (2c : ajout, retrait ; documents immuables) | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `fleet.vehicle_category.manage` (2c : documents exigés par catégorie, D-42) | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `fleet.vehicle_category.read` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `fleet.vehicle_category.manage` | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
