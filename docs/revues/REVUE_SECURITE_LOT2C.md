@@ -21,11 +21,16 @@ Les constats moyens portaient sur le **contournement du blocage par document**. 
 | L2C-R-10 | Faible | Alertes d'échéance : borne avant filtrage, requête par ligne, renouvellement futur | **Corrigé** : renouvellement testé en SQL (`NOT EXISTS`, exemplaire en vigueur couvrant l'horizon), limite appliquée ensuite |
 | L2C-R-11 | Info | Absence de document non bloquante ; « pas encore valide » libellé « échu » | **Corrigé** : documents exigés par catégorie (D-42) avec politique `warn` puis `block` ; code distinct `VEHICLE_DOCUMENT_NOT_YET_VALID` ; manquants affichés sur la fiche |
 
+### Revue automatique du commit de la migration 0016
+| ID | Gravité | Constat | Traitement |
+|---|---|---|---|
+| L2C-A-01 | Moyenne | Contrainte « échéance obligatoire » posée `NOT VALID` : un ancien document non daté aurait couvert indéfiniment un type exigé | **Corrigé** : contrainte validée dans la migration, qui **échoue** si un tel document existe (vérifié : la base reste en 0015) ; en plus, le calcul d'éligibilité ne retient jamais un document non daté hors carte grise (tests unitaires) |
+
 ## 2. Risque résiduel accepté
 - **Politique `warn` par défaut** pour les documents exigés **jamais saisis** : le temps de saisir le parc existant, un véhicule sans aucun document reste affectable (avec avertissement). À passer à `block` (`MF_REQUIRED_DOCUMENTS_POLICY=block`) une fois le parc saisi. Un document **échu ou retiré** bloque toujours.
 
 ## 3. Vérifications exécutées (2026-10-28)
-- Serveur : ruff, format, mypy OK ; `tests/test_vehicle_records.py` (10 scénarios) ; suite complète **2095 tests**, couverture 93,34 %.
+- Serveur : ruff, format, mypy OK ; `tests/test_vehicle_records.py` (10 scénarios) ; suite complète **2097 tests**, couverture 93,36 %.
 - Migration `0016` (correctifs, la PR #16 ayant été fusionnée avant) : passage depuis 0015 vérifié avec un document existant ; copie des documents exigés vérifiée (44 par tenant) ; aller-retour OK.
 - Interface : `tsc`, Vitest 19, Playwright 16, build, permissions à jour.
 

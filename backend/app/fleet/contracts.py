@@ -116,6 +116,9 @@ def required_documents(db: Session, category_ids: Iterable[uuid.UUID]) -> dict[u
     return {k: frozenset(v) for k, v in out.items()}
 
 
+# Seule la carte grise est sans échéance : tout autre document non daté ne couvre jamais un type exigé.
+UNDATED_DOCUMENT_TYPES: frozenset[str] = frozenset({"REGISTRATION"})
+
 # Un document retiré pour erreur de saisie (possible seulement peu après sa création, revue L2C-R-01)
 # n'a jamais existé ; les autres retraits laissent le type exigé non satisfait.
 ENTRY_ERROR = and_(VehicleDocument.status == "WITHDRAWN", VehicleDocument.status_reason == "ENTRY_ERROR")

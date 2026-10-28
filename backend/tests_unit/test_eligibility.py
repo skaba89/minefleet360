@@ -1,11 +1,12 @@
 """Éligibilité et conformité dérivée (RM-021, RM-030, RM-036, US-1.25 A2) : fonction pure."""
 
 import uuid
+from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from app.assignment.eligibility import compliance, end_instant, evaluate
-from app.fleet.contracts import VehicleFacts
+from app.fleet.contracts import DocumentFact, VehicleFacts
 from app.workforce.contracts import DriverFacts, LicenseFact, QualificationFact
 
 SITE = uuid.uuid4()
@@ -110,3 +111,41 @@ def test_compliance_flips_when_license_expires_during_assignment() -> None:
     assert [r.code for r in compliance(_vehicle(), revoked, now=NOW, tz=CONAKRY, warning_days=30)[0]] == [
         "QUALIFICATION_EXPIRED"
     ]
+
+
+# --- Documents exigés du véhicule (D-42) -----------------------------------------------------------------
+
+
+def _with_documents(*docs: DocumentFact, block_missing: bool = False) -> VehicleFacts:
+    return replace(
+        _vehicle(),
+        required_documents=frozenset({"INSURANCE", "REGISTRATION"}),
+        documents=docs,
+        missing_documents_block=block_missing,
+    )
+
+
+def _doc(doc_type: str, until: date | None, status: str = "VALID") -> DocumentFact:
+    return DocumentFact(uuid.uuid4(), doc_type, status, None, until)
+
+
+def test_undated_document_never_covers_a_required_type() -> None:
+    """Défense en profondeur : seule la carte grise peut être sans échéance (revue de 0016)."""
+    vehicle = _with_documents(_doc("INSURANCE", None), _doc("REGISTRATION", None))
+    ev = evaluate(vehicle, _driver(), start=NOW, end=None, tz=CONAKRY, warning_days=30)
+    assert [r.code for r in ev.reasons] == ["VEHICLE_DOCUMENT_EXPIRED"]
+
+
+def test_missing_document_warns_or_blocks_by_policy() -> None:
+    dated = _doc("INSURANCE", date(2030, 1, 1))
+    warn = evaluate(_with_documents(dated), _driver(), start=NOW, end=None, tz=CONAKRY, warning_days=30)
+    assert warn.eligible and "VEHICLE_DOCUMENT_MISSING" in [w.code for w in warn.warnings]
+    block = evaluate(
+        _with_documents(dated, block_missing=True),
+        _driver(),
+        start=NOW,
+        end=None,
+        tz=CONAKRY,
+        warning_days=30,
+    )
+    assert [r.code for r in block.reasons] == ["VEHICLE_DOCUMENT_MISSING"]

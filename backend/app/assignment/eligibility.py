@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from app.fleet.contracts import DocumentFact, VehicleFacts
+from app.fleet.contracts import UNDATED_DOCUMENT_TYPES, DocumentFact, VehicleFacts
 from app.workforce.contracts import ELIGIBLE, DriverFacts, derive_validity
 
 
@@ -169,7 +169,13 @@ def _check_documents(
             )
             for d in docs
         }
-        valid = [d for d in docs if validity[d.vehicle_document_id] in ELIGIBLE]
+        # Défense en profondeur : un document non daté (hors carte grise) n'est jamais retenu.
+        valid = [
+            d
+            for d in docs
+            if validity[d.vehicle_document_id] in ELIGIBLE
+            and (d.valid_until is not None or d.doc_type in UNDATED_DOCUMENT_TYPES)
+        ]
         if not valid:
             future = all(validity[d.vehicle_document_id] == "NOT_YET_VALID" for d in docs)
             dated = [d.valid_until for d in docs if d.valid_until is not None]

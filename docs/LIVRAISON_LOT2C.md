@@ -36,7 +36,7 @@
 | `MF_DOCUMENT_ENTRY_ERROR_WINDOW` | 24 h |
 
 ## Vérifications exécutées
-- Backend : ruff, format, mypy OK ; `tests/test_vehicle_records.py` (10 scénarios, dont les contournements de la revue), matrice et isolation ; suite complète **2095 tests**, couverture 93,34 %.
+- Backend : ruff, format, mypy OK ; `tests/test_vehicle_records.py` (10 scénarios, dont les contournements de la revue), matrice et isolation ; suite complète **2097 tests**, couverture 93,36 %.
 - Migrations appliquées, défaites et réappliquées ; passage 0015 → 0016 vérifié avec un document existant (conservé, exigences copiées, document devenu immuable).
 - Frontend : `tsc`, Vitest 19, **Playwright 16** (dont `vehicule-documents.spec.ts`), build, permissions à jour.
 

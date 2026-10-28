@@ -8,8 +8,8 @@ applique les correctifs de la revue sécurité du lot 2c.
 - L'exigence documentaire passe du document (`blocks_assignment`, colonne conservée mais plus lue) à la
   CATÉGORIE du véhicule (catalogue par tenant copié d'un modèle global, D-18), sans suppression (D-19).
 - Nouveaux types : inspection technique interne, vérification de levage.
-- Échéance obligatoire sauf pour la carte grise. Contrainte posée NOT VALID : un document non daté
-  saisi avant cette migration reste lisible (aucun en recette ni en production à cette date).
+- Échéance obligatoire sauf pour la carte grise : contrainte posée puis VALIDÉE, la migration échoue
+  si un document non daté existe (aucun en recette ni en production à cette date).
 - Document immuable une fois saisi : seul le retrait motivé est permis (trigger).
 """
 
@@ -42,6 +42,9 @@ ALTER TABLE vehicle_document ADD CONSTRAINT ck_vd_type CHECK (doc_type IN ('INSU
 -- Seule la carte grise est sans échéance (revue L2C-R-03).
 ALTER TABLE vehicle_document ADD CONSTRAINT ck_vd_dated
   CHECK (doc_type = 'REGISTRATION' OR valid_until IS NOT NULL) NOT VALID;
+-- Validation immédiate (hors RLS) : la migration ÉCHOUE plutôt que de laisser un document non daté
+-- couvrir indéfiniment un type exigé ; un tel document devra être daté ou retiré à la main avant.
+ALTER TABLE vehicle_document VALIDATE CONSTRAINT ck_vd_dated;
 
 -- Revue L2C-R-02 / R-09 : un document saisi ne change plus ; seul le retrait motivé est permis, une fois.
 CREATE FUNCTION app.tg_vehicle_document_guard() RETURNS trigger LANGUAGE plpgsql AS $$
