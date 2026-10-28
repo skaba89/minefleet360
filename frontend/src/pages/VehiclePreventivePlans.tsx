@@ -137,7 +137,7 @@ export function VehiclePreventivePlans({ vehicleId, siteId }: { vehicleId: strin
                       </form>
                     )}
                   </td>
-                )
+                )}
               </tr>
             ))}
           </tbody>
