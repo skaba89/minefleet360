@@ -3,12 +3,10 @@
 import uuid
 from datetime import date
 
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
 from app.core.config import get_settings
-
-from fastapi.testclient import TestClient
-
 from tests.conftest import API
 from tests.test_assignment import World, _vehicle, w  # noqa: F401
 
