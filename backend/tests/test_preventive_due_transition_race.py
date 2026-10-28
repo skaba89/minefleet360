@@ -47,10 +47,7 @@ def test_competing_due_status_transitions_only_one_wins(
         with engine.begin() as conn:
             set_tenant(conn)
             status = conn.execute(
-                text(
-                    "SELECT status FROM maintenance_due "
-                    "WHERE maintenance_due_id = :due_id FOR UPDATE"
-                ),
+                text("SELECT status FROM maintenance_due WHERE maintenance_due_id = :due_id FOR UPDATE"),
                 {"due_id": due_id},
             ).scalar_one()
             if hold:
@@ -59,10 +56,7 @@ def test_competing_due_status_transitions_only_one_wins(
             if status != "DUE":
                 return False
             conn.execute(
-                text(
-                    "UPDATE maintenance_due SET status = 'SCHEDULED' "
-                    "WHERE maintenance_due_id = :due_id"
-                ),
+                text("UPDATE maintenance_due SET status = 'SCHEDULED' WHERE maintenance_due_id = :due_id"),
                 {"due_id": due_id},
             )
             return True
