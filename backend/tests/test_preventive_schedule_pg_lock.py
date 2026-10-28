@@ -12,6 +12,7 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Connection
 from sqlalchemy.exc import OperationalError
 
 from app.core.config import get_settings
@@ -42,7 +43,7 @@ def test_preventive_due_row_lock_blocks_competing_transaction(
     locked = threading.Event()
     release = threading.Event()
 
-    def set_tenant(conn: object) -> None:
+    def set_tenant(conn: Connection) -> None:
         conn.execute(
             text("SELECT set_config('app.tenant_id', :tenant_id, true)"),
             {"tenant_id": params["tenant_id"]},
