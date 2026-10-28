@@ -57,7 +57,9 @@ def test_duplicate_due_returns_false_without_audit_or_commit() -> None:
 def test_new_due_commits_and_records_audit_once() -> None:
     auth, plan_id, candidate = _fixture()
     due_id = uuid.uuid4()
-    auth.db.execute.side_effect[2].scalar_one_or_none = lambda: due_id
+    responses = list(auth.db.execute.side_effect)
+    responses[2].scalar_one_or_none = lambda: due_id
+    auth.db.execute.side_effect = responses
     with patch("app.maintenance.preventive_persist.record") as audit:
         assert persist_due(auth, plan_id, candidate) is True
     audit.assert_called_once()
