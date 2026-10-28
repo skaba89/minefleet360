@@ -79,7 +79,7 @@ export function refreshSession(): Promise<boolean> {
 }
 
 export interface RequestOptions {
-  method?: "GET" | "POST" | "PATCH";
+  method?: "GET" | "POST" | "PATCH" | "PUT";
   body?: unknown;
   query?: Record<string, string | number | boolean | null | undefined>;
   ifMatch?: string | null;
@@ -136,7 +136,7 @@ export async function get<T>(path: string, query?: RequestOptions["query"]): Pro
 // --- Appels typés depuis le schéma OpenAPI (chemins, paramètres, corps, réponses) --------------------
 // Un paramètre de requête inconnu (ex. `search` au lieu de `q`) est une erreur de compilation.
 
-type Method = "get" | "post" | "patch";
+type Method = "get" | "post" | "patch" | "put";
 export type ApiPath = keyof paths extends infer K ? (K extends `/api/v1${infer R}` ? R : never) : never;
 type Operation<P extends ApiPath, M extends Method> = NonNullable<paths[`/api/v1${P}`][M]>;
 type MethodsOf<P extends ApiPath> = {

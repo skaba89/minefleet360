@@ -358,6 +358,15 @@ export const GRANTS = {
       "SITE"
     ]
   },
+  "fleet.meter.reset": {
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "WORKSHOP_CHIEF": [
+      "SITE"
+    ]
+  },
   "fleet.vehicle.create": {
     "OPS_MANAGER": [
       "TENANT",
@@ -436,6 +445,11 @@ export const GRANTS = {
     ],
     "WORKSHOP_CHIEF": [
       "SITE"
+    ]
+  },
+  "fleet.vehicle_category.manage": {
+    "TENANT_ADMIN": [
+      "TENANT"
     ]
   },
   "fleet.vehicle_category.read": {

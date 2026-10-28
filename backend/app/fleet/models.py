@@ -138,5 +138,24 @@ class VehicleDocument(AuditedColumns, Base):
     valid_until: Mapped[date | None] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String, nullable=False, server_default="VALID")
     status_reason: Mapped[str | None] = mapped_column(String)
-    # Décision C-06 prise document par document : bloque l'affectation une fois échu (RM-104).
-    blocks_assignment: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+
+class VehicleCategoryDocument(Base):
+    """Type de document exigé pour une catégorie de véhicule (D-42), propre au tenant."""
+
+    __tablename__ = "vehicle_category_document"
+
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    vehicle_category_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    doc_type: Mapped[str] = mapped_column(String, primary_key=True)
+    # Exigence retirée = désactivée, jamais supprimée (D-19).
+    required: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), nullable=False
+    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=text("now()"), server_onupdate=FetchedValue(), nullable=False
+    )
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    row_version: Mapped[int] = mapped_column(Integer, server_default=text("1"), nullable=False)

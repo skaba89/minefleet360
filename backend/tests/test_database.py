@@ -27,6 +27,7 @@ TENANT_TABLES = (
     "weighing_ticket_decision",
     "vehicle_meter_reading",
     "vehicle_document",
+    "vehicle_category_document",
 )
 GLOBAL_TABLES = {
     "role",
@@ -34,6 +35,7 @@ GLOBAL_TABLES = {
     "license_category_ref",
     "vehicle_category_template",
     "vehicle_category_template_license",
+    "vehicle_category_document_template",
     "alembic_version",
     "spatial_ref_sys",
 }

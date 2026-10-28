@@ -48,11 +48,17 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
     ("PATCH", "/materials/{material_id}"): {"name": "Matière modifiée"},
     ("POST", "/missions/{mission_id}/events"): {"event_type": "SUSPENDED", "reason_code": "WEATHER"},
     ("POST", "/vehicles/{vehicle_id}/meter-readings"): {"meter_kind": "ODOMETER_KM", "value": 10},
+    ("POST", "/vehicles/{vehicle_id}/meter-resets"): {
+        "meter_kind": "ODOMETER_KM",
+        "value": 1,
+        "reset_reason": "METER_REPLACED",
+    },
     ("POST", "/vehicles/{vehicle_id}/documents"): {
         "doc_type": "SITE_ACCESS_PERMIT",
         "reference": "ACCES-FICTIF-1",
+        "valid_until": "2030-01-01",
     },
-    ("PATCH", "/vehicle-documents/{vehicle_document_id}"): {"issuer": "Autorité fictive"},
+    ("PUT", "/vehicle-categories/{category_id}/required-documents"): {"doc_types": ["INSURANCE"]},
     ("POST", "/vehicle-documents/{vehicle_document_id}/withdraw"): {"reason_code": "ENTRY_ERROR"},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/approve"): {},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/void"): {"reason_code": "ENTRY_ERROR"},

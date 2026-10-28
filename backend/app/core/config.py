@@ -66,7 +66,13 @@ class Settings(BaseSettings):
     indicators_max_period: timedelta = timedelta(days=92)
     # Compteurs (lot 2c, RM-101, RM-103) : valeurs de développement à valider avec l'atelier.
     meter_backdate_tolerance: timedelta = timedelta(days=7)
+    # Plafond des catégories propres au tenant ; les catégories du catalogue ont le leur (D-43).
     meter_max_kmh: int = Field(default=120, ge=10, le=300)
+    # Documents des véhicules (D-42) : alerte d'échéance, document exigé jamais saisi (avertissement le
+    # temps de saisir le parc, puis blocage), délai pour retirer un document saisi par erreur (L2C-R-01).
+    document_warning_days: int = Field(default=45, ge=1, le=365)
+    required_documents_policy: Literal["warn", "block"] = "warn"
+    document_entry_error_window: timedelta = timedelta(hours=24)
 
     # Délai max d'attente d'un verrou : échec rapide (409/500) plutôt qu'un blocage indéfini.
     db_lock_timeout_ms: int = 5000
