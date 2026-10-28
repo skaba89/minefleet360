@@ -8,7 +8,7 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from app.authz.dependencies import Authorized
 from app.authz.principal import Grant, PermissionScope, Principal
@@ -16,6 +16,7 @@ from app.core.clock import SystemClock
 from app.core.config import get_settings
 from app.core.tenancy import set_tenant_context
 from app.maintenance import preventive_schedule
+from app.maintenance.schemas import WorkOrderCreate, WorkOrderOut
 from tests.conftest import API
 from tests.test_assignment import World, _vehicle, w  # noqa: F401
 
@@ -42,7 +43,7 @@ def test_two_concurrent_schedule_calls_return_one_work_order(
     release_creation = threading.Event()
     original = preventive_schedule._create_work_order_uncommitted
 
-    def slow_creation(auth: Authorized, body: object) -> object:
+    def slow_creation(auth: Authorized, body: WorkOrderCreate) -> WorkOrderOut:
         entered_creation.set()
         assert release_creation.wait(timeout=15), "first transaction was not released"
         return original(auth, body)
