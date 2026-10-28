@@ -13,7 +13,7 @@ from app.fleet.models import Vehicle
 from app.maintenance.preventive_models import MaintenancePlan
 from app.maintenance.preventive_plan_inputs import PreventivePlanCreate
 
-MANAGE_PERMISSION = "maintenance.work_order.manage"
+MANAGE_PERMISSION = "maintenance.preventive.manage"
 
 
 def create_plan(auth: Authorized, body: PreventivePlanCreate) -> MaintenancePlan:
