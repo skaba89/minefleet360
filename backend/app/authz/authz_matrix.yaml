@@ -507,6 +507,15 @@ permissions:
     grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
 
   # --- maintenance (lot 3a, docs/PLAN_LOT3.md §5) ------------------------------------------------------
+  maintenance.preventive.manage:
+    tranche: later
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /preventive-plans, shape: collection, success: 201 }]
+    audit: { action: maintenance.plan.create }
+    grants:
+      OPS_MANAGER: [TENANT, SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
   maintenance.preventive.read:
     tranche: later
     kind: read
