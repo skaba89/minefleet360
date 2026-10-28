@@ -11,7 +11,7 @@ from app.authz.dependencies import Authorized
 from app.core.errors import AppError
 from app.fleet.models import Vehicle
 from app.maintenance.models import WorkOrder
-from app.maintenance.preventive_models import MaintenanceDue
+from app.maintenance.preventive_models import MaintenanceDue, MaintenancePlan
 from app.maintenance.schemas import WorkOrderCreate
 from app.maintenance.service import _create_work_order_uncommitted
 
@@ -42,6 +42,16 @@ def schedule_preventive_order(auth: Authorized, due_id: uuid.UUID) -> uuid.UUID:
     if due.work_order_id is not None:
         return due.work_order_id
     if due.status != "DUE":
+        raise AppError("STATE_TRANSITION_INVALID")
+
+    plan = auth.db.execute(
+        select(MaintenancePlan).where(
+            MaintenancePlan.tenant_id == auth.tenant_id,
+            MaintenancePlan.maintenance_plan_id == due.maintenance_plan_id,
+            MaintenancePlan.vehicle_id == due.vehicle_id,
+        )
+    ).scalar_one_or_none()
+    if plan is None or not plan.active:
         raise AppError("STATE_TRANSITION_INVALID")
 
     # Le noyau OT contrôle lui-même la portée site et verrouille le véhicule.

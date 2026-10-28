@@ -50,3 +50,30 @@ def test_schedule_replay_returns_existing_order_without_commit() -> None:
     )
     assert schedule_preventive_order(auth, uuid.uuid4()) == order_id
     db.commit.assert_not_called()
+
+
+@pytest.mark.parametrize("active", [False, None])
+def test_schedule_refuses_inactive_or_missing_plan(active: bool | None) -> None:
+    due = SimpleNamespace(
+        maintenance_plan_id=uuid.uuid4(),
+        vehicle_id=uuid.uuid4(),
+        work_order_id=None,
+        status="DUE",
+    )
+    vehicle = SimpleNamespace(site_id=uuid.uuid4())
+    plan = None if active is None else SimpleNamespace(active=active)
+    db = MagicMock()
+    db.execute.side_effect = [
+        MagicMock(scalar_one_or_none=lambda: due),
+        MagicMock(scalar_one_or_none=lambda: vehicle),
+        MagicMock(scalar_one_or_none=lambda: plan),
+    ]
+    auth = SimpleNamespace(
+        db=db,
+        tenant_id=uuid.uuid4(),
+        scope=SimpleNamespace(permission="maintenance.preventive.manage", covers_site=lambda _: True),
+    )
+    with pytest.raises(AppError) as error:
+        schedule_preventive_order(auth, uuid.uuid4())
+    assert error.value.code == "STATE_TRANSITION_INVALID"
+    db.commit.assert_not_called()
