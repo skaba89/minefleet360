@@ -164,6 +164,16 @@ Pesées (2b) : une saisie manuelle dégradée est approuvée par une **autre per
 `TENANT_ADMIN` gère les référentiels mais ne lit pas les missions (données nominatives conducteur, D-10).
 Le **nom et l'identifiant du conducteur** d'une mission suivent `assignment.vehicle_assignment.read` sur le site de la mission, pas `dispatch.mission.read` (revue L2A-R-02) : `FINANCE` et un `WORKSHOP_CHIEF` hors de son site lisent la mission avec ces deux champs à `null`. `DRIVER` : sa propre mission au lot 4 (écran conducteur, C-12).
 
+### 2.5 ter `maintenance` (lot 3a, `PLAN_LOT3.md` §5)
+| Permission | PA | TA | DIR | OPS | DISP | HR | DRV | WSC | MEC | STK | FUEL | HSE | FIN | AUD |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `maintenance.work_order.read` | ❌ | ❌ | ✅ | ✅ | 🔶 | ❌ | ⏭ | ✅ | 🔶 | ❌ | ❌ | ✅ | ❌ | ✅ |
+| `maintenance.work_order.request` (signaler une panne) | ❌ | ❌ | ❌ | ✅ | 🔶 | ❌ | ⏭ | ✅ | 🔶 | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `maintenance.work_order.manage` (approuver, rejeter, assigner, annuler, contrôle qualité) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `maintenance.work_order.execute` (intervention, temps passé) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | 🔶 | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+Seul le mécanicien **assigné** (ou un chef d'atelier du site) agit sur l'intervention ; la remise en service est validée par une **autre personne** (D-44). `DRIVER` : signalement depuis l'écran conducteur au lot 4.
+
 ### 2.6 `audit` (1a)
 Il n'existe **aucune permission d'écriture, de modification ou de suppression** sur `audit_event` exposée par l'API : l'écriture est un effet interne des autres modules ; le journal est append-only (T-21), partitionné par mois dès la migration 0001 (D-17).
 

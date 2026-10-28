@@ -28,6 +28,10 @@ TENANT_TABLES = (
     "vehicle_meter_reading",
     "vehicle_document",
     "vehicle_category_document",
+    "maintenance_counter",
+    "work_order",
+    "work_order_event",
+    "work_order_labour",
 )
 GLOBAL_TABLES = {
     "role",

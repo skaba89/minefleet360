@@ -268,7 +268,13 @@ def update_vehicle(
 
 
 def _apply_status(
-    auth: Authorized, vehicle: Vehicle, target: str, reason: str | None, action: str
+    auth: Authorized,
+    vehicle: Vehicle,
+    target: str,
+    reason: str | None,
+    action: str,
+    *,
+    commit: bool = True,
 ) -> Vehicle:
     db = auth.db
     source = vehicle.status
@@ -301,7 +307,8 @@ def _apply_status(
         after={"status": target, "status_reason_code": vehicle.status_reason_code},
         changed_fields=("status", "status_reason_code"),
     )
-    db.commit()
+    if commit:
+        db.commit()
     return vehicle
 
 

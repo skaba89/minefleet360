@@ -506,6 +506,55 @@ permissions:
     audit: { action: vehicle_assignment.end }
     grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
 
+  # --- maintenance (lot 3a, docs/PLAN_LOT3.md §5) ------------------------------------------------------
+  maintenance.work_order.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /work-orders, shape: collection, success: 200 }
+      - { method: GET, path: "/work-orders/{work_order_id}", shape: item, success: 200 }
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      MECHANIC: [SITE]
+      HSE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  maintenance.work_order.request:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /work-orders, shape: collection, success: 201 }]
+    audit: { action: work_order.request }
+    grants:
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      MECHANIC: [SITE]
+      HSE: [TENANT, SITE]
+  maintenance.work_order.manage:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: "/work-orders/{work_order_id}/decision", shape: item, success: 200 }
+      - { method: GET, path: /maintenance-mechanics, shape: collection, success: 200 }
+    # Actions écrites : work_order.approve, .reject, .assign, .cancel, .qc_pass, .qc_fail.
+    audit: { action: work_order.approve }
+    grants: { OPS_MANAGER: [TENANT, SITE], WORKSHOP_CHIEF: [TENANT, SITE] }
+  maintenance.work_order.execute:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: "/work-orders/{work_order_id}/progress", shape: item, success: 200 }
+      - { method: POST, path: "/work-orders/{work_order_id}/labour", shape: item, success: 201 }
+    # Actions écrites : work_order.start, .await_parts, .resume, .submit, .note, .labour.
+    audit: { action: work_order.start }
+    grants: { WORKSHOP_CHIEF: [TENANT, SITE], MECHANIC: [SITE] }
+
   # --- dispatch (lot 2a, docs/PLAN_LOT2.md §5) ---------------------------------------------------------
   dispatch.location.read:
     tranche: 1c

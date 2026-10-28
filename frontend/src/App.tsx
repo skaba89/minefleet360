@@ -17,6 +17,7 @@ import { VehicleDetailPage } from "./pages/VehicleDetailPage";
 import { DueDocumentsPage, RequiredDocumentsPage } from "./pages/VehicleRecords";
 import { VehiclesPage } from "./pages/VehiclesPage";
 import { IndicatorsPage, WeighingsPage } from "./pages/WeighingPages";
+import { WorkOrderPage, WorkshopPage } from "./pages/WorkshopPages";
 import { SiteProvider } from "./site/SiteContext";
 
 function Protected() {
@@ -47,6 +48,8 @@ export function App() {
         <Route path="affectations" element={<AssignmentsPage />} />
         <Route path="missions" element={<MissionsPage />} />
         <Route path="missions/:missionId" element={<MissionDetailPage />} />
+        <Route path="atelier" element={<WorkshopPage />} />
+        <Route path="atelier/:workOrderId" element={<WorkOrderPage />} />
         <Route path="pesees" element={<WeighingsPage />} />
         <Route path="indicateurs" element={<IndicatorsPage />} />
         <Route path="mon-compte/securite" element={<SecurityPage />} />

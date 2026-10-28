@@ -1,10 +1,11 @@
 """Contrat public du module identity (utilisé par organization pour le provisioning d'un tenant)."""
 
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import update
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -191,4 +192,38 @@ def reset_message(email: str, token: IssuedToken, settings: Settings) -> EmailMe
             "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.\n"
         ),
         kind="PASSWORD_RESET",
+    )
+
+
+def users_with_roles(
+    db: Session, roles: Iterable[str], site_id: uuid.UUID, now: datetime
+) -> list[tuple[uuid.UUID, str]]:
+    """Comptes ACTIFS ayant l'un des rôles, en vigueur, sur ce site ou pour toute la société."""
+    rows = db.execute(
+        select(UserAccount.user_account_id, UserAccount.display_name)
+        .join(UserRoleAssignment, UserRoleAssignment.user_account_id == UserAccount.user_account_id)
+        .where(
+            UserAccount.status == "ACTIVE",
+            UserRoleAssignment.role_code.in_(list(roles)),
+            UserRoleAssignment.revoked_at.is_(None),
+            UserRoleAssignment.valid_from <= now,
+            or_(UserRoleAssignment.valid_to.is_(None), UserRoleAssignment.valid_to > now),
+            or_(UserRoleAssignment.scope_type == "TENANT", UserRoleAssignment.site_id == site_id),
+        )
+        .distinct()
+        .order_by(UserAccount.display_name)
+    ).all()
+    return [(r[0], r[1]) for r in rows]
+
+
+def display_names(db: Session, user_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, str]:
+    ids = sorted(set(user_ids))
+    if not ids:
+        return {}
+    return dict(
+        db.execute(
+            select(UserAccount.user_account_id, UserAccount.display_name).where(
+                UserAccount.user_account_id.in_(ids)
+            )
+        ).all()
     )
