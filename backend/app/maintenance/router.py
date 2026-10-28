@@ -9,7 +9,12 @@ from app.core.http import IfMatch, Page, Pagination, etag
 from app.maintenance import preventive_service, service
 from app.maintenance.preventive_plan_inputs import PreventivePlanCreate, PreventivePlanSuspend
 from app.maintenance.preventive_revise import revise_plan
-from app.maintenance.preventive_schemas import PreventiveDueOut, PreventivePlanOut
+from app.maintenance.preventive_schedule import schedule_preventive_order
+from app.maintenance.preventive_schemas import (
+    PreventiveDueOut,
+    PreventivePlanOut,
+    PreventiveScheduledOrderOut,
+)
 from app.maintenance.preventive_suspend import suspend_plan
 from app.maintenance.preventive_write import create_plan
 from app.maintenance.schemas import (
@@ -168,3 +173,13 @@ def revise_preventive_plan(
     plan = revise_plan(auth, plan_id, body, version)
     response.headers["ETag"] = etag(plan.row_version)
     return PreventivePlanOut.model_validate(plan)
+
+
+@router.post(
+    "/preventive-dues/{due_id}/schedule",
+    status_code=status.HTTP_200_OK,
+    response_model=PreventiveScheduledOrderOut,
+)
+def schedule_preventive_due(due_id: uuid.UUID, auth: PreventiveManage) -> PreventiveScheduledOrderOut:
+    """Planifier une échéance éligible ; rejouer retourne le même ordre de travail."""
+    return PreventiveScheduledOrderOut(work_order_id=schedule_preventive_order(auth, due_id))

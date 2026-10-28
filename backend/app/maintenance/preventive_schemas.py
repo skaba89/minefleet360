@@ -35,3 +35,7 @@ class PreventiveDueOut(BaseModel):
     due_meter: Decimal | None
     evaluated_at: datetime
     work_order_id: uuid.UUID | None
+
+
+class PreventiveScheduledOrderOut(BaseModel):
+    work_order_id: uuid.UUID
