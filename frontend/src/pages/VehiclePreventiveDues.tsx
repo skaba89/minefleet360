@@ -65,7 +65,7 @@ export function VehiclePreventiveDues({ vehicleId, siteId }: { vehicleId: string
             {(dues.data ?? []).map((due) => (
               <tr key={due.maintenance_due_id}>
                 <td>{due.trigger_kind}</td>
-                <td>{due.due_on ?? due.due_meter ?? "—"}</td>
+                <td>{due.due_on ?? (due.due_meter == null ? "—" : String(due.due_meter))}</td>
                 <td>{due.status}</td>
                 <td>
                   {due.work_order_id ? <Link to={`/atelier/${due.work_order_id}`}>Voir l'OT</Link> : "—"}
