@@ -10,11 +10,12 @@ from app.dispatch.models import Mission, MissionEvent
 from app.dispatch.service import RUNNING
 
 
-def mission_vehicle(auth: Authorized, mission_id: uuid.UUID) -> uuid.UUID | None:
-    """Véhicule d'une mission du tenant courant (RLS), ou None."""
-    return auth.db.execute(
-        select(Mission.vehicle_id).where(Mission.mission_id == mission_id)
-    ).scalar_one_or_none()
+def mission_vehicle(auth: Authorized, mission_id: uuid.UUID) -> tuple[uuid.UUID, uuid.UUID] | None:
+    """(véhicule, site) d'une mission du tenant courant (RLS), ou None."""
+    row = auth.db.execute(
+        select(Mission.vehicle_id, Mission.site_id).where(Mission.mission_id == mission_id)
+    ).one_or_none()
+    return (row[0], row[1]) if row is not None else None
 
 
 def suspend_running_missions(auth: Authorized, vehicle_id: uuid.UUID, reason: str) -> list[uuid.UUID]:

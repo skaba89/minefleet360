@@ -3620,6 +3620,10 @@ export interface components {
             actor_user_id: string;
             /** Actor Name */
             actor_name: string | null;
+            /** Subject User Id */
+            subject_user_id: string | null;
+            /** Subject Name */
+            subject_name: string | null;
             /**
              * Occurred At
              * Format: date-time

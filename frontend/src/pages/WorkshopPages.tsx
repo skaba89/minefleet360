@@ -342,6 +342,7 @@ export function WorkOrderPage() {
               {(o.events ?? []).map((e, i) => (
                 <li key={`${e.occurred_at}-${i}`}>
                   <strong>{label(WORK_ORDER_EVENTS, e.event_type)}</strong> — {formatDateTime(e.occurred_at, tz)}
+                  {e.subject_name && <span> : {e.subject_name}</span>}
                   {e.actor_name && <span className="muted"> par {e.actor_name}</span>}
                   {e.reason && <span className="muted"> ({label(WORK_ORDER_REASONS, e.reason)})</span>}
                 </li>
@@ -446,7 +447,8 @@ function Report({
   canExecute: boolean;
   onSave: (fields: { diagnosis: string; work_done: string; parts_note: string }, submit: boolean) => Promise<unknown>;
 }) {
-  const editable = canExecute && ["ASSIGNED", "IN_PROGRESS", "AWAITING_PARTS", "QUALITY_CHECK"].includes(order.status);
+  // Compte rendu figé pendant le contrôle qualité : le valideur examine ce qui a été soumis.
+  const editable = canExecute && ["ASSIGNED", "IN_PROGRESS", "AWAITING_PARTS"].includes(order.status);
   const [form, setForm] = useState({
     diagnosis: order.diagnosis ?? "",
     work_done: order.work_done ?? "",

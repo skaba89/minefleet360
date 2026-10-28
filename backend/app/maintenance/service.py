@@ -17,11 +17,12 @@ from sqlalchemy import func, select, text
 
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
+from app.authz.principal import evaluate
 from app.core.errors import AppError
 from app.core.http import PageParams, check_version
 from app.core.logging import security_logger
 from app.dispatch.contracts import mission_vehicle, suspend_running_missions
-from app.fleet.contracts import change_status_for_maintenance, vehicle_facts
+from app.fleet.contracts import VehicleFacts, change_status_for_maintenance, vehicle_facts
 from app.identity.contracts import display_names, users_with_roles
 from app.maintenance.models import WorkOrder, WorkOrderEvent, WorkOrderLabour
 from app.maintenance.schemas import (
@@ -42,6 +43,7 @@ IN_WORKSHOP = frozenset({"IN_PROGRESS", "AWAITING_PARTS", "QUALITY_CHECK"})
 MECHANIC_ROLES = ("MECHANIC", "WORKSHOP_CHIEF")
 # Toute personne ayant agi sur l'intervention est exclue de la remise en service (RM-114).
 EXECUTION_EVENTS = ("STARTED", "AWAITING_PARTS", "RESUMED", "SUBMITTED", "NOTED")
+MAX_MINUTES_PER_DAY = 24 * 60
 # action → (états de départ, état d'arrivée, événement, motif obligatoire)
 DECISIONS: dict[str, tuple[frozenset[str], str | None, str, bool]] = {
     "APPROVE": (frozenset({"REQUESTED"}), "APPROVED", "APPROVED", False),
@@ -58,7 +60,8 @@ PROGRESS: dict[str, tuple[frozenset[str], str | None, str | None, bool]] = {
     "RESUME": (frozenset({"AWAITING_PARTS"}), "IN_PROGRESS", "RESUMED", False),
     "SUBMIT": (frozenset({"IN_PROGRESS"}), "QUALITY_CHECK", "SUBMITTED", False),
     # Mise à jour du diagnostic ou du compte rendu, sans changement d'état (tracée dans la chronologie).
-    "NOTE": (frozenset({"ASSIGNED", "IN_PROGRESS", "AWAITING_PARTS", "QUALITY_CHECK"}), None, "NOTED", False),
+    # Figé pendant le contrôle qualité (revue L3A-R-07) : le valideur examine ce qui a été soumis.
+    "NOTE": (frozenset({"ASSIGNED", "IN_PROGRESS", "AWAITING_PARTS"}), None, "NOTED", False),
 }
 
 
@@ -93,6 +96,8 @@ def work_orders_out(auth: Authorized, orders: list[WorkOrder], *, detail: bool =
         ).scalars():
             events[e.work_order_id].append(e)
             people.add(e.actor_user_id)
+            if e.subject_user_id:
+                people.add(e.subject_user_id)
         for entry in db.execute(
             select(WorkOrderLabour)
             .where(WorkOrderLabour.work_order_id.in_(ids))
@@ -101,8 +106,21 @@ def work_orders_out(auth: Authorized, orders: list[WorkOrder], *, detail: bool =
             labour[entry.work_order_id].append(entry)
             people.add(entry.mechanic_id)
     names = display_names(db, people)
+    manage = evaluate(auth.principal, "maintenance.work_order.manage")
+    execute = evaluate(auth.principal, "maintenance.work_order.execute")
+
+    def named(site_id: uuid.UUID) -> bool:
+        # Revue L3A-R-13 : qui a travaillé et combien de temps n'est visible que de l'atelier, de
+        # l'exploitation qui décide et de l'audit — pas du dispatcher ni du HSE.
+        return (
+            (manage is not None and manage.covers_site(site_id))
+            or (execute is not None and execute.covers_site(site_id))
+            or "AUDITOR" in auth.scope.roles_for_site(site_id)
+        )
+
     out = []
     for o in orders:
+        show = named(o.site_id)
         data: dict[str, Any] = {
             "work_order_id": o.work_order_id,
             "number": o.number,
@@ -119,7 +137,7 @@ def work_orders_out(auth: Authorized, orders: list[WorkOrder], *, detail: bool =
             "status": o.status,
             "status_reason": o.status_reason,
             "assigned_to": o.assigned_to,
-            "assigned_name": names.get(o.assigned_to) if o.assigned_to else None,
+            "assigned_name": names.get(o.assigned_to) if o.assigned_to and show else None,
             "expected_ready_at": o.expected_ready_at,
             "diagnosis": o.diagnosis,
             "work_done": o.work_done,
@@ -142,7 +160,9 @@ def work_orders_out(auth: Authorized, orders: list[WorkOrder], *, detail: bool =
                     to_status=e.to_status,
                     reason=e.reason,
                     actor_user_id=e.actor_user_id,
-                    actor_name=names.get(e.actor_user_id),
+                    actor_name=names.get(e.actor_user_id) if show else None,
+                    subject_user_id=e.subject_user_id,
+                    subject_name=names.get(e.subject_user_id) if show and e.subject_user_id else None,
                     occurred_at=e.occurred_at,
                 )
                 for e in events[o.work_order_id]
@@ -151,7 +171,7 @@ def work_orders_out(auth: Authorized, orders: list[WorkOrder], *, detail: bool =
                 LabourOut(
                     work_order_labour_id=entry.work_order_labour_id,
                     mechanic_id=entry.mechanic_id,
-                    mechanic_name=names.get(entry.mechanic_id),
+                    mechanic_name=names.get(entry.mechanic_id) if show else None,
                     minutes=entry.minutes,
                     performed_on=entry.performed_on,
                     note=entry.note,
@@ -221,7 +241,12 @@ def mechanics(auth: Authorized, site_id: uuid.UUID) -> list[MechanicOut]:
 
 
 def _event(
-    auth: Authorized, order: WorkOrder, event_type: str, source: str | None, reason: str | None
+    auth: Authorized,
+    order: WorkOrder,
+    event_type: str,
+    source: str | None,
+    reason: str | None,
+    subject: uuid.UUID | None = None,
 ) -> None:
     auth.db.add(
         WorkOrderEvent(
@@ -232,6 +257,9 @@ def _event(
             to_status=order.status,
             reason=reason,
             actor_user_id=auth.user_id,
+            subject_user_id=subject,
+            # Même horloge que les autres horodatages de l'OT (revue L3A-R-14).
+            occurred_at=auth.clock.now(),
         )
     )
 
@@ -263,10 +291,30 @@ def _next_number(auth: Authorized) -> int:
     )
 
 
-def _immobilize(auth: Authorized, order: WorkOrder) -> None:
+def _immobilize(auth: Authorized, vehicle_id: uuid.UUID) -> None:
     """D-44 : panne bloquante → véhicule immobilisé, missions en cours suspendues (événement système)."""
-    change_status_for_maintenance(auth, order.vehicle_id, "IMMOBILIZED", "BREAKDOWN", "vehicle.change_status")
-    suspend_running_missions(auth, order.vehicle_id, "BREAKDOWN")
+    change_status_for_maintenance(auth, vehicle_id, "IMMOBILIZED", "BREAKDOWN", "vehicle.change_status")
+    suspend_running_missions(auth, vehicle_id, "BREAKDOWN")
+
+
+def _locked_vehicle(auth: Authorized, order: WorkOrder) -> VehicleFacts:
+    """Véhicule de l'OT, verrouillé, toujours sur le site de l'OT et dans la portée (revue L3A-R-09)."""
+    facts = vehicle_facts(auth.db, [order.vehicle_id], lock=True).get(order.vehicle_id)
+    if facts is None or facts.site_id != order.site_id or not auth.scope.covers_site(facts.site_id):
+        raise AppError("WORK_ORDER_STATE_INVALID", details={"reason": "vehicle_moved"})
+    return facts
+
+
+def _release_if_free(auth: Authorized, order: WorkOrder, facts: VehicleFacts) -> bool:
+    """Remise à disposition (D-44) : seulement un véhicule retenu par l'atelier — en maintenance, ou
+    immobilisé pour panne — et qu'aucun autre OT ne retient. Un statut posé pour une autre raison
+    (accident, interdiction HSE…) n'est jamais écrasé (revue L3A-R-05)."""
+    held_by_workshop = facts.status == "IN_MAINTENANCE" or (
+        facts.status == "IMMOBILIZED" and facts.status_reason_code == "BREAKDOWN"
+    )
+    if not held_by_workshop or _still_in_workshop(auth, order):
+        return False
+    return change_status_for_maintenance(auth, order.vehicle_id, "AVAILABLE", None, "vehicle.release")
 
 
 def create_work_order(auth: Authorized, body: WorkOrderCreate) -> WorkOrderOut:
@@ -275,18 +323,27 @@ def create_work_order(auth: Authorized, body: WorkOrderCreate) -> WorkOrderOut:
     facts = vehicle_facts(db, [body.vehicle_id]).get(body.vehicle_id)
     if facts is None or not auth.scope.covers_site(facts.site_id) or facts.status == "RETIRED":
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "vehicle_id"}])
-    if body.mission_id is not None and mission_vehicle(auth, body.mission_id) != body.vehicle_id:
+    if body.mission_id is not None and mission_vehicle(auth, body.mission_id) != (
+        body.vehicle_id,
+        facts.site_id,
+    ):
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "mission_id"}])
+    # Verrou du véhicule avant toute écriture, comme la clôture : pas de remise à disposition concurrente
+    # d'un véhicule qu'on est en train d'immobiliser (revue L3A-R-02). Portée contrôlée juste avant.
+    vehicle_facts(db, [body.vehicle_id], lock=True)
+    if body.immobilize:
+        _immobilize(auth, body.vehicle_id)
     now = auth.clock.now()
     order = WorkOrder(
         tenant_id=auth.tenant_id,
+        # Numéro pris en dernier : le verrou du compteur du tenant est tenu le moins longtemps (L3A-R-10).
         number=_next_number(auth),
         site_id=facts.site_id,
         vehicle_id=body.vehicle_id,
         mission_id=body.mission_id,
         priority=body.priority,
         symptom_code=body.symptom_code,
-        description=body.description,
+        description=(body.description or "").strip() or None,
         immobilize=body.immobilize,
         reported_at=now,
         reported_by=auth.user_id,
@@ -295,8 +352,6 @@ def create_work_order(auth: Authorized, body: WorkOrderCreate) -> WorkOrderOut:
     )
     db.add(order)
     db.flush()
-    if body.immobilize:
-        _immobilize(auth, order)
     _event(auth, order, "REQUESTED", None, None)
     _audit(
         auth,
@@ -352,6 +407,17 @@ def _executors(auth: Authorized, order: WorkOrder) -> set[uuid.UUID]:
         )
     ).all():
         actors |= {mechanic, recorder}
+    # Assignés successifs (revue L3A-R-08).
+    actors |= {
+        subject
+        for subject in db.execute(
+            select(WorkOrderEvent.subject_user_id).where(
+                WorkOrderEvent.work_order_id == order.work_order_id,
+                WorkOrderEvent.subject_user_id.is_not(None),
+            )
+        ).scalars()
+        if subject is not None
+    }
     if order.assigned_to is not None:
         actors.add(order.assigned_to)
     return actors
@@ -381,6 +447,7 @@ def decide(auth: Authorized, work_order_id: uuid.UUID, body: WorkOrderDecision, 
         if body.assigned_to is None:
             raise AppError("VALIDATION_ERROR", details=[{"field": "assigned_to", "type": "missing"}])
         _ensure_mechanic(auth, body.assigned_to, order.site_id)
+        changed["previous_assigned_to"] = str(order.assigned_to) if order.assigned_to else None
         order.assigned_to = body.assigned_to
         changed["assigned_to"] = str(body.assigned_to)
         if source == "APPROVED":
@@ -391,14 +458,25 @@ def decide(auth: Authorized, work_order_id: uuid.UUID, body: WorkOrderDecision, 
         if auth.user_id in _executors(auth, order):
             raise AppError("SELF_RELEASE_FORBIDDEN")
         order.closed_at, order.closed_by = now, auth.user_id
-        if not _still_in_workshop(auth, order):
-            change_status_for_maintenance(auth, order.vehicle_id, "AVAILABLE", None, "vehicle.release")
+        changed["vehicle_released"] = _release_if_free(auth, order, _locked_vehicle(auth, order))
+    elif body.action in ("REJECT", "CANCEL") and order.immobilize:
+        # Revue L3A-R-04 : une panne bloquante rejetée ou annulée ne laisse pas le véhicule immobilisé
+        # si rien d'autre ne le retient (fausse alerte, doublon).
+        changed["vehicle_released"] = _release_if_free(auth, order, _locked_vehicle(auth, order))
     if target is not None:
         order.status = target
-    order.status_reason = body.reason_code if order.status in ("REJECTED", "CANCELLED") else None
+        # Revue L3A-R-06 : le motif ne change qu'avec l'état.
+        order.status_reason = body.reason_code if order.status in ("REJECTED", "CANCELLED") else None
     order.updated_by = auth.user_id
     db.flush()
-    _event(auth, order, event_type, source, body.reason_code)
+    _event(
+        auth,
+        order,
+        event_type,
+        source,
+        body.reason_code,
+        body.assigned_to if body.action == "ASSIGN" else None,
+    )
     _audit(
         auth,
         f"work_order.{body.action.lower()}",
@@ -406,7 +484,10 @@ def decide(auth: Authorized, work_order_id: uuid.UUID, body: WorkOrderDecision, 
         reason=body.reason_code,
         before={"status": source},
         after={"status": order.status, **changed},
-        changed_fields=("status", *changed),
+        changed_fields=(
+            "status",
+            *(k for k in changed if k not in ("previous_assigned_to", "vehicle_released")),
+        ),
     )
     db.flush()
     out = work_orders_out(auth, [order], detail=True)[0]
@@ -445,6 +526,7 @@ def progress(
     now = auth.clock.now()
     if body.action == "START":
         order.started_at = order.started_at or now
+        _locked_vehicle(auth, order)
         # D-44 : le véhicule entre à l'atelier ; une mission encore en cours est suspendue.
         change_status_for_maintenance(auth, order.vehicle_id, "IN_MAINTENANCE", None, "vehicle.change_status")
         suspend_running_missions(auth, order.vehicle_id, "BREAKDOWN")
@@ -452,7 +534,7 @@ def progress(
         order.submitted_at = now
     if target is not None:
         order.status = target
-    order.status_reason = body.reason_code if order.status == "AWAITING_PARTS" else None
+        order.status_reason = body.reason_code if order.status == "AWAITING_PARTS" else None
     order.updated_by = auth.user_id
     db.flush()
     if event_type is not None:
@@ -487,6 +569,14 @@ def add_labour(auth: Authorized, work_order_id: uuid.UUID, body: LabourCreate) -
     reported = local_date(db, order.site_id, order.reported_at)
     if body.performed_on > today or body.performed_on < reported - timedelta(days=1):
         raise AppError("VALIDATION_ERROR", details=[{"field": "performed_on", "type": "out_of_range"}])
+    already = db.execute(
+        select(func.coalesce(func.sum(WorkOrderLabour.minutes), 0)).where(
+            WorkOrderLabour.mechanic_id == mechanic, WorkOrderLabour.performed_on == body.performed_on
+        )
+    ).scalar_one()
+    if already + body.minutes > MAX_MINUTES_PER_DAY:
+        # Revue L3A-R-11 : jamais plus de 24 h par mécanicien et par jour, tous OT confondus.
+        raise AppError("VALIDATION_ERROR", details=[{"field": "minutes", "type": "daily_limit"}])
     entry = WorkOrderLabour(
         tenant_id=auth.tenant_id,
         work_order_id=order.work_order_id,
