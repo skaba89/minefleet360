@@ -11,7 +11,7 @@ from app.core.http import check_version
 from app.fleet.models import Vehicle
 from app.maintenance.preventive_models import MaintenancePlan
 from app.maintenance.preventive_plan_inputs import PreventivePlanCreate
-from app.maintenance.preventive_write import MANAGE_PERMISSION
+from app.maintenance.preventive_write import MANAGE_PERMISSION, PREVENTIVE_MANAGE_PERMISSION
 
 
 def revise_plan(
@@ -25,7 +25,7 @@ def revise_plan(
     Le service doit être appelé par une route avec Require(MANAGE_PERMISSION).
     La contrainte d'unicité partielle en base prévient deux versions actives.
     """
-    if auth.scope.permission != MANAGE_PERMISSION:
+    if auth.scope.permission not in (MANAGE_PERMISSION, PREVENTIVE_MANAGE_PERMISSION):
         raise AppError("PERMISSION_DENIED")
 
     current = auth.db.execute(
