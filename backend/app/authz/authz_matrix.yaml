@@ -511,7 +511,9 @@ permissions:
     tranche: later
     kind: create
     site_bound: true
-    routes: [{ method: POST, path: /preventive-plans, shape: collection, success: 201 }]
+    routes:
+      - { method: POST, path: /preventive-plans, shape: collection, success: 201 }
+      - { method: POST, path: "/preventive-plans/{plan_id}/suspend", shape: item, success: 200 }
     audit: { action: maintenance.plan.create }
     grants:
       OPS_MANAGER: [TENANT, SITE]

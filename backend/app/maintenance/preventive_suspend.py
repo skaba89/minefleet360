@@ -15,7 +15,7 @@ from app.core.http import check_version
 from app.fleet.models import Vehicle
 from app.maintenance.preventive_models import MaintenancePlan
 from app.maintenance.preventive_plan_inputs import PreventivePlanSuspend
-from app.maintenance.preventive_write import MANAGE_PERMISSION
+from app.maintenance.preventive_write import MANAGE_PERMISSION, PREVENTIVE_MANAGE_PERMISSION
 
 
 def suspend_plan(
@@ -25,7 +25,7 @@ def suspend_plan(
     expected_version: int,
 ) -> MaintenancePlan:
     """Suspendre un plan, sans effacer les échéances ou les versions historiques."""
-    if auth.scope.permission != MANAGE_PERMISSION:
+    if auth.scope.permission not in (MANAGE_PERMISSION, PREVENTIVE_MANAGE_PERMISSION):
         raise AppError("PERMISSION_DENIED")
 
     plan = auth.db.execute(
