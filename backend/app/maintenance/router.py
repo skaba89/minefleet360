@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.http import IfMatch, Page, Pagination, etag
-from app.maintenance import service
+from app.maintenance import preventive_service, service
+from app.maintenance.preventive_schemas import PreventiveDueOut, PreventivePlanOut
 from app.maintenance.schemas import (
     LabourCreate,
     MechanicOut,
@@ -22,6 +23,7 @@ router = APIRouter(tags=["maintenance"], route_class=SecuredRoute)
 WorkOrderRead = Annotated[Authorized, Depends(Require("maintenance.work_order.read"))]
 WorkOrderManage = Annotated[Authorized, Depends(Require("maintenance.work_order.manage"))]
 WorkOrderExecute = Annotated[Authorized, Depends(Require("maintenance.work_order.execute"))]
+PreventiveRead = Annotated[Authorized, Depends(Require("maintenance.preventive.read"))]
 
 
 def _tagged(out: WorkOrderOut, response: Response) -> WorkOrderOut:
@@ -108,3 +110,20 @@ def add_work_order_labour(
 def list_mechanics(auth: WorkOrderManage, site_id: uuid.UUID | None = None) -> list[MechanicOut]:
     # Mécaniciens assignables sur un site (rôle MECHANIC ou WORKSHOP_CHIEF) ; aucun site → liste vide.
     return service.mechanics(auth, site_id) if site_id is not None else []
+
+
+@router.get("/vehicles/{vehicle_id}/preventive-plans", response_model=list[PreventivePlanOut])
+def list_vehicle_preventive_plans(
+    vehicle_id: uuid.UUID, auth: PreventiveRead, active_only: bool = False
+) -> list[PreventivePlanOut]:
+    return [
+        PreventivePlanOut.model_validate(item)
+        for item in preventive_service.plans_for_vehicle(auth, vehicle_id, active_only=active_only)
+    ]
+
+
+@router.get("/vehicles/{vehicle_id}/preventive-dues", response_model=list[PreventiveDueOut])
+def list_vehicle_preventive_dues(
+    vehicle_id: uuid.UUID, auth: PreventiveRead
+) -> list[PreventiveDueOut]:
+    return [PreventiveDueOut.model_validate(item) for item in preventive_service.dues_for_vehicle(auth, vehicle_id)]
