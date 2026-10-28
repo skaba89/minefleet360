@@ -80,6 +80,4 @@ def test_duplicate_protection_uses_named_database_constraint() -> None:
         )
         .on_conflict_do_nothing(constraint="uq_maintenance_due_idempotence")
     )
-    assert "uq_maintenance_due_idempotence" in str(
-        stmt.compile(dialect=postgresql.dialect())
-    )
+    assert "uq_maintenance_due_idempotence" in str(stmt.compile(dialect=postgresql.dialect()))
