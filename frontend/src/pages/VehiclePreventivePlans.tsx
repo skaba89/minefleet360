@@ -28,6 +28,10 @@ export function VehiclePreventivePlans({ vehicleId, siteId }: { vehicleId: strin
   const [saving, setSaving] = useState(false);
   const [suspendingId, setSuspendingId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
+  const [revisingId, setRevisingId] = useState<string | null>(null);
+  const [revisionDays, setRevisionDays] = useState("");
+  const [revisionKm, setRevisionKm] = useState("");
+  const [revisionHours, setRevisionHours] = useState("");
   const [error, setError] = useState<unknown>(null);
   const allowed = can(me.grants, "maintenance.preventive.read", siteId);
   const managing = can(me.grants, "maintenance.preventive.manage", siteId);
@@ -87,6 +91,41 @@ export function VehiclePreventivePlans({ vehicleId, siteId }: { vehicleId: strin
     }
   }
 
+  function startRevision(plan: PreventivePlan) {
+    setSuspendingId(null);
+    setRevisingId(plan.maintenance_plan_id);
+    setRevisionDays(plan.days_interval == null ? "" : String(plan.days_interval));
+    setRevisionKm(plan.km_interval == null ? "" : String(plan.km_interval));
+    setRevisionHours(plan.hours_interval == null ? "" : String(plan.hours_interval));
+    setError(null);
+  }
+
+  async function revisePlan(event: FormEvent<HTMLFormElement>, plan: PreventivePlan) {
+    event.preventDefault();
+    if (!revisionDays && !revisionKm && !revisionHours) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await request(`/preventive-plans/${plan.maintenance_plan_id}/revise`, {
+        method: "POST",
+        ifMatch: `"${plan.row_version}"`,
+        body: {
+          vehicle_id: vehicleId,
+          code: plan.code,
+          days_interval: revisionDays ? Number(revisionDays) : null,
+          km_interval: revisionKm || null,
+          hours_interval: revisionHours || null,
+        },
+      });
+      setRevisingId(null);
+      await queryClient.invalidateQueries({ queryKey: ["preventive-plans", vehicleId] });
+    } catch (failure) {
+      setError(failure);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <section aria-label="Plans de maintenance préventive">
       <h2>Plans de maintenance préventive</h2>
@@ -117,10 +156,37 @@ export function VehiclePreventivePlans({ vehicleId, siteId }: { vehicleId: strin
                 <td>{plan.active ? "Actif" : `Suspendu — ${plan.suspension_reason ?? "sans motif"}`}</td>
                 {managing && (
                   <td>
-                    {plan.active && suspendingId !== plan.maintenance_plan_id && (
+                    {plan.active && revisingId !== plan.maintenance_plan_id && suspendingId !== plan.maintenance_plan_id && (
                       <button type="button" disabled={saving} onClick={() => { setSuspendingId(plan.maintenance_plan_id); setReason(""); }}>
                         Suspendre
                       </button>
+                    )}
+                    {plan.active && revisingId !== plan.maintenance_plan_id && suspendingId !== plan.maintenance_plan_id && (
+                      <button type="button" disabled={saving} onClick={() => startRevision(plan)}>
+                        Réviser
+                      </button>
+                    )}
+                    {plan.active && revisingId === plan.maintenance_plan_id && (
+                      <form onSubmit={(event) => void revisePlan(event, plan)}>
+                        <label>
+                          Jours
+                          <input type="number" min="1" max="36500" value={revisionDays} onChange={(event) => setRevisionDays(event.target.value)} />
+                        </label>
+                        <label>
+                          Kilomètres
+                          <input type="number" min="0.1" step="0.1" value={revisionKm} onChange={(event) => setRevisionKm(event.target.value)} />
+                        </label>
+                        <label>
+                          Heures moteur
+                          <input type="number" min="0.1" step="0.1" value={revisionHours} onChange={(event) => setRevisionHours(event.target.value)} />
+                        </label>
+                        <button type="submit" disabled={saving || (!revisionDays && !revisionKm && !revisionHours)}>
+                          {saving ? "Révision…" : "Confirmer la révision"}
+                        </button>
+                        <button type="button" disabled={saving} onClick={() => setRevisingId(null)}>
+                          Annuler
+                        </button>
+                      </form>
                     )}
                     {plan.active && suspendingId === plan.maintenance_plan_id && (
                       <form onSubmit={(event) => void suspendPlan(event, plan)}>
