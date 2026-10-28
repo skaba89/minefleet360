@@ -11,6 +11,7 @@ import { can } from "../lib/permissions";
 import { formatDate, formatDateTime } from "../lib/time";
 import { useSites } from "../site/SiteContext";
 import { Documents, Meters } from "./VehicleRecords";
+import { VehiclePreventiveDues } from "./VehiclePreventiveDues";
 import { useCategories, VEHICLE_TONE } from "./VehiclesPage";
 
 type Vehicle = Schemas["VehicleOut"];
@@ -111,6 +112,7 @@ export function VehicleDetailPage() {
               />
             )}
             {can(me.grants, "fleet.document.read", v.site_id) && <Documents vehicle={v} />}
+            <VehiclePreventiveDues vehicleId={v.vehicle_id} siteId={v.site_id} />
             <History vehicle={v} timeZone={timezoneOf(v.site_id)} />
           </>
         )}
