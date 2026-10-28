@@ -75,5 +75,6 @@ def schedule_preventive_order(auth: Authorized, due_id: uuid.UUID) -> uuid.UUID:
     due.work_order_id = order.work_order_id
     due.status = "SCHEDULED"
     auth.db.flush()
+    order_id = order.work_order_id
     auth.db.commit()
-    return order.work_order_id
+    return order_id
