@@ -19,9 +19,7 @@ class ServiceRule:
     days_interval: int | None = None
 
     def __post_init__(self) -> None:
-        if self.km_interval is not None and (
-            not self.km_interval.is_finite() or self.km_interval <= 0
-        ):
+        if self.km_interval is not None and (not self.km_interval.is_finite() or self.km_interval <= 0):
             raise ValueError("km_interval doit être strictement positif et fini")
         if self.hours_interval is not None and (
             not self.hours_interval.is_finite() or self.hours_interval <= 0
