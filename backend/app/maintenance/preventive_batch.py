@@ -50,6 +50,5 @@ def preview_due_batch(plans: tuple[PlanSnapshot, ...], as_of: date) -> tuple[Pla
                 candidate=candidate,
             )
     return tuple(
-        produced[key]
-        for key in sorted(produced, key=lambda item: (str(item[0]), str(item[1]), item[2]))
+        produced[key] for key in sorted(produced, key=lambda item: (str(item[0]), str(item[1]), item[2]))
     )
