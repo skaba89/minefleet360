@@ -26,6 +26,8 @@ export function VehiclePreventivePlans({ vehicleId, siteId }: { vehicleId: strin
   const [kilometers, setKilometers] = useState("");
   const [hours, setHours] = useState("");
   const [saving, setSaving] = useState(false);
+  const [suspendingId, setSuspendingId] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
   const [error, setError] = useState<unknown>(null);
   const allowed = can(me.grants, "maintenance.preventive.read", siteId);
   const managing = can(me.grants, "maintenance.preventive.manage", siteId);
@@ -64,6 +66,27 @@ export function VehiclePreventivePlans({ vehicleId, siteId }: { vehicleId: strin
     }
   }
 
+  async function suspendPlan(event: FormEvent<HTMLFormElement>, plan: PreventivePlan) {
+    event.preventDefault();
+    if (reason.trim().length < 3) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await request(`/preventive-plans/${plan.maintenance_plan_id}/suspend`, {
+        method: "POST",
+        body: { reason: reason.trim() },
+        ifMatch: `"${plan.row_version}"`,
+      });
+      setSuspendingId(null);
+      setReason("");
+      await queryClient.invalidateQueries({ queryKey: ["preventive-plans", vehicleId] });
+    } catch (failure) {
+      setError(failure);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <section aria-label="Plans de maintenance préventive">
       <h2>Plans de maintenance préventive</h2>
@@ -76,6 +99,7 @@ export function VehiclePreventivePlans({ vehicleId, siteId }: { vehicleId: strin
               <th scope="col">Version</th>
               <th scope="col">Périodicités</th>
               <th scope="col">État</th>
+              {managing && <th scope="col">Action</th>}
             </tr>
           </thead>
           <tbody>
@@ -91,6 +115,29 @@ export function VehiclePreventivePlans({ vehicleId, siteId }: { vehicleId: strin
                   ].filter(Boolean).join(" · ")}
                 </td>
                 <td>{plan.active ? "Actif" : `Suspendu — ${plan.suspension_reason ?? "sans motif"}`}</td>
+                {managing && (
+                  <td>
+                    {plan.active && suspendingId !== plan.maintenance_plan_id && (
+                      <button type="button" disabled={saving} onClick={() => { setSuspendingId(plan.maintenance_plan_id); setReason(""); }}>
+                        Suspendre
+                      </button>
+                    )}
+                    {plan.active && suspendingId === plan.maintenance_plan_id && (
+                      <form onSubmit={(event) => void suspendPlan(event, plan)}>
+                        <label>
+                          Motif de suspension
+                          <input required minLength={3} maxLength={300} value={reason} onChange={(event) => setReason(event.target.value)} />
+                        </label>
+                        <button type="submit" disabled={saving || reason.trim().length < 3}>
+                          {saving ? "Suspension…" : "Confirmer"}
+                        </button>
+                        <button type="button" disabled={saving} onClick={() => { setSuspendingId(null); setReason(""); }}>
+                          Annuler
+                        </button>
+                      </form>
+                    )}
+                  </td>
+                )
               </tr>
             ))}
           </tbody>
