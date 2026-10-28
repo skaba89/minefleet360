@@ -33,6 +33,7 @@ CREATE TABLE maintenance_plan (
   row_version integer NOT NULL DEFAULT 1,
   CONSTRAINT pk_maintenance_plan PRIMARY KEY (maintenance_plan_id),
   CONSTRAINT uq_maintenance_plan_tenant_id UNIQUE (tenant_id, maintenance_plan_id),
+  CONSTRAINT uq_maintenance_plan_vehicle UNIQUE (tenant_id, maintenance_plan_id, vehicle_id),
   CONSTRAINT uq_maintenance_plan_code_version UNIQUE (tenant_id, vehicle_id, code, version),
   CONSTRAINT fk_mp__vehicle FOREIGN KEY (tenant_id, vehicle_id)
     REFERENCES vehicle (tenant_id, vehicle_id) ON DELETE RESTRICT,
@@ -71,8 +72,8 @@ CREATE TABLE maintenance_due (
   CONSTRAINT pk_maintenance_due PRIMARY KEY (maintenance_due_id),
   CONSTRAINT uq_maintenance_due_tenant_id UNIQUE (tenant_id, maintenance_due_id),
   CONSTRAINT uq_maintenance_due_idempotence UNIQUE (tenant_id, maintenance_plan_id, trigger_key),
-  CONSTRAINT fk_md__plan FOREIGN KEY (tenant_id, maintenance_plan_id)
-    REFERENCES maintenance_plan (tenant_id, maintenance_plan_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_md__plan FOREIGN KEY (tenant_id, maintenance_plan_id, vehicle_id)
+    REFERENCES maintenance_plan (tenant_id, maintenance_plan_id, vehicle_id) ON DELETE RESTRICT,
   CONSTRAINT fk_md__vehicle FOREIGN KEY (tenant_id, vehicle_id)
     REFERENCES vehicle (tenant_id, vehicle_id) ON DELETE RESTRICT,
   CONSTRAINT fk_md__work_order FOREIGN KEY (tenant_id, work_order_id)
