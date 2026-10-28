@@ -15,7 +15,7 @@ from app.maintenance.preventive_models import MaintenanceDue, MaintenancePlan
 
 def plans_query(
     tenant_id: uuid.UUID, vehicle_id: uuid.UUID, *, active_only: bool = False
-) -> Select[tuple[MaintenancePlan]]:
+) -> Select[MaintenancePlan]:
     """Restreint explicitement la requête au tenant et au véhicule demandés."""
     stmt = select(MaintenancePlan).where(
         MaintenancePlan.tenant_id == tenant_id,
@@ -26,7 +26,7 @@ def plans_query(
     return stmt.order_by(MaintenancePlan.code, MaintenancePlan.version.desc())
 
 
-def dues_query(tenant_id: uuid.UUID, vehicle_id: uuid.UUID) -> Select[tuple[MaintenanceDue]]:
+def dues_query(tenant_id: uuid.UUID, vehicle_id: uuid.UUID) -> Select[MaintenanceDue]:
     """La lecture d'échéances est toujours bornée au même tenant et véhicule."""
     return (
         select(MaintenanceDue)
