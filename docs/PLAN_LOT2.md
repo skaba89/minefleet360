@@ -95,32 +95,35 @@
 6. Indicateurs par site et matière sur une période (92 jours max) : mesuré, en attente et estimé séparés ; aucune donnée GPS.
 7. Interface : saisie depuis la fiche mission, page Pesées (filtres, approbation, annulation, correction), page Indicateurs.
 
-## 8. Tranche 2c — compteurs et documents des véhicules (cadrage délégué, 2026-10-28)
+## 8. Tranche 2c — compteurs et documents des véhicules (cadrage délégué, 2026-10-28 ; révisé après revue)
 
-### 8.1 Modèle (migration `0015_vehicle_meters_documents`)
-- `vehicle_meter_reading` (**ajout seul**) : véhicule, site (copié), `meter_kind` ∈ `ODOMETER_KM` | `HOUR_METER`, `value` (dixième), `read_at`, `source` (`MANUAL` ; télématique au lot 5), `reset_reason` (remise à zéro motivée), `recorded_by`, `recorded_at`.
-- `vehicle_document` : véhicule, `doc_type` ∈ `INSURANCE`, `TECHNICAL_INSPECTION`, `ROAD_PERMIT`, `REGISTRATION`, `SITE_ACCESS_PERMIT`, `OTHER`, `reference` (sans donnée personnelle), `issuer`, `valid_from`, `valid_until`, `status` (`VALID` | `WITHDRAWN`), **`blocks_assignment`** (décision C-06 prise document par document ; par défaut vrai pour l'assurance et la visite technique), `row_version`. Validité **dérivée** des dates comme pour les permis (D-03).
+### 8.1 Modèle (migrations `0015_vehicle_meters_documents` puis `0016_vehicle_documents_required`, la PR #16 ayant été fusionnée avant la revue)
+- `vehicle_meter_reading` (**ajout seul**) : véhicule, site (copié), `meter_kind` ∈ `ODOMETER_KM` | `HOUR_METER`, `value` (dixième), `read_at`, `source` (`MANUAL` ; télématique au lot 5), `reset_reason` (remise à zéro), `recorded_by`, `recorded_at`.
+- `vehicle_document` : véhicule, `doc_type` ∈ `INSURANCE`, `TECHNICAL_INSPECTION`, `INTERNAL_INSPECTION`, `LIFTING_INSPECTION`, `ROAD_PERMIT`, `REGISTRATION`, `SITE_ACCESS_PERMIT`, `OTHER`, `reference` (sans donnée personnelle), `issuer` (organisme), `valid_from`, `valid_until` (obligatoire sauf carte grise), `status` (`VALID` | `WITHDRAWN`, motif). **Immuable** une fois saisi (trigger) : seul le retrait est possible. Validité **dérivée** des dates (D-03).
+- `vehicle_category_document` (par tenant) et `vehicle_category_document_template` (global) : **documents exigés par catégorie** (D-42), copiés à la création du tenant comme les catégories (D-18).
 
 ### 8.2 Règles
 | ID | Règle |
 |---|---|
-| RM-100 | Compteur seulement si la catégorie du véhicule l'a (`has_odometer`, `has_hour_meter`) ; véhicule non réformé. |
-| RM-101 | Relevés ordonnés : `read_at` jamais avant le dernier relevé du même compteur, pas dans le futur (tolérance d'horloge), antidatage borné (`MF_METER_BACKDATE_TOLERANCE`, 7 jours). |
-| RM-102 | Valeur jamais inférieure au relevé précédent, sauf **remise à zéro motivée** (`METER_REPLACED`, `ROLLOVER`, `ENTRY_ERROR`), tracée. |
-| RM-103 | Progression plausible : heures moteur ≤ temps écoulé (+ 5 %), kilomètres ≤ `MF_METER_MAX_KMH` (120) × heures écoulées ; sinon refus (fraude ou erreur de saisie). |
-| RM-104 | Pour chaque type de document dont au moins un exemplaire est **bloquant**, le véhicule doit avoir un exemplaire valide : sinon l'affectation est refusée (`VEHICLE_DOCUMENT_EXPIRED`, `VEHICLE_DOCUMENT_EXPIRES_BEFORE_END`) et une affectation en cours devient **non conforme** (départ refusé). Échéance proche : avertissement. |
-| RM-105 | Un document ne se supprime pas : il est **retiré** (motif tracé) ou remplacé par un nouvel exemplaire. |
+| RM-100 | Compteur seulement si la catégorie l'a (`has_odometer`, `has_hour_meter`) ; véhicule non réformé. |
+| RM-101 | Relevés ordonnés : jamais avant le dernier relevé du même compteur ; avance d'horloge tolérée ramenée à l'heure serveur ; antidatage borné (`MF_METER_BACKDATE_TOLERANCE`, 7 jours). |
+| RM-102 | Valeur jamais inférieure au relevé précédent. Une baisse passe par une **remise à zéro** (action distincte, `fleet.meter.reset`), motivée, vers une valeur **inférieure** seulement. |
+| RM-103 | Progression plausible (D-43) : heures moteur ≤ temps écoulé + 5 % ; kilomètres ≤ plafond de la catégorie × heures écoulées (60, 100 ou 130 km/h). |
+| RM-104 | Pour chaque document **exigé par la catégorie** : un exemplaire valide. Échu, retiré ou pas encore valide → affectation refusée, affectation en cours non conforme, départ refusé. Jamais saisi → avertissement (`warn`) ou refus (`block`). Échéance à 45 jours → avertissement. |
+| RM-105 | Un document ne se supprime ni ne se modifie : retrait motivé, puis nouvel exemplaire. « Erreur de saisie » seulement dans les 24 h (sinon il ferait disparaître un document échu). |
 
 ### 8.3 Autorisations
 | Permission | Rôles |
 |---|---|
 | `fleet.meter.read`, `fleet.document.read` | lecteurs des véhicules (`fleet.vehicle.read`) |
 | `fleet.meter.record` | OPS_MANAGER, DISPATCHER (site), WORKSHOP_CHIEF (site), MECHANIC (site) |
+| `fleet.meter.reset` | OPS_MANAGER, WORKSHOP_CHIEF (site) |
 | `fleet.document.manage` | TENANT_ADMIN, OPS_MANAGER, HSE |
+| `fleet.vehicle_category.manage` (documents exigés) | TENANT_ADMIN |
 
 ### 8.4 Critères d'acceptation (2c)
-1. Relevé accepté dans l'ordre et en progression plausible ; valeur en baisse sans motif, relevé antérieur au dernier, progression impossible, compteur absent de la catégorie → 422.
-2. Relevés en ajout seul (UPDATE/DELETE refusés en base), RLS forcée, isolation testée depuis la matrice.
-3. Document bloquant expiré : affectation refusée, affectation en cours non conforme et départ de mission refusé ; renouvellement → de nouveau éligible.
-4. Document non bloquant expiré : simple alerte ; retrait d'un document tracé dans l'audit.
-5. Interface : fiche véhicule avec relevés (saisie) et documents (ajout, retrait, échéances) ; liste des documents à échéance.
+1. Relevé accepté dans l'ordre et en progression plausible ; baisse, relevé antérieur au dernier, progression impossible, compteur absent de la catégorie → 422 ; remise à zéro vers une valeur supérieure → 422 ; mécanicien → 403 sur la remise à zéro.
+2. Relevés en ajout seul, documents immuables (UPDATE refusé en base hors retrait), RLS forcée, isolation testée depuis la matrice.
+3. Document exigé échu : affectation refusée, affectation en cours non conforme et départ refusé ; renouvellement → de nouveau éligible ; ni un document non exigé, ni un retrait tardif pour « erreur de saisie » ne lèvent le blocage.
+4. Document exigé jamais saisi : avertissement par défaut, refus en politique `block`.
+5. Interface : fiche véhicule (compteurs, remise à zéro, documents, manquants), page des échéances, onglet d'administration « Documents exigés ».

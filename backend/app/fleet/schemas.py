@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import AwareDatetime, BaseModel, Field
 
 from app.core.http import StrictModel
+from app.fleet.contracts import UNDATED_DOCUMENT_TYPES
 
 VehicleStatus = Literal["AVAILABLE", "IN_MAINTENANCE", "IMMOBILIZED", "OUT_OF_SERVICE", "RETIRED"]
 OperationalStatus = Literal["AVAILABLE", "IN_MAINTENANCE", "IMMOBILIZED", "OUT_OF_SERVICE"]
@@ -115,14 +116,23 @@ class StatusHistoryOut(BaseModel):
 # --- Compteurs et documents (lot 2c, PLAN_LOT2 §8) ------------------------------------------------------
 
 MeterKind = Literal["ODOMETER_KM", "HOUR_METER"]
-# Remise à zéro motivée : seule exception à la progression du compteur (RM-102).
+# Remise à zéro motivée : seule exception à la progression du compteur (RM-102), action distincte.
 ResetReason = Literal["METER_REPLACED", "ROLLOVER", "ENTRY_ERROR"]
 DocumentType = Literal[
-    "INSURANCE", "TECHNICAL_INSPECTION", "ROAD_PERMIT", "REGISTRATION", "SITE_ACCESS_PERMIT", "OTHER"
+    "INSURANCE",
+    "TECHNICAL_INSPECTION",
+    "INTERNAL_INSPECTION",
+    "LIFTING_INSPECTION",
+    "ROAD_PERMIT",
+    "REGISTRATION",
+    "SITE_ACCESS_PERMIT",
+    "OTHER",
 ]
+# Seule la carte grise est sans échéance (revue L2C-R-03) ; tout autre document a une date de fin.
+UNDATED_TYPES: frozenset[str] = UNDATED_DOCUMENT_TYPES
 WithdrawReason = Literal["REPLACED", "LOST", "REVOKED_BY_AUTHORITY", "ENTRY_ERROR", "OTHER"]
-# Défaut C-06 : l'assurance et la visite technique bloquent l'affectation une fois échues.
-BLOCKING_BY_DEFAULT: frozenset[str] = frozenset({"INSURANCE", "TECHNICAL_INSPECTION"})
+# Référence administrative : chiffres, lettres et séparateurs, sans donnée personnelle.
+REFERENCE = r"^[A-Za-z0-9 /._-]{1,60}$"
 
 
 class MeterReadingCreate(StrictModel):
@@ -131,7 +141,10 @@ class MeterReadingCreate(StrictModel):
     value: Decimal = Field(ge=0, lt=100_000_000, max_digits=12, decimal_places=1)
     # Heure du relevé (fuseau obligatoire) ; par défaut l'heure du serveur (RM-101).
     read_at: AwareDatetime | None = None
-    reset_reason: ResetReason | None = None
+
+
+class MeterReset(MeterReadingCreate):
+    reset_reason: ResetReason
 
 
 class MeterReadingOut(BaseModel):
@@ -142,27 +155,20 @@ class MeterReadingOut(BaseModel):
     read_at: datetime
     source: str
     reset_reason: str | None
-    recorded_by: uuid.UUID
+    # Masqué hors administration et audit (revue L2C-R-08).
+    recorded_by: uuid.UUID | None = None
     recorded_at: datetime
 
 
 class DocumentCreate(StrictModel):
     doc_type: DocumentType
-    # Référence administrative (numéro de police, de procès-verbal…) : pas de donnée personnelle.
-    reference: str = Field(pattern=r"^[A-Za-z0-9 /._-]{1,60}$")
+    # Numéro du document (police, procès-verbal…) : pas de donnée personnelle.
+    reference: str = Field(pattern=REFERENCE)
+    # Organisme émetteur (assureur, centre de contrôle, autorité) : jamais le nom d'une personne.
     issuer: str | None = Field(default=None, min_length=2, max_length=120)
     valid_from: date | None = None
+    # Obligatoire sauf pour la carte grise.
     valid_until: date | None = None
-    # Par défaut : vrai pour l'assurance et la visite technique (C-06).
-    blocks_assignment: bool | None = None
-
-
-class DocumentUpdate(StrictModel):
-    reference: str | None = Field(default=None, pattern=r"^[A-Za-z0-9 /._-]{1,60}$")
-    issuer: str | None = Field(default=None, min_length=2, max_length=120)
-    valid_from: date | None = None
-    valid_until: date | None = None
-    blocks_assignment: bool | None = None
 
 
 class DocumentWithdraw(StrictModel):
@@ -181,7 +187,25 @@ class DocumentOut(BaseModel):
     valid_until: date | None
     status: str
     status_reason: str | None
-    blocks_assignment: bool
+    # Type exigé par la catégorie du véhicule (D-42) : un exemplaire valide conditionne l'affectation.
+    required: bool
     # Validité dérivée des dates au fuseau du site (D-03) : VALID, EXPIRING, EXPIRED, WITHDRAWN…
     validity: str
+    created_at: datetime
     row_version: int
+
+
+class VehicleDocumentsOut(BaseModel):
+    documents: list[DocumentOut]
+    required_types: list[str]
+    # Types exigés sans exemplaire valide : affectation refusée ou signalée selon la politique (D-42).
+    missing_types: list[str]
+
+
+class CategoryDocumentsIn(StrictModel):
+    doc_types: list[DocumentType] = Field(max_length=8)
+
+
+class CategoryDocumentsOut(BaseModel):
+    vehicle_category_id: uuid.UUID
+    doc_types: list[str]

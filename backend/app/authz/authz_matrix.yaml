@@ -258,6 +258,7 @@ permissions:
     routes:
       - { method: GET, path: /vehicle-categories, shape: collection, success: 200 }
       - { method: GET, path: "/vehicle-categories/{category_id}", shape: item, success: 200 }
+      - { method: GET, path: "/vehicle-categories/{category_id}/required-documents", shape: item, success: 200 }
     grants:
       TENANT_ADMIN: [TENANT]
       DIRECTION: [TENANT]
@@ -347,17 +348,27 @@ permissions:
     site_bound: true
     routes:
       - { method: POST, path: "/vehicles/{vehicle_id}/documents", shape: item, success: 201 }
-      - { method: PATCH, path: "/vehicle-documents/{vehicle_document_id}", shape: item, success: 200 }
       - { method: POST, path: "/vehicle-documents/{vehicle_document_id}/withdraw", shape: item, success: 200 }
-    # Actions écrites : vehicle_document.create, .update, .withdraw.
-    audit: { action: vehicle_document.update }
+    # Documents immuables (revue L2C-R-02) : actions écrites vehicle_document.create et .withdraw.
+    audit: { action: vehicle_document.withdraw }
     grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT, SITE], HSE: [TENANT, SITE] }
+  # D-42 : documents exigés par catégorie, décidés par l'administrateur du tenant.
   fleet.vehicle_category.manage:
-    tranche: later
+    tranche: 1c
     kind: update
     site_bound: false
-    routes: []
-    grants: {}
+    routes:
+      - { method: PUT, path: "/vehicle-categories/{category_id}/required-documents", shape: item, success: 200 }
+    audit: { action: vehicle_category.required_documents }
+    grants: { TENANT_ADMIN: [TENANT] }
+  # Revue L2C-R-04 : remise à zéro d'un compteur, réservée à l'atelier et à l'exploitation.
+  fleet.meter.reset:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes: [{ method: POST, path: "/vehicles/{vehicle_id}/meter-resets", shape: item, success: 201 }]
+    audit: { action: vehicle_meter.reset }
+    grants: { OPS_MANAGER: [TENANT, SITE], WORKSHOP_CHIEF: [SITE] }
 
   # --- workforce (1b) --------------------------------------------------------------------------------
   workforce.driver.read:
@@ -644,6 +655,9 @@ field_policies:
     restrictions: { visible_to_roles: [HR, HSE] }
   vehicle_status_history:
     changed_by: { visible_to_roles: [TENANT_ADMIN, AUDITOR] }
+  vehicle_meter_reading:
+    recorded_by: { visible_to_roles: [TENANT_ADMIN, AUDITOR] }
 
 global_tables:
-  [role, role_allowed_scope, license_category_ref, vehicle_category_template, vehicle_category_template_license]
+  [role, role_allowed_scope, license_category_ref, vehicle_category_template, vehicle_category_template_license,
+   vehicle_category_document_template]

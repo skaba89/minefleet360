@@ -8,7 +8,23 @@ from datetime import date
 from sqlalchemy import and_, func, select, text
 from sqlalchemy.orm import Session
 
-from app.fleet.models import Vehicle, VehicleCategory, VehicleCategoryLicense, VehicleDocument
+from app.core.config import get_settings
+from app.fleet.models import (
+    Vehicle,
+    VehicleCategory,
+    VehicleCategoryDocument,
+    VehicleCategoryLicense,
+    VehicleDocument,
+)
+
+
+@dataclass(frozen=True)
+class DocumentFact:
+    vehicle_document_id: uuid.UUID
+    doc_type: str
+    status: str
+    valid_from: date | None
+    valid_until: date | None
 
 
 @dataclass(frozen=True)
@@ -26,17 +42,12 @@ class VehicleFacts:
     required_license_categories: frozenset[str]
     # Capacité NOMINALE constructeur (kg) : base d'une estimation ou d'une alerte, jamais un tonnage mesuré.
     rated_payload_kg: int | None = None
-    # Documents des types dont au moins un exemplaire est bloquant (RM-104), tous exemplaires confondus.
-    documents: tuple["DocumentFact", ...] = ()
-
-
-@dataclass(frozen=True)
-class DocumentFact:
-    vehicle_document_id: uuid.UUID
-    doc_type: str
-    status: str
-    valid_from: date | None
-    valid_until: date | None
+    # Documents exigés par la catégorie (D-42) et exemplaires de ces types (hors retraits pour erreur).
+    required_documents: frozenset[str] = frozenset()
+    documents: tuple[DocumentFact, ...] = ()
+    # D-42 : document exigé jamais saisi → bloquant (« block ») ou simple avertissement (« warn »).
+    missing_documents_block: bool = False
+    document_warning_days: int = 45
 
 
 def vehicle_facts(
@@ -63,7 +74,9 @@ def vehicle_facts(
         ).where(VehicleCategoryLicense.vehicle_category_id.in_(category_ids))
     ):
         licenses[category_id].add(code)
-    documents = blocking_documents(db, [vehicle.vehicle_id for vehicle, _ in rows])
+    required = required_documents(db, category_ids)
+    documents = _documents(db, [vehicle.vehicle_id for vehicle, _ in rows])
+    settings = get_settings()
     return {
         vehicle.vehicle_id: VehicleFacts(
             vehicle_id=vehicle.vehicle_id,
@@ -75,42 +88,49 @@ def vehicle_facts(
             requires_internal_authorization=category.requires_internal_authorization,
             required_license_categories=frozenset(licenses[category.vehicle_category_id]),
             rated_payload_kg=vehicle.rated_payload_kg,
-            documents=tuple(documents.get(vehicle.vehicle_id, ())),
+            required_documents=required.get(category.vehicle_category_id, frozenset()),
+            documents=tuple(
+                d
+                for d in documents.get(vehicle.vehicle_id, ())
+                if d.doc_type in required.get(category.vehicle_category_id, frozenset())
+            ),
+            missing_documents_block=settings.required_documents_policy == "block",
+            document_warning_days=settings.document_warning_days,
         )
         for vehicle, category in rows
     }
 
 
-# Un document retiré pour erreur de saisie n'a jamais existé pour l'éligibilité ; les autres retraits
-# (perte, retrait par l'autorité…) laissent le type exigé tant qu'aucun exemplaire valide ne le remplace.
+def required_documents(db: Session, category_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, frozenset[str]]:
+    """Types de document exigés par catégorie de véhicule (D-42), tenant courant (RLS)."""
+    ids = sorted(set(category_ids))
+    if not ids:
+        return {}
+    out: dict[uuid.UUID, set[str]] = {}
+    for category_id, doc_type in db.execute(
+        select(VehicleCategoryDocument.vehicle_category_id, VehicleCategoryDocument.doc_type).where(
+            VehicleCategoryDocument.vehicle_category_id.in_(ids), VehicleCategoryDocument.required.is_(True)
+        )
+    ):
+        out.setdefault(category_id, set()).add(doc_type)
+    return {k: frozenset(v) for k, v in out.items()}
+
+
+# Seule la carte grise est sans échéance : tout autre document non daté ne couvre jamais un type exigé.
+UNDATED_DOCUMENT_TYPES: frozenset[str] = frozenset({"REGISTRATION"})
+
+# Un document retiré pour erreur de saisie (possible seulement peu après sa création, revue L2C-R-01)
+# n'a jamais existé ; les autres retraits laissent le type exigé non satisfait.
 ENTRY_ERROR = and_(VehicleDocument.status == "WITHDRAWN", VehicleDocument.status_reason == "ENTRY_ERROR")
 
 
-def blocking_documents(db: Session, vehicle_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, list[DocumentFact]]:
-    """Pour chaque véhicule, tous les exemplaires des types de document dont un exemplaire est bloquant."""
-    ids = sorted(set(vehicle_ids))
-    if not ids:
+def _documents(db: Session, vehicle_ids: list[uuid.UUID]) -> dict[uuid.UUID, list[DocumentFact]]:
+    if not vehicle_ids:
         return {}
-    blocking = (
-        select(VehicleDocument.vehicle_id, VehicleDocument.doc_type)
-        .where(VehicleDocument.vehicle_id.in_(ids), VehicleDocument.blocks_assignment.is_(True))
-        .where(~ENTRY_ERROR)
-        .distinct()
-        .subquery()
-    )
-    rows = db.execute(
-        select(VehicleDocument)
-        .where(~ENTRY_ERROR)
-        .join(
-            blocking,
-            and_(
-                blocking.c.vehicle_id == VehicleDocument.vehicle_id,
-                blocking.c.doc_type == VehicleDocument.doc_type,
-            ),
-        )
-    ).scalars()
     out: dict[uuid.UUID, list[DocumentFact]] = {}
-    for d in rows:
+    for d in db.execute(
+        select(VehicleDocument).where(VehicleDocument.vehicle_id.in_(vehicle_ids), ~ENTRY_ERROR)
+    ).scalars():
         out.setdefault(d.vehicle_id, []).append(
             DocumentFact(d.vehicle_document_id, d.doc_type, d.status, d.valid_from, d.valid_until)
         )
@@ -152,6 +172,19 @@ def seed_tenant_catalog(db: Session, tenant_id: uuid.UUID) -> int:
             SELECT vc.tenant_id, vc.vehicle_category_id, l.license_category_code
             FROM vehicle_category vc
             JOIN vehicle_category_template_license l ON l.category_code = vc.code
+            WHERE vc.tenant_id = :tid
+            """
+        ),
+        {"tid": str(tenant_id)},
+    )
+    # Documents exigés par défaut (D-42), modifiables ensuite par l'administrateur du tenant.
+    db.execute(
+        text(
+            """
+            INSERT INTO vehicle_category_document (tenant_id, vehicle_category_id, doc_type)
+            SELECT vc.tenant_id, vc.vehicle_category_id, t.doc_type
+            FROM vehicle_category vc
+            JOIN vehicle_category_document_template t ON t.category_code = vc.code
             WHERE vc.tenant_id = :tid
             """
         ),

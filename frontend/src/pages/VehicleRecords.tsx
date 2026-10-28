@@ -4,7 +4,7 @@ import { Link } from "react-router";
 
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
-import { Badge, DataState } from "../components/common";
+import { Badge, DataState, ErrorMessage } from "../components/common";
 import { ActionForm, Options } from "../components/forms";
 import {
   DOCUMENT_TYPES,
@@ -22,20 +22,20 @@ import { useSites } from "../site/SiteContext";
 type Vehicle = Schemas["VehicleOut"];
 type Category = Schemas["VehicleCategoryOut"];
 type MeterKind = Schemas["MeterReadingCreate"]["meter_kind"];
-type ResetReason = NonNullable<Schemas["MeterReadingCreate"]["reset_reason"]>;
+type ResetReason = Schemas["MeterReset"]["reset_reason"];
 type DocType = Schemas["DocumentCreate"]["doc_type"];
 type WithdrawReason = Schemas["DocumentWithdraw"]["reason_code"];
 type Doc = Schemas["DocumentOut"];
-// Défaut C-06 côté serveur : l'assurance et la visite technique bloquent l'affectation une fois échues.
-const BLOCKING_BY_DEFAULT = new Set(["INSURANCE", "TECHNICAL_INSPECTION"]);
+// Seule la carte grise est sans échéance (règle serveur).
+const UNDATED = new Set(["REGISTRATION"]);
 
-/** Relevés de compteur (US-2.09) : ordonnés, en progression plausible, remise à zéro motivée. */
+/** Relevés de compteur (US-2.09) : ordonnés, en progression plausible ; remise à zéro à part. */
 export function Meters({ vehicle: v, category }: { vehicle: Vehicle; category: Category | undefined }) {
   const me = useMe();
   const queryClient = useQueryClient();
   const { timezoneOf } = useSites();
   const tz = timezoneOf(v.site_id);
-  const [adding, setAdding] = useState(false);
+  const [panel, setPanel] = useState<"reading" | "reset" | null>(null);
   const kinds = (["ODOMETER_KM", "HOUR_METER"] as const).filter((k) =>
     k === "ODOMETER_KM" ? category?.has_odometer : category?.has_hour_meter,
   );
@@ -48,37 +48,39 @@ export function Meters({ vehicle: v, category }: { vehicle: Vehicle; category: C
   if (kinds.length === 0) return null;
   const items = readings.data?.items ?? [];
   const latest = (kind: string) => items.find((r) => r.meter_kind === kind);
-  const canRecord = v.status !== "RETIRED" && can(me.grants, "fleet.meter.record", v.site_id);
+  const active = v.status !== "RETIRED";
+  const done = () => {
+    setPanel(null);
+    void queryClient.invalidateQueries({ queryKey: ["meter-readings", v.vehicle_id] });
+  };
   return (
     <>
       <div className="page-head">
         <h2>Compteurs</h2>
-        {canRecord && !adding && (
-          <button type="button" onClick={() => setAdding(true)}>
-            Nouveau relevé
-          </button>
-        )}
+        <div className="row">
+          {active && can(me.grants, "fleet.meter.record", v.site_id) && panel === null && (
+            <button type="button" onClick={() => setPanel("reading")}>
+              Nouveau relevé
+            </button>
+          )}
+          {active && can(me.grants, "fleet.meter.reset", v.site_id) && panel === null && items.length > 0 && (
+            <button type="button" onClick={() => setPanel("reset")}>
+              Remise à zéro
+            </button>
+          )}
+        </div>
       </div>
       <dl className="facts">
         {kinds.map((k) => (
           <div className="fact" key={k}>
             <dt>{label(METER_KINDS, k)}</dt>
-            <dd>{latest(k) ? `${latest(k)?.value.toLocaleString("fr-FR")} (le ${formatDateTime(latest(k)?.read_at, tz)})` : "—"}</dd>
+            <dd>
+              {latest(k) ? `${latest(k)?.value.toLocaleString("fr-FR")} (le ${formatDateTime(latest(k)?.read_at, tz)})` : "—"}
+            </dd>
           </div>
         ))}
       </dl>
-      {adding && (
-        <ReadingForm
-          vehicleId={v.vehicle_id}
-          kinds={kinds}
-          timeZone={tz}
-          onCancel={() => setAdding(false)}
-          onDone={() => {
-            setAdding(false);
-            void queryClient.invalidateQueries({ queryKey: ["meter-readings", v.vehicle_id] });
-          }}
-        />
-      )}
+      {panel && <ReadingForm vehicleId={v.vehicle_id} kinds={kinds} timeZone={tz} reset={panel === "reset"} onCancel={() => setPanel(null)} onDone={done} />}
       <DataState loading={readings.isLoading} error={readings.error} empty={items.length === 0} emptyText="Aucun relevé.">
         <table>
           <thead>
@@ -109,12 +111,14 @@ function ReadingForm({
   vehicleId,
   kinds,
   timeZone,
+  reset,
   onCancel,
   onDone,
 }: {
   vehicleId: string;
   kinds: MeterKind[];
   timeZone: string;
+  reset: boolean;
   onCancel: () => void;
   onDone: () => void;
 }) {
@@ -122,25 +126,27 @@ function ReadingForm({
     meter_kind: kinds[0] as string,
     value: "",
     read_at: utcToZonedInput(new Date(), timeZone),
-    reset: false,
     reset_reason: "METER_REPLACED",
   });
+  const body = {
+    meter_kind: form.meter_kind as MeterKind,
+    value: Number(form.value),
+    read_at: zonedInputToUtc(form.read_at, timeZone).toISOString(),
+  };
   return (
     <ActionForm
-      title="Nouveau relevé de compteur"
-      submitLabel="Enregistrer le relevé"
+      title={reset ? "Remise à zéro du compteur" : "Nouveau relevé de compteur"}
+      submitLabel={reset ? "Enregistrer la remise à zéro" : "Enregistrer le relevé"}
+      danger={reset}
       onCancel={onCancel}
       onDone={onDone}
       onSubmit={() =>
-        call("post", "/vehicles/{vehicle_id}/meter-readings", {
-          path: { vehicle_id: vehicleId },
-          body: {
-            meter_kind: form.meter_kind as MeterKind,
-            value: Number(form.value),
-            read_at: zonedInputToUtc(form.read_at, timeZone).toISOString(),
-            reset_reason: form.reset ? (form.reset_reason as ResetReason) : null,
-          },
-        })
+        reset
+          ? call("post", "/vehicles/{vehicle_id}/meter-resets", {
+              path: { vehicle_id: vehicleId },
+              body: { ...body, reset_reason: form.reset_reason as ResetReason },
+            })
+          : call("post", "/vehicles/{vehicle_id}/meter-readings", { path: { vehicle_id: vehicleId }, body })
       }
     >
       <label>
@@ -154,25 +160,14 @@ function ReadingForm({
         </select>
       </label>
       <label>
-        Valeur relevée
-        <input
-          type="number"
-          required
-          min={0}
-          step={0.1}
-          value={form.value}
-          onChange={(e) => setForm({ ...form, value: e.target.value })}
-        />
+        {reset ? "Nouvelle valeur (inférieure au dernier relevé)" : "Valeur relevée"}
+        <input type="number" required min={0} step={0.1} value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} />
       </label>
       <label>
         Heure du relevé (heure du site)
         <input type="datetime-local" required value={form.read_at} onChange={(e) => setForm({ ...form, read_at: e.target.value })} />
       </label>
-      <label className="checkbox">
-        <input type="checkbox" checked={form.reset} onChange={(e) => setForm({ ...form, reset: e.target.checked })} />
-        Remise à zéro (valeur inférieure au relevé précédent)
-      </label>
-      {form.reset && (
+      {reset && (
         <label>
           Motif de la remise à zéro
           <select value={form.reset_reason} onChange={(e) => setForm({ ...form, reset_reason: e.target.value })}>
@@ -181,13 +176,15 @@ function ReadingForm({
         </label>
       )}
       <p className="muted small">
-        Un relevé ne peut pas être antérieur au précédent ni progresser plus vite que le temps écoulé ne le permet.
+        {reset
+          ? "Réservée à l'atelier et à l'exploitation ; la valeur précédente reste dans l'historique et le journal."
+          : "Un relevé ne peut pas être antérieur au précédent, ni en baisse, ni progresser plus vite que le temps écoulé ne le permet."}
       </p>
     </ActionForm>
   );
 }
 
-/** Documents réglementaires (US-2.10) : échéances, bloquants pour l'affectation (C-06), retrait motivé. */
+/** Documents réglementaires (US-2.10, D-42) : exigés selon la catégorie, immuables, retrait motivé. */
 export function Documents({ vehicle: v }: { vehicle: Vehicle }) {
   const me = useMe();
   const queryClient = useQueryClient();
@@ -203,7 +200,8 @@ export function Documents({ vehicle: v }: { vehicle: Vehicle }) {
     setWithdrawing(null);
     void queryClient.invalidateQueries({ queryKey: ["vehicle-documents"] });
   };
-  const items = docs.data ?? [];
+  const items = docs.data?.documents ?? [];
+  const missing = docs.data?.missing_types ?? [];
   return (
     <>
       <div className="page-head">
@@ -214,6 +212,11 @@ export function Documents({ vehicle: v }: { vehicle: Vehicle }) {
           </button>
         )}
       </div>
+      {missing.length > 0 && (
+        <p className="warn-text" role="status">
+          Documents exigés manquants ou non valides : {missing.map((t) => label(DOCUMENT_TYPES, t)).join(", ")}.
+        </p>
+      )}
       {adding && <DocumentForm vehicleId={v.vehicle_id} onCancel={() => setAdding(false)} onDone={refresh} />}
       {withdrawing && <WithdrawForm doc={withdrawing} onCancel={() => setWithdrawing(null)} onDone={refresh} />}
       <DataState loading={docs.isLoading} error={docs.error} empty={items.length === 0} emptyText="Aucun document enregistré.">
@@ -224,7 +227,7 @@ export function Documents({ vehicle: v }: { vehicle: Vehicle }) {
               <th scope="col">Référence</th>
               <th scope="col">Échéance</th>
               <th scope="col">Validité</th>
-              <th scope="col">Bloquant</th>
+              <th scope="col">Exigé</th>
               {canManage && <th scope="col">Action</th>}
             </tr>
           </thead>
@@ -236,12 +239,12 @@ export function Documents({ vehicle: v }: { vehicle: Vehicle }) {
                   {d.reference}
                   {d.issuer && <div className="small muted">{d.issuer}</div>}
                 </td>
-                <td>{formatDate(d.valid_until)}</td>
+                <td>{d.valid_until ? formatDate(d.valid_until) : "Sans échéance"}</td>
                 <td>
                   <Badge tone={VALIDITY_TONE[d.validity] ?? "neutral"}>{label(VALIDITY, d.validity)}</Badge>
                   {d.status_reason && <div className="small muted">{label(WITHDRAW_REASONS, d.status_reason)}</div>}
                 </td>
-                <td>{d.blocks_assignment ? "Oui" : "Non"}</td>
+                <td>{d.required ? "Oui" : "Non"}</td>
                 {canManage && (
                   <td>
                     {d.status === "VALID" && (
@@ -261,14 +264,8 @@ export function Documents({ vehicle: v }: { vehicle: Vehicle }) {
 }
 
 function DocumentForm({ vehicleId, onCancel, onDone }: { vehicleId: string; onCancel: () => void; onDone: () => void }) {
-  const [form, setForm] = useState({
-    doc_type: "INSURANCE",
-    reference: "",
-    issuer: "",
-    valid_from: "",
-    valid_until: "",
-    blocks: true,
-  });
+  const [form, setForm] = useState({ doc_type: "INSURANCE", reference: "", issuer: "", valid_from: "", valid_until: "" });
+  const undated = UNDATED.has(form.doc_type);
   return (
     <ActionForm
       title="Nouveau document"
@@ -284,17 +281,13 @@ function DocumentForm({ vehicleId, onCancel, onDone }: { vehicleId: string; onCa
             issuer: form.issuer.trim() || null,
             valid_from: form.valid_from || null,
             valid_until: form.valid_until || null,
-            blocks_assignment: form.blocks,
           },
         })
       }
     >
       <label>
         Type de document
-        <select
-          value={form.doc_type}
-          onChange={(e) => setForm({ ...form, doc_type: e.target.value, blocks: BLOCKING_BY_DEFAULT.has(e.target.value) })}
-        >
+        <select value={form.doc_type} onChange={(e) => setForm({ ...form, doc_type: e.target.value })}>
           <Options map={DOCUMENT_TYPES} />
         </select>
       </label>
@@ -303,7 +296,7 @@ function DocumentForm({ vehicleId, onCancel, onDone }: { vehicleId: string; onCa
         <input required pattern="[A-Za-z0-9 /._\-]{1,60}" maxLength={60} value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
       </label>
       <label>
-        Émetteur (facultatif)
+        Organisme émetteur (facultatif)
         <input maxLength={120} value={form.issuer} onChange={(e) => setForm({ ...form, issuer: e.target.value })} />
       </label>
       <label>
@@ -311,19 +304,13 @@ function DocumentForm({ vehicleId, onCancel, onDone }: { vehicleId: string; onCa
         <input type="date" value={form.valid_from} onChange={(e) => setForm({ ...form, valid_from: e.target.value })} />
       </label>
       <label>
-        Valable jusqu'au (inclus)
-        <input
-          type="date"
-          required={form.blocks}
-          value={form.valid_until}
-          onChange={(e) => setForm({ ...form, valid_until: e.target.value })}
-        />
+        Valable jusqu'au (inclus){undated ? " — facultatif" : ""}
+        <input type="date" required={!undated} value={form.valid_until} onChange={(e) => setForm({ ...form, valid_until: e.target.value })} />
       </label>
-      <label className="checkbox">
-        <input type="checkbox" checked={form.blocks} onChange={(e) => setForm({ ...form, blocks: e.target.checked })} />
-        Bloque l'affectation du véhicule une fois échu
-      </label>
-      <p className="muted small">Aucune donnée personnelle dans la référence : uniquement le numéro administratif.</p>
+      <p className="muted small">
+        Un document enregistré ne se modifie plus : en cas d'erreur, retirez-le puis saisissez-en un nouveau. Aucune
+        donnée personnelle : uniquement le numéro administratif et le nom de l'organisme.
+      </p>
     </ActionForm>
   );
 }
@@ -352,8 +339,9 @@ function WithdrawForm({ doc, onCancel, onDone }: { doc: Doc; onCancel: () => voi
         </select>
       </label>
       <p className="muted small">
-        Le document reste dans l'historique. S'il était bloquant, le véhicule ne pourra plus être affecté tant qu'un
-        document valide du même type n'est pas enregistré (sauf retrait pour erreur de saisie).
+        Le document reste dans l'historique. S'il est exigé pour ce véhicule, celui-ci ne pourra plus être affecté tant
+        qu'un document valide du même type n'est pas enregistré. « Erreur de saisie » n'est possible que dans les 24
+        heures suivant l'enregistrement.
       </p>
     </ActionForm>
   );
@@ -362,7 +350,7 @@ function WithdrawForm({ doc, onCancel, onDone }: { doc: Doc; onCancel: () => voi
 /** Documents échus ou arrivant à échéance (alerte de conformité), sur le site choisi. */
 export function DueDocumentsPage() {
   const { siteId, sites } = useSites();
-  const [within, setWithin] = useState(30);
+  const [within, setWithin] = useState(45);
   const due = useQuery({
     queryKey: ["vehicle-documents", "due", siteId, within],
     queryFn: () => read("/vehicle-documents", { query: { site_id: siteId, within_days: within } }),
@@ -381,7 +369,7 @@ export function DueDocumentsPage() {
         <label>
           Échéance dans les
           <select value={within} onChange={(e) => setWithin(Number(e.target.value))}>
-            {[7, 30, 60, 90].map((n) => (
+            {[7, 30, 45, 60, 90].map((n) => (
               <option key={n} value={n}>
                 {n} jours
               </option>
@@ -398,7 +386,7 @@ export function DueDocumentsPage() {
               <th scope="col">Référence</th>
               <th scope="col">Échéance</th>
               <th scope="col">Validité</th>
-              <th scope="col">Bloquant</th>
+              <th scope="col">Exigé</th>
             </tr>
           </thead>
           <tbody>
@@ -414,12 +402,106 @@ export function DueDocumentsPage() {
                 <td>
                   <Badge tone={VALIDITY_TONE[d.validity] ?? "neutral"}>{label(VALIDITY, d.validity)}</Badge>
                 </td>
-                <td>{d.blocks_assignment ? "Oui : affectation refusée une fois échu" : "Non"}</td>
+                <td>{d.required ? "Oui : affectation refusée une fois échu" : "Non"}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </DataState>
     </section>
+  );
+}
+
+/** Administration : documents exigés par catégorie de véhicule (D-42). */
+export function RequiredDocumentsPage() {
+  const categories = useQuery({ queryKey: ["vehicle-categories"], queryFn: () => read("/vehicle-categories") });
+  const items = (categories.data ?? []).filter((c) => c.is_active);
+  return (
+    <>
+      <h2>Documents exigés par catégorie de véhicule</h2>
+      <p className="muted small">
+        Un véhicule doit avoir un exemplaire valide de chaque document coché pour sa catégorie : sinon l'affectation est
+        refusée (document échu ou retiré) ou signalée (document jamais saisi, selon la politique de déploiement). Valeurs
+        par défaut proposées par l'expert flotte ; la liste légale est à valider localement.
+      </p>
+      <DataState loading={categories.isLoading} error={categories.error} empty={items.length === 0}>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Catégorie</th>
+              {Object.entries(DOCUMENT_TYPES).map(([code, text]) => (
+                <th scope="col" key={code}>
+                  {text}
+                </th>
+              ))}
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((c) => (
+              <CategoryRow key={c.vehicle_category_id} category={c} />
+            ))}
+          </tbody>
+        </table>
+      </DataState>
+    </>
+  );
+}
+
+function CategoryRow({ category }: { category: Category }) {
+  const queryClient = useQueryClient();
+  const required = useQuery({
+    queryKey: ["required-documents", category.vehicle_category_id],
+    queryFn: () =>
+      read("/vehicle-categories/{category_id}/required-documents", {
+        path: { category_id: category.vehicle_category_id },
+      }),
+  });
+  const [draft, setDraft] = useState<Set<string> | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const current = new Set(required.data?.doc_types ?? []);
+  const selected = draft ?? current;
+  const toggle = (code: string) => {
+    const next = new Set(selected);
+    if (next.has(code)) next.delete(code);
+    else next.add(code);
+    setDraft(next);
+  };
+  async function save() {
+    setError(null);
+    try {
+      await call("put", "/vehicle-categories/{category_id}/required-documents", {
+        path: { category_id: category.vehicle_category_id },
+        body: { doc_types: [...selected] as DocType[] },
+      });
+      setDraft(null);
+      void queryClient.invalidateQueries({ queryKey: ["required-documents", category.vehicle_category_id] });
+    } catch (err) {
+      setError(err);
+    }
+  }
+  return (
+    <tr>
+      <th scope="row">{category.label_fr}</th>
+      {Object.keys(DOCUMENT_TYPES).map((code) => (
+        <td key={code}>
+          <input
+            type="checkbox"
+            aria-label={`${category.label_fr} : ${label(DOCUMENT_TYPES, code)}`}
+            checked={selected.has(code)}
+            disabled={!required.isSuccess}
+            onChange={() => toggle(code)}
+          />
+        </td>
+      ))}
+      <td>
+        {draft && (
+          <button type="button" className="primary" onClick={() => void save()}>
+            Enregistrer
+          </button>
+        )}
+        {error !== null && <ErrorMessage error={error} />}
+      </td>
+    </tr>
   );
 }

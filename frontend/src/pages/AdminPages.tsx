@@ -56,6 +56,7 @@ export function AdminLayout() {
       text: "Lieux et matières",
       show: can(me.grants, "dispatch.location.manage") || can(me.grants, "dispatch.material.manage"),
     },
+    { to: "documents-exiges", text: "Documents exigés", show: can(me.grants, "fleet.vehicle_category.manage") },
     { to: "utilisateurs", text: "Utilisateurs et rôles", show: can(me.grants, "identity.user.read") },
     { to: "journal", text: "Journal d'audit", show: can(me.grants, "audit.event.read") },
   ];

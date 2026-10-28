@@ -14,7 +14,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { ActivationPage, ResetConfirmPage, ResetRequestPage } from "./pages/PasswordPages";
 import { SecurityPage } from "./pages/SecurityPage";
 import { VehicleDetailPage } from "./pages/VehicleDetailPage";
-import { DueDocumentsPage } from "./pages/VehicleRecords";
+import { DueDocumentsPage, RequiredDocumentsPage } from "./pages/VehicleRecords";
 import { VehiclesPage } from "./pages/VehiclesPage";
 import { IndicatorsPage, WeighingsPage } from "./pages/WeighingPages";
 import { SiteProvider } from "./site/SiteContext";
@@ -56,6 +56,7 @@ export function App() {
           <Route path="utilisateurs" element={<UsersAdminPage />} />
           <Route path="journal" element={<AuditAdminPage />} />
           <Route path="lieux-matieres" element={<ReferentialsPage />} />
+          <Route path="documents-exiges" element={<RequiredDocumentsPage />} />
         </Route>
         <Route path="*" element={<p>Page introuvable.</p>} />
       </Route>

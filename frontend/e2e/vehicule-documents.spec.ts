@@ -33,12 +33,13 @@ test("fiche véhicule : relevé de compteur, document à échéance puis retrait
   await reading.getByRole("button", { name: "Enregistrer le relevé" }).click();
   await expect(page.getByRole("cell", { name: "12 345,6" })).toBeVisible();
 
-  // 2. Assurance qui expire dans cinq jours : bloquante par défaut, signalée « expire bientôt ».
+  // 2. Tombereau neuf : documents exigés par sa catégorie signalés comme manquants (D-42).
+  await expect(page.getByRole("status").filter({ hasText: "Documents exigés manquants" })).toContainText("Assurance");
+  // Assurance qui expire dans cinq jours : exigée pour la catégorie, signalée « expire bientôt ».
   await page.getByRole("button", { name: "Nouveau document" }).click();
   const doc = page.getByRole("form", { name: "Nouveau document" });
   await doc.getByLabel("Référence (numéro du document)").fill(`POL-${fleetNumber}`);
   await doc.getByLabel("Valable jusqu'au (inclus)").fill(isoDay(5));
-  await expect(doc.getByLabel("Bloque l'affectation du véhicule une fois échu")).toBeChecked();
   await doc.getByRole("button", { name: "Enregistrer le document" }).click();
   const row = page.getByRole("row", { name: new RegExp(`POL-${fleetNumber}`) });
   await expect(row).toContainText("Expire bientôt");
@@ -53,4 +54,12 @@ test("fiche véhicule : relevé de compteur, document à échéance puis retrait
   await row.getByRole("button", { name: "Retirer" }).click();
   await page.getByRole("form", { name: `Retirer le document POL-${fleetNumber}` }).getByRole("button", { name: "Retirer le document" }).click();
   await expect(row).toContainText("Retiré");
+});
+
+test("administration : documents exigés par catégorie de véhicule", async ({ page }) => {
+  await uiLogin(page, account("TENANT_ADMIN"));
+  await page.goto("/administration/documents-exiges");
+  await expect(page.getByRole("heading", { name: "Documents exigés par catégorie de véhicule" })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Camion-benne rigide (tombereau) : Assurance" })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: "Véhicule léger (pick-up, 4x4) : Visite technique" })).toBeChecked();
 });
