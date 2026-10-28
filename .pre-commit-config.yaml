@@ -1,0 +1,23 @@
+# Contrôles rapides avant commit. Installer : pip install pre-commit && pre-commit install
+# Environnement Python backend requis : pip install -e ".[dev]"
+repos:
+  - repo: local
+    hooks:
+      - id: backend-ruff-check
+        name: Backend Ruff lint
+        entry: bash -c 'cd backend && ruff check .'
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+      - id: backend-ruff-format
+        name: Backend Ruff format
+        entry: bash -c 'cd backend && ruff format --check .'
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
+      - id: backend-mypy
+        name: Backend mypy
+        entry: bash -c 'cd backend && mypy app'
+        language: system
+        pass_filenames: false
+        files: ^backend/.*\.py$
