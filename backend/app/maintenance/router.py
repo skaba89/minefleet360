@@ -7,8 +7,9 @@ from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.http import IfMatch, Page, Pagination, etag
 from app.maintenance import preventive_service, service
-from app.maintenance.preventive_plan_inputs import PreventivePlanCreate
+from app.maintenance.preventive_plan_inputs import PreventivePlanCreate, PreventivePlanSuspend
 from app.maintenance.preventive_schemas import PreventiveDueOut, PreventivePlanOut
+from app.maintenance.preventive_suspend import suspend_plan
 from app.maintenance.preventive_write import create_plan
 from app.maintenance.schemas import (
     LabourCreate,
@@ -140,3 +141,16 @@ def list_vehicle_preventive_dues(vehicle_id: uuid.UUID, auth: PreventiveRead) ->
 )
 def create_preventive_plan(body: PreventivePlanCreate, auth: PreventiveManage) -> PreventivePlanOut:
     return PreventivePlanOut.model_validate(create_plan(auth, body))
+
+
+@router.post("/preventive-plans/{plan_id}/suspend", response_model=PreventivePlanOut)
+def suspend_preventive_plan(
+    plan_id: uuid.UUID,
+    body: PreventivePlanSuspend,
+    auth: PreventiveManage,
+    version: IfMatch,
+    response: Response,
+) -> PreventivePlanOut:
+    plan = suspend_plan(auth, plan_id, body, version)
+    response.headers["ETag"] = etag(plan.row_version)
+    return PreventivePlanOut.model_validate(plan)
