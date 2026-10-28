@@ -103,10 +103,7 @@ def test_competing_due_status_transitions_only_one_wins(
         with engine.begin() as conn:
             set_tenant(conn)
             row = conn.execute(
-                text(
-                    "SELECT status, work_order_id FROM maintenance_due "
-                    "WHERE maintenance_due_id = :due_id"
-                ),
+                text("SELECT status, work_order_id FROM maintenance_due WHERE maintenance_due_id = :due_id"),
                 {"due_id": due_id},
             ).one()
             assert row.status == "SCHEDULED"
