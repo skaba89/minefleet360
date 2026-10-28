@@ -334,6 +334,26 @@ def _still_in_workshop(auth: Authorized, order: WorkOrder) -> bool:
     return bool(others)
 
 
+def _executors(auth: Authorized, order: WorkOrder) -> set[uuid.UUID]:
+    db = auth.db
+    actors = set(
+        db.execute(
+            select(WorkOrderEvent.actor_user_id).where(
+                WorkOrderEvent.work_order_id == order.work_order_id,
+                WorkOrderEvent.event_type.in_(("STARTED", "RESUMED", "SUBMITTED")),
+            )
+        ).scalars()
+    )
+    actors |= set(
+        db.execute(
+            select(WorkOrderLabour.mechanic_id).where(WorkOrderLabour.work_order_id == order.work_order_id)
+        ).scalars()
+    )
+    if order.assigned_to is not None:
+        actors.add(order.assigned_to)
+    return actors
+
+
 def decide(auth: Authorized, work_order_id: uuid.UUID, body: WorkOrderDecision, version: int) -> WorkOrderOut:
     """US-3.02, 3.03, 3.05 : approbation, rejet, assignation, annulation, contrôle qualité."""
     db = auth.db
@@ -363,8 +383,9 @@ def decide(auth: Authorized, work_order_id: uuid.UUID, body: WorkOrderDecision, 
         if source == "APPROVED":
             target = "ASSIGNED"
     elif body.action == "QC_PASS":
-        # RM-114 : la remise en service n'est pas validée par le mécanicien qui a fait l'intervention.
-        if order.assigned_to == auth.user_id:
+        # RM-114 : la remise en service n'est pas validée par qui a fait l'intervention, même après une
+        # réassignation (assigné actuel, auteurs du début, de la reprise, de la fin, temps passé).
+        if auth.user_id in _executors(auth, order):
             raise AppError("SELF_RELEASE_FORBIDDEN")
         order.closed_at, order.closed_by = now, auth.user_id
         if not _still_in_workshop(auth, order):

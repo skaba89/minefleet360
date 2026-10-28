@@ -142,6 +142,14 @@ def test_release_requires_another_person_and_no_other_open_order(
     _act(client, "progress", first, chief.headers, action="SUBMIT", work_done="Réparé")
     own = _act(client, "decision", first, chief.headers, action="QC_PASS")
     assert (own.status_code, own.json()["code"]) == (422, "SELF_RELEASE_FORBIDDEN")
+    # Réassigner à un collègue après avoir fait le travail ne permet pas de valider soi-même.
+    colleague = api.user(w.t, "MECHANIC", "SITE", "S1")
+    back = _act(client, "decision", first, chief.headers, action="QC_FAIL", reason_code="INCOMPLETE_WORK")
+    assert back.status_code == 200
+    _act(client, "decision", first, chief.headers, action="ASSIGN", assigned_to=str(colleague.user_id))
+    _act(client, "progress", first, colleague.headers, action="SUBMIT", work_done="Vérifié")
+    laundered = _act(client, "decision", first, chief.headers, action="QC_PASS")
+    assert (laundered.status_code, laundered.json()["code"]) == (422, "SELF_RELEASE_FORBIDDEN")
     for step in ("APPROVE",):
         _act(client, "decision", second, chief.headers, action=step)
     _act(client, "decision", second, chief.headers, action="ASSIGN", assigned_to=str(chief.user_id))
