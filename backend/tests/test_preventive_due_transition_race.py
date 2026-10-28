@@ -31,6 +31,14 @@ def test_competing_due_status_transitions_only_one_wins(
     )
     assert response.status_code == 201, response.text
 
+    order = client.post(
+        f"{API}/work-orders",
+        headers=w.dispatcher.headers,
+        json={"vehicle_id": vehicle_id, "symptom_code": "SERVICE", "priority": "NORMAL"},
+    )
+    assert order.status_code == 201, order.text
+    order_id = order.json()["work_order_id"]
+
     tenant_id = str(w.t.tenant_id)
     due_id = str(uuid.uuid4())
     engine = create_engine(get_settings().database_url(), pool_size=2, max_overflow=0)
@@ -56,8 +64,11 @@ def test_competing_due_status_transitions_only_one_wins(
             if status != "DUE":
                 return False
             conn.execute(
-                text("UPDATE maintenance_due SET status = 'SCHEDULED' WHERE maintenance_due_id = :due_id"),
-                {"due_id": due_id},
+                text(
+                    "UPDATE maintenance_due SET status = 'SCHEDULED', work_order_id = :order_id "
+                    "WHERE maintenance_due_id = :due_id"
+                ),
+                {"due_id": due_id, "order_id": order_id},
             )
             return True
 
@@ -91,11 +102,15 @@ def test_competing_due_status_transitions_only_one_wins(
 
         with engine.begin() as conn:
             set_tenant(conn)
-            status = conn.execute(
-                text("SELECT status FROM maintenance_due WHERE maintenance_due_id = :due_id"),
+            row = conn.execute(
+                text(
+                    "SELECT status, work_order_id FROM maintenance_due "
+                    "WHERE maintenance_due_id = :due_id"
+                ),
                 {"due_id": due_id},
-            ).scalar_one()
-            assert status == "SCHEDULED"
+            ).one()
+            assert row.status == "SCHEDULED"
+            assert str(row.work_order_id) == order_id
     finally:
         allow_first_commit.set()
         engine.dispose()
