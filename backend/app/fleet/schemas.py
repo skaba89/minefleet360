@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import AwareDatetime, BaseModel, Field
 
 from app.core.http import StrictModel
+from app.fleet.contracts import UNDATED_DOCUMENT_TYPES
 
 VehicleStatus = Literal["AVAILABLE", "IN_MAINTENANCE", "IMMOBILIZED", "OUT_OF_SERVICE", "RETIRED"]
 OperationalStatus = Literal["AVAILABLE", "IN_MAINTENANCE", "IMMOBILIZED", "OUT_OF_SERVICE"]
@@ -128,7 +129,7 @@ DocumentType = Literal[
     "OTHER",
 ]
 # Seule la carte grise est sans échéance (revue L2C-R-03) ; tout autre document a une date de fin.
-UNDATED_TYPES: frozenset[str] = frozenset({"REGISTRATION"})
+UNDATED_TYPES: frozenset[str] = UNDATED_DOCUMENT_TYPES
 WithdrawReason = Literal["REPLACED", "LOST", "REVOKED_BY_AUTHORITY", "ENTRY_ERROR", "OTHER"]
 # Référence administrative : chiffres, lettres et séparateurs, sans donnée personnelle.
 REFERENCE = r"^[A-Za-z0-9 /._-]{1,60}$"

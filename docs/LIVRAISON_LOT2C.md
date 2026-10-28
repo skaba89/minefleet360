@@ -3,7 +3,7 @@
 > Date : 2026-10-28. Cadrage : `PLAN_LOT2.md` §8. Stories : US-2.09, US-2.10. Décisions D-42 (documents exigés par catégorie, tranche C-06) et D-43 (compteurs), prises en tant qu'expert flotte.
 
 ## Contenu
-- **Migration 0015** :
+- **Migrations 0015 et 0016** (0016 applique les correctifs de la revue, la PR #16 ayant été fusionnée avant ; aucune donnée supprimée, l’ancienne colonne `blocks_assignment` est conservée mais plus lue) :
   - relevés de compteur en ajout seul ;
   - documents immuables (trigger : seul le retrait motivé est possible) ;
   - documents exigés par catégorie (modèle global, puis copie pour chaque client, existants compris) ;
@@ -36,8 +36,8 @@
 | `MF_DOCUMENT_ENTRY_ERROR_WINDOW` | 24 h |
 
 ## Vérifications exécutées
-- Backend : ruff, format, mypy OK ; `tests/test_vehicle_records.py` (10 scénarios, dont les contournements de la revue), matrice et isolation ; suite complète **2095 tests**, couverture 93,34 %.
-- Migration 0015 appliquée, défaite et réappliquée sur la base locale.
+- Backend : ruff, format, mypy OK ; `tests/test_vehicle_records.py` (10 scénarios, dont les contournements de la revue), matrice et isolation ; suite complète **2097 tests**, couverture 93,36 %.
+- Migrations appliquées, défaites et réappliquées ; passage 0015 → 0016 vérifié avec un document existant (conservé, exigences copiées, document devenu immuable).
 - Frontend : `tsc`, Vitest 19, **Playwright 16** (dont `vehicule-documents.spec.ts`), build, permissions à jour.
 
 ## Revue sécurité
