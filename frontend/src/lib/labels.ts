@@ -71,6 +71,9 @@ export const ISSUES: Record<string, string> = {
   LICENSE_EXPIRING: "Permis bientôt expiré",
   QUALIFICATION_EXPIRING: "Habilitation bientôt expirée",
   NEXT_EXPIRY: "Prochaine échéance",
+  VEHICLE_DOCUMENT_EXPIRED: "Document du véhicule échu ou retiré (assurance, visite…)",
+  VEHICLE_DOCUMENT_EXPIRES_BEFORE_END: "Un document du véhicule expire avant la fin de l'affectation",
+  VEHICLE_DOCUMENT_EXPIRING: "Document du véhicule bientôt échu",
 };
 
 export function label(map: Record<string, string>, code: string | null | undefined): string {
@@ -278,3 +281,33 @@ export function formatTonnes(kg: number | null | undefined): string {
   if (kg === null || kg === undefined) return "—";
   return `${(kg / 1000).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} t`;
 }
+
+// --- Compteurs et documents des véhicules (lot 2c) -----------------------------------------------------
+
+export const METER_KINDS: Record<string, string> = {
+  ODOMETER_KM: "Compteur kilométrique (km)",
+  HOUR_METER: "Compteur horaire (h)",
+};
+
+export const RESET_REASONS: Record<string, string> = {
+  METER_REPLACED: "Compteur remplacé",
+  ROLLOVER: "Compteur revenu à zéro",
+  ENTRY_ERROR: "Correction d'une erreur de saisie",
+};
+
+export const DOCUMENT_TYPES: Record<string, string> = {
+  INSURANCE: "Assurance",
+  TECHNICAL_INSPECTION: "Visite technique",
+  ROAD_PERMIT: "Autorisation de circuler",
+  REGISTRATION: "Carte grise",
+  SITE_ACCESS_PERMIT: "Autorisation d'accès au site",
+  OTHER: "Autre",
+};
+
+export const WITHDRAW_REASONS: Record<string, string> = {
+  REPLACED: "Remplacé par un nouveau document",
+  LOST: "Perdu",
+  REVOKED_BY_AUTHORITY: "Retiré par l'autorité",
+  ENTRY_ERROR: "Erreur de saisie",
+  OTHER: "Autre",
+};

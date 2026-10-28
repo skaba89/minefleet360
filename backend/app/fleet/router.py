@@ -6,9 +6,16 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.http import IfMatch, Page, Pagination, etag
-from app.fleet import service
+from app.fleet import records, service
 from app.fleet.models import Vehicle
 from app.fleet.schemas import (
+    DocumentCreate,
+    DocumentOut,
+    DocumentUpdate,
+    DocumentWithdraw,
+    MeterKind,
+    MeterReadingCreate,
+    MeterReadingOut,
     StatusHistoryOut,
     VehicleCategoryOut,
     VehicleCreate,
@@ -126,3 +133,86 @@ def retire_vehicle(
     response: Response,
 ) -> VehicleOut:
     return _out(service.retire_vehicle(auth, vehicle_id, body, version), response)
+
+
+# --- Compteurs et documents (lot 2c) --------------------------------------------------------------------
+
+DocumentRead = Annotated[Authorized, Depends(Require("fleet.document.read"))]
+DocumentManage = Annotated[Authorized, Depends(Require("fleet.document.manage"))]
+
+
+def _document(out: DocumentOut, response: Response | None = None) -> DocumentOut:
+    if response is not None:
+        response.headers["ETag"] = etag(out.row_version)
+    return out
+
+
+@router.get("/vehicles/{vehicle_id}/meter-readings", response_model=Page[MeterReadingOut])
+def list_meter_readings(
+    vehicle_id: uuid.UUID,
+    auth: Annotated[Authorized, Depends(Require("fleet.meter.read"))],
+    page: Pagination,
+    meter_kind: MeterKind | None = None,
+) -> Page[MeterReadingOut]:
+    items, total = records.list_readings(auth, vehicle_id, page, meter_kind=meter_kind)
+    return Page(items=items, page=page.page, page_size=page.page_size, total=total)
+
+
+@router.post(
+    "/vehicles/{vehicle_id}/meter-readings",
+    status_code=status.HTTP_201_CREATED,
+    response_model=MeterReadingOut,
+)
+def record_meter_reading(
+    vehicle_id: uuid.UUID,
+    body: MeterReadingCreate,
+    auth: Annotated[Authorized, Depends(Require("fleet.meter.record"))],
+) -> MeterReadingOut:
+    return records.record_reading(auth, vehicle_id, body)
+
+
+@router.get("/vehicles/{vehicle_id}/documents", response_model=list[DocumentOut])
+def list_vehicle_documents(vehicle_id: uuid.UUID, auth: DocumentRead) -> list[DocumentOut]:
+    return records.list_documents(auth, vehicle_id)
+
+
+@router.get("/vehicle-documents", response_model=list[DocumentOut])
+def due_vehicle_documents(
+    auth: DocumentRead,
+    site_id: uuid.UUID | None = None,
+    within_days: Annotated[int, Query(ge=0, le=365)] = 30,
+) -> list[DocumentOut]:
+    return records.due_documents(auth, site_id=site_id, within_days=within_days)
+
+
+@router.post(
+    "/vehicles/{vehicle_id}/documents", status_code=status.HTTP_201_CREATED, response_model=DocumentOut
+)
+def create_vehicle_document(
+    vehicle_id: uuid.UUID, body: DocumentCreate, auth: DocumentManage, response: Response
+) -> DocumentOut:
+    return _document(records.create_document(auth, vehicle_id, body), response)
+
+
+@router.patch("/vehicle-documents/{vehicle_document_id}", response_model=DocumentOut)
+def update_vehicle_document(
+    vehicle_document_id: uuid.UUID,
+    body: DocumentUpdate,
+    auth: DocumentManage,
+    version: IfMatch,
+    response: Response,
+) -> DocumentOut:
+    return _document(records.update_document(auth, vehicle_document_id, body, version), response)
+
+
+@router.post("/vehicle-documents/{vehicle_document_id}/withdraw", response_model=DocumentOut)
+def withdraw_vehicle_document(
+    vehicle_document_id: uuid.UUID,
+    body: DocumentWithdraw,
+    auth: DocumentManage,
+    version: IfMatch,
+    response: Response,
+) -> DocumentOut:
+    return _document(
+        records.withdraw_document(auth, vehicle_document_id, body.reason_code, version), response
+    )

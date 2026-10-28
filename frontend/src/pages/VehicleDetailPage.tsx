@@ -10,6 +10,7 @@ import { ASSIGNMENT_STATUS, FUEL, label, OWNERSHIP, VEHICLE_REASONS, VEHICLE_STA
 import { can } from "../lib/permissions";
 import { formatDate, formatDateTime } from "../lib/time";
 import { useSites } from "../site/SiteContext";
+import { Documents, Meters } from "./VehicleRecords";
 import { useCategories, VEHICLE_TONE } from "./VehiclesPage";
 
 type Vehicle = Schemas["VehicleOut"];
@@ -103,6 +104,13 @@ export function VehicleDetailPage() {
               <Fact label="Réforme">{v.decommissioned_on ? formatDate(v.decommissioned_on) : null}</Fact>
               <Fact label="Notes">{v.notes}</Fact>
             </dl>
+            {can(me.grants, "fleet.meter.read", v.site_id) && (
+              <Meters
+                vehicle={v}
+                category={categories.data?.find((c) => c.vehicle_category_id === v.vehicle_category_id)}
+              />
+            )}
+            {can(me.grants, "fleet.document.read", v.site_id) && <Documents vehicle={v} />}
             <History vehicle={v} timeZone={timezoneOf(v.site_id)} />
           </>
         )}

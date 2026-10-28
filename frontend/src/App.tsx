@@ -14,6 +14,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { ActivationPage, ResetConfirmPage, ResetRequestPage } from "./pages/PasswordPages";
 import { SecurityPage } from "./pages/SecurityPage";
 import { VehicleDetailPage } from "./pages/VehicleDetailPage";
+import { DueDocumentsPage } from "./pages/VehicleRecords";
 import { VehiclesPage } from "./pages/VehiclesPage";
 import { IndicatorsPage, WeighingsPage } from "./pages/WeighingPages";
 import { SiteProvider } from "./site/SiteContext";
@@ -39,6 +40,7 @@ export function App() {
       <Route element={<Protected />}>
         <Route index element={<HomePage />} />
         <Route path="vehicules" element={<VehiclesPage />} />
+        <Route path="vehicules/echeances" element={<DueDocumentsPage />} />
         <Route path="vehicules/:vehicleId" element={<VehicleDetailPage />} />
         <Route path="conducteurs" element={<DriversPage />} />
         <Route path="conducteurs/:driverId" element={<DriverDetailPage />} />

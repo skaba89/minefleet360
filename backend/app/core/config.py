@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     mission_max_rotations: int = Field(default=100, ge=1, le=1000)  # revue L2A-R-04
     rotation_min_cycle: timedelta = timedelta(minutes=5)  # en deçà : cycle suspect (indicateurs)
     indicators_max_period: timedelta = timedelta(days=92)
+    # Compteurs (lot 2c, RM-101, RM-103) : valeurs de développement à valider avec l'atelier.
+    meter_backdate_tolerance: timedelta = timedelta(days=7)
+    meter_max_kmh: int = Field(default=120, ge=10, le=300)
 
     # Délai max d'attente d'un verrou : échec rapide (409/500) plutôt qu'un blocage indéfini.
     db_lock_timeout_ms: int = 5000

@@ -54,6 +54,7 @@ export function VehiclesPage() {
     <section>
       <div className="page-head">
         <h1>Véhicules et engins</h1>
+        {can(me.grants, "fleet.document.read") && <Link to="/vehicules/echeances">Documents à échéance</Link>}
         {can(me.grants, "fleet.vehicle.create") && !creating && (
           <button type="button" className="primary" onClick={() => setCreating(true)}>
             Nouveau véhicule

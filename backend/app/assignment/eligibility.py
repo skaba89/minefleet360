@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from app.fleet.contracts import VehicleFacts
+from app.fleet.contracts import DocumentFact, VehicleFacts
 from app.workforce.contracts import ELIGIBLE, DriverFacts, derive_validity
 
 
@@ -137,6 +137,49 @@ def _check_authorization(
     return best.valid_to
 
 
+def _check_documents(
+    ev: Evaluation,
+    vehicle: VehicleFacts,
+    start: datetime,
+    end: datetime | None,
+    tz: ZoneInfo,
+    warning_days: int,
+) -> date | None:
+    """RM-104 : un exemplaire valide par type de document bloquant ; renvoie l'échéance la plus proche."""
+    by_type: dict[str, list[DocumentFact]] = {}
+    for doc in vehicle.documents:
+        by_type.setdefault(doc.doc_type, []).append(doc)
+    ends: list[date] = []
+    for docs in by_type.values():
+        validity = {
+            d.vehicle_document_id: derive_validity(
+                stored_status=d.status,
+                valid_from=d.valid_from,
+                valid_until=d.valid_until,
+                now=start,
+                tz=tz,
+                warning_days=warning_days,
+            )
+            for d in docs
+        }
+        valid = [d for d in docs if validity[d.vehicle_document_id] in ELIGIBLE]
+        if not valid:
+            dated = [d.valid_until for d in docs if d.valid_until is not None]
+            ev.reasons.append(Finding("VEHICLE_DOCUMENT_EXPIRED", max(dated) if dated else None))
+            continue
+        covering = [d for d in valid if _covers(d.valid_until, end, tz)]
+        if not covering:
+            dated = [d.valid_until for d in valid if d.valid_until is not None]
+            ev.reasons.append(Finding("VEHICLE_DOCUMENT_EXPIRES_BEFORE_END", max(dated) if dated else None))
+            continue
+        best = max(covering, key=lambda d: d.valid_until or date.max)
+        if validity[best.vehicle_document_id] == "EXPIRING":
+            ev.warnings.append(Finding("VEHICLE_DOCUMENT_EXPIRING", best.valid_until))
+        if best.valid_until is not None:
+            ends.append(best.valid_until)
+    return min(ends) if ends else None
+
+
 def evaluate(
     vehicle: VehicleFacts,
     driver: DriverFacts,
@@ -156,9 +199,10 @@ def evaluate(
         ev.reasons.append(Finding("VEHICLE_CATEGORY_WITHOUT_DRIVER"))
     license_end = _check_licenses(ev, vehicle, driver, start, end, tz, warning_days)
     authorization_end = _check_authorization(ev, vehicle, driver, start, end, tz, warning_days)
+    document_end = _check_documents(ev, vehicle, start, end, tz, warning_days)
     if end is None and ev.eligible:
         # Intervalle ouvert : valable au début seulement ; la prochaine échéance est signalée (US-1.22 R5).
-        ends = [d for d in (license_end, authorization_end) if d is not None]
+        ends = [d for d in (license_end, authorization_end, document_end) if d is not None]
         if ends:
             ev.warnings.append(Finding("NEXT_EXPIRY", min(ends)))
     return ev
@@ -173,6 +217,7 @@ _COMPLIANCE_CODES = {
     "DRIVER_LICENSE_EXPIRED": "LICENSE_EXPIRED",
     "DRIVER_QUALIFICATION_MISSING": "QUALIFICATION_EXPIRED",
     "DRIVER_QUALIFICATION_EXPIRED": "QUALIFICATION_EXPIRED",
+    "VEHICLE_DOCUMENT_EXPIRED": "VEHICLE_DOCUMENT_EXPIRED",
 }
 
 
