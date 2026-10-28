@@ -49,7 +49,7 @@ export function VehiclePreventiveDues({ vehicleId, siteId }: { vehicleId: string
   return (
     <section aria-label="Maintenance préventive">
       <h2>Échéances de maintenance préventive</h2>
-      {error && <ErrorMessage error={error} />}
+      {error != null ? <ErrorMessage error={error} /> : null}
       <DataState loading={dues.isLoading} error={dues.error} empty={!dues.data?.length} emptyText="Aucune échéance préventive.">
         <table>
           <thead>
