@@ -20,7 +20,7 @@ def render() -> str:
     grants = {
         name: {role: list(scopes) for role, scopes in sorted((spec.get("grants") or {}).items())}
         for name, spec in sorted(permissions.items())
-        if spec["tranche"] != "later"
+        if spec["tranche"] != "later" or name in {"maintenance.preventive.manage", "maintenance.preventive.read"}
     }
     body = json.dumps(grants, indent=2, ensure_ascii=False)
     return (
