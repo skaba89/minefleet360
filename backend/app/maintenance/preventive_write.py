@@ -4,8 +4,6 @@ Permission d'atelier, portée site et RLS sont vérifiées avant toute écriture
 L'audit et l'insertion appartiennent à la même transaction.
 """
 
-import uuid
-
 from sqlalchemy import select
 
 from app.audit.contracts import record
