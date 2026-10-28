@@ -1,13 +1,15 @@
 """Garde-fous SQL des lectures internes ; sans revendication de test RLS PostgreSQL."""
 
 import uuid
+from typing import Any
 
+from sqlalchemy import Select
 from sqlalchemy.dialects import postgresql
 
 from app.maintenance.preventive_read import dues_query, plans_query
 
 
-def _sql(statement: object) -> str:
+def _sql(statement: Select[Any]) -> str:
     return str(statement.compile(dialect=postgresql.dialect()))
 
 
