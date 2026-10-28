@@ -13,7 +13,8 @@ from app.fleet.models import Vehicle
 from app.maintenance.preventive_models import MaintenancePlan
 from app.maintenance.preventive_plan_inputs import PreventivePlanCreate
 
-MANAGE_PERMISSION = "maintenance.preventive.manage"
+MANAGE_PERMISSION = "maintenance.work_order.manage"
+PREVENTIVE_MANAGE_PERMISSION = "maintenance.preventive.manage"
 
 
 def create_plan(auth: Authorized, body: PreventivePlanCreate) -> MaintenancePlan:
@@ -22,7 +23,7 @@ def create_plan(auth: Authorized, body: PreventivePlanCreate) -> MaintenancePlan
     Le futur endpoint doit déclarer Require(MANAGE_PERMISSION). L'unicité
     (tenant, véhicule, code, version) est aussi imposée par PostgreSQL.
     """
-    if auth.scope.permission != MANAGE_PERMISSION:
+    if auth.scope.permission not in (MANAGE_PERMISSION, PREVENTIVE_MANAGE_PERMISSION):
         raise AppError("PERMISSION_DENIED")
 
     vehicle = auth.db.execute(
