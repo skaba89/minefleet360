@@ -26,9 +26,7 @@ def plans_query(
     return stmt.order_by(MaintenancePlan.code, MaintenancePlan.version.desc())
 
 
-def dues_query(
-    tenant_id: uuid.UUID, vehicle_id: uuid.UUID
-) -> Select[tuple[MaintenanceDue]]:
+def dues_query(tenant_id: uuid.UUID, vehicle_id: uuid.UUID) -> Select[tuple[MaintenanceDue]]:
     """La lecture d'échéances est toujours bornée au même tenant et véhicule."""
     return (
         select(MaintenanceDue)
