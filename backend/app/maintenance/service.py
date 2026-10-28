@@ -329,8 +329,8 @@ def _release_if_free(auth: Authorized, order: WorkOrder, facts: VehicleFacts) ->
     return change_status_for_maintenance(auth, order.vehicle_id, "AVAILABLE", None, "vehicle.release")
 
 
-def create_work_order(auth: Authorized, body: WorkOrderCreate) -> WorkOrderOut:
-    """US-3.01 : signalement d'une panne (ou demande d'intervention)."""
+def _create_work_order_uncommitted(auth: Authorized, body: WorkOrderCreate) -> WorkOrderOut:
+    """Construction interne de l’OT, événement et audit, sans commit.""".replace("’", "'")
     db = auth.db
     facts = vehicle_facts(db, [body.vehicle_id]).get(body.vehicle_id)
     if facts is None or not auth.scope.covers_site(facts.site_id) or facts.status == "RETIRED":
@@ -382,8 +382,14 @@ def create_work_order(auth: Authorized, body: WorkOrderCreate) -> WorkOrderOut:
     )
     db.flush()
     out = work_orders_out(auth, [order], detail=True)[0]
-    db.commit()
     return out
+
+def create_work_order(auth: Authorized, body: WorkOrderCreate) -> WorkOrderOut:
+    """US-3.01 : conserve la transaction existante pour l’API corrective."""
+    out = _create_work_order_uncommitted(auth, body)
+    auth.db.commit()
+    return out
+
 
 
 def _ensure_mechanic(auth: Authorized, user_id: uuid.UUID, site_id: uuid.UUID) -> None:
