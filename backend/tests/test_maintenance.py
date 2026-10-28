@@ -311,6 +311,9 @@ def test_moved_vehicle_daily_cap_and_names(client: TestClient, w: World, api: Ap
     _act(client, "decision", oid, chief.headers, action="ASSIGN", assigned_to=str(mechanic.user_id))
     seen_by_dispatcher = client.get(f"{API}/work-orders/{oid}", headers=w.dispatcher.headers).json()
     assert seen_by_dispatcher["assigned_name"] is None
+    assert seen_by_dispatcher["assigned_to"] is None and seen_by_dispatcher["reported_by"] is None
+    assert seen_by_dispatcher["labour"] is None
+    assert all(e["actor_user_id"] is None for e in seen_by_dispatcher["events"])
     assert all(e["actor_name"] is None for e in seen_by_dispatcher["events"])
     assert client.get(f"{API}/work-orders/{oid}", headers=chief.headers).json()["assigned_name"]
     today = date.today().isoformat()
@@ -329,3 +332,16 @@ def test_moved_vehicle_daily_cap_and_names(client: TestClient, w: World, api: Ap
     assert patched.status_code == 200, patched.text
     start = _act(client, "progress", oid, chief.headers, action="START")
     assert (start.status_code, start.json()["code"]) == (409, "WORK_ORDER_STATE_INVALID")
+
+
+def test_reject_only_lifts_its_own_immobilization(client: TestClient, w: World, api: Api) -> None:  # noqa: F811
+    """Revue automatique : une immobilisation posée par quelqu'un d'autre n'est jamais levée."""
+    chief = api.user(w.t, "WORKSHOP_CHIEF")
+    vehicle = _vehicle(client, w)
+    _set_status(client, w, vehicle, "IMMOBILIZED", "BREAKDOWN")
+    oid = _report(client, w, vehicle, immobilize=True).json()["work_order_id"]
+    assert (
+        _act(client, "decision", oid, chief.headers, action="REJECT", reason_code="DUPLICATE").status_code
+        == 200
+    )
+    assert _vehicle_status(client, w, vehicle) == "IMMOBILIZED"

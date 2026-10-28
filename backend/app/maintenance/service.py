@@ -136,19 +136,19 @@ def work_orders_out(auth: Authorized, orders: list[WorkOrder], *, detail: bool =
             "immobilize": o.immobilize,
             "status": o.status,
             "status_reason": o.status_reason,
-            "assigned_to": o.assigned_to,
+            "assigned_to": o.assigned_to if show else None,
             "assigned_name": names.get(o.assigned_to) if o.assigned_to and show else None,
             "expected_ready_at": o.expected_ready_at,
             "diagnosis": o.diagnosis,
             "work_done": o.work_done,
             "parts_note": o.parts_note,
             "reported_at": o.reported_at,
-            "reported_by": o.reported_by,
+            "reported_by": o.reported_by if show else None,
             "approved_at": o.approved_at,
             "started_at": o.started_at,
             "submitted_at": o.submitted_at,
             "closed_at": o.closed_at,
-            "closed_by": o.closed_by,
+            "closed_by": o.closed_by if show else None,
             "labour_minutes": int(minutes.get(o.work_order_id) or 0),
             "row_version": o.row_version,
         }
@@ -159,26 +159,31 @@ def work_orders_out(auth: Authorized, orders: list[WorkOrder], *, detail: bool =
                     from_status=e.from_status,
                     to_status=e.to_status,
                     reason=e.reason,
-                    actor_user_id=e.actor_user_id,
+                    actor_user_id=e.actor_user_id if show else None,
                     actor_name=names.get(e.actor_user_id) if show else None,
-                    subject_user_id=e.subject_user_id,
+                    subject_user_id=e.subject_user_id if show else None,
                     subject_name=names.get(e.subject_user_id) if show and e.subject_user_id else None,
                     occurred_at=e.occurred_at,
                 )
                 for e in events[o.work_order_id]
             ]
-            data["labour"] = [
-                LabourOut(
-                    work_order_labour_id=entry.work_order_labour_id,
-                    mechanic_id=entry.mechanic_id,
-                    mechanic_name=names.get(entry.mechanic_id) if show else None,
-                    minutes=entry.minutes,
-                    performed_on=entry.performed_on,
-                    note=entry.note,
-                    recorded_at=entry.recorded_at,
-                )
-                for entry in labour[o.work_order_id]
-            ]
+            # Temps passé nominatif : réservé aux mêmes rôles que les noms (revue automatique, L3A-R-13).
+            data["labour"] = (
+                None
+                if not show
+                else [
+                    LabourOut(
+                        work_order_labour_id=entry.work_order_labour_id,
+                        mechanic_id=entry.mechanic_id,
+                        mechanic_name=names.get(entry.mechanic_id) if show else None,
+                        minutes=entry.minutes,
+                        performed_on=entry.performed_on,
+                        note=entry.note,
+                        recorded_at=entry.recorded_at,
+                    )
+                    for entry in labour[o.work_order_id]
+                ]
+            )
         out.append(WorkOrderOut(**data))
     return out
 
@@ -291,10 +296,13 @@ def _next_number(auth: Authorized) -> int:
     )
 
 
-def _immobilize(auth: Authorized, vehicle_id: uuid.UUID) -> None:
+def _immobilize(auth: Authorized, vehicle_id: uuid.UUID) -> bool:
     """D-44 : panne bloquante → véhicule immobilisé, missions en cours suspendues (événement système)."""
-    change_status_for_maintenance(auth, vehicle_id, "IMMOBILIZED", "BREAKDOWN", "vehicle.change_status")
+    changed = change_status_for_maintenance(
+        auth, vehicle_id, "IMMOBILIZED", "BREAKDOWN", "vehicle.change_status"
+    )
     suspend_running_missions(auth, vehicle_id, "BREAKDOWN")
+    return changed
 
 
 def _locked_vehicle(auth: Authorized, order: WorkOrder) -> VehicleFacts:
@@ -309,8 +317,12 @@ def _release_if_free(auth: Authorized, order: WorkOrder, facts: VehicleFacts) ->
     """Remise à disposition (D-44) : seulement un véhicule retenu par l'atelier — en maintenance, ou
     immobilisé pour panne — et qu'aucun autre OT ne retient. Un statut posé pour une autre raison
     (accident, interdiction HSE…) n'est jamais écrasé (revue L3A-R-05)."""
+    # Une immobilisation n'est levée que si CET OT l'a posée au signalement (revue automatique) :
+    # jamais celle d'une autre personne, même avec le motif « panne ».
     held_by_workshop = facts.status == "IN_MAINTENANCE" or (
-        facts.status == "IMMOBILIZED" and facts.status_reason_code == "BREAKDOWN"
+        facts.status == "IMMOBILIZED"
+        and facts.status_reason_code == "BREAKDOWN"
+        and order.immobilized_vehicle
     )
     if not held_by_workshop or _still_in_workshop(auth, order):
         return False
@@ -329,10 +341,12 @@ def create_work_order(auth: Authorized, body: WorkOrderCreate) -> WorkOrderOut:
     ):
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "mission_id"}])
     # Verrou du véhicule avant toute écriture, comme la clôture : pas de remise à disposition concurrente
-    # d'un véhicule qu'on est en train d'immobiliser (revue L3A-R-02). Portée contrôlée juste avant.
-    vehicle_facts(db, [body.vehicle_id], lock=True)
-    if body.immobilize:
-        _immobilize(auth, body.vehicle_id)
+    # d'un véhicule qu'on est en train d'immobiliser (revue L3A-R-02). Portée contrôlée juste avant sans
+    # verrou, puis tout est revérifié sur la lecture verrouillée (revue automatique : données périmées).
+    locked = vehicle_facts(db, [body.vehicle_id], lock=True).get(body.vehicle_id)
+    if locked is None or locked.site_id != facts.site_id or locked.status == "RETIRED":
+        raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "vehicle_id"}])
+    immobilized = _immobilize(auth, body.vehicle_id) if body.immobilize else False
     now = auth.clock.now()
     order = WorkOrder(
         tenant_id=auth.tenant_id,
@@ -345,6 +359,7 @@ def create_work_order(auth: Authorized, body: WorkOrderCreate) -> WorkOrderOut:
         symptom_code=body.symptom_code,
         description=(body.description or "").strip() or None,
         immobilize=body.immobilize,
+        immobilized_vehicle=immobilized,
         reported_at=now,
         reported_by=auth.user_id,
         created_by=auth.user_id,
@@ -569,6 +584,12 @@ def add_labour(auth: Authorized, work_order_id: uuid.UUID, body: LabourCreate) -
     reported = local_date(db, order.site_id, order.reported_at)
     if body.performed_on > today or body.performed_on < reported - timedelta(days=1):
         raise AppError("VALIDATION_ERROR", details=[{"field": "performed_on", "type": "out_of_range"}])
+    # Sérialise les saisies d'un même mécanicien pour un même jour : le plafond ne peut pas être dépassé
+    # par deux saisies concurrentes (revue automatique).
+    db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))"),
+        {"k": f"{auth.tenant_id}/{mechanic}/{body.performed_on.isoformat()}/labour"},
+    )
     already = db.execute(
         select(func.coalesce(func.sum(WorkOrderLabour.minutes), 0)).where(
             WorkOrderLabour.mechanic_id == mechanic, WorkOrderLabour.performed_on == body.performed_on

@@ -8,6 +8,11 @@
 | L3A-A-01 | Moyenne | Remise en service : seul l'assigné **actuel** était exclu (réassignation après les travaux) | **Corrigé** : exclusion de toute personne ayant agi (voir L3A-R-01) |
 | L3A-A-02 | Moyenne | Auteurs de la mise en attente, des modifications du compte rendu et des saisies de temps pour autrui non exclus | **Corrigé** : modification du compte rendu tracée (événement `NOTED`), tous ces auteurs exclus |
 
+| L3A-A-03 | Moyenne | Identifiants (assigné, auteurs, mécaniciens) et temps nominatif encore visibles quand les noms sont masqués | **Corrigé** : identifiants et liste du temps passé masqués pour les mêmes rôles que les noms ; total agrégé conservé ; test |
+| L3A-A-04 | Moyenne | Contrôles de création faits sur une lecture non verrouillée | **Corrigé** : site et statut revérifiés sur la lecture verrouillée avant toute écriture |
+| L3A-A-05 | Moyenne | Plafond journalier de temps contournable par saisies concurrentes | **Corrigé** : verrou consultatif par (mécanicien, jour) avant le calcul |
+| L3A-A-06 | Moyenne | Rejet ou annulation pouvant lever une immobilisation « panne » posée par quelqu'un d'autre | **Corrigé** : `work_order.immobilized_vehicle` (migration 0018) ; seul l'OT qui a immobilisé peut lever ; test |
+
 ## 2. Revue indépendante (agent security-engineer distinct, lecture du code)
 | ID | Gravité | Constat | Traitement |
 |---|---|---|---|
@@ -18,7 +23,7 @@
 | L3A-R-05 | Moyenne | La clôture écrasait une immobilisation posée pour une autre raison (accident, interdiction HSE) | **Corrigé** : seule une immobilisation « panne » ou un statut « en maintenance » est levé ; test |
 | L3A-R-06 | Moyenne | Motif effacé en « attente de pièces » par une note ou une réassignation (blocage) | **Corrigé** : le motif ne change qu'avec l'état ; test |
 | L3A-R-07 | Moyenne | Compte rendu modifiable pendant le contrôle, sans trace | **Corrigé** : figé pendant le contrôle ; chaque modification écrit l'événement `NOTED` |
-| L3A-R-08 | Moyenne | Chaîne des assignés non reconstituable | **Corrigé** : `work_order_event.subject_user_id` (FK composite) ; audit avec l'assigné précédent ; test |
+| L3A-R-08 | Moyenne | Chaîne des assignés non reconstituable | **Corrigé** : `work_order_event.subject_user_id` (FK composite, migration 0018 — la PR #19 ayant été fusionnée avant) ; audit avec l'assigné précédent ; test |
 | L3A-R-09 | Moyenne | Véhicule déplacé de site : effets de bord hors portée | **Corrigé** : véhicule revérifié (même site que l'OT, dans la portée) avant tout effet ; test |
 | L3A-R-10 | Basse | Verrou du compteur tenu longtemps | **Corrigé** : numéro attribué en dernier |
 | L3A-R-11 | Basse | Temps passé sans plafond | **Corrigé** : 24 h par mécanicien et par jour, tous OT confondus ; test. Idempotence (double clic) : **accepté**, une erreur se signale au chef d'atelier (pas de suppression, ajout seul) |
@@ -29,8 +34,8 @@
 | L3A-R-16 | Basse | Reprise d'une mission sur véhicule immobilisé | **Vérifié** : refusée (`MISSION_NOT_ELIGIBLE`, véhicule non disponible) ; test |
 
 ## 3. Vérifications exécutées (2026-10-28)
-- Serveur : ruff, format, mypy OK ; **2243 tests**, couverture 93,65 % ; `tests/test_maintenance.py` porté à 8 scénarios.
-- Migration `0017` appliquée, défaite et réappliquée sur les bases locales.
+- Serveur : ruff, format, mypy OK ; **2244 tests**, couverture 93,62 % ; `tests/test_maintenance.py` porté à 9 scénarios.
+- Migration `0018` (correctifs, la 0017 fusionnée restant inchangée) appliquée, défaite et réappliquée.
 - Interface : `tsc`, Playwright 17, build.
 
 ## 4. Non vérifié

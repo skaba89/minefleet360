@@ -87,12 +87,9 @@ CREATE TABLE work_order_event (
   to_status text NOT NULL,
   reason text,
   actor_user_id uuid NOT NULL,
-  -- Personne visée (mécanicien assigné) : chaîne des assignés reconstituable (revue L3A-R-08).
-  subject_user_id uuid,
   occurred_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT pk_work_order_event PRIMARY KEY (work_order_event_id),
   CONSTRAINT fk_woe__wo FOREIGN KEY (tenant_id, work_order_id) REFERENCES work_order (tenant_id, work_order_id) ON DELETE RESTRICT,
-  CONSTRAINT fk_woe__subject FOREIGN KEY (tenant_id, subject_user_id) REFERENCES user_account (tenant_id, user_account_id) ON DELETE RESTRICT,
   CONSTRAINT ck_woe_type CHECK (event_type IN ('REQUESTED','APPROVED','REJECTED','ASSIGNED','STARTED','AWAITING_PARTS',
                                                'RESUMED','SUBMITTED','NOTED','QC_FAILED','CLOSED','CANCELLED'))
 );

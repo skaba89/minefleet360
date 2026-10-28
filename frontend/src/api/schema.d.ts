@@ -3530,11 +3530,8 @@ export interface components {
              * Format: date-time
              */
             reported_at: string;
-            /**
-             * Reported By
-             * Format: uuid
-             */
-            reported_by: string;
+            /** Reported By */
+            reported_by: string | null;
             /** Approved At */
             approved_at: string | null;
             /** Started At */
@@ -3613,11 +3610,8 @@ export interface components {
             to_status: string;
             /** Reason */
             reason: string | null;
-            /**
-             * Actor User Id
-             * Format: uuid
-             */
-            actor_user_id: string;
+            /** Actor User Id */
+            actor_user_id: string | null;
             /** Actor Name */
             actor_name: string | null;
             /** Subject User Id */
