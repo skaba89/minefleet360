@@ -384,12 +384,12 @@ def _create_work_order_uncommitted(auth: Authorized, body: WorkOrderCreate) -> W
     out = work_orders_out(auth, [order], detail=True)[0]
     return out
 
+
 def create_work_order(auth: Authorized, body: WorkOrderCreate) -> WorkOrderOut:
     """US-3.01 : conserve la transaction existante pour l’API corrective."""
     out = _create_work_order_uncommitted(auth, body)
     auth.db.commit()
     return out
-
 
 
 def _ensure_mechanic(auth: Authorized, user_id: uuid.UUID, site_id: uuid.UUID) -> None:
