@@ -47,7 +47,10 @@ def test_review_passes_authenticated_actor_and_scoped_site() -> None:
     auth = _auth("maintenance.preventive.manage")
     vehicle_id = uuid.uuid4()
     evidence = ApprovalEvidence(auth.user_id, NOW, "CERT-1", False)
-    with patch("app.maintenance.preventive_review_authorized.record_reconciliation_review", return_value=True) as record:
+    with patch(
+        "app.maintenance.preventive_review_authorized.record_reconciliation_review",
+        return_value=True,
+    ) as record:
         assert review_meter_evidence(auth, vehicle_id, evidence, as_of=NOW) is True
     assert record.call_args.kwargs["tenant_id"] == auth.tenant_id
     assert record.call_args.kwargs["actor_id"] == auth.user_id
