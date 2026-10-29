@@ -743,6 +743,7 @@ permissions:
     routes:
       - { method: GET, path: /fuel/tanks, shape: collection, success: 200 }
       - { method: GET, path: /fuel/issues, shape: collection, success: 200 }
+      - { method: GET, path: /fuel/stocktakes, shape: collection, success: 200 }
     grants:
       TENANT_ADMIN: [TENANT]
       DIRECTION: [TENANT]
@@ -760,12 +761,32 @@ permissions:
       TENANT_ADMIN: [TENANT]
       OPS_MANAGER: [TENANT, SITE]
       FUEL_MANAGER: [SITE]
+  fuel.stock.threshold:
+    tranche: 1c
+    kind: update
+    site_bound: true
+    routes: [{ method: POST, path: "/fuel/tanks/{fuel_tank_id}/threshold", shape: item, success: 200 }]
+    audit: { action: fuel.stock.threshold.update }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
   fuel.stock.receive:
     tranche: 1c
     kind: create
     site_bound: true
     routes: [{ method: POST, path: "/fuel/tanks/{fuel_tank_id}/receipts", shape: item, success: 201 }]
     audit: { action: fuel.stock.receive }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
+  fuel.stocktake.record:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes: [{ method: POST, path: "/fuel/tanks/{fuel_tank_id}/stocktakes", shape: item, success: 201 }]
+    audit: { action: fuel.stocktake.record }
     grants:
       TENANT_ADMIN: [TENANT]
       OPS_MANAGER: [TENANT, SITE]
