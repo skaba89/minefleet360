@@ -102,9 +102,7 @@ class ServiceMeterBaseline(Base):
     site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     meter_kind: Mapped[str] = mapped_column(String, nullable=False)
     cumulative_total: Mapped[Decimal] = mapped_column(Numeric(12, 1), nullable=False)
-    reconciliation_approval_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False
-    )
+    reconciliation_approval_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     serviced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     recorded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     recorded_at: Mapped[datetime] = mapped_column(
