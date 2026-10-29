@@ -13,9 +13,7 @@ from app.fleet.gps_latest_read import latest_visible_positions
 NOW = datetime(2026, 10, 29, 12, tzinfo=UTC)
 
 
-def _auth(
-    permission: str = "fleet.vehicle.read", allowed_site: uuid.UUID | None = None
-) -> SimpleNamespace:
+def _auth(permission: str = "fleet.vehicle.read", allowed_site: uuid.UUID | None = None) -> SimpleNamespace:
     db = MagicMock()
     return SimpleNamespace(
         tenant_id=uuid.uuid4(),
