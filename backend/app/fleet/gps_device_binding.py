@@ -31,7 +31,11 @@ def device_matches_binding(
     """Accepter uniquement une identité liée, active à l'heure du point."""
     if any(value.int == 0 for value in (tenant_id, vehicle_id, site_id)):
         return False
-    if binding.tenant_id != tenant_id or binding.vehicle_id != vehicle_id or binding.site_id != site_id:
+    if (
+        binding.tenant_id != tenant_id
+        or binding.vehicle_id != vehicle_id
+        or binding.site_id != site_id
+    ):
         return False
     if not device_id or device_id.strip() != device_id or binding.device_id != device_id:
         return False
