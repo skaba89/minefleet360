@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import { get } from "../api/client";
@@ -42,6 +42,10 @@ export function LiveFleetPage() {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 15_000);
+    return () => window.clearInterval(interval);
+  }, []);
   const permitted = can(me.grants, "fleet.vehicle.read", siteId);
   const gps = useQuery({
     queryKey: ["gps-latest", siteId],
