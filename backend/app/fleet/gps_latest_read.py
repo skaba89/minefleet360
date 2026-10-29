@@ -53,6 +53,5 @@ def latest_visible_positions(
     return [
         position
         for position in rows
-        if auth.scope.covers_site(position.site_id)
-        and (site_id is None or str(position.site_id) == site_id)
+        if auth.scope.covers_site(position.site_id) and (site_id is None or str(position.site_id) == site_id)
     ]
