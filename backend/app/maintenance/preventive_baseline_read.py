@@ -31,10 +31,7 @@ def completed_preventive_orders_query(
         ).join(
             MaintenancePlan,
             (MaintenancePlan.tenant_id == MaintenanceDue.tenant_id)
-            & (
-                MaintenancePlan.maintenance_plan_id
-                == MaintenanceDue.maintenance_plan_id
-            ),
+            & (MaintenancePlan.maintenance_plan_id == MaintenanceDue.maintenance_plan_id),
         )
 
     query = query.where(
