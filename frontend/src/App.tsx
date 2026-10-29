@@ -11,6 +11,7 @@ import { DriverDetailPage } from "./pages/DriverDetailPage";
 import { DriversPage } from "./pages/DriversPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
+import { LiveFleetPage } from "./pages/LiveFleetPage";
 import { ActivationPage, ResetConfirmPage, ResetRequestPage } from "./pages/PasswordPages";
 import { SecurityPage } from "./pages/SecurityPage";
 import { VehicleDetailPage } from "./pages/VehicleDetailPage";
@@ -41,6 +42,7 @@ export function App() {
       <Route element={<Protected />}>
         <Route index element={<HomePage />} />
         <Route path="vehicules" element={<VehiclesPage />} />
+        <Route path="flotte-gps" element={<LiveFleetPage />} />
         <Route path="vehicules/echeances" element={<DueDocumentsPage />} />
         <Route path="vehicules/:vehicleId" element={<VehicleDetailPage />} />
         <Route path="conducteurs" element={<DriversPage />} />
