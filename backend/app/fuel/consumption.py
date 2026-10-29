@@ -51,8 +51,6 @@ def vehicle_consumption(
             FuelIssueDecision.decision == "APPROVED",
         )
     )
-    if meter_kind is not None:
-        stmt = stmt.where(FuelIssue.meter_kind == meter_kind)
     rows = list(
         auth.db.execute(stmt.order_by(FuelIssue.meter_kind, FuelIssue.requested_at, FuelIssue.fuel_issue_id))
     )
@@ -134,6 +132,8 @@ def vehicle_consumption(
             previous_full = issue
             liters_since_full = ZERO
 
+    if meter_kind is not None:
+        intervals = [row for row in intervals if row["meter_kind"] == meter_kind]
     intervals.sort(key=lambda row: (row["interval_end_at"], row["fuel_issue_id"]), reverse=True)
     total = len(intervals)
     return intervals[page.offset : page.offset + page.page_size], total
