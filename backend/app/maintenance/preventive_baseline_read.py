@@ -84,13 +84,18 @@ def load_verified_service_baseline(
     if order is None or order.closed_at is None:
         return ServiceBaseline()
 
+    serviced_on: date = order.closed_at.date()
+    work_order_id: uuid.UUID | None = getattr(order, "work_order_id", None)
+    if work_order_id is None:
+        return ServiceBaseline(serviced_on=serviced_on)
+
     meter_rows = db.execute(
         select(
             ServiceMeterBaseline.meter_kind,
             ServiceMeterBaseline.cumulative_total,
         ).where(
             ServiceMeterBaseline.tenant_id == tenant_id,
-            ServiceMeterBaseline.work_order_id == order.work_order_id,
+            ServiceMeterBaseline.work_order_id == work_order_id,
             ServiceMeterBaseline.vehicle_id == vehicle_id,
             ServiceMeterBaseline.serviced_at == order.closed_at,
         )
@@ -98,7 +103,6 @@ def load_verified_service_baseline(
     totals: dict[str, Decimal] = {
         meter_kind: total for meter_kind, total in meter_rows if total.is_finite() and total >= 0
     }
-    serviced_on: date = order.closed_at.date()
     return ServiceBaseline(
         serviced_on=serviced_on,
         cumulative_km=totals.get("ODOMETER_KM"),
