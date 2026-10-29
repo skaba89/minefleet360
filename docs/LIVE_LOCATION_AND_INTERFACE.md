@@ -80,7 +80,7 @@ Réponses : 204 si un nouveau point est stocké ; 401 si la clé, la liaison ou 
 machine sont invalides ; 409 pour un point refusé, ancien ou déjà reçu ; 422 pour un JSON
 invalide ; 429 si la limite est atteinte. Un doublon ne reçoit pas d'accusé 204.
 Le corps est limité à 16 Kio, sa réception à 10 secondes, et les clés JSON répétées sont
-refusées. Le service limite les requêtes par source réseau (1200/minute) et les requêtes
+refusées. Le service limite les requêtes par source réseau (1000/minute) et les requêtes
 d'un équipement authentifié (60/minute), via les compteurs PostgreSQL partagés existants.
 Vérifier ces valeurs et l'IP source de confiance derrière le proxy avant une grande flotte.
 

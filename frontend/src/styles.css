@@ -43,6 +43,7 @@ label { display:flex; flex-direction:column; gap:.35rem; font-size:.86rem; font-
 .mainnav a:hover { background:rgb(255 255 255 / 6%); color:#fff; }.mainnav a.active { background:linear-gradient(90deg,#085aab,#075087); color:#fff; box-shadow:inset 2px 0 #409cff; font-weight:650; }.mainnav .icon { width:17px; height:17px; }
 .sidebar-footer { margin-top:auto; padding:2rem .8rem .2rem; color:#9db2c7; font-size:.72rem; }.sidebar-footer small { display:block; padding-left:1.15rem; margin-top:.3rem; }
 .connection-dot { display:inline-block; width:7px; height:7px; background:#1bb47d; border-radius:50%; margin-right:.5rem; }
+.gps-dot--offline { background:#ef5665; }.gps-dot--stopped { background:#e5a126; }.gps-dot--unknown { background:#288be5; }
 .content { grid-column:2; grid-row:2; width:100%; max-width:1680px; padding:1.9rem; margin:0 auto; min-width:0; }
 .shell > .error { grid-column:2; margin:.5rem 1.5rem; }
 .page-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:.8rem; margin-bottom:1.3rem; }.page-head h1,.page-head h2,.page-head p { margin:0; }.page-head p { margin-top:.35rem; font-size:.83rem; }

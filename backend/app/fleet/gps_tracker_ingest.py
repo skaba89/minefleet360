@@ -22,7 +22,7 @@ from app.organization.models import Tenant
 def check_source_rate(now: datetime) -> None:
     meta = get_request_meta()
     key = f"gps-source:{meta.ip_address if meta else 'unknown'}"
-    limiter = FailureLimiter("source", 1200, timedelta(minutes=1))
+    limiter = FailureLimiter("source", 1000, timedelta(minutes=1))
     if limiter.is_blocked(key, now):
         raise AppError("RATE_LIMITED", headers={"Retry-After": "60"})
     limiter.record_failure(key, now)

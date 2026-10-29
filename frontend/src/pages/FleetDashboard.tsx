@@ -1,4 +1,5 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { get, type Schemas } from "../api/client";
@@ -13,6 +14,11 @@ const states = ["AVAILABLE", "IN_MAINTENANCE", "IMMOBILIZED", "OUT_OF_SERVICE"];
 const colors = ["#18b878", "#ffad26", "#6685ad", "#ef5665"];
 
 export function FleetDashboard() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(timer);
+  }, []);
   const { siteId, sites } = useSites();
   const counts = useQueries({ queries: states.map((status) => ({ queryKey: ["dashboard-status", siteId, status], queryFn: () => get<VehiclePage>("/vehicles", { site_id: siteId, status, page_size: 1 }), refetchInterval: 30_000 })) });
   const fleet = useQuery({ queryKey: ["dashboard-fleet", siteId], queryFn: () => get<VehiclePage>("/vehicles", { site_id: siteId, page_size: 5 }), refetchInterval: 30_000 });
@@ -21,7 +27,7 @@ export function FleetDashboard() {
   const siteCounts = useQueries({ queries: siteRows.map((s) => ({ queryKey: ["dashboard-site", s.site_id], queryFn: () => get<VehiclePage>("/vehicles", { site_id: s.site_id, page_size: 1 }), refetchInterval: 30_000 })) });
   const total = fleet.data?.total ?? 0;
   const ready = counts.every((q) => q.isSuccess);
-  const active = gps.data?.filter((p) => gpsSignalState(p, Date.now()) !== "offline").length;
+  const active = gps.data?.filter((p) => gpsSignalState(p, now) !== "offline").length;
   const values = counts.map((q) => q.data?.total ?? 0);
   const cards: { label: string; value: number | undefined; icon: IconName; tone: string; detail: string; to: string }[] = [
     { label: "Véhicules disponibles", value: counts[0]?.data?.total, icon: "truck", tone: "green", detail: fleet.data ? `Sur ${total} véhicules du parc` : "Parc de votre périmètre", to: "/vehicules" },
