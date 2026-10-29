@@ -8,6 +8,7 @@ from app.fleet.gps_device_credentials import (
     verify_device_secret,
 )
 
+
 def test_new_secret_is_unique_and_verifiable() -> None:
     secret = new_device_secret()
     other = new_device_secret()
