@@ -11,7 +11,6 @@ from app.core.errors import AppError
 from app.maintenance.preventive_approval_evidence import ApprovalEvidence
 from app.maintenance.preventive_review_authorized import review_meter_evidence
 
-
 NOW = datetime(2026, 10, 29, 12, tzinfo=UTC)
 
 
