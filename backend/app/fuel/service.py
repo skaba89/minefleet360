@@ -260,9 +260,7 @@ def create_issue(auth: Authorized, body: IssueCreate) -> Issue:
 
 def decide_issue(auth: Authorized, issue_id: uuid.UUID, body: DecisionCreate) -> Issue:
     issue = auth.db.scalar(
-        select(Issue)
-        .where(Issue.tenant_id == auth.tenant_id, Issue.fuel_issue_id == issue_id)
-        .with_for_update()
+        select(Issue).where(Issue.tenant_id == auth.tenant_id, Issue.fuel_issue_id == issue_id)
     )
     if issue is None or not _in_scope(auth, issue.site_id):
         raise AppError("NOT_FOUND")
