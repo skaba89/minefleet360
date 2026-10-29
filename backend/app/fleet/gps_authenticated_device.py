@@ -37,10 +37,7 @@ def resolve_authenticated_gps_device(
         .join(
             FleetGpsDeviceCredential,
             (FleetGpsDeviceCredential.tenant_id == FleetGpsDeviceBinding.tenant_id)
-            & (
-                FleetGpsDeviceCredential.gps_device_binding_id
-                == FleetGpsDeviceBinding.gps_device_binding_id
-            ),
+            & (FleetGpsDeviceCredential.gps_device_binding_id == FleetGpsDeviceBinding.gps_device_binding_id),
         )
         .where(
             FleetGpsDeviceBinding.tenant_id == trusted_tenant_id,
