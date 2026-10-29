@@ -278,6 +278,7 @@ permissions:
     site_bound: true
     routes:
       - { method: GET, path: /vehicles, shape: collection, success: 200 }
+      - { method: GET, path: "/vehicles/gps/latest", shape: collection, success: 200 }
       - { method: GET, path: "/vehicles/{vehicle_id}", shape: item, success: 200 }
       - { method: GET, path: "/vehicles/{vehicle_id}/status-history", shape: item, success: 200 }
     grants: &vehicle_readers
