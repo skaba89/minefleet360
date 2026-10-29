@@ -9,6 +9,8 @@ from app.authz.dependencies import Authorized
 from app.core.errors import AppError
 from app.fleet.models import Vehicle
 from app.maintenance.preventive_approval_evidence import ApprovalEvidence
+from app.maintenance.preventive_approval_persist import persist_meter_reconciliation_approval
+from app.maintenance.preventive_meter_reconciliation import ReconciledMeter
 from app.maintenance.preventive_reconciliation_review import record_reconciliation_review
 
 REVIEW_PERMISSION = "maintenance.preventive.manage"
@@ -34,10 +36,6 @@ def review_meter_evidence(
         evidence=evidence,
         as_of=as_of,
     )
-
-
-from app.maintenance.preventive_approval_persist import persist_meter_reconciliation_approval
-from app.maintenance.preventive_meter_reconciliation import ReconciledMeter
 
 
 def approve_meter_reconciliation(
