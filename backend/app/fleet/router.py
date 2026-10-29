@@ -7,6 +7,8 @@ from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.http import IfMatch, Page, Pagination, etag
 from app.fleet import records, service
+from app.fleet.gps_latest_read import latest_visible_positions
+from app.fleet.gps_schemas import GpsLatestPositionOut
 from app.fleet.models import Vehicle
 from app.fleet.schemas import (
     CategoryDocumentsIn,
@@ -30,6 +32,20 @@ from app.fleet.schemas import (
 )
 
 router = APIRouter(tags=["flotte"], route_class=SecuredRoute)
+
+
+@router.get("/vehicles/gps/latest", response_model=list[GpsLatestPositionOut])
+def latest_vehicle_gps(
+    auth: Annotated[Authorized, Depends(Require("fleet.vehicle.read"))],
+    site_id: uuid.UUID | None = None,
+) -> list[GpsLatestPositionOut]:
+    """Dernier point connu par camion, filtré par tenant et périmètre autorisé."""
+    positions = latest_visible_positions(
+        auth,
+        as_of=auth.clock.now(),
+        site_id=str(site_id) if site_id is not None else None,
+    )
+    return [GpsLatestPositionOut.model_validate(position) for position in positions]
 
 
 def _out(vehicle: Vehicle, response: Response | None = None) -> VehicleOut:
