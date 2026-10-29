@@ -51,9 +51,7 @@ def vehicle_consumption(
             FuelIssueDecision.decision == "APPROVED",
         )
     )
-    rows = list(
-        auth.db.execute(stmt.order_by(FuelIssue.requested_at, FuelIssue.fuel_issue_id))
-    )
+    rows = list(auth.db.execute(stmt.order_by(FuelIssue.requested_at, FuelIssue.fuel_issue_id)))
 
     by_meter: dict[str, list[tuple[FuelIssue, str]]] = defaultdict(list)
     for issue, fuel_type in rows:
