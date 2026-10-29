@@ -55,11 +55,7 @@ def record_service_meter_baseline(
     """
     if auth.scope.permission != MANAGE_PERMISSION:
         raise AppError("PERMISSION_DENIED")
-    if (
-        as_of.tzinfo is None
-        or as_of.utcoffset() is None
-        or meter_kind not in METER_KINDS
-    ):
+    if as_of.tzinfo is None or as_of.utcoffset() is None or meter_kind not in METER_KINDS:
         raise AppError("STATE_TRANSITION_INVALID")
 
     order = auth.db.execute(
