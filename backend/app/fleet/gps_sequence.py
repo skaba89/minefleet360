@@ -25,9 +25,7 @@ _ADVANCE_SQL = text(
 )
 
 
-def advance_gps_sequence(
-    db: Session, *, tenant_id: uuid.UUID, binding_id: uuid.UUID, sequence: int
-) -> bool:
+def advance_gps_sequence(db: Session, *, tenant_id: uuid.UUID, binding_id: uuid.UUID, sequence: int) -> bool:
     """Accepter seulement une séquence nouvelle, atomiquement en PostgreSQL."""
     if tenant_id.int == 0 or binding_id.int == 0:
         return False
