@@ -55,7 +55,11 @@ def record_service_meter_baseline(
     """
     if auth.scope.permission != MANAGE_PERMISSION:
         raise AppError("PERMISSION_DENIED")
-    if as_of.tzinfo is None or as_of.utcoffset() is None or meter_kind not in METER_KINDS:
+    if (
+        as_of.tzinfo is None
+        or as_of.utcoffset() is None
+        or meter_kind not in METER_KINDS
+    ):
         raise AppError("STATE_TRANSITION_INVALID")
 
     order = auth.db.execute(
@@ -156,6 +160,10 @@ def record_service_meter_baseline(
         action="maintenance.service_meter_baseline.create",
         entity_type="maintenance_service_meter_baseline",
         entity_id=inserted_id,
-        changed_fields=("meter_kind", "cumulative_total", "reconciliation_approval_id"),
+        changed_fields=(
+            "meter_kind",
+            "cumulative_total",
+            "reconciliation_approval_id",
+        ),
     )
     return True
