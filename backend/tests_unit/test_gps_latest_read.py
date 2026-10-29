@@ -10,7 +10,6 @@ import pytest
 from app.core.errors import AppError
 from app.fleet.gps_latest_read import latest_visible_positions
 
-
 NOW = datetime(2026, 10, 29, 12, tzinfo=UTC)
 
 
