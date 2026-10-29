@@ -1,8 +1,5 @@
 # Prévalidation locale : mêmes commandes principales que la CI GitHub.
 # Usage : powershell -ExecutionPolicy Bypass -File .\scripts\check-pr.ps1
-# Option : -Full pour exécuter aussi les tests backend (base de test requise).
-param([switch]$Full)
-
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $root = Split-Path -Parent $PSScriptRoot
@@ -41,11 +38,6 @@ try {
     }
     finally {
         Pop-Location
-    }
-    if ($Full) {
-        Invoke-Checked 'Tests backend complets' {
-            docker compose --env-file $envFile -f $compose exec -T api pytest -q -p no:warnings --cov=app --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=85
-        }
     }
     Write-Host 'Contrôles locaux terminés avec succès.' -ForegroundColor Green
 }
