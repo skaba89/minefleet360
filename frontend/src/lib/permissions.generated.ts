@@ -522,6 +522,76 @@ export const GRANTS = {
       "SITE"
     ]
   },
+  "fuel.issue.decide": {
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "fuel.issue.request": {
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "fuel.stock.manage": {
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "fuel.stock.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "fuel.stock.receive": {
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "identity.role.read": {
     "AUDITOR": [
       "TENANT"
