@@ -13,9 +13,7 @@ NOW = datetime(2026, 10, 29, 16, tzinfo=UTC)
 def test_denied_position_is_not_written() -> None:
     db = MagicMock()
     point = GpsPosition(uuid.uuid4(), "tracker-01", 10, -10, NOW)
-    with patch(
-        "app.fleet.gps_position_write.preflight_gps_ingestion", return_value=False
-    ):
+    with patch("app.fleet.gps_position_write.preflight_gps_ingestion", return_value=False):
         result = persist_validated_gps_position(
             db,
             tenant_id=uuid.uuid4(),
@@ -32,9 +30,7 @@ def test_duplicate_returns_false_without_failure() -> None:
     db = MagicMock()
     db.execute.return_value.scalar_one_or_none.return_value = None
     point = GpsPosition(uuid.uuid4(), "tracker-01", 10, -10, NOW)
-    with patch(
-        "app.fleet.gps_position_write.preflight_gps_ingestion", return_value=True
-    ):
+    with patch("app.fleet.gps_position_write.preflight_gps_ingestion", return_value=True):
         result = persist_validated_gps_position(
             db,
             tenant_id=uuid.uuid4(),
@@ -51,9 +47,7 @@ def test_first_position_returns_true() -> None:
     db = MagicMock()
     db.execute.return_value.scalar_one_or_none.return_value = uuid.uuid4()
     point = GpsPosition(uuid.uuid4(), "tracker-01", 10, -10, NOW)
-    with patch(
-        "app.fleet.gps_position_write.preflight_gps_ingestion", return_value=True
-    ):
+    with patch("app.fleet.gps_position_write.preflight_gps_ingestion", return_value=True):
         result = persist_validated_gps_position(
             db,
             tenant_id=uuid.uuid4(),
