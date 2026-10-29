@@ -208,3 +208,11 @@ tbody tr:hover { background: #f6f9fc; }
 
 .gps-map-preview { margin-top: 1rem; }
 .gps-map-frame { display: block; width: 100%; height: clamp(300px, 55vh, 550px); border: 1px solid var(--border); border-radius: 12px; }
+
+/* Private multi-vehicle geographic overview (no third-party tile requests). */
+.fleet-positions-overview { margin-top: 1rem; }
+.fleet-positions-plot { position: relative; height: min(48vh, 420px); min-height: 260px; overflow: hidden; border-radius: 12px; border: 1px solid var(--border); background: repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(110, 130, 155, 0.14) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(110, 130, 155, 0.14) 40px), var(--surface); }
+.fleet-position-dot { position: absolute; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; transform: translate(-50%, -50%); border: 2px solid #fff; border-radius: 50%; background: #2463eb; box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3); cursor: pointer; }
+.fleet-position-dot span { width: 8px; height: 8px; border-radius: 50%; background: white; }
+.fleet-position-dot.is-selected { outline: 3px solid #f59e0b; outline-offset: 2px; }
+.fleet-position-dot:focus-visible { outline: 3px solid #f59e0b; outline-offset: 3px; }

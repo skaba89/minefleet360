@@ -6,6 +6,7 @@ import { get } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { DataState } from "../components/common";
 import { can } from "../lib/permissions";
+import { FleetPositionsOverview } from "./FleetPositionsOverview";
 import { GpsLocationMap } from "./GpsLocationMap";
 import { useSites } from "../site/SiteContext";
 
@@ -83,6 +84,7 @@ export function LiveFleetPage() {
         <label htmlFor="gps-search">Rechercher un identifiant de camion</label>
         <input id="gps-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Identifiant véhicule" />
       </div>
+      <FleetPositionsOverview points={shown} selectedId={selectedId} onSelect={setSelectedId} />
       {selected ? <GpsLocationMap key={selected.vehicle_id} point={selected} /> : null}
       <DataState loading={gps.isLoading} error={gps.error} empty={shown.length === 0} emptyText="Aucune position GPS disponible pour ce périmètre.">
         <div className="live-fleet-table">
