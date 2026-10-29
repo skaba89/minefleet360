@@ -6,13 +6,18 @@ pas automatiquement des cumuls fiables après remise à zéro du compteur.
 
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
 from app.maintenance.models import WorkOrder
 from app.maintenance.preventive import ServiceBaseline
-from app.maintenance.preventive_models import MaintenanceDue, MaintenancePlan
+from app.maintenance.preventive_models import (
+    MaintenanceDue,
+    MaintenancePlan,
+    ServiceMeterBaseline,
+)
 
 
 def completed_preventive_orders_query(
@@ -62,7 +67,7 @@ def load_verified_service_baseline(
     plan_code: str | None = None,
     as_of: datetime | None = None,
 ) -> ServiceBaseline:
-    """Utiliser la clôture d'un OT préventif du même plan métier.
+    """Utiliser la clôture et les cumuls approuvés du même entretien.
 
     Le code du plan conserve la continuité entre ses versions. Une
     prévisualisation historique ignore les clôtures postérieures à as_of.
@@ -76,5 +81,28 @@ def load_verified_service_baseline(
             as_of=as_of,
         )
     ).first()
-    serviced_on: date | None = order.closed_at.date() if order and order.closed_at else None
-    return ServiceBaseline(serviced_on=serviced_on)
+    if order is None or order.closed_at is None:
+        return ServiceBaseline()
+
+    meter_rows = db.execute(
+        select(
+            ServiceMeterBaseline.meter_kind,
+            ServiceMeterBaseline.cumulative_total,
+        ).where(
+            ServiceMeterBaseline.tenant_id == tenant_id,
+            ServiceMeterBaseline.work_order_id == order.work_order_id,
+            ServiceMeterBaseline.vehicle_id == vehicle_id,
+            ServiceMeterBaseline.serviced_at == order.closed_at,
+        )
+    ).all()
+    totals: dict[str, Decimal] = {
+        meter_kind: total
+        for meter_kind, total in meter_rows
+        if total.is_finite() and total >= 0
+    }
+    serviced_on: date = order.closed_at.date()
+    return ServiceBaseline(
+        serviced_on=serviced_on,
+        cumulative_km=totals.get("ODOMETER_KM"),
+        cumulative_hours=totals.get("HOUR_METER"),
+    )
