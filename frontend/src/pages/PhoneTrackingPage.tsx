@@ -22,9 +22,13 @@ export function PhoneTrackingPage() {
     queryKey: ["gps-sharing-vehicles", vehiclePage],
     queryFn: async () => {
       const pages = await Promise.all(Array.from({ length: vehiclePage }, (_, index) =>
-        get<VehiclePage>("/me/gps/vehicles", { page: index + 1, page_size: 50 }),
+        get<VehiclePage | VehicleOption[]>("/me/gps/vehicles", { page: index + 1, page_size: 50 }),
       ));
-      return { items: pages.flatMap((page) => page.items), total: pages[0]?.total ?? 0 };
+      const firstPage = pages[0];
+      return {
+        items: pages.flatMap((page) => Array.isArray(page) ? page : page.items),
+        total: firstPage ? (Array.isArray(firstPage) ? firstPage.length : firstPage.total) : 0,
+      };
     },
     enabled: permitted,
   });
