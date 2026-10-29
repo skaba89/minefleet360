@@ -18,6 +18,7 @@ import {
 import { can } from "../lib/permissions";
 import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
 import { useSites } from "../site/SiteContext";
+import { PreventiveCompletionPanel } from "./PreventiveCompletionPanel";
 
 type WorkOrder = Schemas["WorkOrderOut"];
 type Status = WorkOrder["status"];
@@ -335,6 +336,12 @@ export function WorkOrderPage() {
               <Fact label="Motif">{o.status_reason ? label(WORK_ORDER_REASONS, o.status_reason) : null}</Fact>
               <Fact label="Description">{o.description}</Fact>
             </dl>
+            <PreventiveCompletionPanel
+              key={o.work_order_id}
+              order={o}
+              allowed={can(me.grants, "maintenance.preventive.manage", o.site_id)}
+              timeZone={tz}
+            />
             <Report order={o} canExecute={canExecute} onSave={(fields, submit) => act(submit ? "SUBMIT" : "NOTE", fields)} />
             <Labour order={o} canExecute={canExecute} onDone={() => void refresh()} />
             <h2>Chronologie</h2>
