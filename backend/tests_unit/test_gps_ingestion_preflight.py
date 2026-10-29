@@ -21,7 +21,7 @@ def test_reject_invalid_position_without_database_lookup() -> None:
             site_id=uuid.uuid4(),
             position=point,
             supplied_secret="x" * 44,
-            received_at=NOW
+            received_at=NOW,
         )
         lookup.assert_not_called()
 
@@ -36,7 +36,7 @@ def test_reject_missing_binding_without_secret_check() -> None:
                 site_id=uuid.uuid4(),
                 position=point,
                 supplied_secret="x" * 44,
-                received_at=NOW
+                received_at=NOW,
             )
             verify.assert_not_called()
 
@@ -54,6 +54,6 @@ def test_valid_binding_requires_credential() -> None:
                 site_id=uuid.uuid4(),
                 position=point,
                 supplied_secret="x" * 44,
-                received_at=NOW
+                received_at=NOW,
             )
             verify.assert_called_once()
