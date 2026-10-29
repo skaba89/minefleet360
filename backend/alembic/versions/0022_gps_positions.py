@@ -32,13 +32,13 @@ CREATE TABLE fleet_gps_position (
   CONSTRAINT fk_fgp__site FOREIGN KEY (tenant_id, site_id)
     REFERENCES site (tenant_id, site_id) ON DELETE RESTRICT,
   CONSTRAINT ck_fgp_device CHECK (char_length(btrim(device_id)) BETWEEN 1 AND 120),
-  CONSTRAINT ck_fgp_lat CHECK (isfinite(latitude) AND latitude BETWEEN -90 AND 90),
-  CONSTRAINT ck_fgp_lon CHECK (isfinite(longitude) AND longitude BETWEEN -180 AND 180),
+  CONSTRAINT ck_fgp_lat CHECK (latitude BETWEEN -90 AND 90),
+  CONSTRAINT ck_fgp_lon CHECK (longitude BETWEEN -180 AND 180),
   CONSTRAINT ck_fgp_speed CHECK (
-    speed_kmh IS NULL OR (isfinite(speed_kmh) AND speed_kmh BETWEEN 0 AND 250)
+    speed_kmh IS NULL OR (speed_kmh BETWEEN 0 AND 250)
   ),
   CONSTRAINT ck_fgp_accuracy CHECK (
-    accuracy_m IS NULL OR (isfinite(accuracy_m) AND accuracy_m BETWEEN 0 AND 10000)
+    accuracy_m IS NULL OR (accuracy_m BETWEEN 0 AND 10000)
   )
 );
 CREATE INDEX ix_fgp_latest
