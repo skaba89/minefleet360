@@ -516,6 +516,8 @@ permissions:
       - { method: POST, path: "/preventive-plans/{plan_id}/suspend", shape: item, success: 200 }
       - { method: POST, path: "/preventive-plans/{plan_id}/revise", shape: item, success: 200 }
       - { method: POST, path: "/preventive-dues/{due_id}/schedule", shape: item, success: 200 }
+      - { method: POST, path: "/work-orders/{work_order_id}/complete-preventive", shape: item, success: 200 }
+    # La finalisation écrit maintenance.preventive_due.complete.
     audit: { action: maintenance.plan.create }
     grants:
       OPS_MANAGER: [TENANT, SITE]

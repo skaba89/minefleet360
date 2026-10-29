@@ -1,4 +1,4 @@
-"""Réponses publiques limitées des plans et échéances de maintenance préventive."""
+"""Contrats publics limités de la maintenance préventive."""
 
 import uuid
 from datetime import date, datetime
@@ -6,6 +6,8 @@ from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
+
+from app.core.http import StrictModel
 
 
 class PreventivePlanOut(BaseModel):
@@ -39,3 +41,14 @@ class PreventiveDueOut(BaseModel):
 
 class PreventiveScheduledOrderOut(BaseModel):
     work_order_id: uuid.UUID
+
+
+class PreventiveCompletionIn(StrictModel):
+    odometer_approval_id: uuid.UUID | None = None
+    hour_meter_approval_id: uuid.UUID | None = None
+
+
+class PreventiveCompletionOut(BaseModel):
+    work_order_id: uuid.UUID
+    status: Literal["COMPLETED"]
+    changed: bool
