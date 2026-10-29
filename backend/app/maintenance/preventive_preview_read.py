@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.fleet.models import Vehicle
-from app.maintenance.preventive import CurrentMeters, ServiceBaseline, ServiceRule
+from app.maintenance.preventive import CurrentMeters, ServiceRule
 from app.maintenance.preventive_baseline_read import load_verified_service_baseline
 from app.maintenance.preventive_batch import PlannedDue, PlanSnapshot, preview_due_batch
 from app.maintenance.preventive_batch_read import load_active_plans
@@ -56,7 +56,6 @@ def load_plan_snapshots(
     vehicle_ids = frozenset(plan.vehicle_id for plan in plans)
     vehicle_sites = _vehicle_sites(db, tenant_id, vehicle_ids, site_ids)
 
-    baselines: dict[uuid.UUID, ServiceBaseline] = {}
     meters: dict[uuid.UUID, CurrentMeters] = {}
     snapshots: list[PlanSnapshot] = []
 
@@ -65,13 +64,7 @@ def load_plan_snapshots(
         if site_id is None:
             continue
 
-        if plan.vehicle_id not in baselines:
-            baselines[plan.vehicle_id] = load_verified_service_baseline(
-                db,
-                tenant_id,
-                plan.vehicle_id,
-                as_of=as_of_utc,
-            )
+        if plan.vehicle_id not in meters:
             meters[plan.vehicle_id] = load_approved_current_meters(
                 db,
                 tenant_id,
@@ -80,6 +73,13 @@ def load_plan_snapshots(
                 as_of=as_of_utc,
             )
 
+        baseline = load_verified_service_baseline(
+            db,
+            tenant_id,
+            plan.vehicle_id,
+            plan_code=plan.code,
+            as_of=as_of_utc,
+        )
         snapshots.append(
             PlanSnapshot(
                 tenant_id=tenant_id,
@@ -90,7 +90,7 @@ def load_plan_snapshots(
                     hours_interval=plan.hours_interval,
                     days_interval=plan.days_interval,
                 ),
-                baseline=baselines[plan.vehicle_id],
+                baseline=baseline,
                 meters=meters[plan.vehicle_id],
                 active=True,
             )
