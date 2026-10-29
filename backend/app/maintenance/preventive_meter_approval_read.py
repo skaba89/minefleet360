@@ -4,8 +4,8 @@ Cette couche ne calcule ni ne persiste d'échéances. Une approbation est ignor�
 dès qu'un relevé brut postérieur existe pour le même compteur.
 """
 
-from datetime import datetime
 import uuid
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
