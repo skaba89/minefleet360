@@ -12,6 +12,8 @@ branch_labels = None
 depends_on = None
 
 UPGRADE = r"""
+ALTER TABLE auth_session ADD CONSTRAINT uq_auth_session_gps_identity
+  UNIQUE (tenant_id, auth_session_id, user_account_id);
 CREATE TABLE fleet_gps_phone_share (
   phone_share_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL,
@@ -31,6 +33,8 @@ CREATE TABLE fleet_gps_phone_share (
     REFERENCES site (tenant_id, site_id) ON DELETE RESTRICT,
   CONSTRAINT fk_fgps_user FOREIGN KEY (tenant_id, user_account_id)
     REFERENCES user_account (tenant_id, user_account_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_fgps_session FOREIGN KEY (tenant_id, auth_session_id, user_account_id)
+    REFERENCES auth_session (tenant_id, auth_session_id, user_account_id) ON DELETE RESTRICT,
   CONSTRAINT ck_fgps_period CHECK (expires_at > started_at AND
     (stopped_at IS NULL OR stopped_at >= started_at))
 );
@@ -54,6 +58,7 @@ ALTER TABLE fleet_gps_position DROP CONSTRAINT fk_fgp_phone_share;
 ALTER TABLE fleet_gps_position DROP COLUMN phone_share_id;
 ALTER TABLE fleet_gps_position DROP COLUMN source;
 DROP TABLE fleet_gps_phone_share;
+ALTER TABLE auth_session DROP CONSTRAINT uq_auth_session_gps_identity;
 """
 
 

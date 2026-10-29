@@ -130,6 +130,30 @@ def test_tracker_provision_ingest_replay_secret_and_revoke(client: TestClient, w
     assert client.post(path, headers=w.ops.headers, json={"device_id": device}).status_code == 409
     headers = {"Authorization": f"Bearer {token}"}
     body = {**_point(), "device_id": device, "sequence": 1}
+    outsider_tenant = api.tenant()
+    forged = "gps_" + str(outsider_tenant.tenant_id) + "." + token.split(".", 1)[1]
+    assert (
+        client.post(
+            f"{API}/gps/telemetry", headers={"Authorization": f"Bearer {forged}"}, json=body
+        ).status_code
+        == 401
+    )
+    site_ops = api.user(w.t, "OPS_MANAGER", "SITE", "S2")
+    assert client.get(path, headers=site_ops.headers).status_code == 404
+    assert (
+        client.post(
+            f"{API}/gps/telemetry", headers=headers, json={**body, "tenant_id": str(w.t.tenant_id)}
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            f"{API}/gps/telemetry",
+            headers={**headers, "Content-Type": "application/json"},
+            content=b"x" * 16385,
+        ).status_code
+        == 422
+    )
     assert client.post(f"{API}/gps/telemetry", json=body).status_code == 401
     # Un jeton utilisateur ne vaut jamais jeton d'équipement.
     assert client.post(f"{API}/gps/telemetry", headers=w.ops.headers, json=body).status_code == 401
