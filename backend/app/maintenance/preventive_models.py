@@ -1,7 +1,7 @@
 """Modèles ORM du lot 3b : plans et échéances de maintenance préventive.
 
 Les contraintes d'intégrité, clés étrangères composites et politiques RLS sont
-définies dans la migration Alembic 0019 ; aucun DDL n'est créé par ces classes.
+définies dans les migrations Alembic ; aucun DDL n'est créé par ces classes.
 """
 
 import uuid
