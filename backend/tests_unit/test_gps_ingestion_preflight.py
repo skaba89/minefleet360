@@ -1,7 +1,7 @@
 """Tests d'orchestration des gardes de réception GPS."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -43,7 +43,7 @@ def test_reject_missing_binding_without_secret_check() -> None:
 
 def test_valid_binding_requires_credential() -> None:
     point = GpsPosition(uuid.uuid4(), "tracker", 10, -10, NOW)
-    binding = SimpleNamespace(gps_device_binding_id=uuid.uuid4(), revoked_at=None)
+    binding = SimpleNamespace(gps_device_binding_id=uuid.uuid4(), revoked_at=None, active_from=NOW)
     with patch("app.fleet.gps_ingestion_preflight.resolve_gps_binding", return_value=binding):
         with patch(
             "app.fleet.gps_ingestion_preflight.verify_persisted_gps_credential", return_value=True
@@ -57,3 +57,23 @@ def test_valid_binding_requires_credential() -> None:
                 received_at=NOW,
             )
             verify.assert_called_once()
+
+
+def test_point_before_current_binding_is_rejected_before_credential_check() -> None:
+    point = GpsPosition(uuid.uuid4(), "tracker", 10, -10, NOW - timedelta(minutes=20))
+    binding = SimpleNamespace(
+        gps_device_binding_id=uuid.uuid4(), revoked_at=None, active_from=NOW - timedelta(minutes=10)
+    )
+    with (
+        patch("app.fleet.gps_ingestion_preflight.resolve_gps_binding", return_value=binding),
+        patch("app.fleet.gps_ingestion_preflight.verify_persisted_gps_credential") as verify,
+    ):
+        assert not preflight_gps_ingestion(
+            MagicMock(),
+            tenant_id=uuid.uuid4(),
+            site_id=uuid.uuid4(),
+            position=point,
+            supplied_secret="x" * 44,
+            received_at=NOW,
+        )
+        verify.assert_not_called()
