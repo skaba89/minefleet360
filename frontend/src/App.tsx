@@ -21,6 +21,7 @@ import { DueDocumentsPage, RequiredDocumentsPage } from "./pages/VehicleRecords"
 import { VehiclesPage } from "./pages/VehiclesPage";
 import { IndicatorsPage, WeighingsPage } from "./pages/WeighingPages";
 import { WorkOrderPage, WorkshopPage } from "./pages/WorkshopPages";
+import { FuelPage } from "./pages/FuelPage";
 import { SiteProvider } from "./site/SiteContext";
 
 function Protected() {
@@ -55,6 +56,7 @@ export function App() {
         <Route path="missions/:missionId" element={<MissionDetailPage />} />
         <Route path="atelier" element={<WorkshopPage />} />
         <Route path="maintenance" element={<PreventivePage />} />
+        <Route path="carburant" element={<FuelPage />} />
         <Route path="atelier/:workOrderId" element={<WorkOrderPage />} />
         <Route path="pesees" element={<WeighingsPage />} />
         <Route path="indicateurs" element={<IndicatorsPage />} />
@@ -72,3 +74,4 @@ export function App() {
     </Routes>
   );
 }
+
