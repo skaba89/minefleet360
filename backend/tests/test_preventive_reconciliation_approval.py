@@ -34,9 +34,7 @@ def test_mismatched_reference_rejects_total() -> None:
 
 
 def test_future_approval_rejects_total() -> None:
-    rejected = approved_reconciliation(
-        _reconciliation(), _proof(time=NOW + timedelta(days=1)), as_of=NOW
-    )
+    rejected = approved_reconciliation(_reconciliation(), _proof(time=NOW + timedelta(days=1)), as_of=NOW)
     assert current_meters_from_reconciliation(rejected, None).cumulative_km is None
 
 
