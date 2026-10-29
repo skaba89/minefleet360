@@ -31,7 +31,8 @@ try {
     Invoke-Checked 'Ruff lint backend' { docker compose --env-file $envFile -f $compose exec -T api ruff check . }
     Invoke-Checked 'Ruff format backend' { docker compose --env-file $envFile -f $compose exec -T api ruff format --check . }
     Invoke-Checked 'Mypy backend' { docker compose --env-file $envFile -f $compose exec -T api mypy app }
-    Invoke-Checked 'Permissions frontend générées' { docker compose --env-file $envFile -f $compose exec -T api python /app/../scripts/gen_permissions.py --check }
+    # Python local doit disposer de PyYAML : python -m pip install pyyaml==6.0.3
+    Invoke-Checked 'Permissions frontend générées' { python scripts/gen_permissions.py --check }
     Push-Location (Join-Path $root 'frontend')
     try {
         Invoke-Checked 'TypeScript' { npm run typecheck }
