@@ -6,7 +6,6 @@ from datetime import UTC, datetime, timedelta
 
 from app.fleet.gps_device_binding import GpsDeviceBinding, device_matches_binding
 
-
 NOW = datetime(2026, 10, 29, 12, tzinfo=UTC)
 
 
