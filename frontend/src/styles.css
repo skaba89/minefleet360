@@ -193,3 +193,15 @@ tbody tr:hover { background: #f6f9fc; }
   .shell { display: block; }
   .content { max-width: none; padding: 0; }
 }
+
+/* GPS control room */
+.live-fleet-eyebrow { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.15em; color: var(--accent); margin: 0 0 0.4rem; }
+.live-fleet-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.live-fleet-metrics .card { display: flex; flex-direction: column; gap: 0.45rem; }
+.live-fleet-metrics strong { font-size: clamp(1.6rem, 3vw, 2.4rem); letter-spacing: -0.04em; }
+.live-fleet-table { overflow-x: auto; }
+.gps-status { display: inline-flex; padding: 0.3rem 0.65rem; border-radius: 20px; font-size: 0.77rem; font-weight: 750; white-space: nowrap; }
+.gps-status--moving { background: var(--ok-bg); color: var(--ok); }
+.gps-status--stopped { background: var(--warn-bg); color: var(--warn); }
+.gps-status--offline { background: var(--bad-bg); color: var(--bad); }
+@media (max-width: 700px) { .live-fleet-metrics { grid-template-columns: 1fr; } }
