@@ -37,7 +37,9 @@ def test_valid_binding_requires_credential() -> None:
     point = GpsPosition(uuid.uuid4(), "tracker", 10, -10, NOW)
     binding = SimpleNamespace(gps_device_binding_id=uuid.uuid4(), revoked_at=None)
     with patch("app.fleet.gps_ingestion_preflight.resolve_gps_binding", return_value=binding):
-        with patch("app.fleet.gps_ingestion_preflight.verify_persisted_gps_credential", return_value=True) as verify:
+        with patch(
+            "app.fleet.gps_ingestion_preflight.verify_persisted_gps_credential", return_value=True
+        ) as verify:
             assert preflight_gps_ingestion(
                 MagicMock(), tenant_id=uuid.uuid4(), site_id=uuid.uuid4(),
                 position=point, supplied_secret="x" * 44, received_at=NOW
