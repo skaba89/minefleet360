@@ -38,7 +38,7 @@ def preflight_gps_ingestion(
     )
     if binding is None:
         return False
-    if binding.revoked_at is not None:
+    if binding.revoked_at is not None or position.recorded_at < binding.active_from:
         return False
     return verify_persisted_gps_credential(
         db,
