@@ -37,8 +37,9 @@ est nécessaire pour ce besoin ; le mode natif et la synchronisation hors ligne 
 Le partage est lié à l'utilisateur ET à la session authentifiée, expire après 12 heures au
 maximum, et est remplacé quand ce même compte en démarre un autre. Les droits, l'affectation,
 le site et l'état du véhicule sont revérifiés à chaque envoi. Aucun relevé n'est pris sans
-action de démarrage et consentement explicite. La liste de choix est bornée aux 200 premiers
-véhicules autorisés ; étendre la recherche paginée avant un déploiement sur un très grand parc.
+action de démarrage et consentement explicite. La liste des véhicules autorisés est chargée
+par pages de 50 ; le filtrage tenant/site et la restriction d'affectation du conducteur sont
+réappliqués par le serveur à chaque page.
 
 ## Traceur GPS
 

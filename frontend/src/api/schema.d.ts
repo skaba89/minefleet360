@@ -2910,6 +2910,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[GpsVehicleOut] */
+        Page_GpsVehicleOut_: {
+            /** Items */
+            items: components["schemas"]["GpsVehicleOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[MeterReadingOut] */
         Page_MeterReadingOut_: {
             /** Items */
@@ -6434,7 +6445,10 @@ export interface operations {
     };
     sharing_vehicles_api_v1_me_gps_vehicles_get: {
         parameters: {
-            query?: never;
+            query?: {
+                page?: number;
+                page_size?: number | null;
+            };
             header?: {
                 authorization?: string | null;
             };
@@ -6449,7 +6463,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["GpsVehicleOut"][];
+                    "application/json": components["schemas"]["Page_GpsVehicleOut_"];
                 };
             };
             /** @description Validation Error */

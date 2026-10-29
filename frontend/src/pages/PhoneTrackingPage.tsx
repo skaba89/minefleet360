@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 
@@ -10,13 +10,20 @@ import { can } from "../lib/permissions";
 import { formatDateTime } from "../lib/time";
 
 interface VehicleOption { vehicle_id: string; fleet_number: string; registration_number: string | null; site_id: string }
+interface VehiclePage { items: VehicleOption[]; page: number; page_size: number; total: number }
 interface Share { phone_share_id: string; vehicle_id: string; started_at: string; expires_at: string }
 
 export function PhoneTrackingPage() {
   const me = useMe();
   const [params] = useSearchParams();
   const permitted = can(me.grants, "fleet.gps.share");
-  const vehicles = useQuery({ queryKey: ["gps-sharing-vehicles"], queryFn: () => get<VehicleOption[]>("/me/gps/vehicles"), enabled: permitted, refetchInterval: 30_000 });
+  const vehicles = useInfiniteQuery({
+    queryKey: ["gps-sharing-vehicles"],
+    queryFn: ({ pageParam }) => get<VehiclePage>("/me/gps/vehicles", { page: pageParam, page_size: 50 }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => lastPage.page * lastPage.page_size < lastPage.total ? lastPage.page + 1 : undefined,
+    enabled: permitted,
+  });
   const [vehicleId, setVehicleId] = useState(params.get("vehicle") ?? "");
   const [consent, setConsent] = useState(false);
   const [running, setRunning] = useState(false);
@@ -110,14 +117,16 @@ export function PhoneTrackingPage() {
   }
 
   if (!permitted) return <p>Votre compte ne peut pas partager de position.</p>;
-  const chosen = vehicles.data?.find((v) => v.vehicle_id === vehicleId);
+  const vehicleOptions = vehicles.data?.pages.flatMap((page) => page.items) ?? [];
+  const chosen = vehicleOptions.find((v) => v.vehicle_id === vehicleId);
   return <section>
     <div className="page-head"><div><h1>Mon partage GPS</h1><p className="muted">Localiser le véhicule avec le téléphone de votre compte</p></div><span className={`badge badge-${running ? "ok" : "neutral"}`}><Icon name="phone" /> {running ? "Partage actif" : "Désactivé"}</span></div>
     <div className="card tracking-card">
       <h2>Partager la position de ce téléphone</h2>
       <p>La position de ce téléphone représentera le véhicule choisi. Activez le partage uniquement lorsque vous êtes à bord.</p>
-      <DataState loading={vehicles.isLoading} error={vehicles.error} empty={vehicles.data?.length === 0} emptyText="Aucun véhicule autorisé. Pour un conducteur, l'administrateur doit relier son compte au dossier conducteur et une affectation doit être active.">
-        <label>Véhicule<select value={vehicleId} disabled={running || busy} onChange={(e) => { setVehicleId(e.target.value); setConsent(false); }}><option value="">Choisir un véhicule</option>{vehicles.data?.map((v) => <option key={v.vehicle_id} value={v.vehicle_id}>{v.fleet_number}{v.registration_number ? ` · ${v.registration_number}` : ""}</option>)}</select></label>
+      <DataState loading={vehicles.isLoading} error={vehicles.error} empty={vehicleOptions.length === 0} emptyText="Aucun véhicule autorisé. Pour un conducteur, l'administrateur doit relier son compte au dossier conducteur et une affectation doit être active.">
+        <label>Véhicule<select value={vehicleId} disabled={running || busy} onChange={(e) => { setVehicleId(e.target.value); setConsent(false); }}><option value="">Choisir un véhicule</option>{vehicleOptions.map((v) => <option key={v.vehicle_id} value={v.vehicle_id}>{v.fleet_number}{v.registration_number ? ` · ${v.registration_number}` : ""}</option>)}</select></label>
+        {vehicles.hasNextPage && <button type="button" disabled={vehicles.isFetchingNextPage} onClick={() => void vehicles.fetchNextPage()}>{vehicles.isFetchingNextPage ? "Chargement…" : `Charger la suite (${vehicleOptions.length} sur ${vehicles.data?.pages[0]?.total ?? 0})`}</button>}
         <label className="checkbox"><input type="checkbox" checked={consent} disabled={running || busy} onChange={(e) => setConsent(e.target.checked)} />Je suis à bord et j'accepte de partager la position de ce téléphone pour ce véhicule.</label>
         <div className="toolbar">{!running && <button className="primary" type="button" disabled={busy || !consent || !chosen} onClick={() => void start()}>Démarrer le partage</button>}</div>
       </DataState>

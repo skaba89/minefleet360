@@ -8,6 +8,7 @@ from starlette.concurrency import run_in_threadpool
 from app.authz.dependencies import Authorized, ClockDep, DbSession, Require, reject_unknown_query
 from app.authz.routing import SecuredRoute
 from app.core.errors import AppError
+from app.core.http import Page, Pagination
 from app.core.security import parse_composite_token
 from app.fleet import gps_live_service as service
 from app.fleet.gps_live_schemas import (
@@ -32,9 +33,15 @@ ManageAuth = Annotated[Authorized, Depends(Require("fleet.gps.manage"))]
 LinkAuth = Annotated[Authorized, Depends(Require("workforce.driver.link_account"))]
 
 
-@router.get("/me/gps/vehicles", response_model=list[GpsVehicleOut])
-def sharing_vehicles(auth: ShareAuth) -> list[GpsVehicleOut]:
-    return [GpsVehicleOut.model_validate(v) for v in service.sharing_vehicles(auth)]
+@router.get("/me/gps/vehicles", response_model=Page[GpsVehicleOut])
+def sharing_vehicles(auth: ShareAuth, page: Pagination) -> Page[GpsVehicleOut]:
+    items, total = service.sharing_vehicles(auth, page)
+    return Page(
+        items=[GpsVehicleOut.model_validate(v) for v in items],
+        page=page.page,
+        page_size=page.page_size,
+        total=total,
+    )
 
 
 @router.post("/me/gps/shares", response_model=PhoneShareOut, status_code=201)

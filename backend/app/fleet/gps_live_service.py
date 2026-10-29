@@ -3,12 +3,13 @@
 import uuid
 from datetime import timedelta
 
-from sqlalchemy import Select, or_, select
+from sqlalchemy import Select, func, or_, select
 
 from app.assignment.models import VehicleAssignment
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.core.errors import AppError
+from app.core.http import PageParams
 from app.core.security import CompositeToken
 from app.fleet.gps_binding_models import FleetGpsDeviceBinding
 from app.fleet.gps_credential_models import FleetGpsDeviceCredential
@@ -63,7 +64,7 @@ def _driver_vehicle_ids(auth: Authorized) -> Select[uuid.UUID]:
     )
 
 
-def sharing_vehicles(auth: Authorized) -> list[Vehicle]:
+def sharing_vehicles(auth: Authorized, page: PageParams) -> tuple[list[Vehicle], int]:
     stmt = select(Vehicle).where(Vehicle.tenant_id == auth.tenant_id, Vehicle.status != "RETIRED")
     if not auth.scope.tenant_wide:
         stmt = stmt.where(Vehicle.site_id.in_(auth.scope.site_ids))
@@ -76,7 +77,11 @@ def sharing_vehicles(auth: Authorized) -> list[Vehicle]:
                 Vehicle.vehicle_id.in_(_driver_vehicle_ids(auth)),
             )
         )
-    return list(auth.db.scalars(stmt.order_by(Vehicle.fleet_number).limit(200)))
+    total = auth.db.execute(select(func.count()).select_from(stmt.subquery())).scalar_one()
+    rows = auth.db.scalars(
+        stmt.order_by(Vehicle.fleet_number_norm, Vehicle.vehicle_id).offset(page.offset).limit(page.page_size)
+    )
+    return list(rows), total
 
 
 def _vehicle(auth: Authorized, vehicle_id: uuid.UUID, *, sharing: bool = False) -> Vehicle:
