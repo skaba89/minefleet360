@@ -16,8 +16,12 @@ def test_reject_invalid_position_without_database_lookup() -> None:
     point = GpsPosition(uuid.uuid4(), "tracker", 200, 0, NOW)
     with patch("app.fleet.gps_ingestion_preflight.resolve_gps_binding") as lookup:
         assert not preflight_gps_ingestion(
-            db, tenant_id=uuid.uuid4(), site_id=uuid.uuid4(),
-            position=point, supplied_secret="x" * 44, received_at=NOW
+            db,
+            tenant_id=uuid.uuid4(),
+            site_id=uuid.uuid4(),
+            position=point,
+            supplied_secret="x" * 44,
+            received_at=NOW
         )
         lookup.assert_not_called()
 
@@ -27,8 +31,12 @@ def test_reject_missing_binding_without_secret_check() -> None:
     with patch("app.fleet.gps_ingestion_preflight.resolve_gps_binding", return_value=None):
         with patch("app.fleet.gps_ingestion_preflight.verify_persisted_gps_credential") as verify:
             assert not preflight_gps_ingestion(
-                MagicMock(), tenant_id=uuid.uuid4(), site_id=uuid.uuid4(),
-                position=point, supplied_secret="x" * 44, received_at=NOW
+                MagicMock(),
+                tenant_id=uuid.uuid4(),
+                site_id=uuid.uuid4(),
+                position=point,
+                supplied_secret="x" * 44,
+                received_at=NOW
             )
             verify.assert_not_called()
 
@@ -41,7 +49,11 @@ def test_valid_binding_requires_credential() -> None:
             "app.fleet.gps_ingestion_preflight.verify_persisted_gps_credential", return_value=True
         ) as verify:
             assert preflight_gps_ingestion(
-                MagicMock(), tenant_id=uuid.uuid4(), site_id=uuid.uuid4(),
-                position=point, supplied_secret="x" * 44, received_at=NOW
+                MagicMock(),
+                tenant_id=uuid.uuid4(),
+                site_id=uuid.uuid4(),
+                position=point,
+                supplied_secret="x" * 44,
+                received_at=NOW
             )
             verify.assert_called_once()
