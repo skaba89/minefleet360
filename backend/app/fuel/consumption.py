@@ -52,7 +52,7 @@ def vehicle_consumption(
         )
     )
     rows = list(
-        auth.db.execute(stmt.order_by(FuelIssue.meter_kind, FuelIssue.requested_at, FuelIssue.fuel_issue_id))
+        auth.db.execute(stmt.order_by(FuelIssue.requested_at, FuelIssue.fuel_issue_id))
     )
 
     by_meter: dict[str, list[tuple[FuelIssue, str]]] = defaultdict(list)
