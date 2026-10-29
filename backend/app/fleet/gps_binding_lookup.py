@@ -33,7 +33,7 @@ def resolve_gps_binding(
             FleetGpsDeviceBinding.vehicle_id == vehicle_id,
             FleetGpsDeviceBinding.site_id == site_id,
             FleetGpsDeviceBinding.active_from <= recorded_at,
-        )
+        ).order_by(FleetGpsDeviceBinding.active_from.desc()).limit(1)
     ).scalar_one_or_none()
     if candidate is None:
         return None
