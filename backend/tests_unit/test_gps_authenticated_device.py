@@ -16,13 +16,9 @@ def test_valid_secret_resolves_server_vehicle_identity() -> None:
     vehicle = uuid.uuid4()
     site = uuid.uuid4()
     secret = new_device_secret()
-    binding = SimpleNamespace(
-        tenant_id=tenant, vehicle_id=vehicle, site_id=site, device_id="tracker-01"
-    )
+    binding = SimpleNamespace(tenant_id=tenant, vehicle_id=vehicle, site_id=site, device_id="tracker-01")
     db = MagicMock()
-    db.execute.return_value.one_or_none.return_value = (
-        binding, fingerprint_device_secret(secret)
-    )
+    db.execute.return_value.one_or_none.return_value = (binding, fingerprint_device_secret(secret))
     result = resolve_authenticated_gps_device(
         db,
         trusted_tenant_id=tenant,
@@ -44,9 +40,7 @@ def test_wrong_secret_is_denied() -> None:
         site_id=uuid.uuid4(),
         device_id="tracker-01",
     )
-    db.execute.return_value.one_or_none.return_value = (
-        binding, fingerprint_device_secret(secret)
-    )
+    db.execute.return_value.one_or_none.return_value = (binding, fingerprint_device_secret(secret))
     result = resolve_authenticated_gps_device(
         db,
         trusted_tenant_id=binding.tenant_id,
