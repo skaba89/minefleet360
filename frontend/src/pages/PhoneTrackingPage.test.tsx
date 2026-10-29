@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router";
 import { get, request } from "../api/client";
@@ -13,7 +13,7 @@ let failure: PositionErrorCallback | null;
 const locate = vi.fn((ok: PositionCallback, fail?: PositionErrorCallback | null) => { success = ok; failure = fail ?? null; });
 function setup() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/mon-suivi?vehicle=vehicle"]}><PhoneTrackingPage /></MemoryRouter></QueryClientProvider>);
+  return { ...render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/mon-suivi?vehicle=vehicle"]}><PhoneTrackingPage /></MemoryRouter></QueryClientProvider>), client };
 }
 beforeEach(() => {
   vi.clearAllMocks(); vi.stubGlobal("isSecureContext", true);
@@ -45,6 +45,16 @@ it("arrête le partage serveur quand la permission navigateur est refusée", asy
   expect((await screen.findByRole("alert")).textContent).toContain("Localisation refusée");
   expect(vi.mocked(request).mock.calls.some(([p]) => p === "/me/gps/shares/share/stop")).toBe(true);
   expect(vi.mocked(request).mock.calls.some(([p]) => p.endsWith("/positions"))).toBe(false);
+});
+it("garde l'arrêt accessible si la liste des véhicules devient indisponible", async () => {
+  const view = setup(); await screen.findByRole("button", { name: "Démarrer le partage" });
+  fireEvent.click(screen.getByRole("checkbox")); fireEvent.click(screen.getByRole("button", { name: "Démarrer le partage" }));
+  await waitFor(() => expect(locate).toHaveBeenCalledOnce());
+  vi.mocked(get).mockRejectedValue(new Error("réseau indisponible"));
+  await act(async () => { await view.client.invalidateQueries({ queryKey: ["gps-sharing-vehicles"] }); });
+  fireEvent.click(screen.getByRole("button", { name: "Arrêter le partage" }));
+  await screen.findByText("Partage arrêté et confirmé par le serveur");
+  expect(vi.mocked(request).mock.calls.some(([p]) => p.endsWith("/stop"))).toBe(true);
 });
 it("ne démarre pas le GPS si la création finit après avoir quitté la page", async () => {
   let finish: (value: { data: typeof share; etag: null }) => void = () => undefined;

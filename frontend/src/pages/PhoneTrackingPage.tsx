@@ -119,8 +119,9 @@ export function PhoneTrackingPage() {
       <DataState loading={vehicles.isLoading} error={vehicles.error} empty={vehicles.data?.length === 0} emptyText="Aucun véhicule autorisé. Pour un conducteur, l'administrateur doit relier son compte au dossier conducteur et une affectation doit être active.">
         <label>Véhicule<select value={vehicleId} disabled={running || busy} onChange={(e) => { setVehicleId(e.target.value); setConsent(false); }}><option value="">Choisir un véhicule</option>{vehicles.data?.map((v) => <option key={v.vehicle_id} value={v.vehicle_id}>{v.fleet_number}{v.registration_number ? ` · ${v.registration_number}` : ""}</option>)}</select></label>
         <label className="checkbox"><input type="checkbox" checked={consent} disabled={running || busy} onChange={(e) => setConsent(e.target.checked)} />Je suis à bord et j'accepte de partager la position de ce téléphone pour ce véhicule.</label>
-        <div className="toolbar">{!running && <button className="primary" type="button" disabled={busy || !consent || !chosen} onClick={() => void start()}>Démarrer le partage</button>}{(running || share.current) && <button className="danger" type="button" disabled={busy} onClick={() => void stop()}>Arrêter le partage</button>}</div>
+        <div className="toolbar">{!running && <button className="primary" type="button" disabled={busy || !consent || !chosen} onClick={() => void start()}>Démarrer le partage</button>}</div>
       </DataState>
+      {(running || share.current) && <div className="toolbar"><button className="danger" type="button" disabled={busy} onClick={() => void stop()}>Arrêter le partage</button></div>}
       <p role="status" className={running ? "success" : "muted"}>{message}</p>
       {error !== null && <ErrorMessage error={error} />}
       {lastSent && <p className="small">Dernier relevé transmis : {formatDateTime(lastSent, me.timezone)} ({me.timezone})</p>}
