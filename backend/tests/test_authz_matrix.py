@@ -82,6 +82,13 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
         "reference": "BL-FICTIF-1",
         "occurred_at": "2026-10-29T10:00:00+00:00",
     },
+    ("POST", "/fuel/tanks/{fuel_tank_id}/threshold"): {"low_stock_threshold_liters": 500},
+    ("POST", "/fuel/tanks/{fuel_tank_id}/stocktakes"): {
+        "counted_liters": 100,
+        "reference": "INV-TEST-1",
+        "reason_code": "MEASUREMENT",
+        "occurred_at": "2026-10-29T10:00:00+00:00",
+    },
     ("POST", "/fuel/issues"): {
         "fuel_tank_id": "00000000-0000-0000-0000-000000000001",
         "vehicle_id": "00000000-0000-0000-0000-000000000002",

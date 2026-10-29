@@ -14,6 +14,7 @@ type Tank = Schemas["TankOut"];
 type FuelIssue = Schemas["FuelIssueOut"];
 type FuelType = Schemas["TankCreate"]["fuel_type"];
 type MeterKind = NonNullable<FuelIssue["meter_kind"]>;
+type FuelStocktake = Schemas["FuelStocktakeOut"];
 const PAGE_SIZE = 50;
 const FUEL_TYPES: Record<FuelType, string> = { DIESEL: "Gazole", PETROL: "Essence" };
 const METER_KINDS: Record<MeterKind, string> = { ODOMETER: "Kilométrique (km)", HOUR_METER: "Horaire (h)" };
@@ -25,6 +26,12 @@ const ISSUE_STATUS: Record<FuelIssue["status"], string> = {
 const REJECT_REASONS = {
   WRONG_VEHICLE: "Véhicule incorrect",
   INVALID_QUANTITY: "Quantité à vérifier",
+  OTHER: "Autre motif",
+};
+const STOCKTAKE_REASONS = {
+  MEASUREMENT: "Mesure physique",
+  LOSS: "Perte ou évaporation",
+  DATA_CORRECTION: "Correction de saisie",
   OTHER: "Autre motif",
 };
 const ISSUE_TONE: Record<FuelIssue["status"], "ok" | "warn" | "bad" | "neutral"> = {
@@ -39,8 +46,10 @@ export function FuelPage() {
   const { siteId, sites, timezoneOf } = useSites();
   const [tankPage, setTankPage] = useState(1);
   const [issuePage, setIssuePage] = useState(1);
+  const [stocktakePage, setStocktakePage] = useState(1);
   const [issueStatus, setIssueStatus] = useState("");
-  const [panel, setPanel] = useState<"tank" | "receipt" | "issue" | null>(null);
+  const [panel, setPanel] = useState<"tank" | "receipt" | "issue" | "stocktake" | "threshold" | null>(null);
+  const [selectedTankId, setSelectedTankId] = useState("");
   const [rejectingIssue, setRejectingIssue] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState<"WRONG_VEHICLE" | "INVALID_QUANTITY" | "OTHER">("OTHER");
   const [error, setError] = useState<unknown>(null);
@@ -49,6 +58,8 @@ export function FuelPage() {
   const canReceive = can(me.grants, "fuel.stock.receive", siteId);
   const canRequest = can(me.grants, "fuel.issue.request", siteId);
   const canDecide = can(me.grants, "fuel.issue.decide", siteId);
+  const canStocktake = can(me.grants, "fuel.stocktake.record", siteId);
+  const canThreshold = can(me.grants, "fuel.stock.threshold", siteId);
   const tanks = useQuery({
     queryKey: ["fuel-tanks", siteId, tankPage],
     enabled: canRead,
@@ -67,6 +78,11 @@ export function FuelPage() {
         },
       }),
   });
+  const stocktakes = useQuery({
+    queryKey: ["fuel-stocktakes", siteId, stocktakePage],
+    enabled: canRead,
+    queryFn: () => read("/fuel/stocktakes", { query: { site_id: siteId, page: stocktakePage, page_size: PAGE_SIZE } }),
+  });
   const sitesById = new Map(sites.map((site) => [site.site_id, site.code]));
   const tankItems = tanks.data?.items ?? [];
   const issueItems = issues.data?.items ?? [];
@@ -76,6 +92,7 @@ export function FuelPage() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["fuel-tanks"] }),
       queryClient.invalidateQueries({ queryKey: ["fuel-issues"] }),
+      queryClient.invalidateQueries({ queryKey: ["fuel-stocktakes"] }),
     ]);
   };
   const decide = async (issue: FuelIssue, decision: "APPROVED" | "REJECTED", reasonCode?: keyof typeof REJECT_REASONS) => {
@@ -92,7 +109,7 @@ export function FuelPage() {
     }
   };
 
-  if (!canRead && !canManage && !canReceive && !canRequest && !canDecide) {
+  if (!canRead && !canManage && !canReceive && !canRequest && !canDecide && !canStocktake && !canThreshold) {
     return <p>Vous n'avez pas accès à la gestion du carburant.</p>;
   }
   return (
@@ -108,24 +125,45 @@ export function FuelPage() {
         {canManage && <button type="button" className="primary" onClick={() => setPanel("tank")}>Nouvelle cuve</button>}
         {canReceive && tankItems.length > 0 && <button type="button" onClick={() => setPanel("receipt")}>Enregistrer une réception</button>}
         {canRequest && tankItems.length > 0 && <button type="button" onClick={() => setPanel("issue")}>Demander un ravitaillement</button>}
+        {canStocktake && tankItems.length > 0 && <button type="button" onClick={() => setPanel("stocktake")}>Faire un inventaire</button>}
       </div>
       {error !== null && <ErrorMessage error={error} />}
       {panel === "tank" && <TankForm siteId={siteId} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "receipt" && <ReceiptForm tanks={tankItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "issue" && <IssueForm siteId={siteId} tanks={tankItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
+      {panel === "stocktake" && <StocktakeForm tanks={tankItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
+      {panel === "threshold" && <ThresholdForm tanks={tankItems} tankId={selectedTankId} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
 
       <div className="card">
         <h2>Stocks disponibles</h2>
         <DataState loading={tanks.isLoading} error={tanks.error} empty={tankItems.length === 0} emptyText="Aucune cuve enregistrée pour ce périmètre.">
           <table>
-            <thead><tr><th>Site</th><th>Cuve</th><th>Carburant</th><th>Capacité</th><th>En stock</th><th>Réservé</th><th>Disponible</th></tr></thead>
+            <thead><tr><th>Site</th><th>Cuve</th><th>Carburant</th><th>Capacité</th><th>En stock</th><th>Réservé</th><th>Disponible</th><th>Seuil</th><th>État</th>{canThreshold && <th>Action</th>}</tr></thead>
             <tbody>{tankItems.map((tank) => <tr key={tank.fuel_tank_id}>
               <td>{sitesById.get(tank.site_id) ?? "—"}</td><td>{tank.code}</td><td>{FUEL_TYPES[tank.fuel_type]}</td>
               <td>{liters(tank.capacity_liters)}</td><td>{liters(tank.balance_liters)}</td>
               <td>{liters(tank.reserved_liters)}</td><td><strong>{liters(tank.available_liters)}</strong></td>
+              <td>{tank.low_stock_threshold_liters === null ? "Non configuré" : liters(tank.low_stock_threshold_liters)}</td>
+              <td><Badge tone={tank.low_stock ? "warn" : "ok"}>{tank.low_stock ? "Stock bas" : "Normal"}</Badge></td>
+              {canThreshold && <td><button type="button" onClick={() => { setSelectedTankId(tank.fuel_tank_id); setPanel("threshold"); }}>Modifier le seuil</button></td>}
             </tr>)}</tbody>
           </table>
           <Pager page={tankPage} pageSize={PAGE_SIZE} total={tanks.data?.total ?? 0} onPage={setTankPage} />
+        </DataState>
+      </div>
+
+      <div className="card">
+        <h2>Inventaires physiques récents</h2>
+        <DataState loading={stocktakes.isLoading} error={stocktakes.error} empty={(stocktakes.data?.items.length ?? 0) === 0} emptyText="Aucun inventaire enregistré.">
+          <table>
+            <thead><tr><th>Date</th><th>Cuve</th><th>Référence</th><th>Journal</th><th>Compté</th><th>Écart</th><th>Motif</th></tr></thead>
+            <tbody>{stocktakes.data?.items.map((entry: FuelStocktake) => <tr key={entry.fuel_stocktake_id}>
+              <td>{formatDateTime(entry.occurred_at, timezoneOf(entry.site_id))}</td><td>{entry.tank_code}</td><td>{entry.reference}</td>
+              <td>{liters(entry.expected_liters)}</td><td>{liters(entry.counted_liters)}</td>
+              <td>{deltaLiters(entry.delta_liters)}</td><td>{STOCKTAKE_REASONS[entry.reason_code]}</td>
+            </tr>)}</tbody>
+          </table>
+          <Pager page={stocktakePage} pageSize={PAGE_SIZE} total={stocktakes.data?.total ?? 0} onPage={setStocktakePage} />
         </DataState>
       </div>
 
@@ -163,11 +201,42 @@ function TankForm({ siteId, onCancel, onDone }: { siteId: string | null; onCance
   const [code, setCode] = useState("");
   const [type, setType] = useState<FuelType>("DIESEL");
   const [capacity, setCapacity] = useState("");
-  return <ActionForm title="Créer une cuve" submitLabel="Créer la cuve" onCancel={onCancel} onDone={onDone} onSubmit={() => call("post", "/fuel/tanks", { body: { site_id: site, code: code.trim(), fuel_type: type, capacity_liters: Number(capacity) } })}>
+  const [threshold, setThreshold] = useState("");
+  return <ActionForm title="Créer une cuve" submitLabel="Créer la cuve" onCancel={onCancel} onDone={onDone} onSubmit={() => call("post", "/fuel/tanks", { body: { site_id: site, code: code.trim(), fuel_type: type, capacity_liters: Number(capacity), low_stock_threshold_liters: threshold ? Number(threshold) : null } })}>
     <label>Site<select required value={site} onChange={(e) => setSite(e.target.value)}><option value="">Choisir un site</option>{sites.map((s) => <option key={s.site_id} value={s.site_id}>{s.code} — {s.name}</option>)}</select></label>
     <label>Code de cuve<input required maxLength={32} pattern="[A-Za-z0-9_-]{1,32}" value={code} onChange={(e) => setCode(e.target.value)} /></label>
     <label>Carburant<select value={type} onChange={(e) => setType(e.target.value as FuelType)}><Options map={FUEL_TYPES} /></select></label>
     <label>Capacité (L)<input required type="number" min="0.001" max="2000000" step="0.001" value={capacity} onChange={(e) => setCapacity(e.target.value)} /></label>
+    <label>Seuil d'alerte bas (L)<input type="number" min="0.001" max={capacity || undefined} step="0.001" value={threshold} onChange={(e) => setThreshold(e.target.value)} /><span className="muted small">Laissez vide pour désactiver l'alerte.</span></label>
+  </ActionForm>;
+}
+
+function ThresholdForm({ tanks, tankId, onCancel, onDone }: { tanks: Tank[]; tankId: string; onCancel: () => void; onDone: () => void }) {
+  const [value, setValue] = useState(() => {
+    const threshold = tanks.find((tank) => tank.fuel_tank_id === tankId)?.low_stock_threshold_liters;
+    return threshold === null || threshold === undefined ? "" : String(threshold);
+  });
+  const tank = tanks.find((item) => item.fuel_tank_id === tankId);
+  if (!tank) return null;
+  return <ActionForm title={`Seuil d'alerte — cuve ${tank.code}`} submitLabel="Enregistrer le seuil" onCancel={onCancel} onDone={onDone} onSubmit={() => call("post", "/fuel/tanks/{fuel_tank_id}/threshold", { path: { fuel_tank_id: tankId }, body: { low_stock_threshold_liters: value.trim() ? Number(value) : null } })}>
+    <label>Seuil bas (L)<input type="number" min="0.001" max={Number(tank.capacity_liters)} step="0.001" value={value} onChange={(e) => setValue(e.target.value)} /><span className="muted small">Une alerte s'affiche lorsque le stock atteint ce niveau ou passe en dessous.</span></label>
+  </ActionForm>;
+}
+
+function StocktakeForm({ tanks, timezoneOf, onCancel, onDone }: { tanks: Tank[]; timezoneOf: (siteId: string | null | undefined) => string; onCancel: () => void; onDone: () => void }) {
+  const [tankId, setTankId] = useState(tanks[0]?.fuel_tank_id ?? "");
+  const tank = tanks.find((item) => item.fuel_tank_id === tankId);
+  const [counted, setCounted] = useState("");
+  const [reference, setReference] = useState("");
+  const [reason, setReason] = useState<keyof typeof STOCKTAKE_REASONS>("MEASUREMENT");
+  const [date, setDate] = useState(utcToZonedInput(new Date(), timezoneOf(tank?.site_id)));
+  return <ActionForm title="Inventaire physique de carburant" submitLabel="Enregistrer l'inventaire" onCancel={onCancel} onDone={onDone} onSubmit={() => call("post", "/fuel/tanks/{fuel_tank_id}/stocktakes", { path: { fuel_tank_id: tankId }, body: { counted_liters: Number(counted), reference: reference.trim(), reason_code: reason, occurred_at: zonedInputToUtc(date, timezoneOf(tank?.site_id)).toISOString() } })}>
+    <label>Cuve<select required value={tankId} onChange={(e) => setTankId(e.target.value)}>{tanks.map((item) => <option key={item.fuel_tank_id} value={item.fuel_tank_id}>{item.code} · {FUEL_TYPES[item.fuel_type]}</option>)}</select></label>
+    <p className="muted">Stock attendu au dernier mouvement : {tank ? liters(tank.balance_liters) : "—"}. Les demandes en attente doivent rester couvertes par le comptage.</p>
+    <label>Quantité réellement comptée (L)<input required type="number" min="0" max={tank ? Number(tank.capacity_liters) : 2000000} step="0.001" value={counted} onChange={(e) => setCounted(e.target.value)} /></label>
+    <label>Référence du relevé<input required maxLength={60} value={reference} onChange={(e) => setReference(e.target.value)} /></label>
+    <label>Motif<select value={reason} onChange={(e) => setReason(e.target.value as keyof typeof STOCKTAKE_REASONS)}><Options map={STOCKTAKE_REASONS} /></select></label>
+    <label>Date du comptage<input required type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} /></label>
   </ActionForm>;
 }
 
@@ -220,4 +289,9 @@ function IssueForm({ siteId, tanks, timezoneOf, onCancel, onDone }: { siteId: st
 
 function liters(value: string): string {
   return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 3 }).format(Number(value))} L`;
+}
+
+function deltaLiters(value: string): string {
+  const formatted = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 3, signDisplay: "always" }).format(Number(value));
+  return `${formatted} L`;
 }

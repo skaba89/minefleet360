@@ -18,6 +18,10 @@
 
 ## Périmètre et suites
 
-Cette première tranche couvre les cuves, les réceptions et les demandes approuvées/refusées. Le type de carburant est limité au gazole et à l'essence ; les volumes sont en litres. Les compteurs sont liés au type configuré pour la catégorie du véhicule et les valeurs validées doivent rester monotones entre ravitaillements approuvés.
+Les cuves acceptent un seuil bas facultatif. Quand le solde atteint ce seuil, l'interface affiche un état « Stock bas » ; l'alerte est visible dans la liste des cuves et n'envoie pas encore de notification.
 
-Les inventaires physiques et corrections de stock, les seuils d'alerte, les analyses de consommation par km/heure, les anomalies de consommation, les achats fournisseurs et l'intégration des pompes sont des étapes distinctes. Les sorties GPS ne sont pas une mesure de carburant.
+Un inventaire physique enregistre le solde attendu, la quantité comptée, l'écart, une référence et un motif. L'opération verrouille la cuve, empêche un comptage supérieur à sa capacité et refuse un comptage qui ne couvrirait pas les demandes en attente. L'écart crée, si nécessaire, un mouvement de correction append-only ; l'inventaire reste lui-même immuable et audité.
+
+Le type de carburant est limité au gazole et à l'essence ; les volumes sont en litres. Les compteurs sont liés au type configuré pour la catégorie du véhicule et les valeurs validées doivent rester monotones entre ravitaillements approuvés.
+
+Les analyses de consommation par km/heure, la détection des anomalies, les notifications de seuil, les achats fournisseurs et l'intégration des pompes restent à construire. Les sorties GPS ne sont pas une mesure de carburant.

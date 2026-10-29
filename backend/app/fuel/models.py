@@ -22,6 +22,7 @@ class FuelTank(AuditedColumns, Base):
     code: Mapped[str] = mapped_column(String, nullable=False)
     fuel_type: Mapped[str] = mapped_column(String, nullable=False)
     capacity_liters: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    low_stock_threshold_liters: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
 
 
 class FuelIssue(Base):
@@ -67,8 +68,32 @@ class FuelIssueDecision(Base):
     )
 
 
+class FuelStocktake(Base):
+    """Relevé physique immuable et écart calculé par rapport au journal."""
+
+    __tablename__ = "fuel_stocktake"
+    __mapper_args__ = {"eager_defaults": True}
+
+    fuel_stocktake_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    fuel_tank_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    expected_liters: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    counted_liters: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    delta_liters: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    reference: Mapped[str] = mapped_column(String, nullable=False)
+    reason_code: Mapped[str] = mapped_column(String, nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    recorded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+
 class FuelStockMovement(Base):
-    """Ledger append-only : réception positive ou sortie liée à une demande approuvée."""
+    """Ledger append-only : réception, sortie approuvée ou correction d'inventaire."""
 
     __tablename__ = "fuel_stock_movement"
     __mapper_args__ = {"eager_defaults": True}
@@ -83,6 +108,7 @@ class FuelStockMovement(Base):
     liters: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     reference: Mapped[str | None] = mapped_column(String)
     fuel_issue_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    fuel_stocktake_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     recorded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     recorded_at: Mapped[datetime] = mapped_column(

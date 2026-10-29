@@ -592,6 +592,30 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "fuel.stock.threshold": {
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "fuel.stocktake.record": {
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "identity.role.read": {
     "AUDITOR": [
       "TENANT"
