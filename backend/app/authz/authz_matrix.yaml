@@ -702,7 +702,42 @@ permissions:
     routes: [{ method: GET, path: /dispatch-indicators, shape: collection, success: 200 }]
     grants: *weighing_readers
 
+
+  # GPS : partage volontaire du compte ; conducteur limité à son affectation active côté service.
+  fleet.gps.share:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: GET, path: /me/gps/vehicles, shape: collection, success: 200 }
+      - { method: POST, path: /me/gps/shares, shape: collection, success: 201 }
+      - { method: POST, path: "/me/gps/shares/{share_id}/positions", shape: item, success: 204 }
+      - { method: POST, path: "/me/gps/shares/{share_id}/stop", shape: item, success: 204 }
+    audit: { action: gps.phone.start }
+    grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE], DRIVER: [SITE] }
+  fleet.gps.manage:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: GET, path: "/vehicles/{vehicle_id}/gps/tracker", shape: item, success: 200 }
+      - { method: POST, path: "/vehicles/{vehicle_id}/gps/tracker", shape: item, success: 201 }
+      - { method: POST, path: "/vehicles/{vehicle_id}/gps/tracker/revoke", shape: item, success: 204 }
+    audit: { action: gps.tracker.provision }
+    grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT, SITE] }
+  workforce.driver.link_account:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: GET, path: "/drivers/{driver_id}/gps-account", shape: item, success: 200 }
+      - { method: POST, path: "/drivers/{driver_id}/gps-account", shape: item, success: 200 }
+    audit: { action: gps.driver.link_account }
+    grants: { TENANT_ADMIN: [TENANT] }
+
 public_routes:
+  # Authentification machine obligatoire dans la route ; aucun accès anonyme aux données.
+  - { method: POST, path: /gps/telemetry }
   - { method: GET, path: /health }
   - { method: POST, path: /auth/login }
   - { method: POST, path: /auth/platform/login }

@@ -17,3 +17,5 @@ class GpsLatestPositionOut(BaseModel):
     accuracy_m: float | None
     recorded_at: datetime
     received_at: datetime
+    source: str = "TRACKER"
+    source_active: bool = True

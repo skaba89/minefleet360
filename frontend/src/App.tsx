@@ -12,6 +12,8 @@ import { DriversPage } from "./pages/DriversPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { LiveFleetPage } from "./pages/LiveFleetPage";
+import { PhoneTrackingPage } from "./pages/PhoneTrackingPage";
+import { PreventivePage } from "./pages/PreventivePage";
 import { ActivationPage, ResetConfirmPage, ResetRequestPage } from "./pages/PasswordPages";
 import { SecurityPage } from "./pages/SecurityPage";
 import { VehicleDetailPage } from "./pages/VehicleDetailPage";
@@ -43,6 +45,7 @@ export function App() {
         <Route index element={<HomePage />} />
         <Route path="vehicules" element={<VehiclesPage />} />
         <Route path="flotte-gps" element={<LiveFleetPage />} />
+        <Route path="mon-suivi" element={<PhoneTrackingPage />} />
         <Route path="vehicules/echeances" element={<DueDocumentsPage />} />
         <Route path="vehicules/:vehicleId" element={<VehicleDetailPage />} />
         <Route path="conducteurs" element={<DriversPage />} />
@@ -51,6 +54,7 @@ export function App() {
         <Route path="missions" element={<MissionsPage />} />
         <Route path="missions/:missionId" element={<MissionDetailPage />} />
         <Route path="atelier" element={<WorkshopPage />} />
+        <Route path="maintenance" element={<PreventivePage />} />
         <Route path="atelier/:workOrderId" element={<WorkOrderPage />} />
         <Route path="pesees" element={<WeighingsPage />} />
         <Route path="indicateurs" element={<IndicatorsPage />} />

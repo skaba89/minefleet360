@@ -21,6 +21,8 @@ class FleetGpsPosition(Base):
     vehicle_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     device_id: Mapped[str] = mapped_column(String, nullable=False)
+    source: Mapped[str] = mapped_column(String, nullable=False, server_default="TRACKER")
+    phone_share_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
     speed_kmh: Mapped[float | None] = mapped_column(Float)

@@ -14,6 +14,7 @@ import { Documents, Meters } from "./VehicleRecords";
 import { VehiclePreventiveDues } from "./VehiclePreventiveDues";
 import { VehiclePreventivePlans } from "./VehiclePreventivePlans";
 import { useCategories, VEHICLE_TONE } from "./VehiclesPage";
+import { VehicleGpsPanel } from "./VehicleGpsPanel";
 
 type Vehicle = Schemas["VehicleOut"];
 type VehicleUpdate = Schemas["VehicleUpdate"];
@@ -88,6 +89,7 @@ export function VehicleDetailPage() {
               <ChangeStatus vehicle={v} etag={etag} onDone={done} onCancel={() => setPanel(null)} />
             )}
             {panel === "retire" && <Retire vehicle={v} etag={etag} onDone={done} onCancel={() => setPanel(null)} />}
+            {v.status !== "RETIRED" && <VehicleGpsPanel vehicleId={v.vehicle_id} siteId={v.site_id} />}
             <dl className="facts">
               <Fact label="Site">{sites.find((s) => s.site_id === v.site_id)?.name}</Fact>
               <Fact label="Catégorie">

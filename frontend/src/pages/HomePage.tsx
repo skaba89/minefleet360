@@ -2,6 +2,7 @@ import { Link } from "react-router";
 
 import { useMe } from "../auth/AuthContext";
 import { can } from "../lib/permissions";
+import { FleetDashboard } from "./FleetDashboard";
 
 const ROLE_LABELS: Record<string, string> = {
   TENANT_ADMIN: "Administrateur",
@@ -21,6 +22,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function HomePage() {
   const me = useMe();
+  if (can(me.grants, "fleet.vehicle.read")) return <FleetDashboard />;
   return (
     <section>
       <h1>Bonjour {me.display_name}</h1>

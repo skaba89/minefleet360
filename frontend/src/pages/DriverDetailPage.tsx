@@ -23,6 +23,7 @@ import { formatDate, formatDateTime } from "../lib/time";
 import { useSites } from "../site/SiteContext";
 import { DRIVER_TONE, PHONE_PATTERN, type DriverStatusCode } from "./DriversPage";
 import { useCategories } from "./VehiclesPage";
+import { DriverGpsAccount } from "./DriverGpsAccount";
 
 type Driver = Schemas["DriverOut"];
 type License = Schemas["LicenseOut"];
@@ -128,6 +129,7 @@ export function DriverDetailPage() {
                 <Fact label="Motif de suspension">{label(SUSPENSION_REASONS, d.suspension_reason_code)}</Fact>
               )}
             </dl>
+            <DriverGpsAccount driverId={d.driver_id} />
             <Documents driver={d} onChanged={refresh} />
             <DriverAssignments driver={d} timeZone={timezoneOf(d.site_id)} />
           </>

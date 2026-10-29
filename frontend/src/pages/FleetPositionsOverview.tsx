@@ -53,24 +53,28 @@ export function FleetPositionsOverview({ points, selectedId, onSelect, now }: Pr
         Sélectionnez un point pour consulter le camion.
       </p>
       <div className="fleet-positions-plot" role="group" aria-label="Camions géolocalisés">
+        <svg viewBox="0 0 100 100" className="fleet-positions-svg" preserveAspectRatio="none">
         {valid.map((point) => {
           const { x, y } = project(point);
           const state = GPS_SIGNAL_LABEL[gpsSignalState(point, now)];
           return (
-            <button
+            <g
               key={point.vehicle_id}
-              type="button"
+              role="button"
+              tabIndex={0}
               className={`fleet-position-dot${selectedId === point.vehicle_id ? " is-selected" : ""}`}
-              style={{ left: `${x}%`, top: `${y}%` }}
-              title={`Camion ${point.vehicle_id.slice(0, 8)} : ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)} · ${state}`}
+              transform={`translate(${x} ${y})`}
               aria-label={`Sélectionner le camion ${point.vehicle_id.slice(0, 8)} · ${state}`}
               aria-pressed={selectedId === point.vehicle_id}
               onClick={() => onSelect(point.vehicle_id)}
+              onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(point.vehicle_id); } }}
             >
-              <span aria-hidden="true" />
-            </button>
+              <title>{`Camion ${point.vehicle_id.slice(0, 8)} : ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)} · ${state}`}</title>
+              <circle r="2.2" />
+            </g>
           );
         })}
+        </svg>
       </div>
       <p className="muted small">
         {valid.length} camion(s) affiché(s). La position des points est relative aux limites

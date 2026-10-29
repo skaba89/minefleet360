@@ -9,6 +9,7 @@ from app.core.http import IfMatch, Page, Pagination, etag
 from app.fleet import records, service
 from app.fleet.gps_latest_read import latest_visible_positions
 from app.fleet.gps_schemas import GpsLatestPositionOut
+from app.fleet.gps_source_read import active_sources
 from app.fleet.models import Vehicle
 from app.fleet.schemas import (
     CategoryDocumentsIn,
@@ -45,7 +46,13 @@ def latest_vehicle_gps(
         as_of=auth.clock.now(),
         site_id=str(site_id) if site_id is not None else None,
     )
-    return [GpsLatestPositionOut.model_validate(position) for position in positions]
+    active = active_sources(auth, positions)
+    return [
+        GpsLatestPositionOut.model_validate(position).model_copy(
+            update={"source_active": position.gps_position_id in active}
+        )
+        for position in positions
+    ]
 
 
 def _out(vehicle: Vehicle, response: Response | None = None) -> VehicleOut:
