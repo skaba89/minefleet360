@@ -5,7 +5,7 @@ persisté. La portée tenant/site est appliquée avant toute hydratation.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.fleet.models import Vehicle
 from app.maintenance.preventive import CurrentMeters, ServiceBaseline, ServiceRule
 from app.maintenance.preventive_baseline_read import load_verified_service_baseline
-from app.maintenance.preventive_batch import PlanSnapshot, PlannedDue, preview_due_batch
+from app.maintenance.preventive_batch import PlannedDue, PlanSnapshot, preview_due_batch
 from app.maintenance.preventive_batch_read import load_active_plans
 from app.maintenance.preventive_meter_approval_read import load_approved_current_meters
 
@@ -21,7 +21,7 @@ from app.maintenance.preventive_meter_approval_read import load_approved_current
 def _as_utc(as_of: datetime) -> datetime:
     if as_of.tzinfo is None or as_of.utcoffset() is None:
         raise ValueError("as_of doit inclure un fuseau horaire")
-    return as_of.astimezone(timezone.utc)
+    return as_of.astimezone(UTC)
 
 
 def _vehicle_sites(
