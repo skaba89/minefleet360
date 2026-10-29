@@ -82,7 +82,9 @@ def test_phone_scope_cross_tenant_and_replacement(client: TestClient, w: World, 
     )
     options = client.get(f"{API}/me/gps/vehicles", headers=w.dispatcher.headers)
     assert options.status_code == 200
-    assert other_site not in {p["vehicle_id"] for p in options.json()}
+    assert options.json()["page"] == 1
+    assert options.json()["page_size"] == 50
+    assert other_site not in {p["vehicle_id"] for p in options.json()["items"]}
 
 
 def test_driver_only_own_active_assignment(client: TestClient, w: World, api: Api) -> None:  # noqa: F811
@@ -90,7 +92,10 @@ def test_driver_only_own_active_assignment(client: TestClient, w: World, api: Ap
     other_vehicle = _vehicle(client, w)
     account = api.user(w.t, "DRIVER", "SITE", "S1")
     url = f"{API}/drivers/{driver}/gps-account"
-    assert client.get(f"{API}/me/gps/vehicles", headers=account.headers).json() == []
+    initial_options = client.get(f"{API}/me/gps/vehicles", headers=account.headers)
+    assert initial_options.status_code == 200
+    assert initial_options.json()["items"] == []
+    assert initial_options.json()["total"] == 0
     bad_link = client.post(url, headers=w.t.admin.headers, json={"user_account_id": str(w.hr.user_id)})
     assert bad_link.status_code == 422
     linked = client.post(url, headers=w.t.admin.headers, json={"user_account_id": str(account.user_id)})
@@ -98,7 +103,7 @@ def test_driver_only_own_active_assignment(client: TestClient, w: World, api: Ap
     assignment = _create(client, w, vehicle, driver)
     assert assignment.status_code == 201, assignment.text
     options = client.get(f"{API}/me/gps/vehicles", headers=account.headers)
-    assert {v["vehicle_id"] for v in options.json()} == {vehicle}
+    assert {v["vehicle_id"] for v in options.json()["items"]} == {vehicle}
     body = {"vehicle_id": other_vehicle, "consent": True}
     assert client.post(f"{API}/me/gps/shares", headers=account.headers, json=body).status_code == 404
     body["vehicle_id"] = vehicle
