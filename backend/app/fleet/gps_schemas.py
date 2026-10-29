@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -17,3 +18,5 @@ class GpsLatestPositionOut(BaseModel):
     accuracy_m: float | None
     recorded_at: datetime
     received_at: datetime
+    source: Literal["PHONE", "TRACKER"] = "TRACKER"
+    source_active: bool = True

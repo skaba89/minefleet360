@@ -3,6 +3,7 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from "re
 
 import { read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
+import { can } from "../lib/permissions";
 
 type Site = Schemas["SiteOut"];
 
@@ -22,6 +23,7 @@ export function SiteProvider({ children }: { children: ReactNode }) {
   const [siteId, setSiteId] = useState<string | null>(null);
   const { data } = useQuery({
     queryKey: ["sites"],
+    enabled: can(me.grants, "organization.site.read"),
     queryFn: () => read("/sites", { query: { page_size: 200 } }),
   });
   const value = useMemo<SiteState>(() => {

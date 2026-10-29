@@ -15,7 +15,7 @@ export function GpsLocationMap({ point, now, timezone }: { point: Location; now:
   const [enabledFor, setEnabledFor] = useState<string | null>(null);
   const safe = Number.isFinite(point.latitude) && Number.isFinite(point.longitude)
     && Math.abs(point.latitude) <= 90 && Math.abs(point.longitude) <= 180;
-  const key = `${point.vehicle_id}:${point.latitude}:${point.longitude}:${point.received_at}`;
+  const key = point.vehicle_id;
   const delta = 0.012;
   const bbox = [
     point.longitude - delta,
@@ -49,12 +49,14 @@ export function GpsLocationMap({ point, now, timezone }: { point: Location; now:
           <p className="muted small">
             © Contributeurs OpenStreetMap. Cette carte montre une dernière position connue, pas une localisation garantie en direct.
           </p>
+          <button type="button" onClick={() => setEnabledFor(null)}>Fermer la carte externe</button>
         </>
       ) : (
         <>
           <p>
             La carte est fournie par OpenStreetMap. Son ouverture transmettra la zone géographique
             du camion à ce service externe. À réserver aux données autorisées.
+            L'autorisation couvre aussi les prochains relevés de ce véhicule tant que cette carte reste ouverte.
           </p>
           <button type="button" className="primary" onClick={() => setEnabledFor(key)}>
             Afficher cette position sur la carte

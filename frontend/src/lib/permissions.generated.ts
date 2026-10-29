@@ -305,6 +305,30 @@ export const GRANTS = {
       "SITE"
     ]
   },
+  "fleet.gps.manage": {
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "fleet.gps.share": {
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "DRIVER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "fleet.meter.read": {
     "AUDITOR": [
       "TENANT"
@@ -853,6 +877,11 @@ export const GRANTS = {
     "HR": [
       "TENANT",
       "SITE"
+    ]
+  },
+  "workforce.driver.link_account": {
+    "TENANT_ADMIN": [
+      "TENANT"
     ]
   },
   "workforce.driver.read": {

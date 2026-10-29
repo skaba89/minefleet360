@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from app.authz.dependencies import Authorized
 from app.core.errors import AppError
 from app.fleet.gps_models import FleetGpsPosition
+from app.fleet.models import Vehicle
 
 READ_PERMISSION = "fleet.vehicle.read"
 
@@ -45,6 +46,12 @@ def latest_visible_positions(
     )
     statement = (
         select(FleetGpsPosition)
+        .join(
+            Vehicle,
+            (Vehicle.tenant_id == FleetGpsPosition.tenant_id)
+            & (Vehicle.vehicle_id == FleetGpsPosition.vehicle_id)
+            & (Vehicle.site_id == FleetGpsPosition.site_id),
+        )
         .join(ranked, FleetGpsPosition.gps_position_id == ranked.c.position_id)
         .where(ranked.c.rn == 1, FleetGpsPosition.tenant_id == auth.tenant_id)
         .order_by(FleetGpsPosition.vehicle_id)

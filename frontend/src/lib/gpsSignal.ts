@@ -1,5 +1,6 @@
 /** Freshness uses the measurement time as well as transport receipt time. */
 export interface GpsSignalPoint {
+  source_active?: boolean;
   recorded_at: string;
   received_at: string;
   speed_kmh?: number | null;
@@ -21,6 +22,7 @@ export function gpsSignalState(point: GpsSignalPoint, now: number): GpsSignalSta
   const recorded = Date.parse(point.recorded_at);
   const received = Date.parse(point.received_at);
   if (
+    point.source_active === false ||
     !Number.isFinite(now) ||
     !Number.isFinite(recorded) ||
     !Number.isFinite(received) ||

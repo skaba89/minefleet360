@@ -21,6 +21,14 @@ from tests.conftest import API, Api, TenantFixture
 MATRIX = load_matrix()
 PARAM = re.compile(r"\{(\w+)\}")
 SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
+    ("POST", "/vehicles/{vehicle_id}/gps/tracker"): {"device_id": "gps-test"},
+    ("POST", "/drivers/{driver_id}/gps-account"): {"user_account_id": None},
+    ("POST", "/me/gps/shares/{share_id}/positions"): {
+        "latitude": 9.5,
+        "longitude": -13.7,
+        "accuracy_m": 10,
+        "recorded_at": "2026-01-01T10:00:00+00:00",
+    },
     ("PATCH", "/sites/{site_id}"): {"name": "Nom modifié"},
     ("PATCH", "/users/{user_id}"): {"display_name": "Nom-Test modifié"},
     ("PATCH", "/tenant"): {"display_name": "Nom modifié"},

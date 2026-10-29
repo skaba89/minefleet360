@@ -646,6 +646,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/vehicles/gps/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Latest Vehicle Gps
+         * @description Dernier point connu par camion, filtré par tenant et périmètre autorisé.
+         */
+        get: operations["latest_vehicle_gps_api_v1_vehicles_gps_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/vehicle-categories": {
         parameters: {
             query?: never;
@@ -866,6 +886,147 @@ export interface paths {
         /** Set Category Documents */
         put: operations["set_category_documents_api_v1_vehicle_categories__category_id__required_documents_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/gps/vehicles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sharing Vehicles */
+        get: operations["sharing_vehicles_api_v1_me_gps_vehicles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/gps/shares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Phone */
+        post: operations["start_phone_api_v1_me_gps_shares_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/gps/shares/{share_id}/positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Phone Point */
+        post: operations["phone_point_api_v1_me_gps_shares__share_id__positions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/gps/shares/{share_id}/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop Phone */
+        post: operations["stop_phone_api_v1_me_gps_shares__share_id__stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vehicles/{vehicle_id}/gps/tracker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tracker */
+        get: operations["tracker_api_v1_vehicles__vehicle_id__gps_tracker_get"];
+        put?: never;
+        /** Provision Tracker */
+        post: operations["provision_tracker_api_v1_vehicles__vehicle_id__gps_tracker_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vehicles/{vehicle_id}/gps/tracker/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Tracker */
+        post: operations["revoke_tracker_api_v1_vehicles__vehicle_id__gps_tracker_revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drivers/{driver_id}/gps-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Driver Account */
+        get: operations["driver_account_api_v1_drivers__driver_id__gps_account_get"];
+        put?: never;
+        /** Link Driver Account */
+        post: operations["link_driver_account_api_v1_drivers__driver_id__gps_account_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gps/telemetry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tracker Telemetry
+         * @description Authentification machine dédiée : jamais un compte utilisateur ou un tenant fourni en JSON.
+         */
+        post: operations["tracker_telemetry_api_v1_gps_telemetry_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1494,6 +1655,148 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/vehicles/{vehicle_id}/preventive-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Vehicle Preventive Plans */
+        get: operations["list_vehicle_preventive_plans_api_v1_vehicles__vehicle_id__preventive_plans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vehicles/{vehicle_id}/preventive-dues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Vehicle Preventive Dues */
+        get: operations["list_vehicle_preventive_dues_api_v1_vehicles__vehicle_id__preventive_dues_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/preventive-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Preventive Plan */
+        post: operations["create_preventive_plan_api_v1_preventive_plans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/preventive-plans/{plan_id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Suspend Preventive Plan */
+        post: operations["suspend_preventive_plan_api_v1_preventive_plans__plan_id__suspend_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/preventive-plans/{plan_id}/revise": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revise Preventive Plan */
+        post: operations["revise_preventive_plan_api_v1_preventive_plans__plan_id__revise_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/preventive-dues/{due_id}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Schedule Preventive Due
+         * @description Planifier une échéance éligible ; rejouer retourne le même ordre de travail.
+         */
+        post: operations["schedule_preventive_due_api_v1_preventive_dues__due_id__schedule_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{work_order_id}/complete-preventive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete Preventive Work Order
+         * @description Finaliser l'échéance liée après la clôture conforme de l'OT.
+         */
+        post: operations["complete_preventive_work_order_api_v1_work_orders__work_order_id__complete_preventive_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work-orders/{work_order_id}/preventive-completion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Preventive Completion */
+        get: operations["get_preventive_completion_api_v1_work_orders__work_order_id__preventive_completion_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1757,6 +2060,16 @@ export interface components {
              */
             reason_code: "REPLACED" | "LOST" | "REVOKED_BY_AUTHORITY" | "ENTRY_ERROR" | "OTHER";
         };
+        /** DriverAccountIn */
+        DriverAccountIn: {
+            /** User Account Id */
+            user_account_id: string | null;
+        };
+        /** DriverAccountOut */
+        DriverAccountOut: {
+            /** User Account Id */
+            user_account_id: string | null;
+        };
         /** DriverCreate */
         DriverCreate: {
             /**
@@ -1905,6 +2218,65 @@ export interface components {
             expires_on: string;
             /** Validity */
             validity: string;
+        };
+        /** GpsLatestPositionOut */
+        GpsLatestPositionOut: {
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+            /** Speed Kmh */
+            speed_kmh: number | null;
+            /** Accuracy M */
+            accuracy_m: number | null;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            /**
+             * Source
+             * @default TRACKER
+             * @enum {string}
+             */
+            source: "PHONE" | "TRACKER";
+            /**
+             * Source Active
+             * @default true
+             */
+            source_active: boolean;
+        };
+        /** GpsVehicleOut */
+        GpsVehicleOut: {
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Fleet Number */
+            fleet_number: string;
+            /** Registration Number */
+            registration_number: string | null;
         };
         /** GrantOut */
         GrantOut: {
@@ -2637,12 +3009,231 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** PhonePointIn */
+        PhonePointIn: {
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+            /** Accuracy M */
+            accuracy_m: number;
+            /** Speed Kmh */
+            speed_kmh?: number | null;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+        };
+        /** PhoneShareOut */
+        PhoneShareOut: {
+            /**
+             * Phone Share Id
+             * Format: uuid
+             */
+            phone_share_id: string;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Stopped At */
+            stopped_at: string | null;
+        };
+        /** PhoneStartIn */
+        PhoneStartIn: {
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /** Consent */
+            consent: boolean;
+        };
         /** PlatformLoginRequest */
         PlatformLoginRequest: {
             /** Email */
             email: string;
             /** Password */
             password: string;
+        };
+        /** PreventiveApprovalChoiceOut */
+        PreventiveApprovalChoiceOut: {
+            /**
+             * Approval Id
+             * Format: uuid
+             */
+            approval_id: string;
+            /** Cumulative Total */
+            cumulative_total: string;
+            /**
+             * Approved At
+             * Format: date-time
+             */
+            approved_at: string;
+        };
+        /** PreventiveCompletionContextOut */
+        PreventiveCompletionContextOut: {
+            /**
+             * Maintenance Due Id
+             * Format: uuid
+             */
+            maintenance_due_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "SCHEDULED" | "COMPLETED";
+            /** Plan Code */
+            plan_code: string;
+            /**
+             * Closed At
+             * Format: date-time
+             */
+            closed_at: string;
+            /** Meters */
+            meters: components["schemas"]["PreventiveCompletionMeterOut"][];
+        };
+        /** PreventiveCompletionIn */
+        PreventiveCompletionIn: {
+            /** Odometer Approval Id */
+            odometer_approval_id?: string | null;
+            /** Hour Meter Approval Id */
+            hour_meter_approval_id?: string | null;
+        };
+        /** PreventiveCompletionMeterOut */
+        PreventiveCompletionMeterOut: {
+            /**
+             * Meter Kind
+             * @enum {string}
+             */
+            meter_kind: "ODOMETER_KM" | "HOUR_METER";
+            /** Frozen Total */
+            frozen_total?: string | null;
+            /** Approvals */
+            approvals: components["schemas"]["PreventiveApprovalChoiceOut"][];
+        };
+        /** PreventiveCompletionOut */
+        PreventiveCompletionOut: {
+            /**
+             * Work Order Id
+             * Format: uuid
+             */
+            work_order_id: string;
+            /**
+             * Status
+             * @constant
+             */
+            status: "COMPLETED";
+            /** Changed */
+            changed: boolean;
+        };
+        /** PreventiveDueOut */
+        PreventiveDueOut: {
+            /**
+             * Maintenance Due Id
+             * Format: uuid
+             */
+            maintenance_due_id: string;
+            /**
+             * Maintenance Plan Id
+             * Format: uuid
+             */
+            maintenance_plan_id: string;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /**
+             * Trigger Kind
+             * @enum {string}
+             */
+            trigger_kind: "KM" | "HOURS" | "DAYS";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "DUE" | "SCHEDULED" | "COMPLETED" | "CANCELLED";
+            /** Due On */
+            due_on: string | null;
+            /** Due Meter */
+            due_meter: string | null;
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            /** Work Order Id */
+            work_order_id: string | null;
+        };
+        /** PreventivePlanCreate */
+        PreventivePlanCreate: {
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /** Code */
+            code: string;
+            /** Km Interval */
+            km_interval?: number | string | null;
+            /** Hours Interval */
+            hours_interval?: number | string | null;
+            /** Days Interval */
+            days_interval?: number | null;
+        };
+        /** PreventivePlanOut */
+        PreventivePlanOut: {
+            /**
+             * Maintenance Plan Id
+             * Format: uuid
+             */
+            maintenance_plan_id: string;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /** Code */
+            code: string;
+            /** Version */
+            version: number;
+            /** Km Interval */
+            km_interval: string | null;
+            /** Hours Interval */
+            hours_interval: string | null;
+            /** Days Interval */
+            days_interval: number | null;
+            /** Active */
+            active: boolean;
+            /** Suspension Reason */
+            suspension_reason: string | null;
+            /** Row Version */
+            row_version: number;
+        };
+        /** PreventivePlanSuspend */
+        PreventivePlanSuspend: {
+            /** Reason */
+            reason: string;
+        };
+        /** PreventiveScheduledOrderOut */
+        PreventiveScheduledOrderOut: {
+            /**
+             * Work Order Id
+             * Format: uuid
+             */
+            work_order_id: string;
         };
         /** QualificationCreate */
         QualificationCreate: {
@@ -3001,6 +3592,47 @@ export interface components {
             /** Expires In */
             expires_in: number;
             user: components["schemas"]["SessionUser"];
+        };
+        /** TrackerCreateIn */
+        TrackerCreateIn: {
+            /** Device Id */
+            device_id: string;
+        };
+        /** TrackerOut */
+        TrackerOut: {
+            /**
+             * Gps Device Binding Id
+             * Format: uuid
+             */
+            gps_device_binding_id: string;
+            /** Device Id */
+            device_id: string;
+            /**
+             * Active From
+             * Format: date-time
+             */
+            active_from: string;
+            /** Revoked At */
+            revoked_at: string | null;
+        };
+        /** TrackerProvisionOut */
+        TrackerProvisionOut: {
+            /**
+             * Gps Device Binding Id
+             * Format: uuid
+             */
+            gps_device_binding_id: string;
+            /** Device Id */
+            device_id: string;
+            /**
+             * Active From
+             * Format: date-time
+             */
+            active_from: string;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Token */
+            token: string;
         };
         /** UserInvite */
         UserInvite: {
@@ -5125,6 +5757,39 @@ export interface operations {
             };
         };
     };
+    latest_vehicle_gps_api_v1_vehicles_gps_latest_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GpsLatestPositionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_categories_api_v1_vehicle_categories_get: {
         parameters: {
             query?: never;
@@ -5755,6 +6420,338 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CategoryDocumentsOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sharing_vehicles_api_v1_me_gps_vehicles_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GpsVehicleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_phone_api_v1_me_gps_shares_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneStartIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneShareOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    phone_point_api_v1_me_gps_shares__share_id__positions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                share_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhonePointIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_phone_api_v1_me_gps_shares__share_id__stop_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                share_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tracker_api_v1_vehicles__vehicle_id__gps_tracker_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackerOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    provision_tracker_api_v1_vehicles__vehicle_id__gps_tracker_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrackerCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackerProvisionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_tracker_api_v1_vehicles__vehicle_id__gps_tracker_revoke_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    driver_account_api_v1_drivers__driver_id__gps_account_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                driver_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DriverAccountOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_driver_account_api_v1_drivers__driver_id__gps_account_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                driver_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DriverAccountIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DriverAccountOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tracker_telemetry_api_v1_gps_telemetry_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7406,6 +8403,288 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MechanicOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_vehicle_preventive_plans_api_v1_vehicles__vehicle_id__preventive_plans_get: {
+        parameters: {
+            query?: {
+                active_only?: boolean;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreventivePlanOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_vehicle_preventive_dues_api_v1_vehicles__vehicle_id__preventive_dues_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreventiveDueOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_preventive_plan_api_v1_preventive_plans_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreventivePlanCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreventivePlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suspend_preventive_plan_api_v1_preventive_plans__plan_id__suspend_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreventivePlanSuspend"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreventivePlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revise_preventive_plan_api_v1_preventive_plans__plan_id__revise_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreventivePlanCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreventivePlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    schedule_preventive_due_api_v1_preventive_dues__due_id__schedule_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                due_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreventiveScheduledOrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_preventive_work_order_api_v1_work_orders__work_order_id__complete_preventive_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                work_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreventiveCompletionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreventiveCompletionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_preventive_completion_api_v1_work_orders__work_order_id__preventive_completion_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                work_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreventiveCompletionContextOut"];
                 };
             };
             /** @description Validation Error */

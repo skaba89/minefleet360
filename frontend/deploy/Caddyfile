@@ -10,10 +10,10 @@
 	encode zstd gzip
 	header {
 		# Aucune ressource tierce : scripts, styles et appels réseau limités à l'origine (anti-XSS).
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-src https://www.openstreetmap.org; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "no-referrer"
-		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(self), payment=()"
 		-Server
 	}
 	# Fichiers versionnés par Vite : cache long ; le reste (index.html) toujours revalidé.
