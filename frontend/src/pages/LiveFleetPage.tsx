@@ -6,6 +6,7 @@ import { get } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { DataState } from "../components/common";
 import { can } from "../lib/permissions";
+import { GpsLocationMap } from "./GpsLocationMap";
 import { useSites } from "../site/SiteContext";
 
 interface GpsPosition {
@@ -39,6 +40,7 @@ export function LiveFleetPage() {
   const me = useMe();
   const { siteId } = useSites();
   const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const permitted = can(me.grants, "fleet.vehicle.read", siteId);
   const gps = useQuery({
@@ -52,6 +54,7 @@ export function LiveFleetPage() {
     [gps.data, search],
   );
   if (!permitted) return <p>Accès à la flotte non autorisé.</p>;
+  const selected = shown.find((point) => point.vehicle_id === selectedId);
 
   const moving = shown.filter((item) => signalState(item, now) === "moving").length;
   const offline = shown.filter((item) => signalState(item, now) === "offline").length;
@@ -76,10 +79,11 @@ export function LiveFleetPage() {
         <label htmlFor="gps-search">Rechercher un identifiant de camion</label>
         <input id="gps-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Identifiant véhicule" />
       </div>
+      {selected ? <GpsLocationMap key={selected.vehicle_id} point={selected} /> : null}
       <DataState loading={gps.isLoading} error={gps.error} empty={shown.length === 0} emptyText="Aucune position GPS disponible pour ce périmètre.">
         <div className="live-fleet-table">
           <table>
-            <thead><tr><th>Camion</th><th>État du signal</th><th>Vitesse</th><th>Coordonnées</th><th>Dernière réception</th></tr></thead>
+            <thead><tr><th>Camion</th><th>État du signal</th><th>Vitesse</th><th>Coordonnées</th><th>Dernière réception</th><th>Carte</th></tr></thead>
             <tbody>
               {shown.map((point) => {
                 const state = signalState(point, now);
@@ -90,6 +94,7 @@ export function LiveFleetPage() {
                     <td>{point.speed_kmh == null ? "—" : `${point.speed_kmh.toFixed(1)} km/h`}</td>
                     <td>{point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}</td>
                     <td>{new Date(point.received_at).toLocaleString("fr-FR")}</td>
+                    <td><button type="button" onClick={() => setSelectedId(point.vehicle_id)}>Localiser</button></td>
                   </tr>
                 );
               })}

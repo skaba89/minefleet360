@@ -205,3 +205,6 @@ tbody tr:hover { background: #f6f9fc; }
 .gps-status--stopped { background: var(--warn-bg); color: var(--warn); }
 .gps-status--offline { background: var(--bad-bg); color: var(--bad); }
 @media (max-width: 700px) { .live-fleet-metrics { grid-template-columns: 1fr; } }
+
+.gps-map-preview { margin-top: 1rem; }
+.gps-map-frame { display: block; width: 100%; height: clamp(300px, 55vh, 550px); border: 1px solid var(--border); border-radius: 12px; }
