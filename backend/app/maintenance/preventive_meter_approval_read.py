@@ -10,7 +10,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.fleet.models import VehicleMeterReading
+from app.fleet.models import Vehicle, VehicleMeterReading
 from app.maintenance.preventive import CurrentMeters
 from app.maintenance.preventive_meter_reconciliation import (
     ReconciledMeter,
@@ -56,7 +56,7 @@ def load_approved_current_meters(
 
     La dernière approbation de chaque type fait autorité. Si elle est périmée,
     une approbation plus ancienne ne peut pas la remplacer. Les filtres tenant,
-    véhicule et site sont explicites en complément des politiques RLS.
+    véhicule et site courant sont explicites en complément des politiques RLS.
     """
     if as_of.tzinfo is None or as_of.utcoffset() is None:
         return CurrentMeters(
@@ -68,11 +68,19 @@ def load_approved_current_meters(
 
     statement = (
         select(MeterReconciliationApproval)
+        .join(
+            Vehicle,
+            (Vehicle.vehicle_id == MeterReconciliationApproval.vehicle_id)
+            & (Vehicle.tenant_id == MeterReconciliationApproval.tenant_id),
+        )
         .where(
             MeterReconciliationApproval.tenant_id == tenant_id,
             MeterReconciliationApproval.vehicle_id == vehicle_id,
             MeterReconciliationApproval.site_id == site_id,
             MeterReconciliationApproval.approved_at <= as_of,
+            Vehicle.tenant_id == tenant_id,
+            Vehicle.vehicle_id == vehicle_id,
+            Vehicle.site_id == site_id,
         )
         .order_by(
             MeterReconciliationApproval.approved_at.desc(),
