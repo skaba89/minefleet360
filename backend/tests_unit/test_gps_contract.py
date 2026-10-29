@@ -28,7 +28,7 @@ def test_accepts_valid_position() -> None:
 
 
 @pytest.mark.parametrize(
-    ("changes"),
+    "changes",
     [
         {"latitude": 91.0},
         {"latitude": float("nan")},
