@@ -1797,6 +1797,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fuel/tanks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tanks */
+        get: operations["list_tanks_api_v1_fuel_tanks_get"];
+        put?: never;
+        /** Create Tank */
+        post: operations["create_tank_api_v1_fuel_tanks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fuel/tanks/{fuel_tank_id}/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive Fuel */
+        post: operations["receive_fuel_api_v1_fuel_tanks__fuel_tank_id__receipts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fuel/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Issues */
+        get: operations["list_issues_api_v1_fuel_issues_get"];
+        put?: never;
+        /** Create Issue */
+        post: operations["create_issue_api_v1_fuel_issues_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fuel/issues/{fuel_issue_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Issue */
+        post: operations["decide_issue_api_v1_fuel_issues__fuel_issue_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1990,6 +2060,16 @@ export interface components {
             reasons: components["schemas"]["Issue"][];
             /** Warnings */
             warnings: components["schemas"]["Issue"][];
+        };
+        /** DecisionCreate */
+        DecisionCreate: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "APPROVED" | "REJECTED";
+            /** Reason Code */
+            reason_code?: ("WRONG_VEHICLE" | "INVALID_QUANTITY" | "OTHER") | null;
         };
         /** DocumentCreate */
         DocumentCreate: {
@@ -2219,6 +2299,107 @@ export interface components {
             /** Validity */
             validity: string;
         };
+        /** FuelIssueOut */
+        FuelIssueOut: {
+            /**
+             * Fuel Issue Id
+             * Format: uuid
+             */
+            fuel_issue_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Fuel Tank Id
+             * Format: uuid
+             */
+            fuel_tank_id: string;
+            /** Tank Code */
+            tank_code: string;
+            /**
+             * Fuel Type
+             * @enum {string}
+             */
+            fuel_type: "DIESEL" | "PETROL";
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /** Vehicle Fleet Number */
+            vehicle_fleet_number: string;
+            /**
+             * Driver Id
+             * Format: uuid
+             */
+            driver_id: string;
+            /** Liters */
+            liters: string;
+            /** Meter Kind */
+            meter_kind: ("ODOMETER" | "HOUR_METER") | null;
+            /** Meter Value */
+            meter_value: string | null;
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
+            /**
+             * Requested By
+             * Format: uuid
+             */
+            requested_by: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+            /** Decided By */
+            decided_by: string | null;
+            /** Decided At */
+            decided_at: string | null;
+            /** Reason Code */
+            reason_code: string | null;
+        };
+        /** FuelReceiptOut */
+        FuelReceiptOut: {
+            /**
+             * Fuel Stock Movement Id
+             * Format: uuid
+             */
+            fuel_stock_movement_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Fuel Tank Id
+             * Format: uuid
+             */
+            fuel_tank_id: string;
+            /** Liters */
+            liters: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Recorded By
+             * Format: uuid
+             */
+            recorded_by: string;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+        };
         /** GpsLatestPositionOut */
         GpsLatestPositionOut: {
             /**
@@ -2358,6 +2539,35 @@ export interface components {
             code: string;
             /** Date */
             date?: string | null;
+        };
+        /** IssueCreate */
+        IssueCreate: {
+            /**
+             * Fuel Tank Id
+             * Format: uuid
+             */
+            fuel_tank_id: string;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /**
+             * Driver Id
+             * Format: uuid
+             */
+            driver_id: string;
+            /** Liters */
+            liters: number | string;
+            /** Meter Kind */
+            meter_kind?: ("ODOMETER" | "HOUR_METER") | null;
+            /** Meter Value */
+            meter_value?: number | string | null;
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
         };
         /** LabourCreate */
         LabourCreate: {
@@ -2910,6 +3120,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[FuelIssueOut] */
+        Page_FuelIssueOut_: {
+            /** Items */
+            items: components["schemas"]["FuelIssueOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[GpsVehicleOut] */
         Page_GpsVehicleOut_: {
             /** Items */
@@ -2958,6 +3179,17 @@ export interface components {
         Page_SiteOut_: {
             /** Items */
             items: components["schemas"]["SiteOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[TankOut] */
+        Page_TankOut_: {
+            /** Items */
+            items: components["schemas"]["TankOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -3317,6 +3549,18 @@ export interface components {
              */
             status: "SUSPENDED" | "REVOKED";
         };
+        /** ReceiptCreate */
+        ReceiptCreate: {
+            /** Liters */
+            liters: number | string;
+            /** Reference */
+            reference: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+        };
         /** ResetRequest */
         ResetRequest: {
             /** Workspace Code */
@@ -3499,6 +3743,51 @@ export interface components {
             changed_at: string;
             /** Changed By */
             changed_by?: string | null;
+        };
+        /** TankCreate */
+        TankCreate: {
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Code */
+            code: string;
+            /**
+             * Fuel Type
+             * @enum {string}
+             */
+            fuel_type: "DIESEL" | "PETROL";
+            /** Capacity Liters */
+            capacity_liters: number | string;
+        };
+        /** TankOut */
+        TankOut: {
+            /**
+             * Fuel Tank Id
+             * Format: uuid
+             */
+            fuel_tank_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Code */
+            code: string;
+            /**
+             * Fuel Type
+             * @enum {string}
+             */
+            fuel_type: "DIESEL" | "PETROL";
+            /** Capacity Liters */
+            capacity_liters: string;
+            /** Balance Liters */
+            balance_liters: string;
+            /** Reserved Liters */
+            reserved_liters: string;
+            /** Available Liters */
+            available_liters: string;
         };
         /** TenantCreate */
         TenantCreate: {
@@ -8699,6 +8988,221 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PreventiveCompletionContextOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tanks_api_v1_fuel_tanks_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_TankOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_tank_api_v1_fuel_tanks_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TankCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TankOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    receive_fuel_api_v1_fuel_tanks__fuel_tank_id__receipts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                fuel_tank_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceiptCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuelReceiptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_issues_api_v1_fuel_issues_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                status?: ("PENDING_APPROVAL" | "APPROVED" | "REJECTED") | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_FuelIssueOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_issue_api_v1_fuel_issues_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuelIssueOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_issue_api_v1_fuel_issues__fuel_issue_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                fuel_issue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuelIssueOut"];
                 };
             };
             /** @description Validation Error */

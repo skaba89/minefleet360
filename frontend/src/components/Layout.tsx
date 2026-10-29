@@ -23,11 +23,19 @@ export function Layout() {
     { to: "/missions", text: "Missions", show: can(me.grants, "dispatch.mission.read") },
     { to: "/atelier", text: "Atelier", show: can(me.grants, "maintenance.work_order.read") },
     { to: "/maintenance", text: "Maintenance", show: can(me.grants, "maintenance.preventive.read") },
+    {
+      to: "/carburant",
+      text: "Carburant",
+      show:
+        can(me.grants, "fuel.stock.read") ||
+        can(me.grants, "fuel.stock.manage") ||
+        can(me.grants, "fuel.issue.request"),
+    },
     { to: "/pesees", text: "Pesées", show: can(me.grants, "dispatch.weighing.read") },
     { to: "/indicateurs", text: "Indicateurs", show: can(me.grants, "dispatch.indicators.read") },
     { to: "/administration", text: "Administration", show: canAdminister(me.grants) },
   ];
-  const icons: IconName[] = ["truck", "gps", "phone", "users", "assignment", "mission", "tool", "calendar", "scale", "chart", "settings"];
+  const icons: IconName[] = ["truck", "gps", "phone", "users", "assignment", "mission", "tool", "calendar", "fuel", "scale", "chart", "settings"];
   return (
     <div className={`shell${menuOpen ? " menu-open" : ""}`}>
       <header className="topbar">
@@ -97,3 +105,4 @@ export function Layout() {
     </div>
   );
 }
+

@@ -17,6 +17,10 @@
 - Carburant, stock pièces, pneus, achats, maintenance périodique, HSE, application mobile offline.
 - Intégrations GPS, pesée, ERP comptable; alertes et reporting.
 
+### Avancement carburant
+- Premier parcours livré en PR : cuves par site, réceptions journalisées, demandes de ravitaillement avec réservation et approbation à deux personnes.
+- À poursuivre : inventaires physiques et corrections, alertes de seuil, consommation par km/heure et détection d'écarts, achats et intégration des pompes.
+
 ## Phase 3 — enterprise et institutions
 - Sous-traitants, contrats, rentabilité complète, portail client et reporting institutionnel à accès contractualisé.
 - Analytique avancée sous réserve de données suffisantes.
@@ -26,3 +30,4 @@
 - Migration réversible ou stratégie sûre; validation des données.
 - Logging/audit, conformité UX et accessibilité, docs mises à jour.
 - CI verte si exécutée; sinon rapport explicite des blocages.
+
