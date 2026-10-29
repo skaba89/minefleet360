@@ -8,10 +8,12 @@ from app.authz.routing import SecuredRoute
 from app.core.http import IfMatch, Page, Pagination, etag
 from app.maintenance import preventive_service, service
 from app.maintenance.preventive_complete import complete_preventive_due
+from app.maintenance.preventive_completion_read import preventive_completion_context
 from app.maintenance.preventive_plan_inputs import PreventivePlanCreate, PreventivePlanSuspend
 from app.maintenance.preventive_revise import revise_plan
 from app.maintenance.preventive_schedule import schedule_preventive_order
 from app.maintenance.preventive_schemas import (
+    PreventiveCompletionContextOut,
     PreventiveCompletionIn,
     PreventiveCompletionOut,
     PreventiveDueOut,
@@ -214,3 +216,13 @@ def complete_preventive_work_order(
         status="COMPLETED",
         changed=changed,
     )
+
+
+@router.get(
+    "/work-orders/{work_order_id}/preventive-completion",
+    response_model=PreventiveCompletionContextOut,
+)
+def get_preventive_completion(
+    work_order_id: uuid.UUID, auth: PreventiveManage
+) -> PreventiveCompletionContextOut:
+    return preventive_completion_context(auth, work_order_id)
