@@ -1,13 +1,17 @@
 import { useState } from "react";
 
-interface Location {
+import { GPS_SIGNAL_LABEL, gpsSignalState, type GpsSignalPoint } from "../lib/gpsSignal";
+import { formatDateTime } from "../lib/time";
+
+interface Location extends GpsSignalPoint {
   vehicle_id: string;
   latitude: number;
   longitude: number;
   received_at: string;
 }
 
-export function GpsLocationMap({ point }: { point: Location }) {
+export function GpsLocationMap({ point, now, timezone }: { point: Location; now: number; timezone: string }) {
+  const signal = gpsSignalState(point, now);
   const [enabledFor, setEnabledFor] = useState<string | null>(null);
   const safe = Number.isFinite(point.latitude) && Number.isFinite(point.longitude)
     && Math.abs(point.latitude) <= 90 && Math.abs(point.longitude) <= 180;
@@ -26,7 +30,10 @@ export function GpsLocationMap({ point }: { point: Location }) {
     <section className="card gps-map-preview" aria-label="Carte de la dernière position">
       <h2>Dernière position connue</h2>
       <p className="muted small">
-        Camion {point.vehicle_id.slice(0, 8)} · relevé reçu le {new Date(point.received_at).toLocaleString("fr-FR")}
+        Camion {point.vehicle_id.slice(0, 8)} · {GPS_SIGNAL_LABEL[signal]}
+        <br />
+        Relevé : {Number.isFinite(Date.parse(point.recorded_at)) ? formatDateTime(point.recorded_at, timezone) : "—"} ·
+        Réception : {Number.isFinite(Date.parse(point.received_at)) ? formatDateTime(point.received_at, timezone) : "—"} ({timezone})
       </p>
       {!safe ? (
         <p role="alert">Coordonnées GPS invalides : carte indisponible.</p>
