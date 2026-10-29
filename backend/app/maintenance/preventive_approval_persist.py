@@ -46,6 +46,7 @@ def persist_meter_reconciliation_approval(
         and len(approved.reconciliation_reference.strip()) <= 160
     )
     if accepted:
+        assert evidence.approved_at is not None
         db.add(
             MeterReconciliationApproval(
                 tenant_id=tenant_id,
