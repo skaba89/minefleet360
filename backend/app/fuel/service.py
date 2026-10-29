@@ -13,8 +13,15 @@ from app.authz.dependencies import Authorized
 from app.core.errors import AppError
 from app.core.http import PageParams
 from app.fleet.models import Vehicle, VehicleCategory
-from app.fuel.models import FuelIssue, FuelIssueDecision, FuelStockMovement, FuelTank
-from app.fuel.schemas import DecisionCreate, IssueCreate, ReceiptCreate, TankCreate
+from app.fuel.models import FuelIssue, FuelIssueDecision, FuelStockMovement, FuelStocktake, FuelTank
+from app.fuel.schemas import (
+    DecisionCreate,
+    IssueCreate,
+    ReceiptCreate,
+    StocktakeCreate,
+    TankCreate,
+    ThresholdUpdate,
+)
 from app.workforce.models import Driver
 
 Issue = FuelIssue
@@ -55,7 +62,13 @@ def _balance(db: Session, tenant_id: uuid.UUID, tank_id: uuid.UUID) -> Decimal:
         select(
             func.coalesce(
                 func.sum(
-                    case((Movement.movement_type == "RECEIPT", Movement.liters), else_=-Movement.liters)
+                    case(
+                        (
+                            Movement.movement_type.in_(("RECEIPT", "STOCKTAKE_IN")),
+                            Movement.liters,
+                        ),
+                        else_=-Movement.liters,
+                    )
                 ),
                 ZERO,
             )
@@ -80,6 +93,24 @@ def _reserved(db: Session, tenant_id: uuid.UUID, tank_id: uuid.UUID) -> Decimal:
     return Decimal(value or ZERO)
 
 
+def tank_output(auth: Authorized, tank: Tank) -> dict[str, object]:
+    balance = _balance(auth.db, auth.tenant_id, tank.fuel_tank_id)
+    reserved = _reserved(auth.db, auth.tenant_id, tank.fuel_tank_id)
+    threshold = tank.low_stock_threshold_liters
+    return {
+        "fuel_tank_id": tank.fuel_tank_id,
+        "site_id": tank.site_id,
+        "code": tank.code,
+        "fuel_type": tank.fuel_type,
+        "capacity_liters": tank.capacity_liters,
+        "low_stock_threshold_liters": threshold,
+        "balance_liters": balance,
+        "reserved_liters": reserved,
+        "available_liters": balance - reserved,
+        "low_stock": threshold is not None and balance <= threshold,
+    }
+
+
 def list_tanks(
     auth: Authorized, page: PageParams, *, site_id: uuid.UUID | None
 ) -> tuple[list[dict[str, object]], int]:
@@ -96,23 +127,7 @@ def list_tanks(
             .limit(page.page_size)
         )
     )
-    out: list[dict[str, object]] = []
-    for tank in tanks:
-        balance = _balance(auth.db, auth.tenant_id, tank.fuel_tank_id)
-        reserved = _reserved(auth.db, auth.tenant_id, tank.fuel_tank_id)
-        out.append(
-            {
-                "fuel_tank_id": tank.fuel_tank_id,
-                "site_id": tank.site_id,
-                "code": tank.code,
-                "fuel_type": tank.fuel_type,
-                "capacity_liters": tank.capacity_liters,
-                "balance_liters": balance,
-                "reserved_liters": reserved,
-                "available_liters": balance - reserved,
-            }
-        )
-    return out, total
+    return [tank_output(auth, tank) for tank in tanks], total
 
 
 def create_tank(auth: Authorized, body: TankCreate) -> Tank:
@@ -124,12 +139,26 @@ def create_tank(auth: Authorized, body: TankCreate) -> Tank:
         code=body.code,
         fuel_type=body.fuel_type,
         capacity_liters=body.capacity_liters,
+        low_stock_threshold_liters=body.low_stock_threshold_liters,
         created_by=auth.user_id,
         updated_by=auth.user_id,
     )
     auth.db.add(tank)
     auth.db.flush()
     _audit(auth, "fuel.tank.create", tank.fuel_tank_id, tank.site_id)
+    auth.db.commit()
+    return tank
+
+
+def update_threshold(auth: Authorized, tank_id: uuid.UUID, body: ThresholdUpdate) -> Tank:
+    tank = _tank(auth, tank_id, lock=True)
+    threshold = body.low_stock_threshold_liters
+    if threshold is not None and threshold > tank.capacity_liters:
+        raise AppError("VALIDATION_ERROR")
+    tank.low_stock_threshold_liters = threshold
+    tank.updated_by = auth.user_id
+    auth.db.flush()
+    _audit(auth, "fuel.stock.threshold.update", tank.fuel_tank_id, tank.site_id)
     auth.db.commit()
     return tank
 
@@ -155,6 +184,111 @@ def receive(auth: Authorized, tank_id: uuid.UUID, body: ReceiptCreate) -> Moveme
     _audit(auth, "fuel.stock.receive", movement.fuel_stock_movement_id, tank.site_id)
     auth.db.commit()
     return movement
+
+
+def record_stocktake(auth: Authorized, tank_id: uuid.UUID, body: StocktakeCreate) -> FuelStocktake:
+    tank = _tank(auth, tank_id, lock=True)
+    if body.occurred_at > auth.clock.now() + timedelta(seconds=5):
+        raise AppError("VALIDATION_ERROR")
+    if body.counted_liters > tank.capacity_liters:
+        raise AppError("CONFLICT")
+    reserved = _reserved(auth.db, auth.tenant_id, tank.fuel_tank_id)
+    if body.counted_liters < reserved:
+        raise AppError("CONFLICT")
+    expected = _balance(auth.db, auth.tenant_id, tank.fuel_tank_id)
+    delta = body.counted_liters - expected
+    stocktake = FuelStocktake(
+        tenant_id=auth.tenant_id,
+        site_id=tank.site_id,
+        fuel_tank_id=tank.fuel_tank_id,
+        expected_liters=expected,
+        counted_liters=body.counted_liters,
+        delta_liters=delta,
+        reference=body.reference,
+        reason_code=body.reason_code,
+        occurred_at=body.occurred_at,
+        recorded_by=auth.user_id,
+    )
+    auth.db.add(stocktake)
+    auth.db.flush()
+    if delta != ZERO:
+        auth.db.add(
+            Movement(
+                tenant_id=auth.tenant_id,
+                site_id=tank.site_id,
+                fuel_tank_id=tank.fuel_tank_id,
+                movement_type="STOCKTAKE_IN" if delta > ZERO else "STOCKTAKE_OUT",
+                liters=abs(delta),
+                fuel_stocktake_id=stocktake.fuel_stocktake_id,
+                occurred_at=body.occurred_at,
+                recorded_by=auth.user_id,
+            )
+        )
+    _audit(auth, "fuel.stocktake.record", stocktake.fuel_stocktake_id, tank.site_id)
+    auth.db.commit()
+    return stocktake
+
+
+def list_stocktakes(
+    auth: Authorized, page: PageParams, *, site_id: uuid.UUID | None
+) -> tuple[list[dict[str, object]], int]:
+    stmt = (
+        select(FuelStocktake, Tank.code)
+        .join(
+            Tank,
+            (Tank.tenant_id == FuelStocktake.tenant_id) & (Tank.fuel_tank_id == FuelStocktake.fuel_tank_id),
+        )
+        .where(FuelStocktake.tenant_id == auth.tenant_id)
+    )
+
+    if not auth.scope.tenant_wide:
+        stmt = stmt.where(FuelStocktake.site_id.in_(auth.scope.site_ids))
+    if site_id is not None:
+        stmt = stmt.where(FuelStocktake.site_id == site_id)
+    total = auth.db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    rows = auth.db.execute(
+        stmt.order_by(FuelStocktake.occurred_at.desc(), FuelStocktake.fuel_stocktake_id)
+        .offset(page.offset)
+        .limit(page.page_size)
+    ).all()
+    return (
+        [
+            {
+                "fuel_stocktake_id": entry.fuel_stocktake_id,
+                "site_id": entry.site_id,
+                "fuel_tank_id": entry.fuel_tank_id,
+                "tank_code": tank_code,
+                "expected_liters": entry.expected_liters,
+                "counted_liters": entry.counted_liters,
+                "delta_liters": entry.delta_liters,
+                "reference": entry.reference,
+                "reason_code": entry.reason_code,
+                "occurred_at": entry.occurred_at,
+                "recorded_by": entry.recorded_by,
+                "recorded_at": entry.recorded_at,
+            }
+            for entry, tank_code in rows
+        ],
+        total,
+    )
+
+
+def stocktake_output(auth: Authorized, entry: FuelStocktake) -> dict[str, object]:
+    tank = _tank(auth, entry.fuel_tank_id)
+    return {
+        "fuel_stocktake_id": entry.fuel_stocktake_id,
+        "site_id": entry.site_id,
+        "fuel_tank_id": entry.fuel_tank_id,
+        "tank_code": tank.code,
+        "expected_liters": entry.expected_liters,
+        "counted_liters": entry.counted_liters,
+        "delta_liters": entry.delta_liters,
+        "reference": entry.reference,
+        "reason_code": entry.reason_code,
+        "occurred_at": entry.occurred_at,
+        "recorded_by": entry.recorded_by,
+        "recorded_at": entry.recorded_at,
+    }
 
 
 def _validate_vehicle_and_driver(auth: Authorized, body: IssueCreate, tank: Tank) -> tuple[Vehicle, Driver]:
