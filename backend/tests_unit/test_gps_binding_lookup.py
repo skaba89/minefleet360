@@ -7,7 +7,6 @@ from unittest.mock import MagicMock
 
 from app.fleet.gps_binding_lookup import resolve_gps_binding
 
-
 NOW = datetime(2026, 10, 29, 12, tzinfo=UTC)
 
 
