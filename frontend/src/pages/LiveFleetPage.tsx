@@ -6,6 +6,8 @@ import { get } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { DataState } from "../components/common";
 import { can } from "../lib/permissions";
+import { GPS_SIGNAL_LABEL, gpsSignalState } from "../lib/gpsSignal";
+import { formatDateTime } from "../lib/time";
 import { FleetPositionsOverview } from "./FleetPositionsOverview";
 import { GpsLocationMap } from "./GpsLocationMap";
 import { useSites } from "../site/SiteContext";
@@ -21,25 +23,9 @@ interface GpsPosition {
   received_at: string;
 }
 
-type SignalState = "moving" | "stopped" | "offline";
-
-function signalState(point: GpsPosition, now: number): SignalState {
-  const timestamp = Date.parse(point.received_at);
-  if (!Number.isFinite(timestamp) || now - timestamp > 120_000 || timestamp > now + 120_000) {
-    return "offline";
-  }
-  return (point.speed_kmh ?? 0) > 2 ? "moving" : "stopped";
-}
-
-const STATUS_LABEL: Record<SignalState, string> = {
-  moving: "En mouvement",
-  stopped: "À l'arrêt",
-  offline: "Signal ancien",
-};
-
 export function LiveFleetPage() {
   const me = useMe();
-  const { siteId } = useSites();
+  const { siteId, timezoneOf } = useSites();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -61,8 +47,8 @@ export function LiveFleetPage() {
   if (!permitted) return <p>Accès à la flotte non autorisé.</p>;
   const selected = shown.find((point) => point.vehicle_id === selectedId);
 
-  const moving = shown.filter((item) => signalState(item, now) === "moving").length;
-  const offline = shown.filter((item) => signalState(item, now) === "offline").length;
+  const moving = shown.filter((item) => gpsSignalState(item, now) === "moving").length;
+  const offline = shown.filter((item) => gpsSignalState(item, now) === "offline").length;
   return (
     <section className="live-fleet">
       <div className="page-head">
@@ -84,22 +70,23 @@ export function LiveFleetPage() {
         <label htmlFor="gps-search">Rechercher un identifiant de camion</label>
         <input id="gps-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Identifiant véhicule" />
       </div>
-      <FleetPositionsOverview points={shown} selectedId={selectedId} onSelect={setSelectedId} />
-      {selected ? <GpsLocationMap key={selected.vehicle_id} point={selected} /> : null}
+      <FleetPositionsOverview points={shown} selectedId={selectedId} onSelect={setSelectedId} now={now} />
+      {selected ? <GpsLocationMap key={selected.vehicle_id} point={selected} now={now} timezone={timezoneOf(selected.site_id)} /> : null}
       <DataState loading={gps.isLoading} error={gps.error} empty={shown.length === 0} emptyText="Aucune position GPS disponible pour ce périmètre.">
         <div className="live-fleet-table">
           <table>
-            <thead><tr><th>Camion</th><th>État du signal</th><th>Vitesse</th><th>Coordonnées</th><th>Dernière réception</th><th>Carte</th></tr></thead>
+            <thead><tr><th>Camion</th><th>État du signal</th><th>Vitesse</th><th>Coordonnées</th><th>Heure du relevé (site)</th><th>Réception (site)</th><th>Carte</th></tr></thead>
             <tbody>
               {shown.map((point) => {
-                const state = signalState(point, now);
+                const state = gpsSignalState(point, now);
                 return (
                   <tr key={point.vehicle_id}>
                     <td><Link to={`/vehicules/${point.vehicle_id}`}>{point.vehicle_id.slice(0, 8)}</Link></td>
-                    <td><span className={`gps-status gps-status--${state}`}>{STATUS_LABEL[state]}</span></td>
-                    <td>{point.speed_kmh == null ? "—" : `${point.speed_kmh.toFixed(1)} km/h`}</td>
+                    <td><span className={`gps-status gps-status--${state}`}>{GPS_SIGNAL_LABEL[state]}</span></td>
+                    <td>{state === "offline" || state === "unknown" ? "—" : `${point.speed_kmh!.toFixed(1)} km/h`}</td>
                     <td>{point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}</td>
-                    <td>{new Date(point.received_at).toLocaleString("fr-FR")}</td>
+                    <td>{Number.isFinite(Date.parse(point.recorded_at)) ? formatDateTime(point.recorded_at, timezoneOf(point.site_id)) : "—"}</td>
+                    <td>{Number.isFinite(Date.parse(point.received_at)) ? formatDateTime(point.received_at, timezoneOf(point.site_id)) : "—"}</td>
                     <td><button type="button" onClick={() => setSelectedId(point.vehicle_id)}>Localiser</button></td>
                   </tr>
                 );
