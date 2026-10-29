@@ -83,3 +83,28 @@ class MeterReconciliationApproval(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
+
+
+class ServiceMeterBaseline(Base):
+    """Cumul approuvé et figé lors de la clôture d'un entretien préventif."""
+
+    __tablename__ = "maintenance_service_meter_baseline"
+    __mapper_args__ = {"eager_defaults": True}
+
+    service_meter_baseline_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    maintenance_plan_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    maintenance_due_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    work_order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    vehicle_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    meter_kind: Mapped[str] = mapped_column(String, nullable=False)
+    cumulative_total: Mapped[Decimal] = mapped_column(Numeric(12, 1), nullable=False)
+    reconciliation_approval_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    serviced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    recorded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
