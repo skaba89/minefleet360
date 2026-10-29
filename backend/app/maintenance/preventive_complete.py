@@ -119,9 +119,7 @@ def complete_preventive_due(
         ).all()
     }
     conflicting_kinds = {
-        kind
-        for kind, approval_id in requested.items()
-        if kind in existing and existing[kind] != approval_id
+        kind for kind, approval_id in requested.items() if kind in existing and existing[kind] != approval_id
     }
     if conflicting_kinds:
         raise AppError(
