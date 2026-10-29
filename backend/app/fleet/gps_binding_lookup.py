@@ -27,13 +27,16 @@ def resolve_gps_binding(
     if not device_id or not device_id.strip() or recorded_at.tzinfo is None:
         return None
     candidate = db.execute(
-        select(FleetGpsDeviceBinding).where(
+        select(FleetGpsDeviceBinding)
+        .where(
             FleetGpsDeviceBinding.tenant_id == tenant_id,
             FleetGpsDeviceBinding.device_id == device_id,
             FleetGpsDeviceBinding.vehicle_id == vehicle_id,
             FleetGpsDeviceBinding.site_id == site_id,
             FleetGpsDeviceBinding.active_from <= recorded_at,
-        ).order_by(FleetGpsDeviceBinding.active_from.desc()).limit(1)
+        )
+        .order_by(FleetGpsDeviceBinding.active_from.desc())
+        .limit(1)
     ).scalar_one_or_none()
     if candidate is None:
         return None
