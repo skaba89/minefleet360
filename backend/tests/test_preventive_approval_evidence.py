@@ -7,7 +7,6 @@ import pytest
 
 from app.maintenance.preventive_approval_evidence import ApprovalEvidence, valid_approval_evidence
 
-
 NOW = datetime(2026, 10, 29, 12, tzinfo=UTC)
 
 
