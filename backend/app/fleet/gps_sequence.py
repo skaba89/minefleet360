@@ -35,7 +35,10 @@ def advance_gps_sequence(
         return False
     if not 0 <= sequence <= 9223372036854775807:
         return False
-    return db.execute(
-        _ADVANCE_SQL,
-        {"tenant_id": tenant_id, "binding_id": binding_id, "sequence": sequence},
-    ).scalar_one_or_none() is not None
+    return (
+        db.execute(
+            _ADVANCE_SQL,
+            {"tenant_id": tenant_id, "binding_id": binding_id, "sequence": sequence},
+        ).scalar_one_or_none()
+        is not None
+    )
