@@ -1815,6 +1815,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fuel/tanks/{fuel_tank_id}/threshold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Low Stock Threshold */
+        post: operations["update_low_stock_threshold_api_v1_fuel_tanks__fuel_tank_id__threshold_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fuel/tanks/{fuel_tank_id}/receipts": {
         parameters: {
             query?: never;
@@ -1826,6 +1843,40 @@ export interface paths {
         put?: never;
         /** Receive Fuel */
         post: operations["receive_fuel_api_v1_fuel_tanks__fuel_tank_id__receipts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fuel/stocktakes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Stocktakes */
+        get: operations["list_stocktakes_api_v1_fuel_stocktakes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fuel/tanks/{fuel_tank_id}/stocktakes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Stocktake */
+        post: operations["record_stocktake_api_v1_fuel_tanks__fuel_tank_id__stocktakes_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2384,6 +2435,54 @@ export interface components {
             liters: string;
             /** Reference */
             reference: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Recorded By
+             * Format: uuid
+             */
+            recorded_by: string;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+        };
+        /** FuelStocktakeOut */
+        FuelStocktakeOut: {
+            /**
+             * Fuel Stocktake Id
+             * Format: uuid
+             */
+            fuel_stocktake_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Fuel Tank Id
+             * Format: uuid
+             */
+            fuel_tank_id: string;
+            /** Tank Code */
+            tank_code: string;
+            /** Expected Liters */
+            expected_liters: string;
+            /** Counted Liters */
+            counted_liters: string;
+            /** Delta Liters */
+            delta_liters: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Reason Code
+             * @enum {string}
+             */
+            reason_code: "MEASUREMENT" | "LOSS" | "DATA_CORRECTION" | "OTHER";
             /**
              * Occurred At
              * Format: date-time
@@ -3131,6 +3230,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[FuelStocktakeOut] */
+        Page_FuelStocktakeOut_: {
+            /** Items */
+            items: components["schemas"]["FuelStocktakeOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[GpsVehicleOut] */
         Page_GpsVehicleOut_: {
             /** Items */
@@ -3744,6 +3854,23 @@ export interface components {
             /** Changed By */
             changed_by?: string | null;
         };
+        /** StocktakeCreate */
+        StocktakeCreate: {
+            /** Counted Liters */
+            counted_liters: number | string;
+            /** Reference */
+            reference: string;
+            /**
+             * Reason Code
+             * @enum {string}
+             */
+            reason_code: "MEASUREMENT" | "LOSS" | "DATA_CORRECTION" | "OTHER";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+        };
         /** TankCreate */
         TankCreate: {
             /**
@@ -3760,6 +3887,8 @@ export interface components {
             fuel_type: "DIESEL" | "PETROL";
             /** Capacity Liters */
             capacity_liters: number | string;
+            /** Low Stock Threshold Liters */
+            low_stock_threshold_liters?: number | string | null;
         };
         /** TankOut */
         TankOut: {
@@ -3782,6 +3911,10 @@ export interface components {
             fuel_type: "DIESEL" | "PETROL";
             /** Capacity Liters */
             capacity_liters: string;
+            /** Low Stock Threshold Liters */
+            low_stock_threshold_liters: string | null;
+            /** Low Stock */
+            low_stock: boolean;
             /** Balance Liters */
             balance_liters: string;
             /** Reserved Liters */
@@ -3871,6 +4004,11 @@ export interface components {
             display_name?: string | null;
             /** Default Timezone */
             default_timezone?: string | null;
+        };
+        /** ThresholdUpdate */
+        ThresholdUpdate: {
+            /** Low Stock Threshold Liters */
+            low_stock_threshold_liters?: number | string | null;
         };
         /** TokenPasswordRequest */
         TokenPasswordRequest: {
@@ -9071,6 +9209,43 @@ export interface operations {
             };
         };
     };
+    update_low_stock_threshold_api_v1_fuel_tanks__fuel_tank_id__threshold_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                fuel_tank_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThresholdUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TankOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     receive_fuel_api_v1_fuel_tanks__fuel_tank_id__receipts_post: {
         parameters: {
             query?: never;
@@ -9095,6 +9270,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FuelReceiptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stocktakes_api_v1_fuel_stocktakes_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_FuelStocktakeOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_stocktake_api_v1_fuel_tanks__fuel_tank_id__stocktakes_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                fuel_tank_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StocktakeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuelStocktakeOut"];
                 };
             };
             /** @description Validation Error */
