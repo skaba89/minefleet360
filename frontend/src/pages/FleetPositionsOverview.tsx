@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 
-export interface FleetMapPoint {
+import { GPS_SIGNAL_LABEL, gpsSignalState, type GpsSignalPoint } from "../lib/gpsSignal";
+
+export interface FleetMapPoint extends GpsSignalPoint {
   vehicle_id: string;
   latitude: number;
   longitude: number;
@@ -11,9 +13,10 @@ interface Props {
   points: FleetMapPoint[];
   selectedId: string | null;
   onSelect: (vehicleId: string) => void;
+  now: number;
 }
 
-export function FleetPositionsOverview({ points, selectedId, onSelect }: Props) {
+export function FleetPositionsOverview({ points, selectedId, onSelect, now }: Props) {
   const valid = useMemo(
     () =>
       points.filter(
@@ -52,14 +55,15 @@ export function FleetPositionsOverview({ points, selectedId, onSelect }: Props) 
       <div className="fleet-positions-plot" role="group" aria-label="Camions géolocalisés">
         {valid.map((point) => {
           const { x, y } = project(point);
+          const state = GPS_SIGNAL_LABEL[gpsSignalState(point, now)];
           return (
             <button
               key={point.vehicle_id}
               type="button"
               className={`fleet-position-dot${selectedId === point.vehicle_id ? " is-selected" : ""}`}
               style={{ left: `${x}%`, top: `${y}%` }}
-              title={`Camion ${point.vehicle_id.slice(0, 8)} : ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`}
-              aria-label={`Sélectionner le camion ${point.vehicle_id.slice(0, 8)}`}
+              title={`Camion ${point.vehicle_id.slice(0, 8)} : ${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)} · ${state}`}
+              aria-label={`Sélectionner le camion ${point.vehicle_id.slice(0, 8)} · ${state}`}
               aria-pressed={selectedId === point.vehicle_id}
               onClick={() => onSelect(point.vehicle_id)}
             >
