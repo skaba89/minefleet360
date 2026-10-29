@@ -71,6 +71,25 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
     ("POST", "/work-orders/{work_order_id}/decision"): {"action": "APPROVE"},
     ("POST", "/work-orders/{work_order_id}/progress"): {"action": "NOTE", "diagnosis": "Diagnostic fictif"},
     ("POST", "/work-orders/{work_order_id}/labour"): {"minutes": 10, "performed_on": "2026-01-01"},
+    ("POST", "/fuel/tanks"): {
+        "site_id": "00000000-0000-0000-0000-000000000001",
+        "code": "CUVE-TEST",
+        "fuel_type": "DIESEL",
+        "capacity_liters": 10000,
+    },
+    ("POST", "/fuel/tanks/{fuel_tank_id}/receipts"): {
+        "liters": 100,
+        "reference": "BL-FICTIF-1",
+        "occurred_at": "2026-10-29T10:00:00+00:00",
+    },
+    ("POST", "/fuel/issues"): {
+        "fuel_tank_id": "00000000-0000-0000-0000-000000000001",
+        "vehicle_id": "00000000-0000-0000-0000-000000000002",
+        "driver_id": "00000000-0000-0000-0000-000000000003",
+        "liters": 20,
+        "requested_at": "2026-01-01T10:00:00+00:00",
+    },
+    ("POST", "/fuel/issues/{fuel_issue_id}/decision"): {"decision": "APPROVED"},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/approve"): {},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/void"): {"reason_code": "ENTRY_ERROR"},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/correct"): {
