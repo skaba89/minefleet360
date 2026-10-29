@@ -744,6 +744,7 @@ permissions:
       - { method: GET, path: /fuel/tanks, shape: collection, success: 200 }
       - { method: GET, path: /fuel/issues, shape: collection, success: 200 }
       - { method: GET, path: /fuel/stocktakes, shape: collection, success: 200 }
+      - { method: GET, path: "/fuel/vehicles/{vehicle_id}/consumption", shape: collection, success: 200 }
     grants:
       TENANT_ADMIN: [TENANT]
       DIRECTION: [TENANT]

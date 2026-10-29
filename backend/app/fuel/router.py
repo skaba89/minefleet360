@@ -7,12 +7,15 @@ from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.http import Page, Pagination
 from app.fuel import service
+from app.fuel.consumption import vehicle_consumption
 from app.fuel.schemas import (
     DecisionCreate,
+    FuelConsumptionOut,
     FuelIssueOut,
     FuelReceiptOut,
     FuelStocktakeOut,
     IssueCreate,
+    MeterKind,
     ReceiptCreate,
     StocktakeCreate,
     TankCreate,
@@ -90,6 +93,18 @@ def list_issues(
     ] = None,
 ) -> Page[FuelIssueOut]:
     items, total = service.list_issues(auth, page, site_id=site_id, status=issue_status)
+    return Page(items=items, page=page.page, page_size=page.page_size, total=total)
+
+
+@router.get("/fuel/vehicles/{vehicle_id}/consumption", response_model=Page[FuelConsumptionOut])
+def list_vehicle_consumption(
+    vehicle_id: uuid.UUID,
+    auth: StockRead,
+    page: Pagination,
+    meter_kind: MeterKind | None = None,
+) -> Page[FuelConsumptionOut]:
+    rows, total = vehicle_consumption(auth, vehicle_id, page, meter_kind=meter_kind)
+    items = [FuelConsumptionOut.model_validate(row) for row in rows]
     return Page(items=items, page=page.page, page_size=page.page_size, total=total)
 
 

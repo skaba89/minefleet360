@@ -59,7 +59,14 @@ class IssueCreate(StrictModel):
     liters: Decimal = Field(gt=0, le=100_000, max_digits=12, decimal_places=3)
     meter_kind: MeterKind | None = None
     meter_value: Decimal | None = Field(default=None, ge=0, le=999_999_999, max_digits=12, decimal_places=1)
+    full_tank: bool = False
     requested_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def full_tank_requires_meter(self) -> "IssueCreate":
+        if self.full_tank and (self.meter_kind is None or self.meter_value is None):
+            raise ValueError("Un plein complet exige un relevé de compteur.")
+        return self
 
 
 class DecisionCreate(StrictModel):
@@ -98,6 +105,7 @@ class FuelIssueOut(BaseModel):
     liters: Decimal
     meter_kind: MeterKind | None
     meter_value: Decimal | None
+    full_tank: bool
     requested_at: datetime
     requested_by: uuid.UUID
     status: Literal["PENDING_APPROVAL", "APPROVED", "REJECTED"]
@@ -130,3 +138,22 @@ class FuelStocktakeOut(BaseModel):
     occurred_at: datetime
     recorded_by: uuid.UUID
     recorded_at: datetime
+
+
+class FuelConsumptionOut(BaseModel):
+    fuel_issue_id: uuid.UUID
+    vehicle_id: uuid.UUID
+    vehicle_fleet_number: str
+    site_id: uuid.UUID
+    fuel_type: FuelType
+    meter_kind: MeterKind
+    interval_start_at: datetime
+    interval_end_at: datetime
+    start_meter_value: Decimal
+    end_meter_value: Decimal
+    meter_delta: Decimal
+    fuel_liters: Decimal
+    rate_liters_per_unit: Decimal
+    comparison_median_rate: Decimal | None
+    comparison_interval_count: int
+    is_anomaly: bool

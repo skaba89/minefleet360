@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Numeric, String, text
+from sqlalchemy import Boolean, DateTime, Numeric, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -42,6 +42,7 @@ class FuelIssue(Base):
     liters: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
     meter_kind: Mapped[str | None] = mapped_column(String)
     meter_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 1))
+    full_tank: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     requested_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     recorded_at: Mapped[datetime] = mapped_column(

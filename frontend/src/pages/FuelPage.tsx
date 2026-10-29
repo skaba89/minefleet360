@@ -15,6 +15,7 @@ type FuelIssue = Schemas["FuelIssueOut"];
 type FuelType = Schemas["TankCreate"]["fuel_type"];
 type MeterKind = NonNullable<FuelIssue["meter_kind"]>;
 type FuelStocktake = Schemas["FuelStocktakeOut"];
+type Consumption = Schemas["FuelConsumptionOut"];
 const PAGE_SIZE = 50;
 const FUEL_TYPES: Record<FuelType, string> = { DIESEL: "Gazole", PETROL: "Essence" };
 const METER_KINDS: Record<MeterKind, string> = { ODOMETER: "Kilométrique (km)", HOUR_METER: "Horaire (h)" };
@@ -46,6 +47,9 @@ export function FuelPage() {
   const { siteId, sites, timezoneOf } = useSites();
   const [tankPage, setTankPage] = useState(1);
   const [issuePage, setIssuePage] = useState(1);
+  const [consumptionPage, setConsumptionPage] = useState(1);
+  const [vehicleId, setVehicleId] = useState("");
+  const [consumptionMeter, setConsumptionMeter] = useState<"" | MeterKind>("");
   const [stocktakePage, setStocktakePage] = useState(1);
   const [issueStatus, setIssueStatus] = useState("");
   const [panel, setPanel] = useState<"tank" | "receipt" | "issue" | "stocktake" | "threshold" | null>(null);
@@ -82,6 +86,19 @@ export function FuelPage() {
     queryKey: ["fuel-stocktakes", siteId, stocktakePage],
     enabled: canRead,
     queryFn: () => read("/fuel/stocktakes", { query: { site_id: siteId, page: stocktakePage, page_size: PAGE_SIZE } }),
+  });
+  const vehicles = useQuery({
+    queryKey: ["fuel-consumption-vehicles", siteId],
+    enabled: canRead,
+    queryFn: () => read("/vehicles", { query: { site_id: siteId, page: 1, page_size: 200 } }),
+  });
+  const consumption = useQuery({
+    queryKey: ["fuel-consumption", vehicleId, consumptionPage, consumptionMeter],
+    enabled: canRead && Boolean(vehicleId),
+    queryFn: () => read("/fuel/vehicles/{vehicle_id}/consumption", {
+      path: { vehicle_id: vehicleId },
+      query: { page: consumptionPage, page_size: PAGE_SIZE, meter_kind: consumptionMeter || null },
+    }),
   });
   const sitesById = new Map(sites.map((site) => [site.site_id, site.code]));
   const tankItems = tanks.data?.items ?? [];
@@ -150,6 +167,27 @@ export function FuelPage() {
           </table>
           <Pager page={tankPage} pageSize={PAGE_SIZE} total={tanks.data?.total ?? 0} onPage={setTankPage} />
         </DataState>
+      </div>
+
+      <div className="card">
+        <div className="page-head"><div><h2>Consommation des véhicules</h2><p className="muted">Calculée entre deux pleins complets approuvés ; les ravitaillements intermédiaires sont additionnés.</p></div>
+          <label>Véhicule<select value={vehicleId} onChange={(e) => { setVehicleId(e.target.value); setConsumptionPage(1); }}><option value="">Choisir un véhicule</option>{vehicles.data?.items.map((vehicle) => <option key={vehicle.vehicle_id} value={vehicle.vehicle_id}>{vehicle.fleet_number}</option>)}</select></label>
+          <label>Compteur<select value={consumptionMeter} onChange={(e) => { setConsumptionMeter(e.target.value as "" | MeterKind); setConsumptionPage(1); }}><option value="">Tous</option><Options map={METER_KINDS} /></select></label>
+        </div>
+        {!vehicleId ? <p className="muted">Sélectionnez un véhicule pour consulter ses périodes de consommation.</p> : <>
+          <DataState loading={consumption.isLoading} error={consumption.error} empty={(consumption.data?.items.length ?? 0) === 0} emptyText="Aucune période complète. Marquez les prochains pleins complets lors de la demande de ravitaillement.">
+            <table><thead><tr><th>Période</th><th>Carburant</th><th>Distance / heures</th><th>Volume</th><th>Consommation</th><th>Référence</th><th>Analyse</th></tr></thead>
+              <tbody>{consumption.data?.items.map((row: Consumption) => <tr key={row.fuel_issue_id}>
+                <td>{formatDateTime(row.interval_start_at, timezoneOf(row.site_id))}<br />→ {formatDateTime(row.interval_end_at, timezoneOf(row.site_id))}</td>
+                <td>{FUEL_TYPES[row.fuel_type]}</td><td>{number(row.meter_delta)} {row.meter_kind === "ODOMETER" ? "km" : "h"}</td><td>{liters(row.fuel_liters)}</td>
+                <td>{number(row.rate_liters_per_unit)} {row.meter_kind === "ODOMETER" ? "L/100 km" : "L/h"}</td>
+                <td>{row.comparison_median_rate === null ? "Historique insuffisant" : `${number(row.comparison_median_rate)} ${row.meter_kind === "ODOMETER" ? "L/100 km" : "L/h"} · ${row.comparison_interval_count} périodes`}</td>
+                <td><Badge tone={row.is_anomaly ? "warn" : "ok"}>{row.is_anomaly ? "À examiner" : "Dans la référence"}</Badge></td>
+              </tr>)}</tbody>
+            </table><Pager page={consumptionPage} pageSize={PAGE_SIZE} total={consumption.data?.total ?? 0} onPage={setConsumptionPage} />
+          </DataState>
+          <p className="muted small">Un écart supérieur à 1,5× la médiane des périodes comparables précédentes (au moins 3) est signalé « à examiner ». C'est un indicateur de contrôle, pas une conclusion de fraude.</p>
+        </>}
       </div>
 
       <div className="card">
@@ -265,6 +303,7 @@ function IssueForm({ siteId, tanks, timezoneOf, onCancel, onDone }: { siteId: st
   const [litersValue, setLitersValue] = useState("");
   const [meterKind, setMeterKind] = useState<"" | MeterKind>("");
   const [meterValue, setMeterValue] = useState("");
+  const [fullTank, setFullTank] = useState(false);
   const [date, setDate] = useState(utcToZonedInput(new Date(), timezoneOf(tanks[0]?.site_id)));
   const selectedTank = tanks.find((tank) => tank.fuel_tank_id === tankId);
   const assignment = activeAssignments.find((item) => item.vehicle_assignment_id === assignmentId);
@@ -275,6 +314,7 @@ function IssueForm({ siteId, tanks, timezoneOf, onCancel, onDone }: { siteId: st
     liters: Number(litersValue),
     meter_kind: meterKind || null,
     meter_value: meterValue ? Number(meterValue) : null,
+    full_tank: fullTank,
     requested_at: zonedInputToUtc(date, timezoneOf(selectedTank?.site_id)).toISOString(),
   } })}>
     <label>Cuve<select required value={tankId} onChange={(e) => setTankId(e.target.value)}>{tanks.map((tank) => <option key={tank.fuel_tank_id} value={tank.fuel_tank_id}>{tank.code} · {FUEL_TYPES[tank.fuel_type]} · {liters(tank.available_liters)} disponible</option>)}</select></label>
@@ -283,6 +323,7 @@ function IssueForm({ siteId, tanks, timezoneOf, onCancel, onDone }: { siteId: st
     <label>Quantité demandée (L)<input required type="number" min="0.001" max="100000" step="0.001" value={litersValue} onChange={(e) => setLitersValue(e.target.value)} /></label>
     <label>Compteur (si disponible)<select value={meterKind} onChange={(e) => setMeterKind(e.target.value as "" | MeterKind)}><option value="">Non renseigné</option><Options map={METER_KINDS} /></select></label>
     {meterKind && <label>Valeur ({meterKind === "ODOMETER" ? "km" : "h"})<input required type="number" min="0" step="0.1" value={meterValue} onChange={(e) => setMeterValue(e.target.value)} /></label>}
+    <label className="checkbox"><input type="checkbox" checked={fullTank} disabled={!meterKind || !meterValue} onChange={(e) => setFullTank(e.target.checked)} /> Plein complet (réservoir rempli)</label>
     <label>Date de la demande<input required type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} /></label>
   </ActionForm>;
 }
@@ -294,4 +335,8 @@ function liters(value: string): string {
 function deltaLiters(value: string): string {
   const formatted = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 3, signDisplay: "always" }).format(Number(value));
   return `${formatted} L`;
+}
+
+function number(value: string): string {
+  return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 3 }).format(Number(value));
 }

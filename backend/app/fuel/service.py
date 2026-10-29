@@ -382,6 +382,7 @@ def create_issue(auth: Authorized, body: IssueCreate) -> Issue:
         liters=body.liters,
         meter_kind=body.meter_kind,
         meter_value=body.meter_value,
+        full_tank=body.full_tank,
         requested_at=body.requested_at,
         requested_by=auth.user_id,
     )
@@ -499,6 +500,7 @@ def list_issues(
                 "liters": issue.liters,
                 "meter_kind": issue.meter_kind,
                 "meter_value": issue.meter_value,
+                "full_tank": issue.full_tank,
                 "requested_at": issue.requested_at,
                 "requested_by": issue.requested_by,
                 "status": decision.decision if decision else "PENDING_APPROVAL",
@@ -536,6 +538,7 @@ def issue_output(auth: Authorized, issue: Issue) -> dict[str, object]:
         "liters": issue.liters,
         "meter_kind": issue.meter_kind,
         "meter_value": issue.meter_value,
+        "full_tank": issue.full_tank,
         "requested_at": issue.requested_at,
         "requested_by": issue.requested_by,
         "status": decision.decision if decision else "PENDING_APPROVAL",
