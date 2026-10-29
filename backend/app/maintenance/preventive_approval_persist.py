@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -38,6 +39,11 @@ def persist_meter_reconciliation_approval(
         and meter_kind in METER_KINDS
         and approved.approved
         and not approved.unresolved_reset
+        and approved.baseline_total.is_finite()
+        and approved.current_total.is_finite()
+        and Decimal("0") <= approved.baseline_total <= approved.current_total
+        and approved.current_total < Decimal("100000000")
+        and len(approved.reconciliation_reference.strip()) <= 160
     )
     if accepted:
         db.add(
