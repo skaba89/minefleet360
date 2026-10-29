@@ -7,10 +7,13 @@ from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.http import IfMatch, Page, Pagination, etag
 from app.maintenance import preventive_service, service
+from app.maintenance.preventive_complete import complete_preventive_due
 from app.maintenance.preventive_plan_inputs import PreventivePlanCreate, PreventivePlanSuspend
 from app.maintenance.preventive_revise import revise_plan
 from app.maintenance.preventive_schedule import schedule_preventive_order
 from app.maintenance.preventive_schemas import (
+    PreventiveCompletionIn,
+    PreventiveCompletionOut,
     PreventiveDueOut,
     PreventivePlanOut,
     PreventiveScheduledOrderOut,
@@ -183,3 +186,31 @@ def revise_preventive_plan(
 def schedule_preventive_due(due_id: uuid.UUID, auth: PreventiveManage) -> PreventiveScheduledOrderOut:
     """Planifier une échéance éligible ; rejouer retourne le même ordre de travail."""
     return PreventiveScheduledOrderOut(work_order_id=schedule_preventive_order(auth, due_id))
+
+
+@router.post(
+    "/work-orders/{work_order_id}/complete-preventive",
+    response_model=PreventiveCompletionOut,
+)
+def complete_preventive_work_order(
+    work_order_id: uuid.UUID,
+    body: PreventiveCompletionIn,
+    auth: PreventiveManage,
+) -> PreventiveCompletionOut:
+    """Finaliser l'échéance liée après la clôture conforme de l'OT."""
+    approval_ids: dict[str, uuid.UUID] = {}
+    if body.odometer_approval_id is not None:
+        approval_ids["ODOMETER_KM"] = body.odometer_approval_id
+    if body.hour_meter_approval_id is not None:
+        approval_ids["HOUR_METER"] = body.hour_meter_approval_id
+    changed = complete_preventive_due(
+        auth,
+        work_order_id,
+        approval_ids,
+        as_of=auth.clock.now(),
+    )
+    return PreventiveCompletionOut(
+        work_order_id=work_order_id,
+        status="COMPLETED",
+        changed=changed,
+    )
