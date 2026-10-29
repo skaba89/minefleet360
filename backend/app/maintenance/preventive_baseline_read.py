@@ -45,8 +45,6 @@ def load_verified_service_baseline(
     Aucune extrapolation de compteur : les cumuls nécessitent une source
     explicitement qualifiée, non encore branchée ici.
     """
-    order = db.scalars(
-        completed_preventive_orders_query(tenant_id, vehicle_id, as_of=as_of)
-    ).first()
+    order = db.scalars(completed_preventive_orders_query(tenant_id, vehicle_id, as_of=as_of)).first()
     serviced_on: date | None = order.closed_at.date() if order and order.closed_at else None
     return ServiceBaseline(serviced_on=serviced_on)
