@@ -96,9 +96,7 @@ def load_verified_service_baseline(
         )
     ).all()
     totals: dict[str, Decimal] = {
-        meter_kind: total
-        for meter_kind, total in meter_rows
-        if total.is_finite() and total >= 0
+        meter_kind: total for meter_kind, total in meter_rows if total.is_finite() and total >= 0
     }
     serviced_on: date = order.closed_at.date()
     return ServiceBaseline(
