@@ -22,7 +22,5 @@ def test_replay_rejected() -> None:
 def test_invalid_sequences_do_not_write() -> None:
     for value in (-1, True, 2**63, "4"):
         db = MagicMock()
-        assert not advance_gps_sequence(
-            db, tenant_id=uuid.uuid4(), binding_id=uuid.uuid4(), sequence=value
-        )
+        assert not advance_gps_sequence(db, tenant_id=uuid.uuid4(), binding_id=uuid.uuid4(), sequence=value)
         db.execute.assert_not_called()
