@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 
@@ -17,11 +17,15 @@ export function PhoneTrackingPage() {
   const me = useMe();
   const [params] = useSearchParams();
   const permitted = can(me.grants, "fleet.gps.share");
-  const vehicles = useInfiniteQuery({
-    queryKey: ["gps-sharing-vehicles"],
-    queryFn: ({ pageParam }) => get<VehiclePage>("/me/gps/vehicles", { page: pageParam, page_size: 50 }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => lastPage.page * lastPage.page_size < lastPage.total ? lastPage.page + 1 : undefined,
+  const [vehiclePage, setVehiclePage] = useState(1);
+  const vehicles = useQuery({
+    queryKey: ["gps-sharing-vehicles", vehiclePage],
+    queryFn: async () => {
+      const pages = await Promise.all(Array.from({ length: vehiclePage }, (_, index) =>
+        get<VehiclePage>("/me/gps/vehicles", { page: index + 1, page_size: 50 }),
+      ));
+      return { items: pages.flatMap((page) => page.items), total: pages[0]?.total ?? 0 };
+    },
     enabled: permitted,
   });
   const [vehicleId, setVehicleId] = useState(params.get("vehicle") ?? "");
@@ -117,7 +121,8 @@ export function PhoneTrackingPage() {
   }
 
   if (!permitted) return <p>Votre compte ne peut pas partager de position.</p>;
-  const vehicleOptions = vehicles.data?.pages.flatMap((page) => page.items) ?? [];
+  const vehicleOptions = Array.isArray(vehicles.data) ? vehicles.data : vehicles.data?.items ?? [];
+  const vehicleTotal = Array.isArray(vehicles.data) ? vehicles.data.length : vehicles.data?.total ?? 0;
   const chosen = vehicleOptions.find((v) => v.vehicle_id === vehicleId);
   return <section>
     <div className="page-head"><div><h1>Mon partage GPS</h1><p className="muted">Localiser le véhicule avec le téléphone de votre compte</p></div><span className={`badge badge-${running ? "ok" : "neutral"}`}><Icon name="phone" /> {running ? "Partage actif" : "Désactivé"}</span></div>
@@ -126,7 +131,7 @@ export function PhoneTrackingPage() {
       <p>La position de ce téléphone représentera le véhicule choisi. Activez le partage uniquement lorsque vous êtes à bord.</p>
       <DataState loading={vehicles.isLoading} error={vehicles.error} empty={vehicleOptions.length === 0} emptyText="Aucun véhicule autorisé. Pour un conducteur, l'administrateur doit relier son compte au dossier conducteur et une affectation doit être active.">
         <label>Véhicule<select value={vehicleId} disabled={running || busy} onChange={(e) => { setVehicleId(e.target.value); setConsent(false); }}><option value="">Choisir un véhicule</option>{vehicleOptions.map((v) => <option key={v.vehicle_id} value={v.vehicle_id}>{v.fleet_number}{v.registration_number ? ` · ${v.registration_number}` : ""}</option>)}</select></label>
-        {vehicles.hasNextPage && <button type="button" disabled={vehicles.isFetchingNextPage} onClick={() => void vehicles.fetchNextPage()}>{vehicles.isFetchingNextPage ? "Chargement…" : `Charger la suite (${vehicleOptions.length} sur ${vehicles.data?.pages[0]?.total ?? 0})`}</button>}
+        {vehicleOptions.length < vehicleTotal && <button type="button" disabled={vehicles.isFetching} onClick={() => setVehiclePage((page) => page + 1)}>{vehicles.isFetching ? "Chargement…" : `Charger la suite (${vehicleOptions.length} sur ${vehicleTotal})`}</button>}
         <label className="checkbox"><input type="checkbox" checked={consent} disabled={running || busy} onChange={(e) => setConsent(e.target.checked)} />Je suis à bord et j'accepte de partager la position de ce téléphone pour ce véhicule.</label>
         <div className="toolbar">{!running && <button className="primary" type="button" disabled={busy || !consent || !chosen} onClick={() => void start()}>Démarrer le partage</button>}</div>
       </DataState>
