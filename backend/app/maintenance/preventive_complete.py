@@ -102,8 +102,9 @@ def complete_preventive_due(
     if plan is None:
         raise AppError("STATE_TRANSITION_INVALID")
 
-    existing: dict[str, uuid.UUID] = dict(
-        auth.db.execute(
+    existing: dict[str, uuid.UUID] = {
+        meter_kind: approval_id
+        for meter_kind, approval_id in auth.db.execute(
             select(
                 ServiceMeterBaseline.meter_kind,
                 ServiceMeterBaseline.reconciliation_approval_id,
@@ -116,7 +117,7 @@ def complete_preventive_due(
                 ServiceMeterBaseline.serviced_at == order.closed_at,
             )
         ).all()
-    )
+    }
     conflicting_kinds = {
         kind
         for kind, approval_id in requested.items()
@@ -137,6 +138,12 @@ def complete_preventive_due(
         )
 
     if due.status == "COMPLETED":
+        unrecorded_kinds = requested.keys() - existing.keys()
+        if unrecorded_kinds:
+            raise AppError(
+                "STATE_TRANSITION_INVALID",
+                details={"unrecorded_meter_kinds": sorted(unrecorded_kinds)},
+            )
         auth.db.commit()
         return False
 
