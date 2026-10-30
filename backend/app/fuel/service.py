@@ -31,6 +31,7 @@ from app.fuel.models import (
 from app.fuel.schemas import (
     DecisionCreate,
     IssueCreate,
+    PumpAnomalyToleranceUpdate,
     PumpCreate,
     PumpMeterReadingCreate,
     PurchaseCreate,
@@ -86,10 +87,12 @@ def _tank(auth: Authorized, tank_id: uuid.UUID, *, lock: bool = False) -> Tank:
 
 def _pump(auth: Authorized, pump_id: uuid.UUID, *, lock: bool = False) -> Pump:
     stmt = select(Pump).where(Pump.tenant_id == auth.tenant_id, Pump.fuel_pump_id == pump_id)
+    if not auth.scope.tenant_wide:
+        stmt = stmt.where(Pump.site_id.in_(auth.scope.site_ids))
     if lock:
         stmt = stmt.with_for_update()
     pump = auth.db.scalar(stmt)
-    if pump is None or not _in_scope(auth, pump.site_id):
+    if pump is None:
         raise AppError("NOT_FOUND")
     return pump
 
@@ -249,6 +252,8 @@ def list_pumps(
             "fuel_type": fuel_type,
             "code": pump.code,
             "name": pump.name,
+            "anomaly_tolerance_liters": pump.anomaly_tolerance_liters,
+            "anomaly_tolerance_percent": pump.anomaly_tolerance_percent,
         }
         for pump, tank_code, fuel_type in rows
     ]
@@ -285,6 +290,8 @@ def pump_output(auth: Authorized, pump: Pump) -> dict[str, object]:
         "fuel_type": tank.fuel_type,
         "code": pump.code,
         "name": pump.name,
+        "anomaly_tolerance_liters": pump.anomaly_tolerance_liters,
+        "anomaly_tolerance_percent": pump.anomaly_tolerance_percent,
     }
 
 
@@ -314,9 +321,6 @@ def list_pump_reconciliations(
     auth: Authorized,
     pump_id: uuid.UUID,
     page: PageParams,
-    *,
-    tolerance_liters: Decimal,
-    tolerance_percent: Decimal,
 ) -> tuple[list[dict[str, object]], int]:
     """Rapproche chaque intervalle compteur avec les sorties approuvées dans ``(début, fin]``."""
     pump = _pump(auth, pump_id)
@@ -392,36 +396,95 @@ def list_pump_reconciliations(
     for row in rows:
         start_at = row["interval_start_at"]
         end_at = row["interval_end_at"]
-        meter_delta = Decimal(row["end_meter_liters"]) - Decimal(row["start_meter_liters"])
         approved = sum(
             (Decimal(liters) for occurred_at, liters in movements if start_at < occurred_at <= end_at),
             ZERO,
         )
-        variance = meter_delta - approved
-        absolute_variance = abs(variance)
-        if approved > ZERO:
-            variance_percent = (absolute_variance * Decimal("100") / approved).quantize(Decimal("0.001"))
-        else:
-            variance_percent = Decimal("0") if meter_delta == ZERO else Decimal("100")
         items.append(
-            {
-                "fuel_pump_id": pump.fuel_pump_id,
-                "start_reading_id": row["start_reading_id"],
-                "end_reading_id": row["end_reading_id"],
-                "interval_start_at": start_at,
-                "interval_end_at": end_at,
-                "start_meter_liters": row["start_meter_liters"],
-                "end_meter_liters": row["end_meter_liters"],
-                "meter_delta_liters": meter_delta,
-                "approved_issue_liters": approved,
-                "variance_liters": variance,
-                "variance_percent": variance_percent,
-                "tolerance_liters": tolerance_liters,
-                "tolerance_percent": tolerance_percent,
-                "is_anomaly": absolute_variance > tolerance_liters and variance_percent > tolerance_percent,
-            }
+            _reconciliation_result(
+                pump,
+                start_reading_id=row["start_reading_id"],
+                end_reading_id=row["end_reading_id"],
+                interval_start_at=start_at,
+                interval_end_at=end_at,
+                start_meter_liters=Decimal(row["start_meter_liters"]),
+                end_meter_liters=Decimal(row["end_meter_liters"]),
+                approved_issue_liters=approved,
+            )
         )
     return items, total
+
+
+def _reconciliation_result(
+    pump: Pump,
+    *,
+    start_reading_id: uuid.UUID,
+    end_reading_id: uuid.UUID,
+    interval_start_at: object,
+    interval_end_at: object,
+    start_meter_liters: Decimal,
+    end_meter_liters: Decimal,
+    approved_issue_liters: Decimal,
+) -> dict[str, object]:
+    meter_delta = end_meter_liters - start_meter_liters
+    variance = meter_delta - approved_issue_liters
+    absolute_variance = abs(variance)
+    if approved_issue_liters > ZERO:
+        variance_percent = (absolute_variance * Decimal("100") / approved_issue_liters).quantize(
+            Decimal("0.001")
+        )
+    else:
+        variance_percent = Decimal("0") if meter_delta == ZERO else Decimal("100")
+    return {
+        "fuel_pump_id": pump.fuel_pump_id,
+        "start_reading_id": start_reading_id,
+        "end_reading_id": end_reading_id,
+        "interval_start_at": interval_start_at,
+        "interval_end_at": interval_end_at,
+        "start_meter_liters": start_meter_liters,
+        "end_meter_liters": end_meter_liters,
+        "meter_delta_liters": meter_delta,
+        "approved_issue_liters": approved_issue_liters,
+        "variance_liters": variance,
+        "variance_percent": variance_percent,
+        "tolerance_liters": pump.anomaly_tolerance_liters,
+        "tolerance_percent": pump.anomaly_tolerance_percent,
+        "is_anomaly": absolute_variance > pump.anomaly_tolerance_liters
+        and variance_percent > pump.anomaly_tolerance_percent,
+    }
+
+
+def reconcile_pump_interval(
+    auth: Authorized,
+    pump: Pump,
+    start: PumpMeterReading,
+    end: PumpMeterReading,
+) -> dict[str, object]:
+    """Calcule la preuve métier d'un intervalle avec les seuils persistés de la pompe."""
+    approved = auth.db.scalar(
+        select(func.coalesce(func.sum(Movement.liters), ZERO))
+        .join(
+            Issue,
+            (Issue.tenant_id == Movement.tenant_id) & (Issue.fuel_issue_id == Movement.fuel_issue_id),
+        )
+        .where(
+            Movement.tenant_id == auth.tenant_id,
+            Movement.movement_type == "ISSUE",
+            Issue.fuel_pump_id == pump.fuel_pump_id,
+            Movement.occurred_at > start.measured_at,
+            Movement.occurred_at <= end.measured_at,
+        )
+    )
+    return _reconciliation_result(
+        pump,
+        start_reading_id=start.fuel_pump_meter_reading_id,
+        end_reading_id=end.fuel_pump_meter_reading_id,
+        interval_start_at=start.measured_at,
+        interval_end_at=end.measured_at,
+        start_meter_liters=start.cumulative_liters,
+        end_meter_liters=end.cumulative_liters,
+        approved_issue_liters=Decimal(approved or ZERO),
+    )
 
 
 def record_pump_meter_reading(
@@ -480,6 +543,38 @@ def record_pump_meter_reading(
     _audit(auth, "fuel.pump.meter.record", reading.fuel_pump_meter_reading_id, pump.site_id)
     auth.db.commit()
     return reading
+
+
+def update_pump_anomaly_tolerance(
+    auth: Authorized, pump_id: uuid.UUID, body: PumpAnomalyToleranceUpdate
+) -> Pump:
+    pump = _pump(auth, pump_id, lock=True)
+    before = {
+        "tolerance_liters": str(pump.anomaly_tolerance_liters),
+        "tolerance_percent": str(pump.anomaly_tolerance_percent),
+    }
+    pump.anomaly_tolerance_liters = body.tolerance_liters
+    pump.anomaly_tolerance_percent = body.tolerance_percent
+    pump.updated_by = auth.user_id
+    auth.db.flush()
+    record(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        actor_user_id=auth.user_id,
+        action="fuel.pump.anomaly_tolerance.update",
+        entity_type="fuel",
+        entity_id=pump.fuel_pump_id,
+        site_id=pump.site_id,
+        before=before,
+        after={
+            "tolerance_liters": str(pump.anomaly_tolerance_liters),
+            "tolerance_percent": str(pump.anomaly_tolerance_percent),
+        },
+        changed_fields=("anomaly_tolerance_liters", "anomaly_tolerance_percent"),
+    )
+    auth.db.commit()
+    set_tenant_context(auth.db, auth.tenant_id)
+    return pump
 
 
 def update_threshold(auth: Authorized, tank_id: uuid.UUID, body: ThresholdUpdate) -> Tank:

@@ -84,6 +84,9 @@ CATALOG: dict[str, ErrorDef] = {
     "WORK_ORDER_STATE_INVALID": ErrorDef(
         409, "Cette action n'est pas possible dans l'état actuel de l'ordre de travail."
     ),
+    "FUEL_INTERVAL_NOT_ANOMALOUS": ErrorDef(
+        409, "Cet intervalle de pompe est dans les tolérances configurées et ne peut pas ouvrir de dossier."
+    ),
     # 422
     "VALIDATION_ERROR": ErrorDef(422, "Les données envoyées sont invalides."),
     "IF_MATCH_REQUIRED": ErrorDef(422, "L'en-tête If-Match est obligatoire pour une modification."),

@@ -39,6 +39,12 @@ class FuelPump(AuditedColumns, Base):
     fuel_tank_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     code: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    anomaly_tolerance_liters: Mapped[Decimal] = mapped_column(
+        Numeric(12, 3), nullable=False, server_default=text("5")
+    )
+    anomaly_tolerance_percent: Mapped[Decimal] = mapped_column(
+        Numeric(6, 3), nullable=False, server_default=text("1")
+    )
 
 
 class FuelPumpMeterReading(Base):
@@ -268,6 +274,15 @@ class FuelPumpAnomalyCase(Base):
     fuel_pump_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     start_reading_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     end_reading_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    meter_delta_liters: Mapped[Decimal | None] = mapped_column(Numeric(16, 3))
+    approved_issue_liters: Mapped[Decimal | None] = mapped_column(Numeric(16, 3))
+    variance_liters: Mapped[Decimal | None] = mapped_column(Numeric(16, 3))
+    variance_percent: Mapped[Decimal | None] = mapped_column(Numeric(9, 3))
+    tolerance_liters: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
+    tolerance_percent: Mapped[Decimal | None] = mapped_column(Numeric(6, 3))
+    qualification_reason: Mapped[str] = mapped_column(
+        String, nullable=False, server_default=text("'LEGACY_UNQUALIFIED'")
+    )
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")

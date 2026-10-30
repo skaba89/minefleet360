@@ -491,6 +491,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fuel/pumps/{fuel_pump_id}/anomaly-tolerance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Pump Anomaly Tolerance */
+        put: operations["update_pump_anomaly_tolerance_api_v1_fuel_pumps__fuel_pump_id__anomaly_tolerance_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fuel/pumps/{fuel_pump_id}/meter-readings": {
         parameters: {
             query?: never;
@@ -2150,6 +2167,8 @@ export interface components {
     schemas: {
         /** AnomalyCaseOut */
         AnomalyCaseOut: {
+            /** Approved Issue Liters */
+            approved_issue_liters: string | null;
             /**
              * Created By
              * Format: uuid
@@ -2170,6 +2189,13 @@ export interface components {
              * Format: uuid
              */
             fuel_pump_id: string;
+            /** Meter Delta Liters */
+            meter_delta_liters: string | null;
+            /**
+             * Qualification Reason
+             * @enum {string}
+             */
+            qualification_reason: "LEGACY_UNQUALIFIED" | "METER_VOLUME_EXCEEDS_APPROVED_ISSUES" | "APPROVED_ISSUES_EXCEED_METER_VOLUME";
             /**
              * Site Id
              * Format: uuid
@@ -2185,6 +2211,14 @@ export interface components {
              * @enum {string}
              */
             status: "OPEN" | "ACKNOWLEDGED" | "JUSTIFIED" | "CLOSED";
+            /** Tolerance Liters */
+            tolerance_liters: string | null;
+            /** Tolerance Percent */
+            tolerance_percent: string | null;
+            /** Variance Liters */
+            variance_liters: string | null;
+            /** Variance Percent */
+            variance_percent: string | null;
         };
         /** AnomalyEventCreate */
         AnomalyEventCreate: {
@@ -2832,6 +2866,10 @@ export interface components {
         };
         /** FuelPumpOut */
         FuelPumpOut: {
+            /** Anomaly Tolerance Liters */
+            anomaly_tolerance_liters: string;
+            /** Anomaly Tolerance Percent */
+            anomaly_tolerance_percent: string;
             /** Code */
             code: string;
             /**
@@ -4362,6 +4400,13 @@ export interface components {
              * Format: uuid
              */
             work_order_id: string;
+        };
+        /** PumpAnomalyToleranceUpdate */
+        PumpAnomalyToleranceUpdate: {
+            /** Tolerance Liters */
+            tolerance_liters: number | string;
+            /** Tolerance Percent */
+            tolerance_percent: number | string;
         };
         /** PumpCreate */
         PumpCreate: {
@@ -6835,6 +6880,43 @@ export interface operations {
             };
         };
     };
+    update_pump_anomaly_tolerance_api_v1_fuel_pumps__fuel_pump_id__anomaly_tolerance_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                fuel_pump_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PumpAnomalyToleranceUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuelPumpOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_pump_meter_readings_api_v1_fuel_pumps__fuel_pump_id__meter_readings_get: {
         parameters: {
             query?: {
@@ -6911,8 +6993,6 @@ export interface operations {
     list_pump_reconciliations_api_v1_fuel_pumps__fuel_pump_id__reconciliations_get: {
         parameters: {
             query?: {
-                tolerance_liters?: number | string;
-                tolerance_percent?: number | string;
                 page?: number;
                 page_size?: number | null;
             };

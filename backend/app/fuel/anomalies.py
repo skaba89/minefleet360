@@ -1,6 +1,7 @@
 """Traitement des dossiers d'anomalie carburant, strictement limité au tenant et au site."""
 
 import uuid
+from decimal import Decimal
 from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, Depends, Query, status
@@ -12,6 +13,7 @@ from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.errors import AppError
 from app.core.http import Page, Pagination, StrictModel
+from app.fuel import service
 from app.fuel.models import FuelPump, FuelPumpAnomalyCase, FuelPumpAnomalyEvent, FuelPumpMeterReading
 
 router = APIRouter(tags=["carburant"], route_class=SecuredRoute)
@@ -19,6 +21,11 @@ Read = Annotated[Authorized, Depends(Require("fuel.anomaly.read"))]
 Manage = Annotated[Authorized, Depends(Require("fuel.anomaly.manage"))]
 EventType = Literal["ACKNOWLEDGED", "JUSTIFIED", "CLOSED"]
 AnomalyStatus = Literal["OPEN", "ACKNOWLEDGED", "JUSTIFIED", "CLOSED"]
+QualificationReason = Literal[
+    "LEGACY_UNQUALIFIED",
+    "METER_VOLUME_EXCEEDS_APPROVED_ISSUES",
+    "APPROVED_ISSUES_EXCEED_METER_VOLUME",
+]
 
 
 class AnomalyOpen(StrictModel):
@@ -37,6 +44,13 @@ class AnomalyCaseOut(BaseModel):
     site_id: uuid.UUID
     start_reading_id: uuid.UUID
     end_reading_id: uuid.UUID
+    meter_delta_liters: Decimal | None
+    approved_issue_liters: Decimal | None
+    variance_liters: Decimal | None
+    variance_percent: Decimal | None
+    tolerance_liters: Decimal | None
+    tolerance_percent: Decimal | None
+    qualification_reason: QualificationReason
     created_by: uuid.UUID
     status: AnomalyStatus
 
@@ -56,6 +70,13 @@ def _case_output(case: FuelPumpAnomalyCase, current_status: AnomalyStatus) -> An
         site_id=case.site_id,
         start_reading_id=case.start_reading_id,
         end_reading_id=case.end_reading_id,
+        meter_delta_liters=case.meter_delta_liters,
+        approved_issue_liters=case.approved_issue_liters,
+        variance_liters=case.variance_liters,
+        variance_percent=case.variance_percent,
+        tolerance_liters=case.tolerance_liters,
+        tolerance_percent=case.tolerance_percent,
+        qualification_reason=cast(QualificationReason, case.qualification_reason),
         created_by=case.created_by,
         status=current_status,
     )
@@ -78,10 +99,14 @@ def _case(auth: Authorized, case_id: uuid.UUID) -> FuelPumpAnomalyCase:
     status_code=status.HTTP_201_CREATED,
 )
 def open_anomaly_case(fuel_pump_id: uuid.UUID, body: AnomalyOpen, auth: Manage) -> AnomalyCaseOut:
-    pump = auth.db.scalar(
-        select(FuelPump).where(FuelPump.tenant_id == auth.tenant_id, FuelPump.fuel_pump_id == fuel_pump_id)
+    pump_query = select(FuelPump).where(
+        FuelPump.tenant_id == auth.tenant_id,
+        FuelPump.fuel_pump_id == fuel_pump_id,
     )
-    if pump is None or not auth.scope.covers_site(pump.site_id):
+    if not auth.scope.tenant_wide:
+        pump_query = pump_query.where(FuelPump.site_id.in_(auth.scope.site_ids))
+    pump = auth.db.scalar(pump_query.with_for_update())
+    if pump is None:
         raise AppError("NOT_FOUND")
     if body.start_reading_id == body.end_reading_id:
         raise AppError("CONFLICT")
@@ -125,12 +150,36 @@ def open_anomaly_case(fuel_pump_id: uuid.UUID, body: AnomalyOpen, auth: Manage) 
     )
     if existing is not None:
         raise AppError("CONFLICT")
+    reconciliation = service.reconcile_pump_interval(auth, pump, start, end)
+    if reconciliation["is_anomaly"] is not True:
+        raise AppError(
+            "FUEL_INTERVAL_NOT_ANOMALOUS",
+            details={
+                "variance_liters": str(reconciliation["variance_liters"]),
+                "variance_percent": str(reconciliation["variance_percent"]),
+                "tolerance_liters": str(reconciliation["tolerance_liters"]),
+                "tolerance_percent": str(reconciliation["tolerance_percent"]),
+            },
+        )
+    variance_liters = cast(Decimal, reconciliation["variance_liters"])
+    qualification_reason: QualificationReason = (
+        "METER_VOLUME_EXCEEDS_APPROVED_ISSUES"
+        if variance_liters > 0
+        else "APPROVED_ISSUES_EXCEED_METER_VOLUME"
+    )
     case = FuelPumpAnomalyCase(
         tenant_id=auth.tenant_id,
         site_id=pump.site_id,
         fuel_pump_id=fuel_pump_id,
         start_reading_id=body.start_reading_id,
         end_reading_id=body.end_reading_id,
+        meter_delta_liters=cast(Decimal, reconciliation["meter_delta_liters"]),
+        approved_issue_liters=cast(Decimal, reconciliation["approved_issue_liters"]),
+        variance_liters=variance_liters,
+        variance_percent=cast(Decimal, reconciliation["variance_percent"]),
+        tolerance_liters=cast(Decimal, reconciliation["tolerance_liters"]),
+        tolerance_percent=cast(Decimal, reconciliation["tolerance_percent"]),
+        qualification_reason=qualification_reason,
         created_by=auth.user_id,
     )
     auth.db.add(case)
@@ -143,6 +192,8 @@ def open_anomaly_case(fuel_pump_id: uuid.UUID, body: AnomalyOpen, auth: Manage) 
         entity_type="fuel",
         entity_id=case.fuel_pump_anomaly_case_id,
         site_id=pump.site_id,
+        reason=qualification_reason,
+        changed_fields=("qualification_snapshot",),
     )
     output = _case_output(case, "OPEN")
     auth.db.commit()

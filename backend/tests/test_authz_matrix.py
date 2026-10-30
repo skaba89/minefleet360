@@ -90,6 +90,10 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
         "code": "POMPE-TEST",
         "name": "Pompe test",
     },
+    ("PUT", "/fuel/pumps/{fuel_pump_id}/anomaly-tolerance"): {
+        "tolerance_liters": 5,
+        "tolerance_percent": 1,
+    },
     ("POST", "/fuel/pumps/{fuel_pump_id}/meter-readings"): {
         "cumulative_liters": 100,
         "measured_at": "2026-10-29T10:00:00+00:00",

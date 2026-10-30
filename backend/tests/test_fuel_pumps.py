@@ -185,6 +185,12 @@ def test_pumps_are_tenant_scoped(client: TestClient, api: Api) -> None:
         headers=outsider.admin.headers,
     )
     assert hidden.status_code == 404, hidden.text
+    hidden_tolerance = client.put(
+        f"{API}/fuel/pumps/{pump['fuel_pump_id']}/anomaly-tolerance",
+        headers=outsider.admin.headers,
+        json={"tolerance_liters": "1.000", "tolerance_percent": "1.000"},
+    )
+    assert hidden_tolerance.status_code == 404, hidden_tolerance.text
 
 
 def test_pump_reconciliation_uses_only_approved_issues(client: TestClient, api: Api) -> None:
@@ -271,3 +277,47 @@ def test_pump_reconciliation_uses_only_approved_issues(client: TestClient, api: 
     assert Decimal(matched["approved_issue_liters"]) == Decimal("50.000")
     assert Decimal(matched["variance_liters"]) == Decimal("2.000")
     assert matched["is_anomaly"] is False
+
+    refused = client.post(
+        f"{API}/fuel/pumps/{pump_id}/anomaly-cases",
+        headers=tenant.admin.headers,
+        json={
+            "start_reading_id": matched["start_reading_id"],
+            "end_reading_id": matched["end_reading_id"],
+        },
+    )
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["code"] == "FUEL_INTERVAL_NOT_ANOMALOUS"
+    assert refused.json()["details"] == {
+        "variance_liters": "2.000",
+        "variance_percent": "4.000",
+        "tolerance_liters": "5.000",
+        "tolerance_percent": "1.000",
+    }
+
+    configured = client.put(
+        f"{API}/fuel/pumps/{pump_id}/anomaly-tolerance",
+        headers=tenant.admin.headers,
+        json={"tolerance_liters": "1.000", "tolerance_percent": "1.000"},
+    )
+    assert configured.status_code == 200, configured.text
+    assert Decimal(configured.json()["anomaly_tolerance_liters"]) == Decimal("1.000")
+    assert Decimal(configured.json()["anomaly_tolerance_percent"]) == Decimal("1.000")
+
+    qualified = client.post(
+        f"{API}/fuel/pumps/{pump_id}/anomaly-cases",
+        headers=tenant.admin.headers,
+        json={
+            "start_reading_id": matched["start_reading_id"],
+            "end_reading_id": matched["end_reading_id"],
+        },
+    )
+    assert qualified.status_code == 201, qualified.text
+    evidence = qualified.json()
+    assert Decimal(evidence["meter_delta_liters"]) == Decimal("52.000")
+    assert Decimal(evidence["approved_issue_liters"]) == Decimal("50.000")
+    assert Decimal(evidence["variance_liters"]) == Decimal("2.000")
+    assert Decimal(evidence["variance_percent"]) == Decimal("4.000")
+    assert Decimal(evidence["tolerance_liters"]) == Decimal("1.000")
+    assert Decimal(evidence["tolerance_percent"]) == Decimal("1.000")
+    assert evidence["qualification_reason"] == "METER_VOLUME_EXCEEDS_APPROVED_ISSUES"
