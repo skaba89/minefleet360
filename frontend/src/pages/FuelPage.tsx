@@ -79,6 +79,9 @@ export function FuelPage() {
   const [meterReference, setMeterReference] = useState("");
   const [meterSaving, setMeterSaving] = useState(false);
   const [pumpPage, setPumpPage] = useState(1);
+  const [pumpToleranceLiters, setPumpToleranceLiters] = useState("5");
+  const [pumpTolerancePercent, setPumpTolerancePercent] = useState("1");
+  const [pumpOnlyAnomalies, setPumpOnlyAnomalies] = useState(false);
   const [issuePage, setIssuePage] = useState(1);
   const [consumptionPage, setConsumptionPage] = useState(1);
   const [vehicleId, setVehicleId] = useState("");
@@ -116,11 +119,11 @@ export function FuelPage() {
     queryFn: () => read("/fuel/pumps", { query: { site_id: siteId, page: 1, page_size: 200 } }),
   });
   const pumpReconciliations = useQuery({
-    queryKey: ["fuel-pump-reconciliations", selectedPumpId, pumpPage],
+    queryKey: ["fuel-pump-reconciliations", selectedPumpId, pumpPage, pumpToleranceLiters, pumpTolerancePercent],
     enabled: canRead && Boolean(selectedPumpId),
     queryFn: () => read("/fuel/pumps/{fuel_pump_id}/reconciliations", {
       path: { fuel_pump_id: selectedPumpId },
-      query: { page: pumpPage, page_size: PAGE_SIZE },
+      query: { page: pumpPage, page_size: PAGE_SIZE, tolerance_liters: Number(pumpToleranceLiters), tolerance_percent: Number(pumpTolerancePercent) },
     }),
   });
   const tanks = useQuery({
@@ -285,6 +288,11 @@ export function FuelPage() {
         <DataState loading={pumps.isLoading} error={pumps.error} empty={(pumps.data?.items.length ?? 0) === 0} emptyText="Aucune pompe pour ce périmètre.">
           <label>Pompe<select aria-label="Pompe à contrôler" value={selectedPumpId} onChange={(event) => { setSelectedPumpId(event.target.value); setPumpPage(1); }}><option value="">Sélectionner une pompe</option>{pumps.data?.items.map((pump: Pump) => <option key={pump.fuel_pump_id} value={pump.fuel_pump_id}>{pump.code} — {pump.name} · {pump.tank_code}</option>)}</select></label>
         </DataState>
+        {selectedPumpId && <div className="toolbar" aria-label="Paramètres de rapprochement">
+          <label>Tolérance (L)<input type="number" min="0" max="1000" step="0.1" value={pumpToleranceLiters} onChange={(event) => { setPumpToleranceLiters(event.target.value); setPumpPage(1); }} /></label>
+          <label>Tolérance (%)<input type="number" min="0" max="100" step="0.1" value={pumpTolerancePercent} onChange={(event) => { setPumpTolerancePercent(event.target.value); setPumpPage(1); }} /></label>
+          <label><input type="checkbox" checked={pumpOnlyAnomalies} onChange={(event) => setPumpOnlyAnomalies(event.target.checked)} /> Afficher uniquement les anomalies sur cette page</label>
+        </div>}
         {selectedPumpId && canRecordPumpMeter && <form aria-label="Nouveau relevé de pompe" onSubmit={(event) => { event.preventDefault(); void submitPumpReading(); }} className="toolbar">
           <label>Compteur cumulé (L)<input aria-label="Compteur cumulé (L)" type="number" min="0" step="0.001" required value={meterValue} onChange={(event) => setMeterValue(event.target.value)} /></label>
           <label>Référence de relevé<input aria-label="Référence de relevé" required maxLength={80} pattern="[A-Za-z0-9/_ .:-]{1,80}" value={meterReference} onChange={(event) => setMeterReference(event.target.value)} /></label>
@@ -292,7 +300,7 @@ export function FuelPage() {
         </form>}
         {selectedPumpId && <DataState loading={pumpReconciliations.isLoading} error={pumpReconciliations.error} empty={(pumpReconciliations.data?.items.length ?? 0) === 0} emptyText="Aucun intervalle de rapprochement. Deux relevés sont nécessaires.">
           <table><thead><tr><th>Début</th><th>Fin</th><th>Compteur</th><th>Sorties approuvées</th><th>Écart</th><th>Analyse</th></tr></thead><tbody>
-            {pumpReconciliations.data?.items.map((item: PumpReconciliation) => <tr key={item.end_reading_id}>
+            {pumpReconciliations.data?.items.filter((item: PumpReconciliation) => !pumpOnlyAnomalies || item.is_anomaly).map((item: PumpReconciliation) => <tr key={item.end_reading_id}>
               <td>{formatDateTime(item.interval_start_at, timezoneOf(pumps.data?.items.find((pump: Pump) => pump.fuel_pump_id === item.fuel_pump_id)?.site_id))}</td>
               <td>{formatDateTime(item.interval_end_at, timezoneOf(pumps.data?.items.find((pump: Pump) => pump.fuel_pump_id === item.fuel_pump_id)?.site_id))}</td>
               <td>{liters(item.meter_delta_liters)}</td><td>{liters(item.approved_issue_liters)}</td>
