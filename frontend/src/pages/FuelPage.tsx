@@ -78,6 +78,8 @@ export function FuelPage() {
   const [tankPage, setTankPage] = useState(1);
   const [selectedPumpId, setSelectedPumpId] = useState("");
   const [selectedAnomalyCaseId, setSelectedAnomalyCaseId] = useState("");
+  const [anomalyCasePage, setAnomalyCasePage] = useState(1);
+  const [anomalyEventPage, setAnomalyEventPage] = useState(1);
   const [anomalyJustification, setAnomalyJustification] = useState("");
   const [anomalySaving, setAnomalySaving] = useState(false);
   const [meterValue, setMeterValue] = useState("");
@@ -121,18 +123,20 @@ export function FuelPage() {
   const canDecidePurchase = can(me.grants, "fuel.purchase.decide", siteId);
   const canReceivePurchase = can(me.grants, "fuel.purchase.receive", siteId);
   const anomalyCases = useQuery({
-    queryKey: ["fuel-anomaly-cases", siteId],
+    queryKey: ["fuel-anomaly-cases", siteId, anomalyCasePage],
     enabled: canReadAnomalies,
-    queryFn: () => read("/fuel/anomaly-cases", { query: { site_id: siteId, page: 1, page_size: 50 } }),
+    queryFn: () => read("/fuel/anomaly-cases", { query: { site_id: siteId, page: anomalyCasePage, page_size: PAGE_SIZE } }),
   });
   const anomalyEvents = useQuery({
-    queryKey: ["fuel-anomaly-events", selectedAnomalyCaseId],
+    queryKey: ["fuel-anomaly-events", selectedAnomalyCaseId, anomalyEventPage],
     enabled: canReadAnomalies && Boolean(selectedAnomalyCaseId),
     queryFn: () => read("/fuel/anomaly-cases/{fuel_pump_anomaly_case_id}/events", {
-      path: { fuel_pump_anomaly_case_id: selectedAnomalyCaseId }, query: { page: 1, page_size: 50 },
+      path: { fuel_pump_anomaly_case_id: selectedAnomalyCaseId }, query: { page: anomalyEventPage, page_size: PAGE_SIZE },
     }),
   });
   const nextAnomalyEvent = (() => {
+    if (anomalyEvents.isLoading || anomalyEvents.isFetching) return null;
+    if ((anomalyEvents.data?.total ?? 0) > (anomalyEvents.data?.items.length ?? 0)) return null;
     const events = anomalyEvents.data?.items ?? [];
     const last = events[events.length - 1];
     if (!last) return "ACKNOWLEDGED" as const;
@@ -150,6 +154,7 @@ export function FuelPage() {
         body: { event_type: nextAnomalyEvent, justification: anomalyJustification.trim() },
       });
       setAnomalyJustification("");
+      setAnomalyEventPage(1);
       await queryClient.invalidateQueries({ queryKey: ["fuel-anomaly-events", selectedAnomalyCaseId] });
     } catch (err) { setError(err); } finally { setAnomalySaving(false); }
   };
@@ -359,9 +364,10 @@ export function FuelPage() {
               <td>{pumps.data?.items.find((pump: Pump) => pump.fuel_pump_id === entry.fuel_pump_id)?.code ?? entry.fuel_pump_id.slice(0, 8)}</td>
               <td title={entry.start_reading_id + " → " + entry.end_reading_id}>{entry.start_reading_id.slice(0, 8)} → {entry.end_reading_id.slice(0, 8)}</td>
               <td title={entry.created_by}>{entry.created_by.slice(0, 8)}</td>
-              <td><button type="button" onClick={() => setSelectedAnomalyCaseId(entry.fuel_pump_anomaly_case_id)}>Consulter</button></td>
+              <td><button type="button" onClick={() => { setSelectedAnomalyCaseId(entry.fuel_pump_anomaly_case_id); setAnomalyEventPage(1); setAnomalyJustification(""); }}>Consulter</button></td>
             </tr>)}
           </tbody></table>
+          <Pager page={anomalyCasePage} pageSize={PAGE_SIZE} total={anomalyCases.data?.total ?? 0} onPage={setAnomalyCasePage} />
         </DataState>
         {selectedAnomalyCaseId && <div><h3>Historique du dossier</h3>
           {canManageAnomalies && !anomalyEvents.isLoading && !anomalyEvents.error && nextAnomalyEvent &&
@@ -376,6 +382,7 @@ export function FuelPage() {
                 <td>{event.event_type}</td><td>{event.justification}</td><td title={event.actor_user_id}>{event.actor_user_id.slice(0, 8)}</td>
               </tr>)}
             </tbody></table>
+            <Pager page={anomalyEventPage} pageSize={PAGE_SIZE} total={anomalyEvents.data?.total ?? 0} onPage={setAnomalyEventPage} />
           </DataState>
         </div>}
       </div>}
