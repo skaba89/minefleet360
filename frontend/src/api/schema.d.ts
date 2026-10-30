@@ -386,6 +386,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fuel/anomaly-cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Anomaly Cases */
+        get: operations["list_anomaly_cases_api_v1_fuel_anomaly_cases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fuel/anomaly-cases/{fuel_pump_anomaly_case_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Anomaly Events */
+        get: operations["list_anomaly_events_api_v1_fuel_anomaly_cases__fuel_pump_anomaly_case_id__events_get"];
+        put?: never;
+        /** Record Anomaly Event */
+        post: operations["record_anomaly_event_api_v1_fuel_anomaly_cases__fuel_pump_anomaly_case_id__events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fuel/issues": {
         parameters: {
             query?: never;
@@ -433,6 +468,23 @@ export interface paths {
         put?: never;
         /** Create Pump */
         post: operations["create_pump_api_v1_fuel_pumps_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fuel/pumps/{fuel_pump_id}/anomaly-cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open Anomaly Case */
+        post: operations["open_anomaly_case_api_v1_fuel_pumps__fuel_pump_id__anomaly_cases_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2096,6 +2148,87 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AnomalyCaseOut */
+        AnomalyCaseOut: {
+            /**
+             * Created By
+             * Format: uuid
+             */
+            created_by: string;
+            /**
+             * End Reading Id
+             * Format: uuid
+             */
+            end_reading_id: string;
+            /**
+             * Fuel Pump Anomaly Case Id
+             * Format: uuid
+             */
+            fuel_pump_anomaly_case_id: string;
+            /**
+             * Fuel Pump Id
+             * Format: uuid
+             */
+            fuel_pump_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Start Reading Id
+             * Format: uuid
+             */
+            start_reading_id: string;
+        };
+        /** AnomalyEventCreate */
+        AnomalyEventCreate: {
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "ACKNOWLEDGED" | "JUSTIFIED" | "CLOSED";
+            /** Justification */
+            justification: string;
+        };
+        /** AnomalyEventOut */
+        AnomalyEventOut: {
+            /**
+             * Actor User Id
+             * Format: uuid
+             */
+            actor_user_id: string;
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "ACKNOWLEDGED" | "JUSTIFIED" | "CLOSED";
+            /**
+             * Fuel Pump Anomaly Case Id
+             * Format: uuid
+             */
+            fuel_pump_anomaly_case_id: string;
+            /**
+             * Fuel Pump Anomaly Event Id
+             * Format: uuid
+             */
+            fuel_pump_anomaly_event_id: string;
+            /** Justification */
+            justification: string;
+        };
+        /** AnomalyOpen */
+        AnomalyOpen: {
+            /**
+             * End Reading Id
+             * Format: uuid
+             */
+            end_reading_id: string;
+            /**
+             * Start Reading Id
+             * Format: uuid
+             */
+            start_reading_id: string;
+        };
         /** AssignmentCancel */
         AssignmentCancel: {
             /**
@@ -3723,6 +3856,28 @@ export interface components {
              * Format: uuid
              */
             vehicle_id: string;
+        };
+        /** Page[AnomalyCaseOut] */
+        Page_AnomalyCaseOut_: {
+            /** Items */
+            items: components["schemas"]["AnomalyCaseOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[AnomalyEventOut] */
+        Page_AnomalyEventOut_: {
+            /** Items */
+            items: components["schemas"]["AnomalyEventOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
         };
         /** Page[AssignmentOut] */
         Page_AssignmentOut_: {
@@ -6351,6 +6506,114 @@ export interface operations {
             };
         };
     };
+    list_anomaly_cases_api_v1_fuel_anomaly_cases_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AnomalyCaseOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_anomaly_events_api_v1_fuel_anomaly_cases__fuel_pump_anomaly_case_id__events_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                fuel_pump_anomaly_case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AnomalyEventOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_anomaly_event_api_v1_fuel_anomaly_cases__fuel_pump_anomaly_case_id__events_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                fuel_pump_anomaly_case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnomalyEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyEventOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_issues_api_v1_fuel_issues_get: {
         parameters: {
             query?: {
@@ -6516,6 +6779,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FuelPumpOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    open_anomaly_case_api_v1_fuel_pumps__fuel_pump_id__anomaly_cases_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                fuel_pump_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnomalyOpen"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyCaseOut"];
                 };
             };
             /** @description Validation Error */
