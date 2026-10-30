@@ -892,6 +892,20 @@ export const GRANTS = {
       "SITE"
     ]
   },
+  "maintenance.parts.receive": {
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "STOREKEEPER": [
+      "TENANT",
+      "SITE"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "maintenance.parts.read": {
     "AUDITOR": [
       "TENANT"
