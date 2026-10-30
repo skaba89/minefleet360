@@ -143,3 +143,62 @@ test("ravitaillement : réservation, double validation et sortie de stock", asyn
   expect(Number(completed.reserved_liters)).toBe(0);
   expect(Number(completed.available_liters)).toBe(240);
 });
+
+test("inventaire physique : correction de stock journalisée et dépassement refusé", async ({ request }) => {
+  const workspace = "fictif-minier";
+  const manager = await apiLogin(request, account("OPS_MANAGER", workspace));
+  const siteId = await dispatcherSite(request, await apiLogin(request, account("DISPATCHER", workspace)));
+  const suffix = Math.random().toString(36).slice(2, 10).toUpperCase();
+  const tankResponse = await request.post("/api/v1/fuel/tanks", {
+    headers: manager,
+    data: { site_id: siteId, code: `INV-${suffix}`, fuel_type: "DIESEL", capacity_liters: 500 },
+  });
+  expect(tankResponse.status(), await tankResponse.text()).toBe(201);
+  const tankId = (await tankResponse.json()).fuel_tank_id;
+  const receipt = await request.post(`/api/v1/fuel/tanks/${tankId}/receipts`, {
+    headers: manager,
+    data: { liters: 300, reference: `BL-${suffix}`, occurred_at: new Date().toISOString() },
+  });
+  expect(receipt.status(), await receipt.text()).toBe(201);
+
+  const path = `/api/v1/fuel/tanks/${tankId}/stocktakes`;
+  const stocktake = await request.post(path, {
+    headers: manager,
+    data: {
+      counted_liters: 285,
+      reference: `INV-${suffix}`,
+      reason_code: "MEASUREMENT",
+      occurred_at: new Date().toISOString(),
+    },
+  });
+  expect(stocktake.status(), await stocktake.text()).toBe(201);
+  const record = await stocktake.json();
+  expect(Number(record.expected_liters)).toBe(300);
+  expect(Number(record.counted_liters)).toBe(285);
+  expect(Number(record.delta_liters)).toBe(-15);
+
+  const rows = await request.get("/api/v1/fuel/tanks", { headers: manager, params: { site_id: siteId } });
+  expect(rows.status()).toBe(200);
+  const updated = (await rows.json()).items.find(
+    (item: { fuel_tank_id: string }) => item.fuel_tank_id === tankId,
+  );
+  expect(Number(updated.balance_liters)).toBe(285);
+  expect(Number(updated.available_liters)).toBe(285);
+
+  const history = await request.get("/api/v1/fuel/stocktakes", { headers: manager, params: { site_id: siteId } });
+  expect(history.status()).toBe(200);
+  expect((await history.json()).items.some(
+    (item: { fuel_stocktake_id: string }) => item.fuel_stocktake_id === record.fuel_stocktake_id,
+  )).toBeTruthy();
+
+  const invalid = await request.post(path, {
+    headers: manager,
+    data: {
+      counted_liters: 501,
+      reference: `INV-ERR-${suffix}`,
+      reason_code: "MEASUREMENT",
+      occurred_at: new Date().toISOString(),
+    },
+  });
+  expect(invalid.status()).toBe(409);
+});
