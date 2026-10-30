@@ -252,3 +252,42 @@ class FuelStockMovement(Base):
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
+
+
+class FuelPumpAnomalyCase(Base):
+    """Dossier immuable identifié par la pompe et l'intervalle de relevés."""
+
+    __tablename__ = "fuel_pump_anomaly_case"
+    __mapper_args__ = {"eager_defaults": True}
+
+    fuel_pump_anomaly_case_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    fuel_pump_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    start_reading_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    end_reading_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+
+class FuelPumpAnomalyEvent(Base):
+    """Historique append-only des décisions et justifications d'un dossier."""
+
+    __tablename__ = "fuel_pump_anomaly_event"
+    __mapper_args__ = {"eager_defaults": True}
+
+    fuel_pump_anomaly_event_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    fuel_pump_anomaly_case_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    event_type: Mapped[str] = mapped_column(String, nullable=False)
+    justification: Mapped[str] = mapped_column(String, nullable=False)
+    actor_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
