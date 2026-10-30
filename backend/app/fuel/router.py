@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
@@ -14,6 +15,7 @@ from app.fuel.schemas import (
     FuelIssueOut,
     FuelPumpMeterReadingOut,
     FuelPumpOut,
+    FuelPumpReconciliationOut,
     FuelPurchaseOrderOut,
     FuelPurchaseReceiptOut,
     FuelReceiptOut,
@@ -87,6 +89,27 @@ def list_pump_meter_readings(
 ) -> Page[FuelPumpMeterReadingOut]:
     rows, total = service.list_pump_meter_readings(auth, fuel_pump_id, page)
     items = [FuelPumpMeterReadingOut.model_validate(row, from_attributes=True) for row in rows]
+    return Page(items=items, page=page.page, page_size=page.page_size, total=total)
+
+
+@router.get(
+    "/fuel/pumps/{fuel_pump_id}/reconciliations",
+    response_model=Page[FuelPumpReconciliationOut],
+)
+def list_pump_reconciliations(
+    fuel_pump_id: uuid.UUID,
+    auth: StockRead,
+    page: Pagination,
+    tolerance_liters: Decimal = Query(default=Decimal("5"), ge=0, le=1_000),
+    tolerance_percent: Decimal = Query(default=Decimal("1"), ge=0, le=100),
+) -> Page[FuelPumpReconciliationOut]:
+    items, total = service.list_pump_reconciliations(
+        auth,
+        fuel_pump_id,
+        page,
+        tolerance_liters=tolerance_liters,
+        tolerance_percent=tolerance_percent,
+    )
     return Page(items=items, page=page.page, page_size=page.page_size, total=total)
 
 

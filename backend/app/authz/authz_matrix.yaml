@@ -744,6 +744,7 @@ permissions:
       - { method: GET, path: /fuel/tanks, shape: collection, success: 200 }
       - { method: GET, path: /fuel/pumps, shape: collection, success: 200 }
       - { method: GET, path: "/fuel/pumps/{fuel_pump_id}/meter-readings", shape: collection, success: 200 }
+      - { method: GET, path: "/fuel/pumps/{fuel_pump_id}/reconciliations", shape: collection, success: 200 }
       - { method: GET, path: /fuel/issues, shape: collection, success: 200 }
       - { method: GET, path: /fuel/stocktakes, shape: collection, success: 200 }
       - { method: GET, path: /fuel/alerts, shape: collection, success: 200 }
