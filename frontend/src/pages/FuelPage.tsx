@@ -87,7 +87,7 @@ export function FuelPage() {
   const [purchasePage, setPurchasePage] = useState(1);
   const [purchaseStatus, setPurchaseStatus] = useState("");
   const [issueStatus, setIssueStatus] = useState("");
-  const [panel, setPanel] = useState<"tank" | "receipt" | "issue" | "stocktake" | "threshold" | "supplier" | "purchase" | "purchase-receipt" | null>(null);
+  const [panel, setPanel] = useState<"tank" | "receipt" | "issue" | "stocktake" | "threshold" | "supplier" | "purchase" | "purchase-receipt" | "pump" | null>(null);
   const [selectedTankId, setSelectedTankId] = useState("");
   const [rejectingIssue, setRejectingIssue] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState<"WRONG_VEHICLE" | "INVALID_QUANTITY" | "OTHER">("OTHER");
@@ -96,6 +96,7 @@ export function FuelPage() {
   const [purchaseRejectReason, setPurchaseRejectReason] = useState<keyof typeof PURCHASE_REJECT_REASONS>("OTHER");
   const [error, setError] = useState<unknown>(null);
   const canRead = can(me.grants, "fuel.stock.read", siteId);
+  const canManagePumps = can(me.grants, "fuel.pump.manage", siteId);
   const canRecordPumpMeter = can(me.grants, "fuel.meter.record", siteId);
   const canManage = can(me.grants, "fuel.stock.manage", siteId);
   const canReceive = can(me.grants, "fuel.stock.receive", siteId);
@@ -201,6 +202,7 @@ export function FuelPage() {
     setError(null);
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["fuel-tanks"] }),
+      queryClient.invalidateQueries({ queryKey: ["fuel-pumps"] }),
       queryClient.invalidateQueries({ queryKey: ["fuel-issues"] }),
       queryClient.invalidateQueries({ queryKey: ["fuel-stocktakes"] }),
       queryClient.invalidateQueries({ queryKey: ["fuel-stock-alerts"] }),
@@ -260,6 +262,7 @@ export function FuelPage() {
       </div>
       <div className="toolbar">
         {canManage && <button type="button" className="primary" onClick={() => setPanel("tank")}>Nouvelle cuve</button>}
+        {canManagePumps && tankItems.length > 0 && <button type="button" onClick={() => setPanel("pump")}>Nouvelle pompe</button>}
         {canReceive && tankItems.length > 0 && <button type="button" onClick={() => setPanel("receipt")}>Enregistrer une réception</button>}
         {canRequest && tankItems.length > 0 && <button type="button" onClick={() => setPanel("issue")}>Demander un ravitaillement</button>}
         {canStocktake && tankItems.length > 0 && <button type="button" onClick={() => setPanel("stocktake")}>Faire un inventaire</button>}
@@ -267,6 +270,7 @@ export function FuelPage() {
         {canCreatePurchase && tankItems.length > 0 && supplierItems.length > 0 && <button type="button" onClick={() => setPanel("purchase")}>Nouvelle commande</button>}
       </div>
       {error !== null && <ErrorMessage error={error} />}
+      {panel === "pump" && <PumpCreateForm tanks={tankItems} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "tank" && <TankForm siteId={siteId} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "receipt" && <ReceiptForm tanks={tankItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "issue" && <IssueForm siteId={siteId} tanks={tankItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
@@ -588,4 +592,31 @@ function number(value: string): string {
 
 function money(value: string, currency: Currency): string {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency, maximumFractionDigits: currency === "GNF" ? 0 : 2 }).format(Number(value));
+}
+
+function PumpCreateForm({ tanks, onCancel, onDone }: { tanks: Tank[]; onCancel: () => void; onDone: () => void }) {
+  const [tankId, setTankId] = useState(tanks[0]?.fuel_tank_id ?? "");
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+
+  return <form className="card" aria-label="Création d'une pompe" onSubmit={(event) => {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    void call("post", "/fuel/pumps", { body: { fuel_tank_id: tankId, code: code.trim(), name: name.trim() } })
+      .then(() => onDone())
+      .catch(setError)
+      .finally(() => setSaving(false));
+  }}>
+    <h2>Nouvelle pompe à carburant</h2>
+    {error !== null && <ErrorMessage error={error} />}
+    <label>Cuve de rattachement<select required value={tankId} onChange={(event) => setTankId(event.target.value)}>
+      {tanks.map((tank) => <option key={tank.fuel_tank_id} value={tank.fuel_tank_id}>{tank.code} · {FUEL_TYPES[tank.fuel_type]}</option>)}
+    </select></label>
+    <label>Code pompe<input required maxLength={32} pattern="[A-Za-z0-9_-]{1,32}" value={code} onChange={(event) => setCode(event.target.value)} /></label>
+    <label>Nom pompe<input required minLength={2} maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label>
+    <div className="actions"><button type="submit" disabled={saving || !tankId}>{saving ? "Création…" : "Créer la pompe"}</button><button type="button" onClick={onCancel}>Annuler</button></div>
+  </form>;
 }
