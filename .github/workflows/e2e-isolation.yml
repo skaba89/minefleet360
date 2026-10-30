@@ -1,0 +1,109 @@
+# Parcours navigateur métier sur une base éphémère et des comptes fictifs.
+# Ne jamais utiliser cette exécution contre un environnement partagé.
+name: e2e-isolation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tenant-isolation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      db:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-postgres-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      MF_ENV: ci
+      MF_DB_HOST: localhost
+      MF_DB_PORT: "5432"
+      MF_DB_NAME: minefleet
+      MF_COOKIE_SECURE: "false"
+      MF_ALLOWED_ORIGINS: http://localhost:5173
+      MF_MFA_ENFORCEMENT: "off"
+      MF_MAIL_BACKEND: capture
+      MF_MAIL_CAPTURE_DIR: /tmp/minefleet-e2e-mail
+      MF_E2E_ACCOUNTS: ${{ runner.temp }}/minefleet-e2e-accounts.txt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Generate ephemeral secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "MF_OWNER_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          echo "MF_APP_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+          echo "MF_JWT_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
+          echo "MF_BOOTSTRAP_PASSWORD=Fictif-$(openssl rand -hex 24)Aa1!" >> "$GITHUB_ENV"
+
+      - name: Bootstrap restricted DB roles
+        env:
+          PGHOST: localhost
+          PGPASSWORD: ci-postgres-only
+          POSTGRES_USER: postgres
+          MF_CREATE_TEST_DB: "false"
+        run: bash infra/db/init/00_bootstrap.sh
+
+      - name: Install backend and initialize schema
+        working-directory: backend
+        run: |
+          python -m pip install pip==26.2
+          python -m pip install -e .
+          alembic upgrade head
+          mkdir -p "$MF_MAIL_CAPTURE_DIR"
+          minefleet create-platform-admin --email platform-admin@example.com --name "Administrateur fictif"
+          umask 077
+          minefleet seed-fictif > "$MF_E2E_ACCOUNTS"
+          test -s "$MF_E2E_ACCOUNTS"
+
+      - name: Start ephemeral API
+        working-directory: backend
+        run: |
+          python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > "${{ runner.temp }}/minefleet-api.log" 2>&1 &
+          echo $! > "${{ runner.temp }}/minefleet-api.pid"
+          for i in $(seq 1 45); do
+            if curl --fail --silent http://127.0.0.1:8000/api/v1/health > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo "API inaccessible : vérifiez les logs locaux du job"
+          exit 1
+
+      - name: Install frontend and Chromium
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Test cross-tenant assignment isolation in real browser
+        working-directory: frontend
+        env:
+          MF_API_URL: http://localhost:8000
+        run: npx playwright test --config=playwright.config.ts e2e/affectations.spec.ts --grep "autre société"
+
+      - name: Remove ephemeral credentials and traces
+        if: always()
+        run: |
+          rm -f "$MF_E2E_ACCOUNTS"
+          rm -rf frontend/test-results frontend/playwright-report
