@@ -533,6 +533,18 @@ permissions:
       WORKSHOP_CHIEF: [TENANT, SITE]
       OPS_MANAGER: [TENANT, SITE]
 
+  maintenance.parts.issue:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes:
+      - { method: POST, path: /part-movements/issues, shape: collection, success: 201 }
+    audit: { action: parts.issue }
+    grants:
+      STOREKEEPER: [TENANT, SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      OPS_MANAGER: [TENANT, SITE]
+
   maintenance.parts.read:
     tranche: 1c
     kind: read
