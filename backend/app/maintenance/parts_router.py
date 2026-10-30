@@ -217,7 +217,7 @@ def release_part_reservation(reservation_id: uuid.UUID, auth: Release) -> PartRe
     if changed is None:
         auth.db.rollback()
         raise AppError("CONFLICT")
-    auth.db.execute(
+    balance_changed = auth.db.execute(
         text(
             "UPDATE spare_part_balance SET reserved = reserved - :quantity "
             "WHERE tenant_id = :tenant_id AND site_id = :site_id "
@@ -231,7 +231,10 @@ def release_part_reservation(reservation_id: uuid.UUID, auth: Release) -> PartRe
             "part_id": reservation.spare_part_id,
             "quantity": reservation.quantity,
         },
-    )
+    ).first()
+    if balance_changed is None:
+        auth.db.rollback()
+        raise AppError("CONFLICT")
     auth.db.flush()
     result = PartReservationOut(
         spare_part_reservation_id=reservation_id,
