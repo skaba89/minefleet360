@@ -121,7 +121,9 @@ def open_anomaly_case(fuel_pump_id: uuid.UUID, body: AnomalyOpen, auth: Manage) 
 
 
 @router.get("/fuel/anomaly-cases", response_model=Page[AnomalyCaseOut])
-def list_anomaly_cases(auth: Read, page: Pagination, site_id: uuid.UUID | None = None) -> Page[AnomalyCaseOut]:
+def list_anomaly_cases(
+    auth: Read, page: Pagination, site_id: uuid.UUID | None = None
+) -> Page[AnomalyCaseOut]:
     if site_id is not None and not auth.scope.covers_site(site_id):
         raise AppError("NOT_FOUND")
     condition = [FuelPumpAnomalyCase.tenant_id == auth.tenant_id]
