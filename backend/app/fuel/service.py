@@ -11,6 +11,7 @@ from app.assignment.models import VehicleAssignment
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.core.errors import AppError
+from app.core.tenancy import set_tenant_context
 from app.core.http import PageParams
 from app.fleet.models import Vehicle, VehicleCategory
 from app.fuel.models import (
@@ -899,6 +900,8 @@ def decide_issue(auth: Authorized, issue_id: uuid.UUID, body: DecisionCreate) ->
     auth.db.flush()
     _audit(auth, "fuel.issue.decide", issue.fuel_issue_id, issue.site_id)
     auth.db.commit()
+    # COMMIT clôt SET LOCAL ; rétablir le contexte RLS pour la projection de réponse.
+    set_tenant_context(auth.db, auth.tenant_id)
     return issue
 
 
