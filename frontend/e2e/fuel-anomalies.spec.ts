@@ -67,6 +67,26 @@ test("anomalie de pompe : prise en charge, justification, clôture indépendante
   }
   await expect(section.getByRole("form", { name: "Traiter une anomalie" })).toHaveCount(0);
 
+  const statusFilter = section.getByRole("combobox", { name: "Filtrer les dossiers par statut" });
+  await statusFilter.selectOption("CLOSED");
+  await expect(row).toBeVisible();
+  await expect(row.getByRole("cell", { name: "Clôturé", exact: true })).toBeVisible();
+  await statusFilter.selectOption("OPEN");
+  await expect(row).toHaveCount(0);
+
+  const closedCases = await request.get("/api/v1/fuel/anomaly-cases", {
+    headers: managerHeaders,
+    params: { status: "CLOSED", page: 1, page_size: 1 },
+  });
+  expect(closedCases.status(), await closedCases.text()).toBe(200);
+  expect((await closedCases.json()).items[0].fuel_pump_anomaly_case_id).toBe(caseId);
+  const foreignCases = await request.get("/api/v1/fuel/anomaly-cases", {
+    headers: outsiderHeaders,
+    params: { status: "CLOSED" },
+  });
+  expect(foreignCases.status()).toBe(200);
+  expect((await foreignCases.json()).total).toBe(0);
+
   const history = await request.get(eventUrl, { headers: managerHeaders });
   expect(history.status()).toBe(200);
   expect((await history.json()).items.map((event: { event_type: string }) => event.event_type)).toEqual([
