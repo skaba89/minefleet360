@@ -2180,6 +2180,8 @@ export interface components {
              * Format: uuid
              */
             start_reading_id: string;
+            /** Status */
+            status: "OPEN" | "ACKNOWLEDGED" | "JUSTIFIED" | "CLOSED";
         };
         /** AnomalyEventCreate */
         AnomalyEventCreate: {
