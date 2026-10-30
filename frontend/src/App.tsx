@@ -22,6 +22,7 @@ import { VehiclesPage } from "./pages/VehiclesPage";
 import { IndicatorsPage, WeighingsPage } from "./pages/WeighingPages";
 import { WorkOrderPage, WorkshopPage } from "./pages/WorkshopPages";
 import { FuelPage } from "./pages/FuelPage";
+import { PartsPage } from "./pages/PartsPage";
 import { SiteProvider } from "./site/SiteContext";
 
 function Protected() {
@@ -57,6 +58,7 @@ export function App() {
         <Route path="atelier" element={<WorkshopPage />} />
         <Route path="maintenance" element={<PreventivePage />} />
         <Route path="carburant" element={<FuelPage />} />
+        <Route path="pieces" element={<PartsPage />} />
         <Route path="atelier/:workOrderId" element={<WorkOrderPage />} />
         <Route path="pesees" element={<WeighingsPage />} />
         <Route path="indicateurs" element={<IndicatorsPage />} />
