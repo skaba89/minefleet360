@@ -1901,6 +1901,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fuel/vehicles/{vehicle_id}/consumption": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Vehicle Consumption */
+        get: operations["list_vehicle_consumption_api_v1_fuel_vehicles__vehicle_id__consumption_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fuel/issues/{fuel_issue_id}/decision": {
         parameters: {
             query?: never;
@@ -2350,6 +2367,62 @@ export interface components {
             /** Validity */
             validity: string;
         };
+        /** FuelConsumptionOut */
+        FuelConsumptionOut: {
+            /**
+             * Fuel Issue Id
+             * Format: uuid
+             */
+            fuel_issue_id: string;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /** Vehicle Fleet Number */
+            vehicle_fleet_number: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Fuel Type
+             * @enum {string}
+             */
+            fuel_type: "DIESEL" | "PETROL";
+            /**
+             * Meter Kind
+             * @enum {string}
+             */
+            meter_kind: "ODOMETER" | "HOUR_METER";
+            /**
+             * Interval Start At
+             * Format: date-time
+             */
+            interval_start_at: string;
+            /**
+             * Interval End At
+             * Format: date-time
+             */
+            interval_end_at: string;
+            /** Start Meter Value */
+            start_meter_value: string;
+            /** End Meter Value */
+            end_meter_value: string;
+            /** Meter Delta */
+            meter_delta: string;
+            /** Fuel Liters */
+            fuel_liters: string;
+            /** Rate Liters Per Unit */
+            rate_liters_per_unit: string;
+            /** Comparison Median Rate */
+            comparison_median_rate: string | null;
+            /** Comparison Interval Count */
+            comparison_interval_count: number;
+            /** Is Anomaly */
+            is_anomaly: boolean;
+        };
         /** FuelIssueOut */
         FuelIssueOut: {
             /**
@@ -2392,6 +2465,8 @@ export interface components {
             meter_kind: ("ODOMETER" | "HOUR_METER") | null;
             /** Meter Value */
             meter_value: string | null;
+            /** Full Tank */
+            full_tank: boolean;
             /**
              * Requested At
              * Format: date-time
@@ -2662,6 +2737,11 @@ export interface components {
             meter_kind?: ("ODOMETER" | "HOUR_METER") | null;
             /** Meter Value */
             meter_value?: number | string | null;
+            /**
+             * Full Tank
+             * @default false
+             */
+            full_tank: boolean;
             /**
              * Requested At
              * Format: date-time
@@ -3212,6 +3292,17 @@ export interface components {
         Page_DriverOut_: {
             /** Items */
             items: components["schemas"]["DriverOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[FuelConsumptionOut] */
+        Page_FuelConsumptionOut_: {
+            /** Items */
+            items: components["schemas"]["FuelConsumptionOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -9413,6 +9504,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FuelIssueOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_vehicle_consumption_api_v1_fuel_vehicles__vehicle_id__consumption_get: {
+        parameters: {
+            query?: {
+                meter_kind?: ("ODOMETER" | "HOUR_METER") | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_FuelConsumptionOut_"];
                 };
             };
             /** @description Validation Error */

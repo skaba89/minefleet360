@@ -24,4 +24,10 @@ Un inventaire physique enregistre le solde attendu, la quantité comptée, l'éc
 
 Le type de carburant est limité au gazole et à l'essence ; les volumes sont en litres. Les compteurs sont liés au type configuré pour la catégorie du véhicule et les valeurs validées doivent rester monotones entre ravitaillements approuvés.
 
-Les analyses de consommation par km/heure, la détection des anomalies, les notifications de seuil, les achats fournisseurs et l'intégration des pompes restent à construire. Les sorties GPS ne sont pas une mesure de carburant.
+## Consommation et écarts
+
+La demande de ravitaillement permet de marquer un plein complet et exige alors un relevé de compteur. Le calcul porte sur l'intervalle entre deux pleins complets approuvés du même site, carburant et type de compteur. Les sorties approuvées intermédiaires, même sans compteur, sont cumulées. L'indicateur est exprimé en L/100 km pour un compteur kilométrique et en L/h pour un compteur horaire. L'historique antérieur à l'activation de cette saisie ne permet pas de reconstituer les pleins complets.
+
+Après au moins trois périodes précédentes comparables, un taux supérieur à 1,5 fois la médiane des cinq dernières périodes au maximum est signalé « à examiner ». Ce signal est un indicateur de contrôle, pas une conclusion de fraude ; il peut aussi refléter une charge, un terrain ou une utilisation différente. Les accès limités à un site ne voient que l'historique autorisé pour ce site.
+
+Les notifications de seuil, les achats fournisseurs et l'intégration des pompes restent à construire. Les sorties GPS ne sont pas une mesure de carburant.

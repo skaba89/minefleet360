@@ -20,7 +20,8 @@
 ### Avancement carburant
 - Premier parcours livré en PR : cuves par site, réceptions journalisées, demandes de ravitaillement avec réservation et approbation à deux personnes.
 - Inventaires physiques et corrections append-only livrés ; les seuils bas sont configurables et signalés dans l'interface.
-- À poursuivre : notifications de seuil, consommation par km/heure et détection d'écarts, achats et intégration des pompes.
+- Consommation par km/heure et signalement des écarts livrés : calcul entre pleins complets approuvés, ravitaillements partiels cumulés, comparaison à la médiane historique après trois périodes comparables.
+- À poursuivre : notifications de seuil, achats et intégration des pompes.
 
 ## Phase 3 — enterprise et institutions
 - Sous-traitants, contrats, rentabilité complète, portail client et reporting institutionnel à accès contractualisé.
