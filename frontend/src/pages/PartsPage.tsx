@@ -1,10 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router";
 
-import { read } from "../api/client";
+import { call, read } from "../api/client";
 import { useMe } from "../auth/AuthContext";
-import { DataState, Pager } from "../components/common";
+import { DataState, ErrorMessage, Pager } from "../components/common";
 import { can } from "../lib/permissions";
 import { useSites } from "../site/SiteContext";
 
@@ -12,6 +12,15 @@ const PAGE_SIZE = 25;
 
 export function PartsPage() {
   const me = useMe();
+  const queryClient = useQueryClient();
+  const [action, setAction] = useState<"receipt" | "issue">("receipt");
+  const [partId, setPartId] = useState("");
+  const [storeId, setStoreId] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [reference, setReference] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<unknown>(null);
+  const [message, setMessage] = useState("");
   const { siteId } = useSites();
   const [tab, setTab] = useState<"stocks" | "movements" | "reservations">("stocks");
   const [page, setPage] = useState(1);
@@ -57,6 +66,91 @@ export function PartsPage() {
     <section>
       <div className="page-head"><h1>Magasin de pièces détachées</h1></div>
       <p className="muted">Consultez les stocks, les mouvements et les réservations de votre périmètre.</p>
+      {(can(me.grants, "maintenance.parts.receive", siteId) ||
+        can(me.grants, "maintenance.parts.issue", siteId)) && (
+        <form
+          onSubmit={async (event) => {
+            event.preventDefault();
+            if (saving) return;
+            setSaving(true);
+            setSaveError(null);
+            setMessage("");
+            try {
+              const body = {
+                spare_part_id: partId,
+                spare_part_store_id: storeId,
+                quantity: Number(quantity),
+                reference: reference.trim(),
+              };
+              if (action === "receipt") {
+                await call("post", "/part-movements/receipts", { body });
+              } else {
+                await call("post", "/part-movements/issues", { body });
+              }
+              setMessage("Mouvement enregistré.");
+              setReference("");
+              await queryClient.invalidateQueries({ queryKey: ["part-balances"] });
+              await queryClient.invalidateQueries({ queryKey: ["part-movements"] });
+            } catch (error) {
+              setSaveError(error);
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          <h2>Enregistrer un mouvement</h2>
+          <div className="filters">
+            <label>
+              Opération
+              <select value={action} onChange={(event) => setAction(event.target.value as "receipt" | "issue")}>
+                {can(me.grants, "maintenance.parts.receive", siteId) && <option value="receipt">Réception</option>}
+                {can(me.grants, "maintenance.parts.issue", siteId) && <option value="issue">Sortie</option>}
+              </select>
+            </label>
+            <label>
+              Pièce
+              <select required value={partId} onChange={(event) => setPartId(event.target.value)}>
+                <option value="">Choisir une pièce</option>
+                {parts.data?.items.map((part) => (
+                  <option key={part.spare_part_id} value={part.spare_part_id}>{part.code} — {part.name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Magasin
+              <select required value={storeId} onChange={(event) => setStoreId(event.target.value)}>
+                <option value="">Choisir un magasin</option>
+                {stores.data?.items.map((store) => (
+                  <option key={store.spare_part_store_id} value={store.spare_part_store_id}>
+                    {store.code} — {store.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Quantité
+              <input required type="number" min="0.001" step="0.001" value={quantity}
+                onChange={(event) => setQuantity(event.target.value)} />
+            </label>
+            <label>
+              Référence unique
+              <input required maxLength={120} value={reference}
+                onChange={(event) => setReference(event.target.value)} />
+            </label>
+          </div>
+          <button
+            className="primary"
+            type="submit"
+            disabled={saving || !partId || !storeId || !reference.trim() ||
+              Number(quantity) <= 0 ||
+              !can(me.grants, action === "receipt" ? "maintenance.parts.receive" : "maintenance.parts.issue", siteId)}
+          >
+            {saving ? "Enregistrement…" : "Valider le mouvement"}
+          </button>
+          {saveError && <ErrorMessage error={saveError} />}
+          {message && <p role="status">{message}</p>}
+        </form>
+      )}
       <div className="filters" role="group" aria-label="Vue du magasin">
         {([
           ["stocks", "Stocks"],
