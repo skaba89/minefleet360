@@ -285,6 +285,8 @@ def record_stocktake(auth: Authorized, tank_id: uuid.UUID, body: StocktakeCreate
     _sync_low_stock_alert(auth, tank)
     _audit(auth, "fuel.stocktake.record", stocktake.fuel_stocktake_id, tank.site_id)
     auth.db.commit()
+    # Le contexte SET LOCAL est perdu après COMMIT ; stocktake_output relit la cuve.
+    set_tenant_context(auth.db, auth.tenant_id)
     return stocktake
 
 
