@@ -13,6 +13,8 @@ import { useSites } from "../site/SiteContext";
 type Tank = Schemas["TankOut"];
 type Pump = Schemas["FuelPumpOut"];
 type PumpReconciliation = Schemas["FuelPumpReconciliationOut"];
+type AnomalyCase = Schemas["AnomalyCaseOut"];
+type AnomalyEvent = Schemas["AnomalyEventOut"];
 type FuelIssue = Schemas["FuelIssueOut"];
 type FuelType = Schemas["TankCreate"]["fuel_type"];
 type MeterKind = NonNullable<FuelIssue["meter_kind"]>;
@@ -75,6 +77,7 @@ export function FuelPage() {
   const { siteId, sites, timezoneOf } = useSites();
   const [tankPage, setTankPage] = useState(1);
   const [selectedPumpId, setSelectedPumpId] = useState("");
+  const [selectedAnomalyCaseId, setSelectedAnomalyCaseId] = useState("");
   const [meterValue, setMeterValue] = useState("");
   const [meterReference, setMeterReference] = useState("");
   const [meterSaving, setMeterSaving] = useState(false);
@@ -99,6 +102,7 @@ export function FuelPage() {
   const [purchaseRejectReason, setPurchaseRejectReason] = useState<keyof typeof PURCHASE_REJECT_REASONS>("OTHER");
   const [error, setError] = useState<unknown>(null);
   const canRead = can(me.grants, "fuel.stock.read", siteId);
+  const canReadAnomalies = can(me.grants, "fuel.anomaly.read", siteId);
   const canManagePumps = can(me.grants, "fuel.pump.manage", siteId);
   const canRecordPumpMeter = can(me.grants, "fuel.meter.record", siteId);
   const canManage = can(me.grants, "fuel.stock.manage", siteId);
@@ -113,6 +117,18 @@ export function FuelPage() {
   const canCreatePurchase = can(me.grants, "fuel.purchase.create", siteId);
   const canDecidePurchase = can(me.grants, "fuel.purchase.decide", siteId);
   const canReceivePurchase = can(me.grants, "fuel.purchase.receive", siteId);
+  const anomalyCases = useQuery({
+    queryKey: ["fuel-anomaly-cases", siteId],
+    enabled: canReadAnomalies,
+    queryFn: () => read("/fuel/anomaly-cases", { query: { site_id: siteId, page: 1, page_size: 50 } }),
+  });
+  const anomalyEvents = useQuery({
+    queryKey: ["fuel-anomaly-events", selectedAnomalyCaseId],
+    enabled: canReadAnomalies && Boolean(selectedAnomalyCaseId),
+    queryFn: () => read("/fuel/anomaly-cases/{fuel_pump_anomaly_case_id}/events", {
+      path: { fuel_pump_anomaly_case_id: selectedAnomalyCaseId }, query: { page: 1, page_size: 50 },
+    }),
+  });
   const pumps = useQuery({
     queryKey: ["fuel-pumps", siteId],
     enabled: canRead,
@@ -310,6 +326,29 @@ export function FuelPage() {
           </tbody></table><Pager page={pumpPage} pageSize={PAGE_SIZE} total={pumpReconciliations.data?.total ?? 0} onPage={setPumpPage} />
         </DataState>}
       </div>
+
+      {canReadAnomalies && <div className="card">
+        <div className="page-head"><div><h2>Dossiers d’anomalies des pompes</h2><p className="muted">Dossiers et événements tracés par les responsables habilités.</p></div></div>
+        <DataState loading={anomalyCases.isLoading} error={anomalyCases.error} empty={(anomalyCases.data?.items.length ?? 0) === 0} emptyText="Aucun dossier d’anomalie enregistré.">
+          <table><thead><tr><th>Pompe</th><th>Intervalle de relevés</th><th>Créateur</th><th>Historique</th></tr></thead><tbody>
+            {anomalyCases.data?.items.map((entry: AnomalyCase) => <tr key={entry.fuel_pump_anomaly_case_id}>
+              <td>{pumps.data?.items.find((pump: Pump) => pump.fuel_pump_id === entry.fuel_pump_id)?.code ?? entry.fuel_pump_id.slice(0, 8)}</td>
+              <td title={entry.start_reading_id + " → " + entry.end_reading_id}>{entry.start_reading_id.slice(0, 8)} → {entry.end_reading_id.slice(0, 8)}</td>
+              <td title={entry.created_by}>{entry.created_by.slice(0, 8)}</td>
+              <td><button type="button" onClick={() => setSelectedAnomalyCaseId(entry.fuel_pump_anomaly_case_id)}>Consulter</button></td>
+            </tr>)}
+          </tbody></table>
+        </DataState>
+        {selectedAnomalyCaseId && <div><h3>Historique du dossier</h3>
+          <DataState loading={anomalyEvents.isLoading} error={anomalyEvents.error} empty={(anomalyEvents.data?.items.length ?? 0) === 0} emptyText="Dossier ouvert, aucun événement de traitement.">
+            <table><thead><tr><th>Étape</th><th>Justification</th><th>Responsable</th></tr></thead><tbody>
+              {anomalyEvents.data?.items.map((event: AnomalyEvent) => <tr key={event.fuel_pump_anomaly_event_id}>
+                <td>{event.event_type}</td><td>{event.justification}</td><td title={event.actor_user_id}>{event.actor_user_id.slice(0, 8)}</td>
+              </tr>)}
+            </tbody></table>
+          </DataState>
+        </div>}
+      </div>}
 
       <div className="card">
         <div className="page-head"><div><h2>Alertes de stock bas</h2><p className="muted">Une alerte reste active jusqu'au retour de la cuve au-dessus de son seuil.</p></div>
