@@ -558,6 +558,30 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "fuel.meter.record": {
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "fuel.pump.manage": {
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "fuel.purchase.create": {
     "FUEL_MANAGER": [
       "SITE"

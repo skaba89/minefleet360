@@ -12,6 +12,8 @@ from app.fuel.schemas import (
     DecisionCreate,
     FuelConsumptionOut,
     FuelIssueOut,
+    FuelPumpMeterReadingOut,
+    FuelPumpOut,
     FuelPurchaseOrderOut,
     FuelPurchaseReceiptOut,
     FuelReceiptOut,
@@ -20,6 +22,8 @@ from app.fuel.schemas import (
     FuelSupplierOut,
     IssueCreate,
     MeterKind,
+    PumpCreate,
+    PumpMeterReadingCreate,
     PurchaseCreate,
     PurchaseDecisionCreate,
     PurchaseReceiptCreate,
@@ -46,6 +50,8 @@ SupplierManage = Annotated[Authorized, Depends(Require("fuel.supplier.manage"))]
 PurchaseCreateGrant = Annotated[Authorized, Depends(Require("fuel.purchase.create"))]
 PurchaseDecide = Annotated[Authorized, Depends(Require("fuel.purchase.decide"))]
 PurchaseReceive = Annotated[Authorized, Depends(Require("fuel.purchase.receive"))]
+PumpManage = Annotated[Authorized, Depends(Require("fuel.pump.manage"))]
+PumpMeterRecord = Annotated[Authorized, Depends(Require("fuel.meter.record"))]
 
 
 @router.get("/fuel/tanks", response_model=Page[TankOut])
@@ -58,6 +64,44 @@ def list_tanks(auth: StockRead, page: Pagination, site_id: uuid.UUID | None = No
 def create_tank(body: TankCreate, auth: StockManage) -> TankOut:
     tank = service.create_tank(auth, body)
     return TankOut.model_validate(service.tank_output(auth, tank))
+
+
+@router.get("/fuel/pumps", response_model=Page[FuelPumpOut])
+def list_pumps(auth: StockRead, page: Pagination, site_id: uuid.UUID | None = None) -> Page[FuelPumpOut]:
+    items, total = service.list_pumps(auth, page, site_id=site_id)
+    return Page(items=items, page=page.page, page_size=page.page_size, total=total)
+
+
+@router.post("/fuel/pumps", response_model=FuelPumpOut, status_code=status.HTTP_201_CREATED)
+def create_pump(body: PumpCreate, auth: PumpManage) -> FuelPumpOut:
+    pump = service.create_pump(auth, body)
+    return FuelPumpOut.model_validate(service.pump_output(auth, pump))
+
+
+@router.get(
+    "/fuel/pumps/{fuel_pump_id}/meter-readings",
+    response_model=Page[FuelPumpMeterReadingOut],
+)
+def list_pump_meter_readings(
+    fuel_pump_id: uuid.UUID, auth: StockRead, page: Pagination
+) -> Page[FuelPumpMeterReadingOut]:
+    rows, total = service.list_pump_meter_readings(auth, fuel_pump_id, page)
+    items = [FuelPumpMeterReadingOut.model_validate(row, from_attributes=True) for row in rows]
+    return Page(items=items, page=page.page, page_size=page.page_size, total=total)
+
+
+@router.post(
+    "/fuel/pumps/{fuel_pump_id}/meter-readings",
+    response_model=FuelPumpMeterReadingOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def record_pump_meter_reading(
+    fuel_pump_id: uuid.UUID,
+    body: PumpMeterReadingCreate,
+    auth: PumpMeterRecord,
+) -> FuelPumpMeterReadingOut:
+    reading = service.record_pump_meter_reading(auth, fuel_pump_id, body)
+    return FuelPumpMeterReadingOut.model_validate(reading, from_attributes=True)
 
 
 @router.post("/fuel/tanks/{fuel_tank_id}/threshold", response_model=TankOut)

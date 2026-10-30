@@ -14,6 +14,7 @@ RejectReason = Literal["WRONG_VEHICLE", "INVALID_QUANTITY", "OTHER"]
 StocktakeReason = Literal["MEASUREMENT", "LOSS", "DATA_CORRECTION", "OTHER"]
 Currency = Literal["GNF", "USD", "EUR"]
 PurchaseRejectReason = Literal["BUDGET", "SUPPLIER", "QUANTITY", "OTHER"]
+PumpReadingSource = Literal["MANUAL", "DEVICE"]
 
 
 class TankCreate(StrictModel):
@@ -39,6 +40,19 @@ class ThresholdUpdate(StrictModel):
     low_stock_threshold_liters: Decimal | None = Field(
         default=None, gt=0, le=2_000_000, max_digits=12, decimal_places=3
     )
+
+
+class PumpCreate(StrictModel):
+    fuel_tank_id: uuid.UUID
+    code: str = Field(pattern=r"^[A-Za-z0-9_-]{1,32}$")
+    name: str = Field(min_length=2, max_length=120)
+
+
+class PumpMeterReadingCreate(StrictModel):
+    cumulative_liters: Decimal = Field(ge=0, le=9_999_999_999_999, max_digits=16, decimal_places=3)
+    measured_at: AwareDatetime
+    source: PumpReadingSource
+    source_reference: str = Field(min_length=1, max_length=80, pattern=r"^[A-Za-z0-9/_ .:-]{1,80}$")
 
 
 class ReceiptCreate(StrictModel):
@@ -126,6 +140,28 @@ class TankOut(BaseModel):
     balance_liters: Decimal
     reserved_liters: Decimal
     available_liters: Decimal
+
+
+class FuelPumpOut(BaseModel):
+    fuel_pump_id: uuid.UUID
+    site_id: uuid.UUID
+    fuel_tank_id: uuid.UUID
+    tank_code: str
+    fuel_type: FuelType
+    code: str
+    name: str
+
+
+class FuelPumpMeterReadingOut(BaseModel):
+    fuel_pump_meter_reading_id: uuid.UUID
+    site_id: uuid.UUID
+    fuel_pump_id: uuid.UUID
+    cumulative_liters: Decimal
+    measured_at: datetime
+    source: PumpReadingSource
+    source_reference: str
+    recorded_by: uuid.UUID
+    recorded_at: datetime
 
 
 class FuelSupplierOut(BaseModel):

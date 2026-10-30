@@ -77,6 +77,17 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
         "fuel_type": "DIESEL",
         "capacity_liters": 10000,
     },
+    ("POST", "/fuel/pumps"): {
+        "fuel_tank_id": "00000000-0000-0000-0000-000000000001",
+        "code": "POMPE-TEST",
+        "name": "Pompe test",
+    },
+    ("POST", "/fuel/pumps/{fuel_pump_id}/meter-readings"): {
+        "cumulative_liters": 100,
+        "measured_at": "2026-10-29T10:00:00+00:00",
+        "source": "MANUAL",
+        "source_reference": "RELEVE-TEST-1",
+    },
     ("POST", "/fuel/tanks/{fuel_tank_id}/receipts"): {
         "liters": 100,
         "reference": "BL-FICTIF-1",
@@ -236,6 +247,27 @@ def world(api: Api, client: TestClient) -> World:
         json={"vehicle_id": vehicle, "symptom_code": "OTHER", "priority": "LOW"},
     )
     assert work_order.status_code == 201, work_order.text
+    fuel_tank = client.post(
+        f"{API}/fuel/tanks",
+        headers=a.admin.headers,
+        json={
+            "site_id": str(a.sites["S1"]),
+            "code": "CUVE-RBAC",
+            "fuel_type": "DIESEL",
+            "capacity_liters": 10000,
+        },
+    )
+    assert fuel_tank.status_code == 201, fuel_tank.text
+    fuel_pump = client.post(
+        f"{API}/fuel/pumps",
+        headers=a.admin.headers,
+        json={
+            "fuel_tank_id": fuel_tank.json()["fuel_tank_id"],
+            "code": "POMPE-RBAC",
+            "name": "Pompe RBAC",
+        },
+    )
+    assert fuel_pump.status_code == 201, fuel_pump.text
     objects = {
         "work_order_id": uuid.UUID(work_order.json()["work_order_id"]),
         "vehicle_document_id": uuid.UUID(document.json()["vehicle_document_id"]),
@@ -254,6 +286,8 @@ def world(api: Api, client: TestClient) -> World:
         "assignment_id": uuid.UUID(assignment),
         "event_id": uuid.UUID(event),
         "tenant_id": a.tenant_id,
+        "fuel_tank_id": uuid.UUID(fuel_tank.json()["fuel_tank_id"]),
+        "fuel_pump_id": uuid.UUID(fuel_pump.json()["fuel_pump_id"]),
     }
     return World(a, b, personas, b_personas, objects)
 

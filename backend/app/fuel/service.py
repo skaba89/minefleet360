@@ -17,6 +17,8 @@ from app.fleet.models import Vehicle, VehicleCategory
 from app.fuel.models import (
     FuelIssue,
     FuelIssueDecision,
+    FuelPump,
+    FuelPumpMeterReading,
     FuelPurchaseDecision,
     FuelPurchaseOrder,
     FuelPurchaseReceipt,
@@ -29,6 +31,8 @@ from app.fuel.models import (
 from app.fuel.schemas import (
     DecisionCreate,
     IssueCreate,
+    PumpCreate,
+    PumpMeterReadingCreate,
     PurchaseCreate,
     PurchaseDecisionCreate,
     PurchaseReceiptCreate,
@@ -49,6 +53,8 @@ Supplier = FuelSupplier
 PurchaseOrder = FuelPurchaseOrder
 PurchaseDecision = FuelPurchaseDecision
 PurchaseReceipt = FuelPurchaseReceipt
+Pump = FuelPump
+PumpMeterReading = FuelPumpMeterReading
 ZERO = Decimal("0")
 
 
@@ -76,6 +82,16 @@ def _tank(auth: Authorized, tank_id: uuid.UUID, *, lock: bool = False) -> Tank:
     if tank is None or not _in_scope(auth, tank.site_id):
         raise AppError("NOT_FOUND")
     return tank
+
+
+def _pump(auth: Authorized, pump_id: uuid.UUID, *, lock: bool = False) -> Pump:
+    stmt = select(Pump).where(Pump.tenant_id == auth.tenant_id, Pump.fuel_pump_id == pump_id)
+    if lock:
+        stmt = stmt.with_for_update()
+    pump = auth.db.scalar(stmt)
+    if pump is None or not _in_scope(auth, pump.site_id):
+        raise AppError("NOT_FOUND")
+    return pump
 
 
 def _balance(db: Session, tenant_id: uuid.UUID, tank_id: uuid.UUID) -> Decimal:
@@ -203,6 +219,153 @@ def create_tank(auth: Authorized, body: TankCreate) -> Tank:
     _audit(auth, "fuel.tank.create", tank.fuel_tank_id, tank.site_id)
     auth.db.commit()
     return tank
+
+
+def list_pumps(
+    auth: Authorized, page: PageParams, *, site_id: uuid.UUID | None
+) -> tuple[list[dict[str, object]], int]:
+    stmt = (
+        select(Pump, Tank.code.label("tank_code"), Tank.fuel_type)
+        .join(
+            Tank,
+            (Tank.tenant_id == Pump.tenant_id) & (Tank.fuel_tank_id == Pump.fuel_tank_id),
+        )
+        .where(Pump.tenant_id == auth.tenant_id)
+    )
+    if not auth.scope.tenant_wide:
+        stmt = stmt.where(Pump.site_id.in_(auth.scope.site_ids))
+    if site_id is not None:
+        stmt = stmt.where(Pump.site_id == site_id)
+    total = auth.db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    rows = auth.db.execute(
+        stmt.order_by(Pump.site_id, Pump.code, Pump.fuel_pump_id).offset(page.offset).limit(page.page_size)
+    )
+    items = [
+        {
+            "fuel_pump_id": pump.fuel_pump_id,
+            "site_id": pump.site_id,
+            "fuel_tank_id": pump.fuel_tank_id,
+            "tank_code": tank_code,
+            "fuel_type": fuel_type,
+            "code": pump.code,
+            "name": pump.name,
+        }
+        for pump, tank_code, fuel_type in rows
+    ]
+    return items, total
+
+
+def create_pump(auth: Authorized, body: PumpCreate) -> Pump:
+    tank = _tank(auth, body.fuel_tank_id)
+    pump = Pump(
+        tenant_id=auth.tenant_id,
+        site_id=tank.site_id,
+        fuel_tank_id=tank.fuel_tank_id,
+        code=body.code,
+        name=body.name,
+        created_by=auth.user_id,
+        updated_by=auth.user_id,
+    )
+    auth.db.add(pump)
+    auth.db.flush()
+    _audit(auth, "fuel.pump.create", pump.fuel_pump_id, pump.site_id)
+    auth.db.commit()
+    # pump_output relit la cuve après la validation.
+    set_tenant_context(auth.db, auth.tenant_id)
+    return pump
+
+
+def pump_output(auth: Authorized, pump: Pump) -> dict[str, object]:
+    tank = _tank(auth, pump.fuel_tank_id)
+    return {
+        "fuel_pump_id": pump.fuel_pump_id,
+        "site_id": pump.site_id,
+        "fuel_tank_id": pump.fuel_tank_id,
+        "tank_code": tank.code,
+        "fuel_type": tank.fuel_type,
+        "code": pump.code,
+        "name": pump.name,
+    }
+
+
+def list_pump_meter_readings(
+    auth: Authorized, pump_id: uuid.UUID, page: PageParams
+) -> tuple[list[PumpMeterReading], int]:
+    pump = _pump(auth, pump_id)
+    stmt = select(PumpMeterReading).where(
+        PumpMeterReading.tenant_id == auth.tenant_id,
+        PumpMeterReading.fuel_pump_id == pump.fuel_pump_id,
+    )
+    total = auth.db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    readings = list(
+        auth.db.scalars(
+            stmt.order_by(
+                PumpMeterReading.measured_at.desc(),
+                PumpMeterReading.fuel_pump_meter_reading_id.desc(),
+            )
+            .offset(page.offset)
+            .limit(page.page_size)
+        )
+    )
+    return readings, total
+
+
+def record_pump_meter_reading(
+    auth: Authorized, pump_id: uuid.UUID, body: PumpMeterReadingCreate
+) -> PumpMeterReading:
+    pump = _pump(auth, pump_id, lock=True)
+    if body.measured_at > auth.clock.now() + timedelta(seconds=5):
+        raise AppError("VALIDATION_ERROR")
+
+    duplicate = auth.db.scalar(
+        select(PumpMeterReading).where(
+            PumpMeterReading.tenant_id == auth.tenant_id,
+            PumpMeterReading.fuel_pump_id == pump.fuel_pump_id,
+            func.lower(PumpMeterReading.source_reference) == body.source_reference.lower(),
+        )
+    )
+    if duplicate is not None:
+        same_payload = (
+            duplicate.cumulative_liters == body.cumulative_liters
+            and duplicate.measured_at == body.measured_at
+            and duplicate.source == body.source
+        )
+        if not same_payload:
+            raise AppError("CONFLICT")
+        return duplicate
+
+    latest = auth.db.scalar(
+        select(PumpMeterReading)
+        .where(
+            PumpMeterReading.tenant_id == auth.tenant_id,
+            PumpMeterReading.fuel_pump_id == pump.fuel_pump_id,
+        )
+        .order_by(
+            PumpMeterReading.measured_at.desc(),
+            PumpMeterReading.fuel_pump_meter_reading_id.desc(),
+        )
+        .limit(1)
+    )
+    if latest is not None and (
+        body.measured_at <= latest.measured_at or body.cumulative_liters < latest.cumulative_liters
+    ):
+        raise AppError("CONFLICT")
+
+    reading = PumpMeterReading(
+        tenant_id=auth.tenant_id,
+        site_id=pump.site_id,
+        fuel_pump_id=pump.fuel_pump_id,
+        cumulative_liters=body.cumulative_liters,
+        measured_at=body.measured_at,
+        source=body.source,
+        source_reference=body.source_reference,
+        recorded_by=auth.user_id,
+    )
+    auth.db.add(reading)
+    auth.db.flush()
+    _audit(auth, "fuel.pump.meter.record", reading.fuel_pump_meter_reading_id, pump.site_id)
+    auth.db.commit()
+    return reading
 
 
 def update_threshold(auth: Authorized, tank_id: uuid.UUID, body: ThresholdUpdate) -> Tank:
