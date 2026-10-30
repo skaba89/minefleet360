@@ -29,6 +29,7 @@ Receive = Annotated[Authorized, Depends(Require("maintenance.parts.receive"))]
 Issue = Annotated[Authorized, Depends(Require("maintenance.parts.issue"))]
 Reserve = Annotated[Authorized, Depends(Require("maintenance.parts.reserve"))]
 Release = Annotated[Authorized, Depends(Require("maintenance.parts.release"))]
+Consume = Annotated[Authorized, Depends(Require("maintenance.parts.consume"))]
 
 
 class PartOut(BaseModel):
@@ -244,6 +245,92 @@ def release_part_reservation(reservation_id: uuid.UUID, auth: Release) -> PartRe
         quantity=reservation.quantity,
         reference=reservation.reference,
         status="RELEASED",
+    )
+    auth.db.commit()
+    return result
+
+
+class PartConsumptionOut(BaseModel):
+    spare_part_reservation_id: uuid.UUID
+    spare_part_movement_id: uuid.UUID
+    work_order_id: uuid.UUID
+    quantity: Decimal
+    status: str
+
+
+@router.post("/part-reservations/{reservation_id}/consume", response_model=PartConsumptionOut)
+def consume_part_reservation(reservation_id: uuid.UUID, auth: Consume) -> PartConsumptionOut:
+    reservation = auth.db.scalar(
+        select(SparePartReservation).where(
+            SparePartReservation.tenant_id == auth.tenant_id,
+            SparePartReservation.spare_part_reservation_id == reservation_id,
+        )
+    )
+    if reservation is None or not auth.scope.covers_site(reservation.site_id):
+        raise AppError("NOT_FOUND")
+    order = auth.db.scalar(
+        select(WorkOrder).where(
+            WorkOrder.tenant_id == auth.tenant_id,
+            WorkOrder.work_order_id == reservation.work_order_id,
+        )
+    )
+    if order is None or order.status in {"CLOSED", "REJECTED", "CANCELLED"}:
+        raise AppError("CONFLICT")
+    try:
+        # Une transition conditionnelle empêche consommation et libération concurrentes.
+        changed = auth.db.execute(
+            text(
+                "UPDATE spare_part_reservation SET status = 'CONSUMED', released_at = now() "
+                "WHERE tenant_id = :tenant_id AND spare_part_reservation_id = :reservation_id "
+                "AND status = 'ACTIVE' RETURNING spare_part_reservation_id"
+            ),
+            {"tenant_id": auth.tenant_id, "reservation_id": reservation_id},
+        ).first()
+        if changed is None:
+            auth.db.rollback()
+            raise AppError("CONFLICT")
+        # Les deux colonnes sont décrémentées ensemble, sans stock négatif.
+        changed_balance = auth.db.execute(
+            text(
+                "UPDATE spare_part_balance SET "
+                "on_hand = on_hand - :quantity, reserved = reserved - :quantity "
+                "WHERE tenant_id = :tenant_id AND site_id = :site_id "
+                "AND spare_part_store_id = :store_id AND spare_part_id = :part_id "
+                "AND reserved >= :quantity AND on_hand >= :quantity "
+                "RETURNING spare_part_balance_id"
+            ),
+            {
+                "tenant_id": auth.tenant_id,
+                "site_id": reservation.site_id,
+                "store_id": reservation.spare_part_store_id,
+                "part_id": reservation.spare_part_id,
+                "quantity": reservation.quantity,
+            },
+        ).first()
+        if changed_balance is None:
+            auth.db.rollback()
+            raise AppError("CONFLICT")
+        movement = SparePartMovement(
+            tenant_id=auth.tenant_id,
+            site_id=reservation.site_id,
+            spare_part_store_id=reservation.spare_part_store_id,
+            spare_part_id=reservation.spare_part_id,
+            movement_type="ISSUE",
+            quantity=reservation.quantity,
+            reference=f"OT-CONSUME-{reservation_id}",
+            recorded_by=auth.user_id,
+        )
+        auth.db.add(movement)
+        auth.db.flush()
+    except IntegrityError:
+        auth.db.rollback()
+        raise AppError("CONFLICT") from None
+    result = PartConsumptionOut(
+        spare_part_reservation_id=reservation_id,
+        spare_part_movement_id=movement.spare_part_movement_id,
+        work_order_id=reservation.work_order_id,
+        quantity=reservation.quantity,
+        status="CONSUMED",
     )
     auth.db.commit()
     return result

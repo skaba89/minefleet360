@@ -1112,6 +1112,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/part-reservations/{reservation_id}/consume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Consume Part Reservation */
+        post: operations["consume_part_reservation_api_v1_part_reservations__reservation_id__consume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/part-reservations/{reservation_id}/release": {
         parameters: {
             query?: never;
@@ -4357,6 +4374,28 @@ export interface components {
             page_size: number;
             /** Total */
             total: number;
+        };
+        /** PartConsumptionOut */
+        PartConsumptionOut: {
+            /** Quantity */
+            quantity: string;
+            /**
+             * Spare Part Movement Id
+             * Format: uuid
+             */
+            spare_part_movement_id: string;
+            /**
+             * Spare Part Reservation Id
+             * Format: uuid
+             */
+            spare_part_reservation_id: string;
+            /** Status */
+            status: string;
+            /**
+             * Work Order Id
+             * Format: uuid
+             */
+            work_order_id: string;
         };
         /** PartCreate */
         PartCreate: {
@@ -8690,6 +8729,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartReservationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    consume_part_reservation_api_v1_part_reservations__reservation_id__consume_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                reservation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartConsumptionOut"];
                 };
             };
             /** @description Validation Error */

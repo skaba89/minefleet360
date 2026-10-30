@@ -545,6 +545,18 @@ permissions:
       WORKSHOP_CHIEF: [TENANT, SITE]
       OPS_MANAGER: [TENANT, SITE]
 
+  maintenance.parts.consume:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: "/part-reservations/{reservation_id}/consume", shape: item, success: 200 }
+    audit: { action: parts.consume }
+    grants:
+      STOREKEEPER: [TENANT, SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      OPS_MANAGER: [TENANT, SITE]
+
   maintenance.parts.release:
     tranche: 1c
     kind: action
