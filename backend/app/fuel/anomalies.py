@@ -37,6 +37,7 @@ class AnomalyCaseOut(BaseModel):
     start_reading_id: uuid.UUID
     end_reading_id: uuid.UUID
     created_by: uuid.UUID
+    status: Literal["OPEN", "ACKNOWLEDGED", "JUSTIFIED", "CLOSED"]
 
 
 class AnomalyEventOut(BaseModel):
@@ -45,6 +46,30 @@ class AnomalyEventOut(BaseModel):
     event_type: EventType
     justification: str
     actor_user_id: uuid.UUID
+
+
+def _case_output(auth: Authorized, case: FuelPumpAnomalyCase) -> AnomalyCaseOut:
+    last_status = auth.db.scalar(
+        select(FuelPumpAnomalyEvent.event_type)
+        .where(
+            FuelPumpAnomalyEvent.tenant_id == auth.tenant_id,
+            FuelPumpAnomalyEvent.fuel_pump_anomaly_case_id == case.fuel_pump_anomaly_case_id,
+        )
+        .order_by(
+            FuelPumpAnomalyEvent.occurred_at.desc(),
+            FuelPumpAnomalyEvent.fuel_pump_anomaly_event_id.desc(),
+        )
+        .limit(1)
+    )
+    return AnomalyCaseOut(
+        fuel_pump_anomaly_case_id=case.fuel_pump_anomaly_case_id,
+        fuel_pump_id=case.fuel_pump_id,
+        site_id=case.site_id,
+        start_reading_id=case.start_reading_id,
+        end_reading_id=case.end_reading_id,
+        created_by=case.created_by,
+        status=last_status or "OPEN",
+    )
 
 
 def _case(auth: Authorized, case_id: uuid.UUID) -> FuelPumpAnomalyCase:
@@ -130,8 +155,9 @@ def open_anomaly_case(fuel_pump_id: uuid.UUID, body: AnomalyOpen, auth: Manage) 
         entity_id=case.fuel_pump_anomaly_case_id,
         site_id=pump.site_id,
     )
+    output = _case_output(auth, case)
     auth.db.commit()
-    return AnomalyCaseOut.model_validate(case, from_attributes=True)
+    return output
 
 
 @router.get("/fuel/anomaly-cases", response_model=Page[AnomalyCaseOut])
@@ -154,7 +180,7 @@ def list_anomaly_cases(
         .limit(page.page_size)
     ).all()
     return Page(
-        items=[AnomalyCaseOut.model_validate(c, from_attributes=True) for c in cases],
+        items=[_case_output(auth, c) for c in cases],
         total=count,
         page=page.page,
         page_size=page.page_size,

@@ -52,6 +52,7 @@ def test_anomaly_case_workflow_and_tenant_isolation(client: TestClient, api: Api
     created = client.post(case_path, headers=other, json=body)
     assert created.status_code == 201, created.text
     case_id = created.json()["fuel_pump_anomaly_case_id"]
+    assert created.json()["status"] == "OPEN"
     assert client.post(case_path, headers=other, json=body).status_code == 409
 
     event_path = f"{API}/fuel/anomaly-cases/{case_id}/events"
@@ -81,6 +82,10 @@ def test_anomaly_case_workflow_and_tenant_isolation(client: TestClient, api: Api
             json={"event_type": event_type, "justification": f"Vérification de l'écart : {event_type}"},
         )
         assert response.status_code == 201, response.text
+    listed = client.get(f"{API}/fuel/anomaly-cases", headers=other)
+    assert listed.status_code == 200, listed.text
+    matching = next(c for c in listed.json()["items"] if c["fuel_pump_anomaly_case_id"] == case_id)
+    assert matching["status"] == "JUSTIFIED"
 
     self_close = client.post(
         event_path, headers=other, json={"event_type": "CLOSED", "justification": "Clôture par le créateur"}
@@ -92,6 +97,9 @@ def test_anomaly_case_workflow_and_tenant_isolation(client: TestClient, api: Api
         json={"event_type": "CLOSED", "justification": "Vérification terminée et documentée"},
     )
     assert closed.status_code == 201, closed.text
+    listed = client.get(f"{API}/fuel/anomaly-cases", headers=other)
+    matching = next(c for c in listed.json()["items"] if c["fuel_pump_anomaly_case_id"] == case_id)
+    assert matching["status"] == "CLOSED"
     assert (
         client.post(
             event_path,
