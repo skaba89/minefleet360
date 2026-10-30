@@ -41,7 +41,9 @@ export async function uiLogin(page: Page, a: Account): Promise<void> {
   await page.getByLabel("Adresse e-mail").fill(a.email);
   await page.getByLabel("Mot de passe").fill(a.password);
   await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page.getByRole("heading", { name: /^Bonjour/ })).toBeVisible();
+  // Le tableau de bord de la flotte remplace le titre « Bonjour » pour certains rôles.
+  // Vérifier plutôt que la session a ouvert le shell authentifié.
+  await expect(page.getByRole("navigation", { name: "Navigation principale" })).toBeVisible();
 }
 
 /** Site du dispatcher : sa seule attribution de portée SITE. */
