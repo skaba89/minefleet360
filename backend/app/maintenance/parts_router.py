@@ -541,3 +541,90 @@ def list_part_balances(auth: Read, page: Pagination, site_id: uuid.UUID | None =
         page_size=page.page_size,
         total=total,
     )
+
+
+class PartMovementOut(BaseModel):
+    spare_part_movement_id: uuid.UUID
+    site_id: uuid.UUID
+    spare_part_store_id: uuid.UUID
+    spare_part_id: uuid.UUID
+    movement_type: str
+    quantity: Decimal
+    reference: str
+    recorded_by: uuid.UUID
+
+
+class PartReservationReadOut(PartReservationOut):
+    site_id: uuid.UUID
+    created_by: uuid.UUID
+
+
+@router.get("/part-movements", response_model=Page[PartMovementOut])
+def list_part_movements(
+    auth: Read,
+    page: Pagination,
+    site_id: uuid.UUID | None = None,
+    spare_part_store_id: uuid.UUID | None = None,
+    spare_part_id: uuid.UUID | None = None,
+) -> Page[PartMovementOut]:
+    if site_id is not None and not auth.scope.covers_site(site_id):
+        raise AppError("NOT_FOUND")
+    stmt = select(SparePartMovement).where(SparePartMovement.tenant_id == auth.tenant_id)
+    if not auth.scope.tenant_wide:
+        stmt = stmt.where(SparePartMovement.site_id.in_(auth.scope.site_ids))
+    if site_id is not None:
+        stmt = stmt.where(SparePartMovement.site_id == site_id)
+    if spare_part_store_id is not None:
+        stmt = stmt.where(SparePartMovement.spare_part_store_id == spare_part_store_id)
+    if spare_part_id is not None:
+        stmt = stmt.where(SparePartMovement.spare_part_id == spare_part_id)
+    total = auth.db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    rows = auth.db.scalars(
+        stmt.order_by(SparePartMovement.spare_part_movement_id.desc())
+        .offset(page.offset)
+        .limit(page.page_size)
+    ).all()
+    return Page(
+        items=[PartMovementOut.model_validate(row, from_attributes=True) for row in rows],
+        page=page.page,
+        page_size=page.page_size,
+        total=total,
+    )
+
+
+@router.get("/part-reservations", response_model=Page[PartReservationReadOut])
+def list_part_reservations(
+    auth: Read,
+    page: Pagination,
+    site_id: uuid.UUID | None = None,
+    work_order_id: uuid.UUID | None = None,
+    spare_part_store_id: uuid.UUID | None = None,
+    reservation_status: str | None = None,
+) -> Page[PartReservationReadOut]:
+    if site_id is not None and not auth.scope.covers_site(site_id):
+        raise AppError("NOT_FOUND")
+    if reservation_status is not None and reservation_status not in {"ACTIVE", "RELEASED", "CONSUMED"}:
+        raise AppError("VALIDATION_ERROR")
+    stmt = select(SparePartReservation).where(SparePartReservation.tenant_id == auth.tenant_id)
+    if not auth.scope.tenant_wide:
+        stmt = stmt.where(SparePartReservation.site_id.in_(auth.scope.site_ids))
+    if site_id is not None:
+        stmt = stmt.where(SparePartReservation.site_id == site_id)
+    if work_order_id is not None:
+        stmt = stmt.where(SparePartReservation.work_order_id == work_order_id)
+    if spare_part_store_id is not None:
+        stmt = stmt.where(SparePartReservation.spare_part_store_id == spare_part_store_id)
+    if reservation_status is not None:
+        stmt = stmt.where(SparePartReservation.status == reservation_status)
+    total = auth.db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    rows = auth.db.scalars(
+        stmt.order_by(SparePartReservation.spare_part_reservation_id.desc())
+        .offset(page.offset)
+        .limit(page.page_size)
+    ).all()
+    return Page(
+        items=[PartReservationReadOut.model_validate(row, from_attributes=True) for row in rows],
+        page=page.page,
+        page_size=page.page_size,
+        total=total,
+    )

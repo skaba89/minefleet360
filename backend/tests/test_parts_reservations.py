@@ -83,3 +83,23 @@ def test_reserve_parts_for_work_order(client: TestClient, api: Api, w: World) ->
     end_balances = client.get(f"{API}/part-balances", headers=keeper.headers).json()
     assert end_balances["items"][0]["on_hand"] == 1.0
     assert end_balances["items"][0]["reserved"] == 0.0
+    movements = client.get(f"{API}/part-movements", headers=keeper.headers)
+    assert movements.status_code == 200, movements.text
+    assert movements.json()["total"] == 2
+    assert {item["movement_type"] for item in movements.json()["items"]} == {"RECEIPT", "ISSUE"}
+    reservations = client.get(
+        f"{API}/part-reservations",
+        headers=keeper.headers,
+        params={"work_order_id": order["work_order_id"], "reservation_status": "CONSUMED"},
+    )
+    assert reservations.status_code == 200, reservations.text
+    assert reservations.json()["total"] == 1
+    assert reservations.json()["items"][0]["status"] == "CONSUMED"
+    assert (
+        client.get(
+            f"{API}/part-reservations",
+            headers=keeper.headers,
+            params={"reservation_status": "INVALID"},
+        ).status_code
+        == 422
+    )
