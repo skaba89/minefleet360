@@ -27,8 +27,10 @@ def test_receive_parts_updates_balance_once(client: TestClient, api: Api) -> Non
     }
     created = client.post(f"{API}/part-movements/receipts", headers=keeper.headers, json=payload)
     assert created.status_code == 201, created.text
-    assert client.post(f"{API}/part-movements/receipts", headers=keeper.headers, json=payload).status_code == 409
-    assert client.post(f"{API}/part-movements/receipts", headers=driver.headers, json=payload).status_code == 403
+    response = client.post(f"{API}/part-movements/receipts", headers=keeper.headers, json=payload)
+    assert response.status_code == 409
+    response = client.post(f"{API}/part-movements/receipts", headers=driver.headers, json=payload)
+    assert response.status_code == 403
     balance = client.get(f"{API}/part-balances", headers=keeper.headers).json()
     assert balance["total"] == 1
     assert balance["items"][0]["on_hand"] == 3.5
@@ -40,4 +42,5 @@ def test_receive_parts_updates_balance_once(client: TestClient, api: Api) -> Non
         json={"code": "OTHER-PART", "name": "Etranger", "unit": "EACH"},
     ).json()
     foreign = {**payload, "spare_part_id": outsider_part["spare_part_id"], "reference": "FOREIGN"}
-    assert client.post(f"{API}/part-movements/receipts", headers=keeper.headers, json=foreign).status_code == 422
+    response = client.post(f"{API}/part-movements/receipts", headers=keeper.headers, json=foreign)
+    assert response.status_code == 422
