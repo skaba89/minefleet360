@@ -96,11 +96,11 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
-      - name: Test assignment lifecycle, eligibility and tenant isolation
+      - name: Test assignments, missions and workshop lifecycle
         working-directory: frontend
         env:
           MF_API_URL: http://localhost:8000
-        run: npx playwright test --config=playwright.config.ts e2e/affectations.spec.ts e2e/missions.spec.ts
+        run: npx playwright test --config=playwright.config.ts e2e/affectations.spec.ts e2e/missions.spec.ts e2e/atelier.spec.ts
 
       - name: Remove ephemeral credentials and traces
         if: always()
