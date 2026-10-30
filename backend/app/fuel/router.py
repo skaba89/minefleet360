@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, Query, status
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.http import Page, Pagination
-from app.core.tenancy import set_tenant_context
 from app.fuel import service
 from app.fuel.consumption import vehicle_consumption
 from app.fuel.schemas import (
@@ -205,7 +204,4 @@ def create_issue(body: IssueCreate, auth: IssueRequest) -> FuelIssueOut:
 @router.post("/fuel/issues/{fuel_issue_id}/decision", response_model=FuelIssueOut)
 def decide_issue(fuel_issue_id: uuid.UUID, body: DecisionCreate, auth: IssueDecide) -> FuelIssueOut:
     issue = service.decide_issue(auth, fuel_issue_id, body)
-    # Le service a commité : SET LOCAL app.tenant_id est effacé par PostgreSQL.
-    # Restaurer le contexte pour relire la décision et rendre son statut réel.
-    set_tenant_context(auth.db, auth.tenant_id)
     return FuelIssueOut.model_validate(service.issue_output(auth, issue))
