@@ -12,7 +12,6 @@ from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.errors import AppError
 from app.core.http import Page, Pagination, StrictModel
-from app.core.tenancy import set_tenant_context
 from app.fuel.models import FuelPump, FuelPumpAnomalyCase, FuelPumpAnomalyEvent, FuelPumpMeterReading
 
 router = APIRouter(tags=["carburant"], route_class=SecuredRoute)
