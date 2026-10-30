@@ -833,6 +833,7 @@ permissions:
     kind: read
     site_bound: true
     routes:
+      - { method: GET, path: /fuel/dashboard, shape: collection, success: 200 }
       - { method: GET, path: /fuel/tanks, shape: collection, success: 200 }
       - { method: GET, path: /fuel/pumps, shape: collection, success: 200 }
       - { method: GET, path: "/fuel/pumps/{fuel_pump_id}/meter-readings", shape: collection, success: 200 }

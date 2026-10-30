@@ -421,6 +421,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fuel/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Fuel Dashboard */
+        get: operations["get_fuel_dashboard_api_v1_fuel_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fuel/issues": {
         parameters: {
             query?: never;
@@ -2929,6 +2946,86 @@ export interface components {
             site_id: string;
             /** Start Meter Value */
             start_meter_value: string;
+            /** Vehicle Fleet Number */
+            vehicle_fleet_number: string;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+        };
+        /** FuelDashboardDailyOut */
+        FuelDashboardDailyOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Distributed Liters */
+            distributed_liters: string;
+            /** Received Liters */
+            received_liters: string;
+        };
+        /** FuelDashboardOut */
+        FuelDashboardOut: {
+            /** Active Stock Alerts */
+            active_stock_alerts: number;
+            /** Average Resolution Hours */
+            average_resolution_hours: string | null;
+            /** Closed Anomaly Cases */
+            closed_anomaly_cases: number;
+            /** Daily Trend */
+            daily_trend: components["schemas"]["FuelDashboardDailyOut"][];
+            /** Distributed Liters */
+            distributed_liters: string;
+            /** Open Anomaly Cases */
+            open_anomaly_cases: number;
+            /**
+             * Period End
+             * Format: date-time
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date-time
+             */
+            period_start: string;
+            /** Qualified Anomaly Variance Liters */
+            qualified_anomaly_variance_liters: string;
+            /** Received Liters */
+            received_liters: string;
+            /** Site Consumption */
+            site_consumption: components["schemas"]["FuelDashboardSiteOut"][];
+            /** Stocktake Variance Liters */
+            stocktake_variance_liters: string;
+            /** Unacknowledged Stock Alerts */
+            unacknowledged_stock_alerts: number;
+            /** Vehicle Consumption */
+            vehicle_consumption: components["schemas"]["FuelDashboardVehicleOut"][];
+        };
+        /** FuelDashboardSiteOut */
+        FuelDashboardSiteOut: {
+            /** Liters */
+            liters: string;
+            /** Site Code */
+            site_code: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Site Name */
+            site_name: string;
+        };
+        /** FuelDashboardVehicleOut */
+        FuelDashboardVehicleOut: {
+            /** Liters */
+            liters: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
             /** Vehicle Fleet Number */
             vehicle_fleet_number: string;
             /**
@@ -7171,6 +7268,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnomalyEventOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_fuel_dashboard_api_v1_fuel_dashboard_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuelDashboardOut"];
                 };
             };
             /** @description Validation Error */
