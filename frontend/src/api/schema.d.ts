@@ -1061,6 +1061,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/part-movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Part Movements */
+        get: operations["list_part_movements_api_v1_part_movements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/part-movements/issues": {
         parameters: {
             query?: never;
@@ -1102,7 +1119,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Part Reservations */
+        get: operations["list_part_reservations_api_v1_part_reservations_get"];
         put?: never;
         /** Reserve Part */
         post: operations["reserve_part_api_v1_part_reservations_post"];
@@ -4265,10 +4283,32 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[PartMovementOut] */
+        Page_PartMovementOut_: {
+            /** Items */
+            items: components["schemas"]["PartMovementOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[PartOut] */
         Page_PartOut_: {
             /** Items */
             items: components["schemas"]["PartOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[PartReservationReadOut] */
+        Page_PartReservationReadOut_: {
+            /** Items */
+            items: components["schemas"]["PartReservationReadOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -4448,6 +4488,40 @@ export interface components {
              */
             spare_part_store_id: string;
         };
+        /** PartMovementOut */
+        PartMovementOut: {
+            /** Movement Type */
+            movement_type: string;
+            /** Quantity */
+            quantity: string;
+            /**
+             * Recorded By
+             * Format: uuid
+             */
+            recorded_by: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /**
+             * Spare Part Movement Id
+             * Format: uuid
+             */
+            spare_part_movement_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
+        };
         /** PartOut */
         PartOut: {
             /** Code */
@@ -4529,6 +4603,45 @@ export interface components {
             quantity: string;
             /** Reference */
             reference: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /**
+             * Spare Part Reservation Id
+             * Format: uuid
+             */
+            spare_part_reservation_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
+            /** Status */
+            status: string;
+            /**
+             * Work Order Id
+             * Format: uuid
+             */
+            work_order_id: string;
+        };
+        /** PartReservationReadOut */
+        PartReservationReadOut: {
+            /**
+             * Created By
+             * Format: uuid
+             */
+            created_by: string;
+            /** Quantity */
+            quantity: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
             /**
              * Spare Part Id
              * Format: uuid
@@ -8637,6 +8750,43 @@ export interface operations {
             };
         };
     };
+    list_part_movements_api_v1_part_movements_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                spare_part_store_id?: string | null;
+                spare_part_id?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PartMovementOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     issue_part_api_v1_part_movements_issues_post: {
         parameters: {
             query?: never;
@@ -8694,6 +8844,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartReceiptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_part_reservations_api_v1_part_reservations_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                work_order_id?: string | null;
+                spare_part_store_id?: string | null;
+                reservation_status?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PartReservationReadOut_"];
                 };
             };
             /** @description Validation Error */
