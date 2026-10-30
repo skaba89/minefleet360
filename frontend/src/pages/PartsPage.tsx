@@ -150,7 +150,7 @@ export function PartsPage() {
           >
             {saving ? "Enregistrement…" : "Valider le mouvement"}
           </button>
-          {saveError && <ErrorMessage error={saveError} />}
+          {saveError !== null && <ErrorMessage error={saveError} />}
           {message && <p role="status">{message}</p>}
         </form>
       )}
