@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { account, apiLogin, uiLogin } from "./fixtures";
+import { account, apiLogin, dispatcherSite, uiLogin } from "./fixtures";
 
 // Authentification et autorisation effectives : la disparition d'un menu ne suffit pas
 // pour protéger les API métier. Tous les utilisateurs sont issus du seed fictif.
@@ -27,4 +27,43 @@ test("un utilisateur RH ne peut pas consulter les stocks de carburant", async ({
   await uiLogin(page, hr);
   const nav = page.getByRole("navigation", { name: "Navigation principale" });
   await expect(nav.getByRole("link", { name: "Carburant" })).toHaveCount(0);
+});
+
+test("réception en cuve : le stock augmente et un doublon de référence est refusé", async ({ request }) => {
+  const manager = account("OPS_MANAGER", "fictif-minier");
+  const headers = await apiLogin(request, manager);
+  const siteId = await dispatcherSite(
+    request,
+    await apiLogin(request, account("DISPATCHER", manager.workspace)),
+  );
+
+  const suffix = Math.random().toString(36).slice(2, 10).toUpperCase();
+  const tank = await request.post("/api/v1/fuel/tanks", {
+    headers,
+    data: { site_id: siteId, code: `E2E-${suffix}`, fuel_type: "DIESEL", capacity_liters: 1000 },
+  });
+  expect(tank.status(), await tank.text()).toBe(201);
+  const created = await tank.json();
+  expect(Number(created.balance_liters)).toBe(0);
+
+  const receipt = {
+    liters: 350,
+    reference: `BL-${suffix}`,
+    occurred_at: new Date().toISOString(),
+  };
+  const path = `/api/v1/fuel/tanks/${created.fuel_tank_id}/receipts`;
+  const first = await request.post(path, { headers, data: receipt });
+  expect(first.status(), await first.text()).toBe(201);
+
+  const rows = await request.get("/api/v1/fuel/tanks", { headers, params: { site_id: siteId } });
+  expect(rows.status()).toBe(200);
+  const updated = (await rows.json()).items.find(
+    (item: { fuel_tank_id: string }) => item.fuel_tank_id === created.fuel_tank_id,
+  );
+  expect(updated).toBeTruthy();
+  expect(Number(updated.balance_liters)).toBe(350);
+  expect(Number(updated.available_liters)).toBe(350);
+
+  const duplicate = await request.post(path, { headers, data: receipt });
+  expect(duplicate.status()).toBe(409);
 });
