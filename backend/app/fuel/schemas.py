@@ -103,6 +103,7 @@ class PurchaseReceiptCreate(StrictModel):
 
 class IssueCreate(StrictModel):
     fuel_tank_id: uuid.UUID
+    fuel_pump_id: uuid.UUID | None = None
     vehicle_id: uuid.UUID
     driver_id: uuid.UUID
     liters: Decimal = Field(gt=0, le=100_000, max_digits=12, decimal_places=3)
@@ -164,6 +165,23 @@ class FuelPumpMeterReadingOut(BaseModel):
     recorded_at: datetime
 
 
+class FuelPumpReconciliationOut(BaseModel):
+    fuel_pump_id: uuid.UUID
+    start_reading_id: uuid.UUID
+    end_reading_id: uuid.UUID
+    interval_start_at: datetime
+    interval_end_at: datetime
+    start_meter_liters: Decimal
+    end_meter_liters: Decimal
+    meter_delta_liters: Decimal
+    approved_issue_liters: Decimal
+    variance_liters: Decimal
+    variance_percent: Decimal
+    tolerance_liters: Decimal
+    tolerance_percent: Decimal
+    is_anomaly: bool
+
+
 class FuelSupplierOut(BaseModel):
     fuel_supplier_id: uuid.UUID
     site_id: uuid.UUID
@@ -214,6 +232,8 @@ class FuelIssueOut(BaseModel):
     fuel_tank_id: uuid.UUID
     tank_code: str
     fuel_type: FuelType
+    fuel_pump_id: uuid.UUID | None
+    pump_code: str | None
     vehicle_id: uuid.UUID
     vehicle_fleet_number: str
     driver_id: uuid.UUID

@@ -172,6 +172,7 @@ class FuelIssue(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     fuel_tank_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    fuel_pump_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     vehicle_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     driver_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     liters: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)

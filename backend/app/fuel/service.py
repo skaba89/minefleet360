@@ -310,6 +310,120 @@ def list_pump_meter_readings(
     return readings, total
 
 
+def list_pump_reconciliations(
+    auth: Authorized,
+    pump_id: uuid.UUID,
+    page: PageParams,
+    *,
+    tolerance_liters: Decimal,
+    tolerance_percent: Decimal,
+) -> tuple[list[dict[str, object]], int]:
+    """Rapproche chaque intervalle compteur avec les sorties approuvées dans ``(début, fin]``."""
+    pump = _pump(auth, pump_id)
+    windowed = (
+        select(
+            PumpMeterReading.fuel_pump_meter_reading_id.label("end_reading_id"),
+            PumpMeterReading.cumulative_liters.label("end_meter_liters"),
+            PumpMeterReading.measured_at.label("interval_end_at"),
+            func.lag(PumpMeterReading.fuel_pump_meter_reading_id)
+            .over(
+                order_by=(
+                    PumpMeterReading.measured_at,
+                    PumpMeterReading.fuel_pump_meter_reading_id,
+                )
+            )
+            .label("start_reading_id"),
+            func.lag(PumpMeterReading.cumulative_liters)
+            .over(
+                order_by=(
+                    PumpMeterReading.measured_at,
+                    PumpMeterReading.fuel_pump_meter_reading_id,
+                )
+            )
+            .label("start_meter_liters"),
+            func.lag(PumpMeterReading.measured_at)
+            .over(
+                order_by=(
+                    PumpMeterReading.measured_at,
+                    PumpMeterReading.fuel_pump_meter_reading_id,
+                )
+            )
+            .label("interval_start_at"),
+        )
+        .where(
+            PumpMeterReading.tenant_id == auth.tenant_id,
+            PumpMeterReading.fuel_pump_id == pump.fuel_pump_id,
+        )
+        .subquery()
+    )
+    intervals = select(windowed).where(windowed.c.start_reading_id.is_not(None))
+    total = auth.db.scalar(select(func.count()).select_from(intervals.subquery())) or 0
+    rows = (
+        auth.db.execute(
+            intervals.order_by(windowed.c.interval_end_at.desc(), windowed.c.end_reading_id.desc())
+            .offset(page.offset)
+            .limit(page.page_size)
+        )
+        .mappings()
+        .all()
+    )
+    if not rows:
+        return [], total
+
+    earliest = min(row["interval_start_at"] for row in rows)
+    latest = max(row["interval_end_at"] for row in rows)
+    movements = auth.db.execute(
+        select(Movement.occurred_at, Movement.liters)
+        .join(
+            Issue,
+            (Issue.tenant_id == Movement.tenant_id) & (Issue.fuel_issue_id == Movement.fuel_issue_id),
+        )
+        .where(
+            Movement.tenant_id == auth.tenant_id,
+            Movement.movement_type == "ISSUE",
+            Issue.fuel_pump_id == pump.fuel_pump_id,
+            Movement.occurred_at > earliest,
+            Movement.occurred_at <= latest,
+        )
+        .order_by(Movement.occurred_at)
+    ).all()
+
+    items: list[dict[str, object]] = []
+    for row in rows:
+        start_at = row["interval_start_at"]
+        end_at = row["interval_end_at"]
+        meter_delta = Decimal(row["end_meter_liters"]) - Decimal(row["start_meter_liters"])
+        approved = sum(
+            (Decimal(liters) for occurred_at, liters in movements if start_at < occurred_at <= end_at),
+            ZERO,
+        )
+        variance = meter_delta - approved
+        absolute_variance = abs(variance)
+        if approved > ZERO:
+            variance_percent = (absolute_variance * Decimal("100") / approved).quantize(Decimal("0.001"))
+        else:
+            variance_percent = Decimal("0") if meter_delta == ZERO else Decimal("100")
+        items.append(
+            {
+                "fuel_pump_id": pump.fuel_pump_id,
+                "start_reading_id": row["start_reading_id"],
+                "end_reading_id": row["end_reading_id"],
+                "interval_start_at": start_at,
+                "interval_end_at": end_at,
+                "start_meter_liters": row["start_meter_liters"],
+                "end_meter_liters": row["end_meter_liters"],
+                "meter_delta_liters": meter_delta,
+                "approved_issue_liters": approved,
+                "variance_liters": variance,
+                "variance_percent": variance_percent,
+                "tolerance_liters": tolerance_liters,
+                "tolerance_percent": tolerance_percent,
+                "is_anomaly": absolute_variance > tolerance_liters and variance_percent > tolerance_percent,
+            }
+        )
+    return items, total
+
+
 def record_pump_meter_reading(
     auth: Authorized, pump_id: uuid.UUID, body: PumpMeterReadingCreate
 ) -> PumpMeterReading:
@@ -976,6 +1090,10 @@ def create_issue(auth: Authorized, body: IssueCreate) -> Issue:
     now = auth.clock.now()
     if body.requested_at > now + timedelta(seconds=5) or body.requested_at < now - timedelta(hours=24):
         raise AppError("VALIDATION_ERROR")
+    if body.fuel_pump_id is not None:
+        pump = _pump(auth, body.fuel_pump_id)
+        if pump.fuel_tank_id != tank.fuel_tank_id:
+            raise AppError("CONFLICT")
     _validate_vehicle_and_driver(auth, body, tank)
     available = _balance(auth.db, auth.tenant_id, tank.fuel_tank_id) - _reserved(
         auth.db, auth.tenant_id, tank.fuel_tank_id
@@ -986,6 +1104,7 @@ def create_issue(auth: Authorized, body: IssueCreate) -> Issue:
         tenant_id=auth.tenant_id,
         site_id=tank.site_id,
         fuel_tank_id=tank.fuel_tank_id,
+        fuel_pump_id=body.fuel_pump_id,
         vehicle_id=body.vehicle_id,
         driver_id=body.driver_id,
         liters=body.liters,
@@ -1074,12 +1193,16 @@ def list_issues(
     auth: Authorized, page: PageParams, *, site_id: uuid.UUID | None, status: str | None
 ) -> tuple[list[dict[str, object]], int]:
     stmt = (
-        select(Issue, Tank.code, Tank.fuel_type, Vehicle.fleet_number, Decision)
+        select(Issue, Tank.code, Tank.fuel_type, Vehicle.fleet_number, Decision, Pump.code)
         .join(Tank, (Tank.tenant_id == Issue.tenant_id) & (Tank.fuel_tank_id == Issue.fuel_tank_id))
         .join(Vehicle, (Vehicle.tenant_id == Issue.tenant_id) & (Vehicle.vehicle_id == Issue.vehicle_id))
         .outerjoin(
             Decision,
             (Decision.tenant_id == Issue.tenant_id) & (Decision.fuel_issue_id == Issue.fuel_issue_id),
+        )
+        .outerjoin(
+            Pump,
+            (Pump.tenant_id == Issue.tenant_id) & (Pump.fuel_pump_id == Issue.fuel_pump_id),
         )
         .where(Issue.tenant_id == auth.tenant_id)
     )
@@ -1107,6 +1230,8 @@ def list_issues(
                 "fuel_tank_id": issue.fuel_tank_id,
                 "tank_code": tank_code,
                 "fuel_type": fuel_type,
+                "fuel_pump_id": issue.fuel_pump_id,
+                "pump_code": pump_code,
                 "vehicle_id": issue.vehicle_id,
                 "vehicle_fleet_number": fleet_number,
                 "driver_id": issue.driver_id,
@@ -1121,7 +1246,7 @@ def list_issues(
                 "decided_at": decision.decided_at if decision else None,
                 "reason_code": decision.reason_code if decision else None,
             }
-            for issue, tank_code, fuel_type, fleet_number, decision in rows
+            for issue, tank_code, fuel_type, fleet_number, decision, pump_code in rows
         ],
         total,
     )
@@ -1139,12 +1264,24 @@ def issue_output(auth: Authorized, issue: Issue) -> dict[str, object]:
             Decision.tenant_id == auth.tenant_id, Decision.fuel_issue_id == issue.fuel_issue_id
         )
     )
+    pump = (
+        auth.db.scalar(
+            select(Pump).where(
+                Pump.tenant_id == auth.tenant_id,
+                Pump.fuel_pump_id == issue.fuel_pump_id,
+            )
+        )
+        if issue.fuel_pump_id is not None
+        else None
+    )
     return {
         "fuel_issue_id": issue.fuel_issue_id,
         "site_id": issue.site_id,
         "fuel_tank_id": issue.fuel_tank_id,
         "tank_code": tank.code if tank else "?",
         "fuel_type": tank.fuel_type if tank else "DIESEL",
+        "fuel_pump_id": issue.fuel_pump_id,
+        "pump_code": pump.code if pump else None,
         "vehicle_id": issue.vehicle_id,
         "vehicle_fleet_number": vehicle.fleet_number if vehicle else "?",
         "driver_id": issue.driver_id,
