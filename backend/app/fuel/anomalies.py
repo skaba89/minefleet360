@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized, Require
@@ -47,13 +47,11 @@ class AnomalyEventOut(BaseModel):
     actor_user_id: uuid.UUID
 
 
-def _case(auth: Authorized, case_id: uuid.UUID, *, lock: bool = False) -> FuelPumpAnomalyCase:
+def _case(auth: Authorized, case_id: uuid.UUID) -> FuelPumpAnomalyCase:
     query = select(FuelPumpAnomalyCase).where(
         FuelPumpAnomalyCase.tenant_id == auth.tenant_id,
         FuelPumpAnomalyCase.fuel_pump_anomaly_case_id == case_id,
     )
-    if lock:
-        query = query.with_for_update()
     case = auth.db.scalar(query)
     if case is None or not auth.scope.covers_site(case.site_id):
         raise AppError("NOT_FOUND")
@@ -171,7 +169,12 @@ def list_anomaly_cases(
 def record_anomaly_event(
     fuel_pump_anomaly_case_id: uuid.UUID, body: AnomalyEventCreate, auth: Manage
 ) -> AnomalyEventOut:
-    case = _case(auth, fuel_pump_anomaly_case_id, lock=True)
+    case = _case(auth, fuel_pump_anomaly_case_id)
+    # Verrou transactionnel sans UPDATE sur la table append-only.
+    auth.db.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:case_id, 0))"),
+        {"case_id": str(case.fuel_pump_anomaly_case_id)},
+    )
     last = auth.db.scalar(
         select(FuelPumpAnomalyEvent)
         .where(
