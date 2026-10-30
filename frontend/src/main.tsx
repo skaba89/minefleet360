@@ -6,7 +6,14 @@ import { BrowserRouter } from "react-router";
 import { ApiError } from "./api/client";
 import { App } from "./App";
 import { AuthProvider } from "./auth/AuthContext";
+import { registerOfflineShell } from "./lib/pwa";
 import "./styles.css";
+
+if (import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    void registerOfflineShell().catch(() => undefined);
+  });
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {

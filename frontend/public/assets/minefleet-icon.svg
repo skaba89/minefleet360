@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MINEFLEET 360">
+  <rect width="512" height="512" rx="104" fill="#0d283b"/>
+  <path d="M256 72 414 133v112c0 100-63 160-158 196-95-36-158-96-158-196V133z" fill="#0867cf"/>
+  <path d="M155 292h202l-19-76-45-31H183l-28 107Zm37-76h93l27 19 7 29H177z" fill="#fff"/>
+  <circle cx="202" cy="310" r="31" fill="#0d283b" stroke="#fff" stroke-width="16"/>
+  <circle cx="315" cy="310" r="31" fill="#0d283b" stroke="#fff" stroke-width="16"/>
+</svg>

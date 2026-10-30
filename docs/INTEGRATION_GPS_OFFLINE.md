@@ -94,6 +94,17 @@ sequenceDiagram
 
 ## 2. Partie B — Mode hors ligne (PWA / mobile)
 
+### 2.0 État d'implémentation
+
+La première tranche du socle PWA est livrée : manifeste installable, cache du shell et des ressources statiques,
+indicateur de connectivité et avertissement explicite en cas de coupure. Le Service Worker exclut volontairement
+`/api/` et toutes les mutations. Tant que l'application reste ouverte, les écrans déjà chargés restent visibles ;
+un rechargement hors ligne ne restaure pas une session expirée et aucune écriture métier n'est encore mise en file.
+
+La synchronisation des saisies décrite ci-dessous reste à implémenter après l'idempotence serveur, le cloisonnement
+local par tenant et utilisateur, la purge à la déconnexion et les écrans de résolution de conflits. Cette séparation
+évite les doubles écritures et la persistance non maîtrisée de données multi-tenant sur un appareil partagé.
+
 ### 2.1 Principes
 - Priorité terrain : réseau faible/intermittent. Le client enregistre localement puis synchronise ; l'état affiché distingue clairement **« enregistré localement »** et **« synchronisé »**.
 - Stockage : **IndexedDB** (file d'attente `outbox` + cache de référentiels) derrière une couche d'accès unique ; Service Worker pour les ressources statiques. Données locales minimales, **sans secret** ; effacées à la déconnexion ; chiffrement local à évaluer (limites des navigateurs).

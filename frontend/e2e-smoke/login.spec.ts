@@ -10,3 +10,28 @@ test("affiche la connexion et ses champs accessibles sans compte de test", async
   await expect(page.getByRole("button", { name: "Se connecter" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Mot de passe oublié ?" })).toBeVisible();
 });
+
+test("recharge le shell hors ligne sans mettre l'API en cache", async ({ page, request, context }) => {
+  await page.goto("/connexion");
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "/manifest.webmanifest");
+
+  const manifest = await request.get("/manifest.webmanifest");
+  expect(manifest.ok()).toBeTruthy();
+  expect((await manifest.json()).display).toBe("standalone");
+
+  const worker = await request.get("/sw.js");
+  expect(worker.ok()).toBeTruthy();
+  const source = await worker.text();
+  expect(source).toContain('url.pathname.startsWith("/api/")');
+
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+    if (!navigator.serviceWorker.controller) {
+      await new Promise<void>((resolve) => navigator.serviceWorker.addEventListener("controllerchange", () => resolve(), { once: true }));
+    }
+  });
+  await context.setOffline(true);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { name: "MINEFLEET 360" })).toBeVisible();
+  await expect(page.getByRole("alert")).toContainText("Mode hors ligne");
+});

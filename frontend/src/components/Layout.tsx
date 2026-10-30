@@ -9,6 +9,7 @@ import { canAdminister } from "../pages/AdminPages";
 import { SecurityPage } from "../pages/SecurityPage";
 import { useSites } from "../site/SiteContext";
 import { Icon, type IconName } from "./Icon";
+import { ConnectivityStatus } from "./Connectivity";
 
 export function Layout() {
   const me = useMe();
@@ -68,6 +69,7 @@ export function Layout() {
             ))}
           </select>
         </label>
+        <ConnectivityStatus />
         {canReadFuel && <Link className="notification-link" to="/carburant" aria-label={`${fuelAlerts.data?.total ?? 0} alerte(s) de stock carburant`}><Icon name="bell" />{(fuelAlerts.data?.total ?? 0) > 0 && <span>{fuelAlerts.data?.total}</span>}</Link>}
         <div className="user">
           <span className="user-avatar" aria-hidden="true">{me.display_name.slice(0, 1).toUpperCase()}</span>

@@ -2,7 +2,7 @@
 
 React + TypeScript (Vite), entièrement en français. L'API est servie sous la même origine (proxy Vite en
 développement) : le jeton d'accès reste en mémoire, le rafraîchissement passe par un cookie httpOnly
-(ADR-003). Aucune donnée n'est stockée dans le navigateur.
+(ADR-003). Le shell PWA met uniquement les ressources statiques en cache ; aucun jeton ni réponse API n'est stocké.
 
 ## Prérequis
 - Node.js ≥ 20.19 (Node 22 LTS recommandé : Node 20 n'est plus maintenu depuis avril 2026 ; la CI utilise 22).
@@ -18,6 +18,10 @@ développement) : le jeton d'accès reste en mémoire, le rafraîchissement pass
 | `npm run build` | Typage puis build de production dans `dist/` |
 | `npm run gen:api` | Régénère `src/api/schema.d.ts` depuis l'OpenAPI de l'API locale |
 | `npm run e2e` | Tests de bout en bout Playwright (voir ci-dessous) |
+
+Le mode réseau dégradé actuel permet d'installer l'application et de recharger son shell hors ligne. Les écrans
+déjà chargés restent visibles tant que l'application demeure ouverte. Les écritures métier ne sont pas encore
+mises en file : elles nécessitent le réseau jusqu'à la livraison de l'idempotence et de la résolution de conflits.
 
 ## Tests de bout en bout
 Ils pilotent un vrai navigateur contre l'API locale et créent leurs propres données fictives.
