@@ -78,6 +78,8 @@ export function FuelPage() {
   const [tankPage, setTankPage] = useState(1);
   const [selectedPumpId, setSelectedPumpId] = useState("");
   const [selectedAnomalyCaseId, setSelectedAnomalyCaseId] = useState("");
+  const [anomalyJustification, setAnomalyJustification] = useState("");
+  const [anomalySaving, setAnomalySaving] = useState(false);
   const [meterValue, setMeterValue] = useState("");
   const [meterReference, setMeterReference] = useState("");
   const [meterSaving, setMeterSaving] = useState(false);
@@ -103,6 +105,7 @@ export function FuelPage() {
   const [error, setError] = useState<unknown>(null);
   const canRead = can(me.grants, "fuel.stock.read", siteId);
   const canReadAnomalies = can(me.grants, "fuel.anomaly.read", siteId);
+  const canManageAnomalies = can(me.grants, "fuel.anomaly.manage", siteId);
   const canManagePumps = can(me.grants, "fuel.pump.manage", siteId);
   const canRecordPumpMeter = can(me.grants, "fuel.meter.record", siteId);
   const canManage = can(me.grants, "fuel.stock.manage", siteId);
@@ -129,6 +132,27 @@ export function FuelPage() {
       path: { fuel_pump_anomaly_case_id: selectedAnomalyCaseId }, query: { page: 1, page_size: 50 },
     }),
   });
+  const nextAnomalyEvent = (() => {
+    const events = anomalyEvents.data?.items ?? [];
+    const last = events[events.length - 1];
+    if (!last) return "ACKNOWLEDGED" as const;
+    if (last.event_type === "ACKNOWLEDGED") return "JUSTIFIED" as const;
+    if (last.event_type === "JUSTIFIED") return "CLOSED" as const;
+    return null;
+  })();
+  const submitAnomalyEvent = async () => {
+    if (!selectedAnomalyCaseId || !nextAnomalyEvent || anomalyJustification.trim().length < 10) return;
+    setAnomalySaving(true);
+    setError(null);
+    try {
+      await call("post", "/fuel/anomaly-cases/{fuel_pump_anomaly_case_id}/events", {
+        path: { fuel_pump_anomaly_case_id: selectedAnomalyCaseId },
+        body: { event_type: nextAnomalyEvent, justification: anomalyJustification.trim() },
+      });
+      setAnomalyJustification("");
+      await queryClient.invalidateQueries({ queryKey: ["fuel-anomaly-events", selectedAnomalyCaseId] });
+    } catch (err) { setError(err); } finally { setAnomalySaving(false); }
+  };
   const pumps = useQuery({
     queryKey: ["fuel-pumps", siteId],
     enabled: canRead,
@@ -340,6 +364,12 @@ export function FuelPage() {
           </tbody></table>
         </DataState>
         {selectedAnomalyCaseId && <div><h3>Historique du dossier</h3>
+          {canManageAnomalies && !anomalyEvents.isLoading && !anomalyEvents.error && nextAnomalyEvent &&
+            !(nextAnomalyEvent === "CLOSED" && anomalyCases.data?.items.some((entry: AnomalyCase) => entry.fuel_pump_anomaly_case_id === selectedAnomalyCaseId && entry.created_by === me.user_account_id)) &&
+            <form className="toolbar" aria-label="Traiter une anomalie" onSubmit={(event) => { event.preventDefault(); void submitAnomalyEvent(); }}>
+              <label>Justification<textarea required minLength={10} maxLength={2000} value={anomalyJustification} onChange={(event) => setAnomalyJustification(event.target.value)} /></label>
+              <button type="submit" disabled={anomalySaving || anomalyJustification.trim().length < 10}>{anomalySaving ? "Enregistrement…" : nextAnomalyEvent === "ACKNOWLEDGED" ? "Prendre en charge" : nextAnomalyEvent === "JUSTIFIED" ? "Justifier" : "Clôturer"}</button>
+            </form>}
           <DataState loading={anomalyEvents.isLoading} error={anomalyEvents.error} empty={(anomalyEvents.data?.items.length ?? 0) === 0} emptyText="Dossier ouvert, aucun événement de traitement.">
             <table><thead><tr><th>Étape</th><th>Justification</th><th>Responsable</th></tr></thead><tbody>
               {anomalyEvents.data?.items.map((event: AnomalyEvent) => <tr key={event.fuel_pump_anomaly_event_id}>
