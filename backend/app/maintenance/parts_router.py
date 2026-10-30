@@ -43,7 +43,6 @@ class BalanceOut(BaseModel):
     low_stock_threshold: float
 
 
-
 class PartCreate(StrictModel):
     code: str = Field(pattern=r"^[A-Za-z0-9_-]{1,48}$")
     name: str = Field(min_length=1, max_length=200)
