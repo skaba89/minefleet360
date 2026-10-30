@@ -52,3 +52,17 @@ def test_reserve_parts_for_work_order(client: TestClient, api: Api, w: World) ->
     balances = client.get(f"{API}/part-balances", headers=keeper.headers).json()
     assert balances["items"][0]["on_hand"] == 3.0
     assert balances["items"][0]["reserved"] == 2.0
+    released = client.post(
+        f"{API}/part-reservations/{reserved.json()['spare_part_reservation_id']}/release",
+        headers=keeper.headers,
+    )
+    assert released.status_code == 200, released.text
+    assert released.json()["status"] == "RELEASED"
+    repeated = client.post(
+        f"{API}/part-reservations/{reserved.json()['spare_part_reservation_id']}/release",
+        headers=keeper.headers,
+    )
+    assert repeated.status_code == 409
+    balances_after = client.get(f"{API}/part-balances", headers=keeper.headers).json()
+    assert balances_after["items"][0]["on_hand"] == 3.0
+    assert balances_after["items"][0]["reserved"] == 0.0

@@ -28,6 +28,7 @@ Manage = Annotated[Authorized, Depends(Require("maintenance.parts.manage"))]
 Receive = Annotated[Authorized, Depends(Require("maintenance.parts.receive"))]
 Issue = Annotated[Authorized, Depends(Require("maintenance.parts.issue"))]
 Reserve = Annotated[Authorized, Depends(Require("maintenance.parts.reserve"))]
+Release = Annotated[Authorized, Depends(Require("maintenance.parts.release"))]
 
 
 class PartOut(BaseModel):
@@ -190,6 +191,62 @@ def reserve_part(body: PartReservationIn, auth: Reserve) -> PartReservationOut:
     output = PartReservationOut.model_validate(reservation, from_attributes=True)
     auth.db.commit()
     return output
+
+
+@router.post("/part-reservations/{reservation_id}/release", response_model=PartReservationOut)
+def release_part_reservation(reservation_id: uuid.UUID, auth: Release) -> PartReservationOut:
+    reservation = auth.db.scalar(
+        select(SparePartReservation).where(
+            SparePartReservation.tenant_id == auth.tenant_id,
+            SparePartReservation.spare_part_reservation_id == reservation_id,
+        )
+    )
+    if reservation is None or not auth.scope.covers_site(reservation.site_id):
+        raise AppError("NOT_FOUND")
+    if reservation.status != "ACTIVE":
+        raise AppError("CONFLICT")
+    # Verrou de ligne et transition conditionnelle dans une seule transaction.
+    changed = auth.db.execute(
+        text(
+            "UPDATE spare_part_reservation SET status = 'RELEASED', released_at = now() "
+            "WHERE tenant_id = :tenant_id AND spare_part_reservation_id = :reservation_id "
+            "AND status = 'ACTIVE' RETURNING spare_part_reservation_id"
+        ),
+        {"tenant_id": auth.tenant_id, "reservation_id": reservation_id},
+    ).first()
+    if changed is None:
+        auth.db.rollback()
+        raise AppError("CONFLICT")
+    balance_changed = auth.db.execute(
+        text(
+            "UPDATE spare_part_balance SET reserved = reserved - :quantity "
+            "WHERE tenant_id = :tenant_id AND site_id = :site_id "
+            "AND spare_part_store_id = :store_id AND spare_part_id = :part_id "
+            "AND reserved >= :quantity RETURNING spare_part_balance_id"
+        ),
+        {
+            "tenant_id": auth.tenant_id,
+            "site_id": reservation.site_id,
+            "store_id": reservation.spare_part_store_id,
+            "part_id": reservation.spare_part_id,
+            "quantity": reservation.quantity,
+        },
+    ).first()
+    if balance_changed is None:
+        auth.db.rollback()
+        raise AppError("CONFLICT")
+    auth.db.flush()
+    result = PartReservationOut(
+        spare_part_reservation_id=reservation_id,
+        work_order_id=reservation.work_order_id,
+        spare_part_store_id=reservation.spare_part_store_id,
+        spare_part_id=reservation.spare_part_id,
+        quantity=reservation.quantity,
+        reference=reservation.reference,
+        status="RELEASED",
+    )
+    auth.db.commit()
+    return result
 
 
 class PartIssueIn(StrictModel):
