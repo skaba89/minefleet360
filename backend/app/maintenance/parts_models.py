@@ -52,3 +52,20 @@ class SparePartBalance(Base):
     low_stock_threshold: Mapped[Decimal] = mapped_column(
         Numeric(16, 3), nullable=False, server_default=text("0")
     )
+
+
+class SparePartMovement(Base):
+    __tablename__ = "spare_part_movement"
+    __mapper_args__ = {"eager_defaults": True}
+
+    spare_part_movement_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    spare_part_store_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    spare_part_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    movement_type: Mapped[str] = mapped_column(String, nullable=False)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(16, 3), nullable=False)
+    reference: Mapped[str] = mapped_column(String, nullable=False)
+    recorded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
