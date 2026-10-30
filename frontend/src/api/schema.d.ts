@@ -2180,7 +2180,10 @@ export interface components {
              * Format: uuid
              */
             start_reading_id: string;
-            /** Status */
+            /**
+             * Status
+             * @enum {string}
+             */
             status: "OPEN" | "ACKNOWLEDGED" | "JUSTIFIED" | "CLOSED";
         };
         /** AnomalyEventCreate */
