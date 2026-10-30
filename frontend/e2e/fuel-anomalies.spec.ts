@@ -60,7 +60,7 @@ test("anomalie de pompe : prise en charge, justification, clôture indépendante
     ["Prendre en charge", "Anomalie prise en charge E2E", "ACKNOWLEDGED"],
     ["Justifier", "Écart vérifié et documenté E2E", "JUSTIFIED"],
     ["Clôturer", "Contrôle terminé par un autre responsable E2E", "CLOSED"],
-  ]) {
+  ] as const) {
     await section.getByRole("form", { name: "Traiter une anomalie" }).getByRole("textbox", { name: "Justification" }).fill(justification);
     await section.getByRole("button", { name: button, exact: true }).click();
     await expect(section.getByRole("cell", { name: status, exact: true })).toBeVisible();
