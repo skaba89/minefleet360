@@ -156,8 +156,9 @@ def open_anomaly_case(fuel_pump_id: uuid.UUID, body: AnomalyOpen, auth: Manage) 
         entity_id=case.fuel_pump_anomaly_case_id,
         site_id=pump.site_id,
     )
+    output = _case_output(auth, case)
     auth.db.commit()
-    return _case_output(auth, case)
+    return output
 
 
 @router.get("/fuel/anomaly-cases", response_model=Page[AnomalyCaseOut])
