@@ -112,7 +112,12 @@ def test_simultaneous_acknowledgements_only_create_one_event(client: TestClient,
     tank = client.post(
         f"{API}/fuel/tanks",
         headers=headers,
-        json={"site_id": str(owner.sites["MINE"]), "code": "CONCURRENT", "fuel_type": "DIESEL", "capacity_liters": 1000},
+        json={
+            "site_id": str(owner.sites["MINE"]),
+            "code": "CONCURRENT",
+            "fuel_type": "DIESEL",
+            "capacity_liters": 1000,
+        },
     )
     assert tank.status_code == 201, tank.text
     pump = client.post(
