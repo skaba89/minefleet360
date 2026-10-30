@@ -1,16 +1,15 @@
 # État réel du projet
 
-Audit arrêté au 30 octobre 2026 sur `main` au commit `3c4bb02231cd530ca72e8ecedc18d1e841819ad8`.
+État actualisé au 30 octobre 2026 sur `main` au commit `be9fc8c3f766049a16290f5d4276af82dfc23408`.
 Les constats proviennent du code, des migrations, des tests et des workflows exécutés ; une mention dans une roadmap n'est pas une preuve de fonctionnement.
 
 ## État GitHub
 
-- PR #118 fusionnée (`ad09c82`) : parcours E2E d'inventaire carburant.
-- PR #119 fusionnée (`01a358d`) : pompes et compteurs cumulés.
-- PR #120 fusionnée (`3c4bb02`) : rapprochement compteur de pompe / sorties approuvées.
-- Aucune PR ouverte au démarrage de cet audit.
-- CI de `main` 41033170043 réussie : Ruff, mypy, migrations, 3 115 tests backend, couverture 89,71 %, audits Python et npm, 55 tests frontend, build et smoke navigateur.
-- Workflow E2E d'isolation 41033169734 réussi.
+- PR #156 fusionnée (`9ba93f0`) : synthèse API du tableau de bord carburant.
+- PR #157 fusionnée (`be9fc8c`) : tableau de bord carburant React, tests unitaires et parcours E2E enrichi.
+- Aucune PR ouverte au démarrage du chantier hors ligne.
+- CI de la PR #157 réussie : Ruff, mypy, migrations, 3 479 tests backend, couverture 89,83 %, audit npm, 57 tests frontend, build et smoke navigateur.
+- Workflow E2E d'isolation de la PR #157 réussi, scénario carburant enrichi inclus.
 - La protection de branche n'a pas pu être vérifiée : l'intégration GitHub répond `403 Resource not accessible by integration` sur cette ressource.
 
 ## Périmètre confirmé par le code
@@ -23,6 +22,7 @@ Les constats proviennent du code, des migrations, des tests et des workflows ex�
 | Atelier et maintenance préventive | Opérationnel avec compléments métier | ordres, mécaniciens, main-d'œuvre, échéances, compteurs ; coûts pièces/MTBF/MTTR incomplets |
 | Carburant et achats | Avancé côté backend et UI principale | cuves, réservations, double validation, inventaires, fournisseurs, commandes, livraisons partielles, alertes, pompes et rapprochements |
 | GPS temps réel | Socle opérationnel | téléphone, traceur authentifié, position courante et carte ; fournisseur réel, géofencing et historique avancé absents |
+| Mode réseau dégradé | En cours | shell PWA et indicateur réseau dans `feature/offline-app-shell` ; cache métier, idempotence et synchronisation des écritures absents |
 | Pièces, magasins et pneus | Non complet | pas de véritable stock/mouvement/traçabilité ; notes libres seulement dans l'atelier |
 | HSE | Non complet | rôles et quelques motifs, sans inspections/incidents/actions correctives structurés |
 | Rentabilité et coût par équipement | Partiel | données opérationnelles disponibles, agrégation comptable insuffisante |
@@ -33,6 +33,8 @@ Le noyau MVP est robuste, mais le dépôt ne prouve pas qu'un environnement pilo
 
 ## Chantier actif
 
-`feature/audit-contract-quality-gate` : régénération déterministe des types OpenAPI, contrôle de dérive en CI et mise à jour des documents d'audit. Ce chantier ne modifie ni schéma de base de données ni règle d'autorisation.
+`feature/offline-app-shell` : première tranche adaptée aux réseaux faibles — manifeste installable, cache statique,
+indicateur de connectivité et limites affichées. Les réponses API ne sont pas mises en cache et les mutations ne
+sont pas rejouées tant que l'idempotence serveur, le cloisonnement local et la résolution des conflits ne sont pas livrés.
 
 Les présents documents d'audit constituent la référence au commit audité ; les audits antérieurs éventuels restent des photographies historiques.

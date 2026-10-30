@@ -1,0 +1,19 @@
+{
+  "name": "MINEFLEET 360",
+  "short_name": "MINEFLEET",
+  "description": "Gestion intégrée des flottes et opérations minières",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#eef4fa",
+  "theme_color": "#0d283b",
+  "icons": [
+    {
+      "src": "/assets/minefleet-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Roadmap exécutable
 
-Référence : audit du 30 octobre 2026 sur `main@3c4bb02`. Chaque chantier doit rester dans une PR `feature/...`, avec tests, risques, critères d'acceptation et validation humaine avant fusion.
+Référence actualisée : 30 octobre 2026 sur `main@be9fc8c`. Chaque chantier doit rester dans une PR `feature/...`, avec tests, risques, critères d'acceptation et validation humaine avant fusion.
 
 ## P0 — sécurité et fiabilité
 
@@ -40,6 +40,17 @@ Référence : audit du 30 octobre 2026 sur `main@3c4bb02`. Chaque chantier doit 
 - Atelier, mécaniciens et maintenance préventive : socle avancé livré.
 - Carburant : cuves, réceptions, réservations, double validation, inventaires, alertes, consommation, fournisseurs, achats, livraisons partielles, pompes et rapprochements backend livrés.
 - GPS : téléphone, traceur authentifié, position courante et carte livrés ; intégration fournisseur/géofencing à faire.
+- Réseau faible : socle PWA statique en cours ; aucune écriture métier n'est encore annoncée comme synchronisable.
+
+## Plan incrémental réseau faible
+
+| Lot | Portée | Garde-fous / critère de sortie |
+|---:|---|---|
+| 1 | PWA installable, shell statique, état réseau | aucune réponse `/api/` en cache ; build, tests unitaires et smoke navigateur |
+| 2 | Idempotence serveur générique | clé liée au tenant/utilisateur et hash du corps ; rejeu identique sans double effet ; contenu différent rejeté |
+| 3 | Cache de lecture minimal | IndexedDB cloisonné et purgé à la déconnexion ; aucun jeton ni donnée d'un autre compte |
+| 4 | Outbox d'un premier parcours terrain append-only | états local/synchronisé/rejeté visibles ; reprise FIFO ; erreurs 401/403/409/422 explicites |
+| 5 | Extension contrôlée aux missions, pannes et constats | tests hors ligne/reconnexion/conflit par parcours et validation sur appareils terrain réels |
 
 ## Definition of Done
 
