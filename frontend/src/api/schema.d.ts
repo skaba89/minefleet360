@@ -1095,6 +1095,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/part-reservations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reserve Part */
+        post: operations["reserve_part_api_v1_part_reservations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/part-stores": {
         parameters: {
             query?: never;
@@ -4427,6 +4444,57 @@ export interface components {
              * Format: uuid
              */
             spare_part_store_id: string;
+        };
+        /** PartReservationIn */
+        PartReservationIn: {
+            /** Quantity */
+            quantity: number | string;
+            /** Reference */
+            reference: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
+            /**
+             * Work Order Id
+             * Format: uuid
+             */
+            work_order_id: string;
+        };
+        /** PartReservationOut */
+        PartReservationOut: {
+            /** Quantity */
+            quantity: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /**
+             * Spare Part Reservation Id
+             * Format: uuid
+             */
+            spare_part_reservation_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
+            /** Status */
+            status: string;
+            /**
+             * Work Order Id
+             * Format: uuid
+             */
+            work_order_id: string;
         };
         /** PhonePointIn */
         PhonePointIn: {
@@ -8570,6 +8638,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartReceiptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reserve_part_api_v1_part_reservations_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartReservationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartReservationOut"];
                 };
             };
             /** @description Validation Error */
