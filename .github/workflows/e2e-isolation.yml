@@ -35,7 +35,7 @@ jobs:
       MF_MFA_ENFORCEMENT: "off"
       MF_MAIL_BACKEND: capture
       MF_MAIL_CAPTURE_DIR: /tmp/minefleet-e2e-mail
-      MF_E2E_ACCOUNTS: ${{ runner.temp }}/minefleet-e2e-accounts.txt
+      MF_E2E_ACCOUNTS: /tmp/minefleet-e2e-accounts.txt
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
