@@ -1,22 +1,24 @@
 """Consultation des références et magasins de pièces, limitée au tenant et au site."""
 
 import uuid
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.errors import AppError
 from app.core.http import Page, Pagination, StrictModel
-from app.maintenance.parts_models import SparePart, SparePartBalance, SparePartStore
+from app.maintenance.parts_models import SparePart, SparePartBalance, SparePartMovement, SparePartStore
 
 router = APIRouter(tags=["pieces"], route_class=SecuredRoute)
 Read = Annotated[Authorized, Depends(Require("maintenance.parts.read"))]
 Manage = Annotated[Authorized, Depends(Require("maintenance.parts.manage"))]
+Receive = Annotated[Authorized, Depends(Require("maintenance.parts.receive"))]
 
 
 class PartOut(BaseModel):
@@ -87,6 +89,86 @@ def create_part_store(body: StoreCreate, auth: Manage) -> StoreOut:
         auth.db.rollback()
         raise AppError("CONFLICT") from None
     output = StoreOut.model_validate(store, from_attributes=True)
+    auth.db.commit()
+    return output
+
+
+class PartReceiptIn(StrictModel):
+    spare_part_store_id: uuid.UUID
+    spare_part_id: uuid.UUID
+    quantity: Decimal = Field(gt=0, max_digits=16, decimal_places=3)
+    reference: str = Field(min_length=1, max_length=120)
+
+
+class PartReceiptOut(BaseModel):
+    spare_part_movement_id: uuid.UUID
+    spare_part_store_id: uuid.UUID
+    spare_part_id: uuid.UUID
+    quantity: Decimal
+    reference: str
+
+
+@router.post("/part-movements/receipts", response_model=PartReceiptOut, status_code=status.HTTP_201_CREATED)
+def receive_part(body: PartReceiptIn, auth: Receive) -> PartReceiptOut:
+    store = auth.db.scalar(
+        select(SparePartStore).where(
+            SparePartStore.tenant_id == auth.tenant_id,
+            SparePartStore.spare_part_store_id == body.spare_part_store_id,
+        )
+    )
+    if store is None or not auth.scope.covers_site(store.site_id):
+        raise AppError("REFERENCE_NOT_FOUND")
+    part = auth.db.scalar(
+        select(SparePart).where(
+            SparePart.tenant_id == auth.tenant_id,
+            SparePart.spare_part_id == body.spare_part_id,
+        )
+    )
+    if part is None:
+        raise AppError("REFERENCE_NOT_FOUND")
+    existing = auth.db.scalar(
+        select(SparePartMovement).where(
+            SparePartMovement.tenant_id == auth.tenant_id,
+            SparePartMovement.spare_part_store_id == body.spare_part_store_id,
+            SparePartMovement.reference == body.reference,
+        )
+    )
+    if existing is not None:
+        raise AppError("CONFLICT")
+    try:
+        # UPSERT atomique : les réceptions concurrentes additionnent leurs quantités.
+        auth.db.execute(
+            text(
+                "INSERT INTO spare_part_balance "
+                "(tenant_id, site_id, spare_part_store_id, spare_part_id, on_hand) "
+                "VALUES (:tenant_id, :site_id, :store_id, :part_id, :quantity) "
+                "ON CONFLICT (tenant_id, spare_part_store_id, spare_part_id) "
+                "DO UPDATE SET on_hand = spare_part_balance.on_hand + EXCLUDED.on_hand"
+            ),
+            {
+                "tenant_id": auth.tenant_id,
+                "site_id": store.site_id,
+                "store_id": body.spare_part_store_id,
+                "part_id": body.spare_part_id,
+                "quantity": body.quantity,
+            },
+        )
+        movement = SparePartMovement(
+            tenant_id=auth.tenant_id,
+            site_id=store.site_id,
+            spare_part_store_id=body.spare_part_store_id,
+            spare_part_id=body.spare_part_id,
+            movement_type="RECEIPT",
+            quantity=body.quantity,
+            reference=body.reference,
+            recorded_by=auth.user_id,
+        )
+        auth.db.add(movement)
+        auth.db.flush()
+    except IntegrityError:
+        auth.db.rollback()
+        raise AppError("CONFLICT") from None
+    output = PartReceiptOut.model_validate(movement, from_attributes=True)
     auth.db.commit()
     return output
 
