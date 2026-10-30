@@ -17,6 +17,10 @@ type MeterKind = NonNullable<FuelIssue["meter_kind"]>;
 type FuelStocktake = Schemas["FuelStocktakeOut"];
 type FuelStockAlert = Schemas["FuelStockAlertOut"];
 type Consumption = Schemas["FuelConsumptionOut"];
+type FuelSupplier = Schemas["FuelSupplierOut"];
+type FuelPurchase = Schemas["FuelPurchaseOrderOut"];
+type PurchaseStatus = FuelPurchase["status"];
+type Currency = Schemas["PurchaseCreate"]["currency"];
 const PAGE_SIZE = 50;
 const FUEL_TYPES: Record<FuelType, string> = { DIESEL: "Gazole", PETROL: "Essence" };
 const METER_KINDS: Record<MeterKind, string> = { ODOMETER: "Kilométrique (km)", HOUR_METER: "Horaire (h)" };
@@ -41,6 +45,27 @@ const ISSUE_TONE: Record<FuelIssue["status"], "ok" | "warn" | "bad" | "neutral">
   APPROVED: "ok",
   REJECTED: "bad",
 };
+const PURCHASE_STATUS: Record<PurchaseStatus, string> = {
+  PENDING_APPROVAL: "À approuver",
+  REJECTED: "Refusée",
+  APPROVED: "Approuvée",
+  PARTIALLY_RECEIVED: "Livraison partielle",
+  RECEIVED: "Réceptionnée",
+};
+const PURCHASE_TONE: Record<PurchaseStatus, "ok" | "warn" | "bad" | "neutral"> = {
+  PENDING_APPROVAL: "warn",
+  REJECTED: "bad",
+  APPROVED: "ok",
+  PARTIALLY_RECEIVED: "warn",
+  RECEIVED: "neutral",
+};
+const PURCHASE_REJECT_REASONS = {
+  BUDGET: "Budget non validé",
+  SUPPLIER: "Fournisseur à revoir",
+  QUANTITY: "Quantité à revoir",
+  OTHER: "Autre motif",
+};
+const CURRENCIES = { GNF: "GNF", USD: "USD", EUR: "EUR" };
 
 export function FuelPage() {
   const me = useMe();
@@ -52,11 +77,16 @@ export function FuelPage() {
   const [vehicleId, setVehicleId] = useState("");
   const [consumptionMeter, setConsumptionMeter] = useState<"" | MeterKind>("");
   const [stocktakePage, setStocktakePage] = useState(1);
+  const [purchasePage, setPurchasePage] = useState(1);
+  const [purchaseStatus, setPurchaseStatus] = useState("");
   const [issueStatus, setIssueStatus] = useState("");
-  const [panel, setPanel] = useState<"tank" | "receipt" | "issue" | "stocktake" | "threshold" | null>(null);
+  const [panel, setPanel] = useState<"tank" | "receipt" | "issue" | "stocktake" | "threshold" | "supplier" | "purchase" | "purchase-receipt" | null>(null);
   const [selectedTankId, setSelectedTankId] = useState("");
   const [rejectingIssue, setRejectingIssue] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState<"WRONG_VEHICLE" | "INVALID_QUANTITY" | "OTHER">("OTHER");
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState("");
+  const [rejectingPurchase, setRejectingPurchase] = useState<string | null>(null);
+  const [purchaseRejectReason, setPurchaseRejectReason] = useState<keyof typeof PURCHASE_REJECT_REASONS>("OTHER");
   const [error, setError] = useState<unknown>(null);
   const canRead = can(me.grants, "fuel.stock.read", siteId);
   const canManage = can(me.grants, "fuel.stock.manage", siteId);
@@ -66,6 +96,11 @@ export function FuelPage() {
   const canStocktake = can(me.grants, "fuel.stocktake.record", siteId);
   const canThreshold = can(me.grants, "fuel.stock.threshold", siteId);
   const canAcknowledgeAlert = can(me.grants, "fuel.alert.acknowledge", siteId);
+  const canReadPurchases = can(me.grants, "fuel.purchase.read", siteId);
+  const canManageSuppliers = can(me.grants, "fuel.supplier.manage", siteId);
+  const canCreatePurchase = can(me.grants, "fuel.purchase.create", siteId);
+  const canDecidePurchase = can(me.grants, "fuel.purchase.decide", siteId);
+  const canReceivePurchase = can(me.grants, "fuel.purchase.receive", siteId);
   const tanks = useQuery({
     queryKey: ["fuel-tanks", siteId, tankPage],
     enabled: canRead,
@@ -94,6 +129,16 @@ export function FuelPage() {
     enabled: canRead,
     queryFn: () => read("/fuel/alerts", { query: { site_id: siteId, active_only: true, page: 1, page_size: 50 } }),
   });
+  const suppliers = useQuery({
+    queryKey: ["fuel-suppliers", siteId],
+    enabled: canReadPurchases,
+    queryFn: () => read("/fuel/suppliers", { query: { site_id: siteId, page: 1, page_size: 200 } }),
+  });
+  const purchases = useQuery({
+    queryKey: ["fuel-purchases", siteId, purchasePage, purchaseStatus],
+    enabled: canReadPurchases,
+    queryFn: () => read("/fuel/purchases", { query: { site_id: siteId, status: (purchaseStatus || null) as PurchaseStatus | null, page: purchasePage, page_size: PAGE_SIZE } }),
+  });
   const vehicles = useQuery({
     queryKey: ["fuel-consumption-vehicles", siteId],
     enabled: canRead,
@@ -110,6 +155,8 @@ export function FuelPage() {
   const sitesById = new Map(sites.map((site) => [site.site_id, site.code]));
   const tankItems = tanks.data?.items ?? [];
   const issueItems = issues.data?.items ?? [];
+  const supplierItems = suppliers.data?.items ?? [];
+  const purchaseItems = purchases.data?.items ?? [];
   const refresh = async () => {
     setPanel(null);
     setError(null);
@@ -118,7 +165,22 @@ export function FuelPage() {
       queryClient.invalidateQueries({ queryKey: ["fuel-issues"] }),
       queryClient.invalidateQueries({ queryKey: ["fuel-stocktakes"] }),
       queryClient.invalidateQueries({ queryKey: ["fuel-stock-alerts"] }),
+      queryClient.invalidateQueries({ queryKey: ["fuel-suppliers"] }),
+      queryClient.invalidateQueries({ queryKey: ["fuel-purchases"] }),
     ]);
+  };
+  const decidePurchase = async (purchase: FuelPurchase, decision: "APPROVED" | "REJECTED", reasonCode?: keyof typeof PURCHASE_REJECT_REASONS) => {
+    setError(null);
+    try {
+      await call("post", "/fuel/purchases/{fuel_purchase_order_id}/decision", {
+        path: { fuel_purchase_order_id: purchase.fuel_purchase_order_id },
+        body: { decision, reason_code: decision === "REJECTED" ? reasonCode ?? "OTHER" : null },
+      });
+      setRejectingPurchase(null);
+      await refresh();
+    } catch (err) {
+      setError(err);
+    }
   };
   const acknowledgeAlert = async (alert: FuelStockAlert) => {
     setError(null);
@@ -145,7 +207,7 @@ export function FuelPage() {
     }
   };
 
-  if (!canRead && !canManage && !canReceive && !canRequest && !canDecide && !canStocktake && !canThreshold) {
+  if (!canRead && !canManage && !canReceive && !canRequest && !canDecide && !canStocktake && !canThreshold && !canReadPurchases && !canManageSuppliers && !canCreatePurchase && !canDecidePurchase && !canReceivePurchase) {
     return <p>Vous n'avez pas accès à la gestion du carburant.</p>;
   }
   return (
@@ -162,6 +224,8 @@ export function FuelPage() {
         {canReceive && tankItems.length > 0 && <button type="button" onClick={() => setPanel("receipt")}>Enregistrer une réception</button>}
         {canRequest && tankItems.length > 0 && <button type="button" onClick={() => setPanel("issue")}>Demander un ravitaillement</button>}
         {canStocktake && tankItems.length > 0 && <button type="button" onClick={() => setPanel("stocktake")}>Faire un inventaire</button>}
+        {canManageSuppliers && <button type="button" onClick={() => setPanel("supplier")}>Nouveau fournisseur</button>}
+        {canCreatePurchase && tankItems.length > 0 && supplierItems.length > 0 && <button type="button" onClick={() => setPanel("purchase")}>Nouvelle commande</button>}
       </div>
       {error !== null && <ErrorMessage error={error} />}
       {panel === "tank" && <TankForm siteId={siteId} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
@@ -169,6 +233,9 @@ export function FuelPage() {
       {panel === "issue" && <IssueForm siteId={siteId} tanks={tankItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "stocktake" && <StocktakeForm tanks={tankItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "threshold" && <ThresholdForm tanks={tankItems} tankId={selectedTankId} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
+      {panel === "supplier" && <SupplierForm siteId={siteId} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
+      {panel === "purchase" && <PurchaseForm tanks={tankItems} suppliers={supplierItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
+      {panel === "purchase-receipt" && <PurchaseReceiptForm purchase={purchaseItems.find((item) => item.fuel_purchase_order_id === selectedPurchaseId)} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
 
       <div className="card">
         <div className="page-head"><div><h2>Alertes de stock bas</h2><p className="muted">Une alerte reste active jusqu'au retour de la cuve au-dessus de son seuil.</p></div>
@@ -184,6 +251,29 @@ export function FuelPage() {
           </table>
         </DataState>
       </div>
+
+      {canReadPurchases && <div className="card">
+        <div className="page-head"><div><h2>Achats de carburant</h2><p className="muted">Commandes fournisseurs approuvées séparément avant leur réception en cuve.</p></div>
+          <label>Statut<select value={purchaseStatus} onChange={(e) => { setPurchaseStatus(e.target.value); setPurchasePage(1); }}><Options map={PURCHASE_STATUS} empty="Tous" /></select></label>
+        </div>
+        <DataState loading={purchases.isLoading} error={purchases.error} empty={purchaseItems.length === 0} emptyText="Aucune commande fournisseur pour ce périmètre.">
+          <table><thead><tr><th>Date</th><th>Référence</th><th>Fournisseur</th><th>Cuve</th><th>Commandé</th><th>Reçu</th><th>Montant</th><th>État</th><th>Actions</th></tr></thead>
+            <tbody>{purchaseItems.map((purchase) => <tr key={purchase.fuel_purchase_order_id}>
+              <td>{formatDateTime(purchase.ordered_at, timezoneOf(purchase.site_id))}</td><td>{purchase.reference}</td><td>{purchase.supplier_name}</td><td>{purchase.tank_code}</td>
+              <td>{liters(purchase.quantity_liters)}</td><td>{liters(purchase.received_liters)}</td><td>{money(purchase.total_amount, purchase.currency)}</td>
+              <td><Badge tone={PURCHASE_TONE[purchase.status]}>{PURCHASE_STATUS[purchase.status]}</Badge></td>
+              <td><div className="actions">
+                {canDecidePurchase && purchase.status === "PENDING_APPROVAL" && purchase.created_by !== me.user_account_id && <>
+                  <button type="button" onClick={() => void decidePurchase(purchase, "APPROVED")}>Approuver</button>
+                  {rejectingPurchase === purchase.fuel_purchase_order_id ? <><select aria-label="Motif du refus de commande" value={purchaseRejectReason} onChange={(e) => setPurchaseRejectReason(e.target.value as keyof typeof PURCHASE_REJECT_REASONS)}><Options map={PURCHASE_REJECT_REASONS} /></select><button type="button" className="danger" onClick={() => void decidePurchase(purchase, "REJECTED", purchaseRejectReason)}>Confirmer</button><button type="button" onClick={() => setRejectingPurchase(null)}>Annuler</button></> : <button type="button" className="danger" onClick={() => setRejectingPurchase(purchase.fuel_purchase_order_id)}>Refuser</button>}
+                </>}
+                {canReceivePurchase && (purchase.status === "APPROVED" || purchase.status === "PARTIALLY_RECEIVED") && <button type="button" onClick={() => { setSelectedPurchaseId(purchase.fuel_purchase_order_id); setPanel("purchase-receipt"); }}>Réceptionner</button>}
+              </div></td>
+            </tr>)}</tbody>
+          </table>
+          <Pager page={purchasePage} pageSize={PAGE_SIZE} total={purchases.data?.total ?? 0} onPage={setPurchasePage} />
+        </DataState>
+      </div>}
 
       <div className="card">
         <h2>Stocks disponibles</h2>
@@ -265,6 +355,65 @@ export function FuelPage() {
       <p className="muted small">Les demandes en attente réservent le stock. Une autre personne doit les approuver ; l'approbation enregistre la sortie au journal. Les relevés GPS ne remplacent pas une mesure de carburant.</p>
     </section>
   );
+}
+
+function SupplierForm({ siteId, onCancel, onDone }: { siteId: string | null; onCancel: () => void; onDone: () => void }) {
+  const { sites } = useSites();
+  const [site, setSite] = useState(siteId ?? sites[0]?.site_id ?? "");
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  return <ActionForm title="Créer un fournisseur de carburant" submitLabel="Créer le fournisseur" onCancel={onCancel} onDone={onDone} onSubmit={() => call("post", "/fuel/suppliers", { body: { site_id: site, code: code.trim(), name: name.trim() } })}>
+    <label>Site<select required value={site} onChange={(e) => setSite(e.target.value)}><option value="">Choisir un site</option>{sites.map((item) => <option key={item.site_id} value={item.site_id}>{item.code} — {item.name}</option>)}</select></label>
+    <label>Code fournisseur<input required maxLength={32} pattern="[A-Za-z0-9_-]{1,32}" value={code} onChange={(e) => setCode(e.target.value)} /></label>
+    <label>Raison sociale<input required minLength={2} maxLength={120} value={name} onChange={(e) => setName(e.target.value)} /></label>
+  </ActionForm>;
+}
+
+function PurchaseForm({ tanks, suppliers, timezoneOf, onCancel, onDone }: { tanks: Tank[]; suppliers: FuelSupplier[]; timezoneOf: (siteId: string | null | undefined) => string; onCancel: () => void; onDone: () => void }) {
+  const [tankId, setTankId] = useState(tanks[0]?.fuel_tank_id ?? "");
+  const tank = tanks.find((item) => item.fuel_tank_id === tankId);
+  const availableSuppliers = suppliers.filter((item) => item.site_id === tank?.site_id);
+  const [supplierId, setSupplierId] = useState("");
+  const [reference, setReference] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [unitPrice, setUnitPrice] = useState("");
+  const [currency, setCurrency] = useState<Currency>("GNF");
+  const [date, setDate] = useState(utcToZonedInput(new Date(), timezoneOf(tank?.site_id)));
+  return <ActionForm title="Nouvelle commande de carburant" submitLabel="Soumettre la commande" onCancel={onCancel} onDone={onDone} onSubmit={() => call("post", "/fuel/purchases", { body: {
+    fuel_supplier_id: supplierId,
+    fuel_tank_id: tankId,
+    reference: reference.trim(),
+    quantity_liters: Number(quantity),
+    unit_price: Number(unitPrice),
+    currency,
+    ordered_at: zonedInputToUtc(date, timezoneOf(tank?.site_id)).toISOString(),
+  } })}>
+    <label>Cuve destinataire<select required value={tankId} onChange={(e) => { setTankId(e.target.value); setSupplierId(""); }}>{tanks.map((item) => <option key={item.fuel_tank_id} value={item.fuel_tank_id}>{item.code} · {FUEL_TYPES[item.fuel_type]}</option>)}</select></label>
+    <label>Fournisseur<select required value={supplierId} onChange={(e) => setSupplierId(e.target.value)}><option value="">Choisir un fournisseur du site</option>{availableSuppliers.map((item) => <option key={item.fuel_supplier_id} value={item.fuel_supplier_id}>{item.code} — {item.name}</option>)}</select></label>
+    <label>Référence de commande<input required maxLength={60} value={reference} onChange={(e) => setReference(e.target.value)} /></label>
+    <label>Quantité commandée (L)<input required type="number" min="0.001" max="2000000" step="0.001" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></label>
+    <label>Prix unitaire<input required type="number" min="0.01" step="0.01" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} /></label>
+    <label>Devise<select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}><Options map={CURRENCIES} /></select></label>
+    <label>Date de commande<input required type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+    <p className="muted small">Une autre personne devra approuver la commande avant toute réception.</p>
+  </ActionForm>;
+}
+
+function PurchaseReceiptForm({ purchase, timezoneOf, onCancel, onDone }: { purchase: FuelPurchase | undefined; timezoneOf: (siteId: string | null | undefined) => string; onCancel: () => void; onDone: () => void }) {
+  const [quantity, setQuantity] = useState("");
+  const [reference, setReference] = useState("");
+  const [date, setDate] = useState(utcToZonedInput(new Date(), timezoneOf(purchase?.site_id)));
+  if (!purchase) return null;
+  return <ActionForm title={`Réception — commande ${purchase.reference}`} submitLabel="Enregistrer la réception" onCancel={onCancel} onDone={onDone} onSubmit={() => call("post", "/fuel/purchases/{fuel_purchase_order_id}/receipts", { path: { fuel_purchase_order_id: purchase.fuel_purchase_order_id }, body: {
+    liters: Number(quantity),
+    delivery_reference: reference.trim(),
+    occurred_at: zonedInputToUtc(date, timezoneOf(purchase.site_id)).toISOString(),
+  } })}>
+    <p className="muted">Cuve {purchase.tank_code} · reste à livrer : {liters(purchase.remaining_liters)}.</p>
+    <label>Quantité livrée (L)<input required type="number" min="0.001" max={Number(purchase.remaining_liters)} step="0.001" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></label>
+    <label>Référence du bon de livraison<input required maxLength={60} value={reference} onChange={(e) => setReference(e.target.value)} /></label>
+    <label>Date de réception<input required type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+  </ActionForm>;
 }
 
 function TankForm({ siteId, onCancel, onDone }: { siteId: string | null; onCancel: () => void; onDone: () => void }) {
@@ -373,4 +522,8 @@ function deltaLiters(value: string): string {
 
 function number(value: string): string {
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 3 }).format(Number(value));
+}
+
+function money(value: string, currency: Currency): string {
+  return new Intl.NumberFormat("fr-FR", { style: "currency", currency, maximumFractionDigits: currency === "GNF" ? 0 : 2 }).format(Number(value));
 }

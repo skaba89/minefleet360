@@ -97,6 +97,12 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
         "requested_at": "2026-01-01T10:00:00+00:00",
     },
     ("POST", "/fuel/issues/{fuel_issue_id}/decision"): {"decision": "APPROVED"},
+    ("POST", "/fuel/purchases/{fuel_purchase_order_id}/decision"): {"decision": "APPROVED"},
+    ("POST", "/fuel/purchases/{fuel_purchase_order_id}/receipts"): {
+        "liters": 100,
+        "delivery_reference": "BL-ACHAT-FICTIF-1",
+        "occurred_at": "2026-10-29T10:00:00+00:00",
+    },
     ("POST", "/weighing-tickets/{weighing_ticket_id}/approve"): {},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/void"): {"reason_code": "ENTRY_ERROR"},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/correct"): {

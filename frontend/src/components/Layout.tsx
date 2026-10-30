@@ -40,7 +40,9 @@ export function Layout() {
         can(me.grants, "fuel.stock.manage") ||
         can(me.grants, "fuel.issue.request") ||
         can(me.grants, "fuel.stocktake.record") ||
-        can(me.grants, "fuel.stock.threshold"),
+        can(me.grants, "fuel.stock.threshold") ||
+        can(me.grants, "fuel.purchase.read") ||
+        can(me.grants, "fuel.purchase.create"),
     },
     { to: "/pesees", text: "Pesées", show: can(me.grants, "dispatch.weighing.read") },
     { to: "/indicateurs", text: "Indicateurs", show: can(me.grants, "dispatch.indicators.read") },
