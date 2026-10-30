@@ -1,9 +1,9 @@
 """Traitement des dossiers d'anomalie carburant, strictement limité au tenant et au site."""
 
 import uuid
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, text
 
@@ -18,6 +18,7 @@ router = APIRouter(tags=["carburant"], route_class=SecuredRoute)
 Read = Annotated[Authorized, Depends(Require("fuel.anomaly.read"))]
 Manage = Annotated[Authorized, Depends(Require("fuel.anomaly.manage"))]
 EventType = Literal["ACKNOWLEDGED", "JUSTIFIED", "CLOSED"]
+AnomalyStatus = Literal["OPEN", "ACKNOWLEDGED", "JUSTIFIED", "CLOSED"]
 
 
 class AnomalyOpen(StrictModel):
@@ -37,7 +38,7 @@ class AnomalyCaseOut(BaseModel):
     start_reading_id: uuid.UUID
     end_reading_id: uuid.UUID
     created_by: uuid.UUID
-    status: Literal["OPEN", "ACKNOWLEDGED", "JUSTIFIED", "CLOSED"]
+    status: AnomalyStatus
 
 
 class AnomalyEventOut(BaseModel):
@@ -48,19 +49,7 @@ class AnomalyEventOut(BaseModel):
     actor_user_id: uuid.UUID
 
 
-def _case_output(auth: Authorized, case: FuelPumpAnomalyCase) -> AnomalyCaseOut:
-    last_status = auth.db.scalar(
-        select(FuelPumpAnomalyEvent.event_type)
-        .where(
-            FuelPumpAnomalyEvent.tenant_id == auth.tenant_id,
-            FuelPumpAnomalyEvent.fuel_pump_anomaly_case_id == case.fuel_pump_anomaly_case_id,
-        )
-        .order_by(
-            FuelPumpAnomalyEvent.occurred_at.desc(),
-            FuelPumpAnomalyEvent.fuel_pump_anomaly_event_id.desc(),
-        )
-        .limit(1)
-    )
+def _case_output(case: FuelPumpAnomalyCase, current_status: AnomalyStatus) -> AnomalyCaseOut:
     return AnomalyCaseOut(
         fuel_pump_anomaly_case_id=case.fuel_pump_anomaly_case_id,
         fuel_pump_id=case.fuel_pump_id,
@@ -68,7 +57,7 @@ def _case_output(auth: Authorized, case: FuelPumpAnomalyCase) -> AnomalyCaseOut:
         start_reading_id=case.start_reading_id,
         end_reading_id=case.end_reading_id,
         created_by=case.created_by,
-        status=last_status or "OPEN",
+        status=current_status,
     )
 
 
@@ -155,14 +144,17 @@ def open_anomaly_case(fuel_pump_id: uuid.UUID, body: AnomalyOpen, auth: Manage) 
         entity_id=case.fuel_pump_anomaly_case_id,
         site_id=pump.site_id,
     )
-    output = _case_output(auth, case)
+    output = _case_output(case, "OPEN")
     auth.db.commit()
     return output
 
 
 @router.get("/fuel/anomaly-cases", response_model=Page[AnomalyCaseOut])
 def list_anomaly_cases(
-    auth: Read, page: Pagination, site_id: uuid.UUID | None = None
+    auth: Read,
+    page: Pagination,
+    site_id: uuid.UUID | None = None,
+    status_filter: Annotated[AnomalyStatus | None, Query(alias="status")] = None,
 ) -> Page[AnomalyCaseOut]:
     if site_id is not None and not auth.scope.covers_site(site_id):
         raise AppError("NOT_FOUND")
@@ -171,16 +163,30 @@ def list_anomaly_cases(
         condition.append(FuelPumpAnomalyCase.site_id.in_(auth.scope.site_ids))
     if site_id is not None:
         condition.append(FuelPumpAnomalyCase.site_id == site_id)
-    count = auth.db.scalar(select(func.count()).select_from(FuelPumpAnomalyCase).where(*condition)) or 0
-    cases = auth.db.scalars(
-        select(FuelPumpAnomalyCase)
-        .where(*condition)
-        .order_by(FuelPumpAnomalyCase.created_at.desc())
-        .offset(page.offset)
-        .limit(page.page_size)
+    latest_status = (
+        select(FuelPumpAnomalyEvent.event_type)
+        .where(
+            FuelPumpAnomalyEvent.tenant_id == FuelPumpAnomalyCase.tenant_id,
+            FuelPumpAnomalyEvent.fuel_pump_anomaly_case_id == FuelPumpAnomalyCase.fuel_pump_anomaly_case_id,
+        )
+        .order_by(
+            FuelPumpAnomalyEvent.occurred_at.desc(),
+            FuelPumpAnomalyEvent.fuel_pump_anomaly_event_id.desc(),
+        )
+        .limit(1)
+        .correlate(FuelPumpAnomalyCase)
+        .scalar_subquery()
+    )
+    current_status = func.coalesce(latest_status, "OPEN").label("current_status")
+    query = select(FuelPumpAnomalyCase, current_status).where(*condition)
+    if status_filter is not None:
+        query = query.where(current_status == status_filter)
+    count = auth.db.scalar(select(func.count()).select_from(query.subquery())) or 0
+    rows = auth.db.execute(
+        query.order_by(FuelPumpAnomalyCase.created_at.desc()).offset(page.offset).limit(page.page_size)
     ).all()
     return Page(
-        items=[_case_output(auth, c) for c in cases],
+        items=[_case_output(case, cast(AnomalyStatus, row_status)) for case, row_status in rows],
         total=count,
         page=page.page,
         page_size=page.page_size,

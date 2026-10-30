@@ -6515,6 +6515,7 @@ export interface operations {
         parameters: {
             query?: {
                 site_id?: string | null;
+                status?: ("OPEN" | "ACKNOWLEDGED" | "JUSTIFIED" | "CLOSED") | null;
                 page?: number;
                 page_size?: number | null;
             };
