@@ -603,9 +603,7 @@ def list_part_reservations(
 ) -> Page[PartReservationReadOut]:
     if site_id is not None and not auth.scope.covers_site(site_id):
         raise AppError("NOT_FOUND")
-    if reservation_status is not None and reservation_status not in {
-        "ACTIVE", "RELEASED", "CONSUMED"
-    }:
+    if reservation_status is not None and reservation_status not in {"ACTIVE", "RELEASED", "CONSUMED"}:
         raise AppError("VALIDATION_ERROR")
     stmt = select(SparePartReservation).where(SparePartReservation.tenant_id == auth.tenant_id)
     if not auth.scope.tenant_wide:
