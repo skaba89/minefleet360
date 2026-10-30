@@ -10,7 +10,7 @@ from tests.test_maintenance import _report
 def test_reserve_parts_for_work_order(client: TestClient, api: Api, w: World) -> None:  # noqa: F811
     keeper = api.user(w.t, "STOREKEEPER", "SITE", "S1")
     vehicle = _vehicle(client, w)
-    order_result = _report(client, w, vehicle["vehicle_id"])
+    order_result = _report(client, w, vehicle)
     assert order_result.status_code == 201, order_result.text
     order = order_result.json()
     part = client.post(
