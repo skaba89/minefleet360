@@ -11,11 +11,16 @@ test("le responsable des opérations peut consulter le module carburant", async 
   expect(response.status(), await response.text()).toBe(200);
   const data = await response.json();
   expect(Array.isArray(data.items)).toBeTruthy();
+  const dashboard = await request.get("/api/v1/fuel/dashboard", { headers });
+  expect(dashboard.status(), await dashboard.text()).toBe(200);
 
   await uiLogin(page, manager);
   await page.getByRole("navigation", { name: "Navigation principale" })
     .getByRole("link", { name: "Carburant" }).click();
   await expect(page).toHaveURL(/\/carburant$/);
+  await expect(page.getByRole("heading", { name: "Indicateurs carburant" })).toBeVisible();
+  await expect(page.getByText("Volumes distribués", { exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: "Tendance quotidienne des volumes distribués et réceptionnés" })).toBeVisible();
 });
 
 test("un utilisateur RH ne peut pas consulter les stocks de carburant", async ({ page, request }) => {

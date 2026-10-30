@@ -9,6 +9,7 @@ import { Icon } from "../components/Icon";
 import { can } from "../lib/permissions";
 import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
 import { useSites } from "../site/SiteContext";
+import { FuelDashboard } from "./FuelDashboard";
 
 type Tank = Schemas["TankOut"];
 type Pump = Schemas["FuelPumpOut"];
@@ -349,6 +350,7 @@ export function FuelPage() {
         </div>
         <Icon name="fuel" />
       </div>
+      <FuelDashboard siteId={siteId} enabled={canRead} />
       <div className="toolbar">
         {canManage && <button type="button" className="primary" onClick={() => setPanel("tank")}>Nouvelle cuve</button>}
         {canManagePumps && tankItems.length > 0 && <button type="button" onClick={() => setPanel("pump")}>Nouvelle pompe</button>}
