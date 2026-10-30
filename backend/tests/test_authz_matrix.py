@@ -21,6 +21,14 @@ from tests.conftest import API, Api, TenantFixture
 MATRIX = load_matrix()
 PARAM = re.compile(r"\{(\w+)\}")
 SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
+    ("POST", "/fuel/pumps/{fuel_pump_id}/anomaly-cases"): {
+        "start_reading_id": "00000000-0000-4000-8000-000000000011",
+        "end_reading_id": "00000000-0000-4000-8000-000000000012",
+    },
+    ("POST", "/fuel/anomaly-cases/{fuel_pump_anomaly_case_id}/events"): {
+        "event_type": "ACKNOWLEDGED",
+        "justification": "Contrôle documentaire requis",
+    },
     ("POST", "/vehicles/{vehicle_id}/gps/tracker"): {"device_id": "gps-test"},
     ("POST", "/drivers/{driver_id}/gps-account"): {"user_account_id": None},
     ("POST", "/me/gps/shares/{share_id}/positions"): {
@@ -268,6 +276,26 @@ def world(api: Api, client: TestClient) -> World:
         },
     )
     assert fuel_pump.status_code == 201, fuel_pump.text
+    readings = []
+    for number, minutes in ((100, 10), (120, 5)):
+        response = client.post(
+            f"{API}/fuel/pumps/{fuel_pump.json()['fuel_pump_id']}/meter-readings",
+            headers=a.admin.headers,
+            json={
+                "cumulative_liters": number,
+                "measured_at": (datetime.now(UTC) - timedelta(minutes=minutes)).isoformat(),
+                "source": "MANUAL",
+                "source_reference": f"RBAC-READ-{number}",
+            },
+        )
+        assert response.status_code == 201, response.text
+        readings.append(response.json()["fuel_pump_meter_reading_id"])
+    anomaly = client.post(
+        f"{API}/fuel/pumps/{fuel_pump.json()['fuel_pump_id']}/anomaly-cases",
+        headers=a.admin.headers,
+        json={"start_reading_id": readings[0], "end_reading_id": readings[1]},
+    )
+    assert anomaly.status_code == 201, anomaly.text
     objects = {
         "work_order_id": uuid.UUID(work_order.json()["work_order_id"]),
         "vehicle_document_id": uuid.UUID(document.json()["vehicle_document_id"]),
@@ -288,6 +316,7 @@ def world(api: Api, client: TestClient) -> World:
         "tenant_id": a.tenant_id,
         "fuel_tank_id": uuid.UUID(fuel_tank.json()["fuel_tank_id"]),
         "fuel_pump_id": uuid.UUID(fuel_pump.json()["fuel_pump_id"]),
+        "fuel_pump_anomaly_case_id": uuid.UUID(anomaly.json()["fuel_pump_anomaly_case_id"]),
     }
     return World(a, b, personas, b_personas, objects)
 
