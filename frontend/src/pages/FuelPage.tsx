@@ -79,6 +79,7 @@ export function FuelPage() {
   const [selectedPumpId, setSelectedPumpId] = useState("");
   const [selectedAnomalyCaseId, setSelectedAnomalyCaseId] = useState("");
   const [anomalyCasePage, setAnomalyCasePage] = useState(1);
+  const [anomalyStatusFilter, setAnomalyStatusFilter] = useState("ALL");
   const [anomalyEventPage, setAnomalyEventPage] = useState(1);
   const [anomalyJustification, setAnomalyJustification] = useState("");
   const [anomalySaving, setAnomalySaving] = useState(false);
@@ -358,15 +359,20 @@ export function FuelPage() {
 
       {canReadAnomalies && <div className="card">
         <div className="page-head"><div><h2>Dossiers d’anomalies des pompes</h2><p className="muted">Dossiers et événements tracés par les responsables habilités.</p></div></div>
+        <label>Statut sur cette page<select aria-label="Filtrer les dossiers par statut sur la page" value={anomalyStatusFilter} onChange={(event) => setAnomalyStatusFilter(event.target.value)}>
+          <option value="ALL">Tous les statuts</option><option value="OPEN">Ouverts</option><option value="ACKNOWLEDGED">Pris en charge</option><option value="JUSTIFIED">Justifiés</option><option value="CLOSED">Clôturés</option>
+        </select></label>
         <DataState loading={anomalyCases.isLoading} error={anomalyCases.error} empty={(anomalyCases.data?.items.length ?? 0) === 0} emptyText="Aucun dossier d’anomalie enregistré.">
-          <table><thead><tr><th>Pompe</th><th>Intervalle de relevés</th><th>Créateur</th><th>Historique</th></tr></thead><tbody>
-            {anomalyCases.data?.items.map((entry: AnomalyCase) => <tr key={entry.fuel_pump_anomaly_case_id}>
+          <table><thead><tr><th>Pompe</th><th>Statut</th><th>Intervalle de relevés</th><th>Créateur</th><th>Historique</th></tr></thead><tbody>
+            {anomalyCases.data?.items.filter((entry: AnomalyCase) => anomalyStatusFilter === "ALL" || entry.status === anomalyStatusFilter).map((entry: AnomalyCase) => <tr key={entry.fuel_pump_anomaly_case_id}>
               <td>{pumps.data?.items.find((pump: Pump) => pump.fuel_pump_id === entry.fuel_pump_id)?.code ?? entry.fuel_pump_id.slice(0, 8)}</td>
+              <td>{entry.status === "OPEN" ? "Ouvert" : entry.status === "ACKNOWLEDGED" ? "Pris en charge" : entry.status === "JUSTIFIED" ? "Justifié" : "Clôturé"}</td>
               <td title={entry.start_reading_id + " → " + entry.end_reading_id}>{entry.start_reading_id.slice(0, 8)} → {entry.end_reading_id.slice(0, 8)}</td>
               <td title={entry.created_by}>{entry.created_by.slice(0, 8)}</td>
               <td><button type="button" onClick={() => { setSelectedAnomalyCaseId(entry.fuel_pump_anomaly_case_id); setAnomalyEventPage(1); setAnomalyJustification(""); }}>Consulter</button></td>
             </tr>)}
           </tbody></table>
+          <p className="muted">Filtre appliqué aux dossiers de cette page uniquement. La pagination conserve le total de tous les statuts.</p>
           <Pager page={anomalyCasePage} pageSize={PAGE_SIZE} total={anomalyCases.data?.total ?? 0} onPage={setAnomalyCasePage} />
         </DataState>
         {selectedAnomalyCaseId && <div><h3>Historique du dossier</h3>
