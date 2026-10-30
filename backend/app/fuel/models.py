@@ -25,6 +25,29 @@ class FuelTank(AuditedColumns, Base):
     low_stock_threshold_liters: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
 
 
+class FuelStockAlert(Base):
+    """Cycle d'alerte persistant tant qu'une cuve reste sous son seuil."""
+
+    __tablename__ = "fuel_stock_alert"
+    __mapper_args__ = {"eager_defaults": True}
+
+    fuel_stock_alert_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    fuel_tank_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    threshold_liters: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    balance_liters: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    triggered_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+    acknowledged_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolution_balance_liters: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
+
+
 class FuelIssue(Base):
     """Demande de ravitaillement immuable ; approbation/refus et sortie sont des événements distincts."""
 

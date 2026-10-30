@@ -15,6 +15,7 @@ type FuelIssue = Schemas["FuelIssueOut"];
 type FuelType = Schemas["TankCreate"]["fuel_type"];
 type MeterKind = NonNullable<FuelIssue["meter_kind"]>;
 type FuelStocktake = Schemas["FuelStocktakeOut"];
+type FuelStockAlert = Schemas["FuelStockAlertOut"];
 type Consumption = Schemas["FuelConsumptionOut"];
 const PAGE_SIZE = 50;
 const FUEL_TYPES: Record<FuelType, string> = { DIESEL: "Gazole", PETROL: "Essence" };
@@ -64,6 +65,7 @@ export function FuelPage() {
   const canDecide = can(me.grants, "fuel.issue.decide", siteId);
   const canStocktake = can(me.grants, "fuel.stocktake.record", siteId);
   const canThreshold = can(me.grants, "fuel.stock.threshold", siteId);
+  const canAcknowledgeAlert = can(me.grants, "fuel.alert.acknowledge", siteId);
   const tanks = useQuery({
     queryKey: ["fuel-tanks", siteId, tankPage],
     enabled: canRead,
@@ -86,6 +88,11 @@ export function FuelPage() {
     queryKey: ["fuel-stocktakes", siteId, stocktakePage],
     enabled: canRead,
     queryFn: () => read("/fuel/stocktakes", { query: { site_id: siteId, page: stocktakePage, page_size: PAGE_SIZE } }),
+  });
+  const alerts = useQuery({
+    queryKey: ["fuel-stock-alerts", siteId],
+    enabled: canRead,
+    queryFn: () => read("/fuel/alerts", { query: { site_id: siteId, active_only: true, page: 1, page_size: 50 } }),
   });
   const vehicles = useQuery({
     queryKey: ["fuel-consumption-vehicles", siteId],
@@ -110,7 +117,19 @@ export function FuelPage() {
       queryClient.invalidateQueries({ queryKey: ["fuel-tanks"] }),
       queryClient.invalidateQueries({ queryKey: ["fuel-issues"] }),
       queryClient.invalidateQueries({ queryKey: ["fuel-stocktakes"] }),
+      queryClient.invalidateQueries({ queryKey: ["fuel-stock-alerts"] }),
     ]);
+  };
+  const acknowledgeAlert = async (alert: FuelStockAlert) => {
+    setError(null);
+    try {
+      await call("post", "/fuel/alerts/{fuel_stock_alert_id}/acknowledge", {
+        path: { fuel_stock_alert_id: alert.fuel_stock_alert_id },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["fuel-stock-alerts"] });
+    } catch (err) {
+      setError(err);
+    }
   };
   const decide = async (issue: FuelIssue, decision: "APPROVED" | "REJECTED", reasonCode?: keyof typeof REJECT_REASONS) => {
     setError(null);
@@ -150,6 +169,21 @@ export function FuelPage() {
       {panel === "issue" && <IssueForm siteId={siteId} tanks={tankItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "stocktake" && <StocktakeForm tanks={tankItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "threshold" && <ThresholdForm tanks={tankItems} tankId={selectedTankId} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
+
+      <div className="card">
+        <div className="page-head"><div><h2>Alertes de stock bas</h2><p className="muted">Une alerte reste active jusqu'au retour de la cuve au-dessus de son seuil.</p></div>
+          {(alerts.data?.total ?? 0) > 0 && <Badge tone="warn">{alerts.data?.total} active{alerts.data?.total === 1 ? "" : "s"}</Badge>}
+        </div>
+        <DataState loading={alerts.isLoading} error={alerts.error} empty={(alerts.data?.items.length ?? 0) === 0} emptyText="Aucune alerte de stock bas active.">
+          <table><thead><tr><th>Déclenchement</th><th>Site</th><th>Cuve</th><th>Carburant</th><th>Stock constaté</th><th>Seuil</th><th>Traitement</th></tr></thead>
+            <tbody>{alerts.data?.items.map((alert: FuelStockAlert) => <tr key={alert.fuel_stock_alert_id}>
+              <td>{formatDateTime(alert.triggered_at, timezoneOf(alert.site_id))}</td><td>{sitesById.get(alert.site_id) ?? "—"}</td><td>{alert.tank_code}</td><td>{FUEL_TYPES[alert.fuel_type]}</td>
+              <td><strong>{liters(alert.balance_liters)}</strong></td><td>{liters(alert.threshold_liters)}</td>
+              <td>{alert.acknowledged_at ? <Badge tone="neutral">Prise en compte</Badge> : canAcknowledgeAlert ? <button type="button" onClick={() => void acknowledgeAlert(alert)}>Prendre en compte</button> : <Badge tone="warn">À traiter</Badge>}</td>
+            </tr>)}</tbody>
+          </table>
+        </DataState>
+      </div>
 
       <div className="card">
         <h2>Stocks disponibles</h2>

@@ -13,6 +13,7 @@ from app.fuel.schemas import (
     FuelConsumptionOut,
     FuelIssueOut,
     FuelReceiptOut,
+    FuelStockAlertOut,
     FuelStocktakeOut,
     IssueCreate,
     MeterKind,
@@ -32,6 +33,7 @@ IssueDecide = Annotated[Authorized, Depends(Require("fuel.issue.decide"))]
 StocktakeRead = Annotated[Authorized, Depends(Require("fuel.stock.read"))]
 StocktakeRecord = Annotated[Authorized, Depends(Require("fuel.stocktake.record"))]
 ThresholdManage = Annotated[Authorized, Depends(Require("fuel.stock.threshold"))]
+AlertAcknowledge = Annotated[Authorized, Depends(Require("fuel.alert.acknowledge"))]
 
 
 @router.get("/fuel/tanks", response_model=Page[TankOut])
@@ -69,6 +71,24 @@ def list_stocktakes(
 ) -> Page[FuelStocktakeOut]:
     items, total = service.list_stocktakes(auth, page, site_id=site_id)
     return Page(items=items, page=page.page, page_size=page.page_size, total=total)
+
+
+@router.get("/fuel/alerts", response_model=Page[FuelStockAlertOut])
+def list_stock_alerts(
+    auth: StockRead,
+    page: Pagination,
+    site_id: uuid.UUID | None = None,
+    active_only: bool = True,
+) -> Page[FuelStockAlertOut]:
+    rows, total = service.list_stock_alerts(auth, page, site_id=site_id, active_only=active_only)
+    items = [FuelStockAlertOut.model_validate(row) for row in rows]
+    return Page(items=items, page=page.page, page_size=page.page_size, total=total)
+
+
+@router.post("/fuel/alerts/{fuel_stock_alert_id}/acknowledge", response_model=FuelStockAlertOut)
+def acknowledge_stock_alert(fuel_stock_alert_id: uuid.UUID, auth: AlertAcknowledge) -> FuelStockAlertOut:
+    alert = service.acknowledge_stock_alert(auth, fuel_stock_alert_id)
+    return FuelStockAlertOut.model_validate(service.stock_alert_output(auth, alert))
 
 
 @router.post(

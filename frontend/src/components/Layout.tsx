@@ -1,6 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router";
 
+import { read } from "../api/client";
 import { useAuth, useMe } from "../auth/AuthContext";
 import { can } from "../lib/permissions";
 import { canAdminister } from "../pages/AdminPages";
@@ -14,6 +16,13 @@ export function Layout() {
   const { sites, siteId, setSiteId } = useSites();
   const [logoutFailed, setLogoutFailed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const canReadFuel = can(me.grants, "fuel.stock.read", siteId);
+  const fuelAlerts = useQuery({
+    queryKey: ["fuel-stock-alerts", siteId],
+    enabled: canReadFuel,
+    queryFn: () => read("/fuel/alerts", { query: { site_id: siteId, active_only: true, page: 1, page_size: 1 } }),
+    refetchInterval: 60_000,
+  });
   const links = [
     { to: "/vehicules", text: "Véhicules", show: can(me.grants, "fleet.vehicle.read") },
     { to: "/flotte-gps", text: "Flotte GPS", show: can(me.grants, "fleet.vehicle.read") },
@@ -56,6 +65,7 @@ export function Layout() {
             ))}
           </select>
         </label>
+        {canReadFuel && <Link className="notification-link" to="/carburant" aria-label={`${fuelAlerts.data?.total ?? 0} alerte(s) de stock carburant`}><Icon name="bell" />{(fuelAlerts.data?.total ?? 0) > 0 && <span>{fuelAlerts.data?.total}</span>}</Link>}
         <div className="user">
           <span className="user-avatar" aria-hidden="true">{me.display_name.slice(0, 1).toUpperCase()}</span>
           <span className="user-name">{me.display_name}<small>Mon espace</small></span>

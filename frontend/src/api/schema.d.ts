@@ -1866,6 +1866,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fuel/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Stock Alerts */
+        get: operations["list_stock_alerts_api_v1_fuel_alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fuel/alerts/{fuel_stock_alert_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge Stock Alert */
+        post: operations["acknowledge_stock_alert_api_v1_fuel_alerts__fuel_stock_alert_id__acknowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fuel/tanks/{fuel_tank_id}/stocktakes": {
         parameters: {
             query?: never;
@@ -2525,6 +2559,48 @@ export interface components {
              * Format: date-time
              */
             recorded_at: string;
+        };
+        /** FuelStockAlertOut */
+        FuelStockAlertOut: {
+            /**
+             * Fuel Stock Alert Id
+             * Format: uuid
+             */
+            fuel_stock_alert_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Fuel Tank Id
+             * Format: uuid
+             */
+            fuel_tank_id: string;
+            /** Tank Code */
+            tank_code: string;
+            /**
+             * Fuel Type
+             * @enum {string}
+             */
+            fuel_type: "DIESEL" | "PETROL";
+            /** Threshold Liters */
+            threshold_liters: string;
+            /** Balance Liters */
+            balance_liters: string;
+            /**
+             * Triggered At
+             * Format: date-time
+             */
+            triggered_at: string;
+            /** Acknowledged By */
+            acknowledged_by: string | null;
+            /** Acknowledged At */
+            acknowledged_at: string | null;
+            /** Resolved At */
+            resolved_at: string | null;
+            /** Resolution Balance Liters */
+            resolution_balance_liters: string | null;
         };
         /** FuelStocktakeOut */
         FuelStocktakeOut: {
@@ -3314,6 +3390,17 @@ export interface components {
         Page_FuelIssueOut_: {
             /** Items */
             items: components["schemas"]["FuelIssueOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[FuelStockAlertOut] */
+        Page_FuelStockAlertOut_: {
+            /** Items */
+            items: components["schemas"]["FuelStockAlertOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -9396,6 +9483,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_FuelStocktakeOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stock_alerts_api_v1_fuel_alerts_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                active_only?: boolean;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_FuelStockAlertOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_stock_alert_api_v1_fuel_alerts__fuel_stock_alert_id__acknowledge_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                fuel_stock_alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuelStockAlertOut"];
                 };
             };
             /** @description Validation Error */

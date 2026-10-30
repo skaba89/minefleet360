@@ -744,6 +744,7 @@ permissions:
       - { method: GET, path: /fuel/tanks, shape: collection, success: 200 }
       - { method: GET, path: /fuel/issues, shape: collection, success: 200 }
       - { method: GET, path: /fuel/stocktakes, shape: collection, success: 200 }
+      - { method: GET, path: /fuel/alerts, shape: collection, success: 200 }
       - { method: GET, path: "/fuel/vehicles/{vehicle_id}/consumption", shape: collection, success: 200 }
     grants:
       TENANT_ADMIN: [TENANT]
@@ -768,6 +769,17 @@ permissions:
     site_bound: true
     routes: [{ method: POST, path: "/fuel/tanks/{fuel_tank_id}/threshold", shape: item, success: 200 }]
     audit: { action: fuel.stock.threshold.update }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
+  fuel.alert.acknowledge:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: "/fuel/alerts/{fuel_stock_alert_id}/acknowledge", shape: item, success: 200 }
+    audit: { action: fuel.stock.alert.acknowledge }
     grants:
       TENANT_ADMIN: [TENANT]
       OPS_MANAGER: [TENANT, SITE]

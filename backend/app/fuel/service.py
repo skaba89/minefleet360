@@ -13,7 +13,14 @@ from app.authz.dependencies import Authorized
 from app.core.errors import AppError
 from app.core.http import PageParams
 from app.fleet.models import Vehicle, VehicleCategory
-from app.fuel.models import FuelIssue, FuelIssueDecision, FuelStockMovement, FuelStocktake, FuelTank
+from app.fuel.models import (
+    FuelIssue,
+    FuelIssueDecision,
+    FuelStockAlert,
+    FuelStockMovement,
+    FuelStocktake,
+    FuelTank,
+)
 from app.fuel.schemas import (
     DecisionCreate,
     IssueCreate,
@@ -28,6 +35,7 @@ Issue = FuelIssue
 Decision = FuelIssueDecision
 Movement = FuelStockMovement
 Tank = FuelTank
+StockAlert = FuelStockAlert
 ZERO = Decimal("0")
 
 
@@ -93,6 +101,39 @@ def _reserved(db: Session, tenant_id: uuid.UUID, tank_id: uuid.UUID) -> Decimal:
     return Decimal(value or ZERO)
 
 
+def _sync_low_stock_alert(auth: Authorized, tank: Tank) -> None:
+    """Ouvre ou clôt le cycle d'alerte sous le même verrou que la cuve."""
+    balance = _balance(auth.db, auth.tenant_id, tank.fuel_tank_id)
+    active = auth.db.scalar(
+        select(StockAlert)
+        .where(
+            StockAlert.tenant_id == auth.tenant_id,
+            StockAlert.fuel_tank_id == tank.fuel_tank_id,
+            StockAlert.resolved_at.is_(None),
+        )
+        .with_for_update()
+    )
+    threshold = tank.low_stock_threshold_liters
+    if threshold is not None and balance <= threshold:
+        if active is None:
+            alert = StockAlert(
+                tenant_id=auth.tenant_id,
+                site_id=tank.site_id,
+                fuel_tank_id=tank.fuel_tank_id,
+                threshold_liters=threshold,
+                balance_liters=balance,
+            )
+            auth.db.add(alert)
+            auth.db.flush()
+            _audit(auth, "fuel.stock.alert.trigger", alert.fuel_stock_alert_id, tank.site_id)
+        return
+    if active is not None:
+        active.resolved_at = auth.clock.now()
+        active.resolution_balance_liters = balance
+        auth.db.flush()
+        _audit(auth, "fuel.stock.alert.resolve", active.fuel_stock_alert_id, tank.site_id)
+
+
 def tank_output(auth: Authorized, tank: Tank) -> dict[str, object]:
     balance = _balance(auth.db, auth.tenant_id, tank.fuel_tank_id)
     reserved = _reserved(auth.db, auth.tenant_id, tank.fuel_tank_id)
@@ -145,6 +186,7 @@ def create_tank(auth: Authorized, body: TankCreate) -> Tank:
     )
     auth.db.add(tank)
     auth.db.flush()
+    _sync_low_stock_alert(auth, tank)
     _audit(auth, "fuel.tank.create", tank.fuel_tank_id, tank.site_id)
     auth.db.commit()
     return tank
@@ -158,6 +200,7 @@ def update_threshold(auth: Authorized, tank_id: uuid.UUID, body: ThresholdUpdate
     tank.low_stock_threshold_liters = threshold
     tank.updated_by = auth.user_id
     auth.db.flush()
+    _sync_low_stock_alert(auth, tank)
     _audit(auth, "fuel.stock.threshold.update", tank.fuel_tank_id, tank.site_id)
     auth.db.commit()
     return tank
@@ -181,6 +224,7 @@ def receive(auth: Authorized, tank_id: uuid.UUID, body: ReceiptCreate) -> Moveme
     )
     auth.db.add(movement)
     auth.db.flush()
+    _sync_low_stock_alert(auth, tank)
     _audit(auth, "fuel.stock.receive", movement.fuel_stock_movement_id, tank.site_id)
     auth.db.commit()
     return movement
@@ -224,6 +268,8 @@ def record_stocktake(auth: Authorized, tank_id: uuid.UUID, body: StocktakeCreate
                 recorded_by=auth.user_id,
             )
         )
+    auth.db.flush()
+    _sync_low_stock_alert(auth, tank)
     _audit(auth, "fuel.stocktake.record", stocktake.fuel_stocktake_id, tank.site_id)
     auth.db.commit()
     return stocktake
@@ -288,6 +334,76 @@ def stocktake_output(auth: Authorized, entry: FuelStocktake) -> dict[str, object
         "occurred_at": entry.occurred_at,
         "recorded_by": entry.recorded_by,
         "recorded_at": entry.recorded_at,
+    }
+
+
+def list_stock_alerts(
+    auth: Authorized,
+    page: PageParams,
+    *,
+    site_id: uuid.UUID | None,
+    active_only: bool,
+) -> tuple[list[dict[str, object]], int]:
+    stmt = (
+        select(StockAlert, Tank.code, Tank.fuel_type)
+        .join(
+            Tank,
+            (Tank.tenant_id == StockAlert.tenant_id) & (Tank.fuel_tank_id == StockAlert.fuel_tank_id),
+        )
+        .where(StockAlert.tenant_id == auth.tenant_id)
+    )
+    if not auth.scope.tenant_wide:
+        stmt = stmt.where(StockAlert.site_id.in_(auth.scope.site_ids))
+    if site_id is not None:
+        stmt = stmt.where(StockAlert.site_id == site_id)
+    if active_only:
+        stmt = stmt.where(StockAlert.resolved_at.is_(None))
+    total = auth.db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    rows = auth.db.execute(
+        stmt.order_by(StockAlert.triggered_at.desc(), StockAlert.fuel_stock_alert_id)
+        .offset(page.offset)
+        .limit(page.page_size)
+    ).all()
+    return [_alert_output(alert, tank_code, fuel_type) for alert, tank_code, fuel_type in rows], total
+
+
+def acknowledge_stock_alert(auth: Authorized, alert_id: uuid.UUID) -> StockAlert:
+    alert = auth.db.scalar(
+        select(StockAlert)
+        .where(StockAlert.tenant_id == auth.tenant_id, StockAlert.fuel_stock_alert_id == alert_id)
+        .with_for_update()
+    )
+    if alert is None or not _in_scope(auth, alert.site_id):
+        raise AppError("NOT_FOUND")
+    if alert.resolved_at is not None or alert.acknowledged_at is not None:
+        raise AppError("CONFLICT")
+    alert.acknowledged_by = auth.user_id
+    alert.acknowledged_at = auth.clock.now()
+    auth.db.flush()
+    _audit(auth, "fuel.stock.alert.acknowledge", alert.fuel_stock_alert_id, alert.site_id)
+    auth.db.commit()
+    return alert
+
+
+def stock_alert_output(auth: Authorized, alert: StockAlert) -> dict[str, object]:
+    tank = _tank(auth, alert.fuel_tank_id)
+    return _alert_output(alert, tank.code, tank.fuel_type)
+
+
+def _alert_output(alert: StockAlert, tank_code: str, fuel_type: str) -> dict[str, object]:
+    return {
+        "fuel_stock_alert_id": alert.fuel_stock_alert_id,
+        "site_id": alert.site_id,
+        "fuel_tank_id": alert.fuel_tank_id,
+        "tank_code": tank_code,
+        "fuel_type": fuel_type,
+        "threshold_liters": alert.threshold_liters,
+        "balance_liters": alert.balance_liters,
+        "triggered_at": alert.triggered_at,
+        "acknowledged_by": alert.acknowledged_by,
+        "acknowledged_at": alert.acknowledged_at,
+        "resolved_at": alert.resolved_at,
+        "resolution_balance_liters": alert.resolution_balance_liters,
     }
 
 
@@ -443,6 +559,8 @@ def decide_issue(auth: Authorized, issue_id: uuid.UUID, body: DecisionCreate) ->
                 recorded_by=auth.user_id,
             )
         )
+        auth.db.flush()
+        _sync_low_stock_alert(auth, tank)
     decision = Decision(
         tenant_id=auth.tenant_id,
         fuel_issue_id=issue.fuel_issue_id,
