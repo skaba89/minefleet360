@@ -95,8 +95,11 @@ def test_reserve_parts_for_work_order(client: TestClient, api: Api, w: World) ->
     assert reservations.status_code == 200, reservations.text
     assert reservations.json()["total"] == 1
     assert reservations.json()["items"][0]["status"] == "CONSUMED"
-    assert client.get(
-        f"{API}/part-reservations",
-        headers=keeper.headers,
-        params={"reservation_status": "INVALID"},
-    ).status_code == 422
+    assert (
+        client.get(
+            f"{API}/part-reservations",
+            headers=keeper.headers,
+            params={"reservation_status": "INVALID"},
+        ).status_code
+        == 422
+    )
