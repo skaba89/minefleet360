@@ -25,6 +25,44 @@ class FuelTank(AuditedColumns, Base):
     low_stock_threshold_liters: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
 
 
+class FuelPump(AuditedColumns, Base):
+    """Pompe rattachée à une seule cuve sur un site."""
+
+    __tablename__ = "fuel_pump"
+    __mapper_args__ = {"eager_defaults": True}
+
+    fuel_pump_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    fuel_tank_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    code: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class FuelPumpMeterReading(Base):
+    """Relevé cumulé immuable du compteur d'une pompe."""
+
+    __tablename__ = "fuel_pump_meter_reading"
+    __mapper_args__ = {"eager_defaults": True}
+
+    fuel_pump_meter_reading_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    fuel_pump_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    cumulative_liters: Mapped[Decimal] = mapped_column(Numeric(16, 3), nullable=False)
+    measured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    source: Mapped[str] = mapped_column(String, nullable=False)
+    source_reference: Mapped[str] = mapped_column(String, nullable=False)
+    recorded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+
 class FuelStockAlert(Base):
     """Cycle d'alerte persistant tant qu'une cuve reste sous son seuil."""
 

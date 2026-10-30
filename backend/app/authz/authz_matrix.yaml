@@ -742,6 +742,8 @@ permissions:
     site_bound: true
     routes:
       - { method: GET, path: /fuel/tanks, shape: collection, success: 200 }
+      - { method: GET, path: /fuel/pumps, shape: collection, success: 200 }
+      - { method: GET, path: "/fuel/pumps/{fuel_pump_id}/meter-readings", shape: collection, success: 200 }
       - { method: GET, path: /fuel/issues, shape: collection, success: 200 }
       - { method: GET, path: /fuel/stocktakes, shape: collection, success: 200 }
       - { method: GET, path: /fuel/alerts, shape: collection, success: 200 }
@@ -759,6 +761,27 @@ permissions:
     site_bound: true
     routes: [{ method: POST, path: /fuel/tanks, shape: collection, success: 201 }]
     audit: { action: fuel.tank.create }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
+  fuel.pump.manage:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /fuel/pumps, shape: collection, success: 201 }]
+    audit: { action: fuel.pump.create }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
+  fuel.meter.record:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes:
+      - { method: POST, path: "/fuel/pumps/{fuel_pump_id}/meter-readings", shape: item, success: 201 }
+    audit: { action: fuel.pump.meter.record }
     grants:
       TENANT_ADMIN: [TENANT]
       OPS_MANAGER: [TENANT, SITE]
