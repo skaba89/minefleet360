@@ -1044,6 +1044,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/part-balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Part Balances */
+        get: operations["list_part_balances_api_v1_part_balances_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/part-stores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Part Stores */
+        get: operations["list_part_stores_api_v1_part_stores_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/parts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Parts */
+        get: operations["list_parts_api_v1_parts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/tenants": {
         parameters: {
             query?: never;
@@ -2423,6 +2474,35 @@ export interface components {
             request_id: string | null;
             /** Site Id */
             site_id: string | null;
+        };
+        /** BalanceOut */
+        BalanceOut: {
+            /** Low Stock Threshold */
+            low_stock_threshold: number;
+            /** On Hand */
+            on_hand: number;
+            /** Reserved */
+            reserved: number;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Spare Part Balance Id
+             * Format: uuid
+             */
+            spare_part_balance_id: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
         };
         /** CategoryDocumentsIn */
         CategoryDocumentsIn: {
@@ -3944,6 +4024,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[BalanceOut] */
+        Page_BalanceOut_: {
+            /** Items */
+            items: components["schemas"]["BalanceOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[DriverOut] */
         Page_DriverOut_: {
             /** Items */
@@ -4087,6 +4178,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[PartOut] */
+        Page_PartOut_: {
+            /** Items */
+            items: components["schemas"]["PartOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[RoleAssignmentOut] */
         Page_RoleAssignmentOut_: {
             /** Items */
@@ -4102,6 +4204,17 @@ export interface components {
         Page_SiteOut_: {
             /** Items */
             items: components["schemas"]["SiteOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[StoreOut] */
+        Page_StoreOut_: {
+            /** Items */
+            items: components["schemas"]["StoreOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -4174,6 +4287,20 @@ export interface components {
             page_size: number;
             /** Total */
             total: number;
+        };
+        /** PartOut */
+        PartOut: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /** Unit */
+            unit: string;
         };
         /** PhonePointIn */
         PhonePointIn: {
@@ -4770,6 +4897,23 @@ export interface components {
             reason_code: "MEASUREMENT" | "LOSS" | "DATA_CORRECTION" | "OTHER";
             /** Reference */
             reference: string;
+        };
+        /** StoreOut */
+        StoreOut: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
         };
         /** SupplierCreate */
         SupplierCreate: {
@@ -8183,6 +8327,110 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MissionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_part_balances_api_v1_part_balances_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_BalanceOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_part_stores_api_v1_part_stores_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_StoreOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_parts_api_v1_parts_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PartOut_"];
                 };
             };
             /** @description Validation Error */

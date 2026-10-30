@@ -507,6 +507,22 @@ permissions:
     audit: { action: vehicle_assignment.end }
     grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
 
+  maintenance.parts.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /parts, shape: collection, success: 200 }
+      - { method: GET, path: /part-stores, shape: collection, success: 200 }
+      - { method: GET, path: /part-balances, shape: collection, success: 200 }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      STOREKEEPER: [TENANT, SITE]
+      AUDITOR: [TENANT]
+
   # --- maintenance (lot 3a, docs/PLAN_LOT3.md §5) ------------------------------------------------------
   maintenance.preventive.manage:
     tranche: later
