@@ -13,7 +13,7 @@ self.addEventListener("install", (event) => {
     const html = await indexResponse.clone().text();
     const generatedAssets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((match) => match[1]);
     await cache.put("/index.html", indexResponse);
-    await cache.addAll([...STATIC_FILES, ...generatedAssets]);
+    await cache.addAll([...new Set([...STATIC_FILES, ...generatedAssets])]);
     await self.skipWaiting();
   })());
 });
