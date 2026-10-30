@@ -71,7 +71,7 @@ test("réception en cuve : le stock augmente et un doublon de référence est re
 test("ravitaillement : réservation, double validation et sortie de stock", async ({ request }) => {
   const workspace = "fictif-minier";
   const manager = await apiLogin(request, account("OPS_MANAGER", workspace));
-  const fuelManager = await apiLogin(request, account("FUEL_MANAGER", workspace));
+  const approver = await apiLogin(request, account("TENANT_ADMIN", workspace));
   const siteId = await dispatcherSite(request, await apiLogin(request, account("DISPATCHER", workspace)));
   const pair = await preparePair(request, workspace, siteId, { eligible: true });
   const vehiclesResponse = await request.get("/api/v1/vehicles", { headers: manager, params: { fleet_number: pair.fleetNumber } });
@@ -107,7 +107,7 @@ test("ravitaillement : réservation, double validation et sortie de stock", asyn
   expect(category).toBeTruthy();
   const meter_kind = category.has_hour_meter ? "HOUR_METER" : category.has_odometer ? "ODOMETER" : null;
   const issueResponse = await request.post("/api/v1/fuel/issues", {
-    headers: fuelManager,
+    headers: manager,
     data: {
       fuel_tank_id: tankId,
       vehicle_id: vehicle.vehicle_id,
@@ -132,9 +132,9 @@ test("ravitaillement : réservation, double validation et sortie de stock", asyn
   expect(Number(pending.available_liters)).toBe(240);
 
   const decisionPath = `/api/v1/fuel/issues/${issueId}/decision`;
-  const selfApproval = await request.post(decisionPath, { headers: fuelManager, data: { decision: "APPROVED" } });
+  const selfApproval = await request.post(decisionPath, { headers: manager, data: { decision: "APPROVED" } });
   expect(selfApproval.status()).toBe(409);
-  const approval = await request.post(decisionPath, { headers: manager, data: { decision: "APPROVED" } });
+  const approval = await request.post(decisionPath, { headers: approver, data: { decision: "APPROVED" } });
   expect(approval.status(), await approval.text()).toBe(200);
   expect((await approval.json()).status).toBe("APPROVED");
 
