@@ -40,9 +40,9 @@ def test_reserve_parts_for_work_order(client: TestClient, api: Api, w: World) ->
         "quantity": "3.000",
         "reference": "OT-DELIVERY",
     }
-    assert client.post(
-        f"{API}/part-movements/receipts", headers=keeper.headers, json=receipt
-    ).status_code == 201
+    assert (
+        client.post(f"{API}/part-movements/receipts", headers=keeper.headers, json=receipt).status_code == 201
+    )
     reserved = client.post(endpoint, headers=keeper.headers, json=data)
     assert reserved.status_code == 201, reserved.text
     assert reserved.json()["status"] == "ACTIVE"
