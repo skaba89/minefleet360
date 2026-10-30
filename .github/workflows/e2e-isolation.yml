@@ -13,7 +13,7 @@ permissions:
 jobs:
   tenant-isolation:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     services:
       db:
         image: postgis/postgis:16-3.4
@@ -96,11 +96,11 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
-      - name: Test cross-tenant assignment isolation in real browser
+      - name: Test assignment lifecycle, eligibility and tenant isolation
         working-directory: frontend
         env:
           MF_API_URL: http://localhost:8000
-        run: npx playwright test --config=playwright.config.ts e2e/affectations.spec.ts --grep "autre société"
+        run: npx playwright test --config=playwright.config.ts e2e/affectations.spec.ts
 
       - name: Remove ephemeral credentials and traces
         if: always()
