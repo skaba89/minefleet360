@@ -589,6 +589,8 @@ permissions:
       - { method: GET, path: /parts, shape: collection, success: 200 }
       - { method: GET, path: /part-stores, shape: collection, success: 200 }
       - { method: GET, path: /part-balances, shape: collection, success: 200 }
+      - { method: GET, path: /part-movements, shape: collection, success: 200 }
+      - { method: GET, path: /part-reservations, shape: collection, success: 200 }
     grants:
       TENANT_ADMIN: [TENANT]
       DIRECTION: [TENANT]
