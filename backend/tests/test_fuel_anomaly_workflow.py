@@ -54,34 +54,51 @@ def test_anomaly_case_workflow_and_tenant_isolation(client: TestClient, api: Api
     assert client.post(case_path, headers=other, json=body).status_code == 409
 
     event_path = f"{API}/fuel/anomaly-cases/{case_id}/events"
-    assert client.post(event_path, headers=other, json={
-        "event_type": "CLOSED", "justification": "Clôture sans traitement"
-    }).status_code == 409
+    assert (
+        client.post(
+            event_path,
+            headers=other,
+            json={"event_type": "CLOSED", "justification": "Clôture sans traitement"},
+        ).status_code
+        == 409
+    )
     assert client.get(f"{API}/fuel/anomaly-cases", headers=outsider.admin.headers).json()["total"] == 0
     assert client.get(event_path, headers=outsider.admin.headers).status_code == 404
-    assert client.post(event_path, headers=outsider.admin.headers, json={
-        "event_type": "ACKNOWLEDGED", "justification": "Contrôle extérieur"
-    }).status_code == 404
+    assert (
+        client.post(
+            event_path,
+            headers=outsider.admin.headers,
+            json={"event_type": "ACKNOWLEDGED", "justification": "Contrôle extérieur"},
+        ).status_code
+        == 404
+    )
 
     for event_type in ("ACKNOWLEDGED", "JUSTIFIED"):
-        response = client.post(event_path, headers=manager.headers, json={
-            "event_type": event_type, "justification": f"Vérification de l'écart : {event_type}"
-        })
+        response = client.post(
+            event_path,
+            headers=manager.headers,
+            json={"event_type": event_type, "justification": f"Vérification de l'écart : {event_type}"},
+        )
         assert response.status_code == 201, response.text
 
-    self_close = client.post(event_path, headers=other, json={
-        "event_type": "CLOSED", "justification": "Clôture par le créateur"
-    })
+    self_close = client.post(
+        event_path, headers=other, json={"event_type": "CLOSED", "justification": "Clôture par le créateur"}
+    )
     assert self_close.status_code == 409, self_close.text
-    closed = client.post(event_path, headers=manager.headers, json={
-        "event_type": "CLOSED", "justification": "Vérification terminée et documentée"
-    })
+    closed = client.post(
+        event_path,
+        headers=manager.headers,
+        json={"event_type": "CLOSED", "justification": "Vérification terminée et documentée"},
+    )
     assert closed.status_code == 201, closed.text
-    assert client.post(event_path, headers=manager.headers, json={
-        "event_type": "CLOSED", "justification": "Clôture répétée interdite"
-    }).status_code == 409
+    assert (
+        client.post(
+            event_path,
+            headers=manager.headers,
+            json={"event_type": "CLOSED", "justification": "Clôture répétée interdite"},
+        ).status_code
+        == 409
+    )
     history = client.get(event_path, headers=other)
     assert history.status_code == 200, history.text
-    assert [item["event_type"] for item in history.json()["items"]] == [
-        "ACKNOWLEDGED", "JUSTIFIED", "CLOSED"
-    ]
+    assert [item["event_type"] for item in history.json()["items"]] == ["ACKNOWLEDGED", "JUSTIFIED", "CLOSED"]
