@@ -18,7 +18,7 @@
 
 ## Périmètre et suites
 
-Les cuves acceptent un seuil bas facultatif. Quand le solde atteint ce seuil, l'interface affiche un état « Stock bas » ; l'alerte est visible dans la liste des cuves et n'envoie pas encore de notification.
+Les cuves acceptent un seuil bas facultatif. Quand le solde atteint ce seuil, une alerte persistante est créée et le compteur de notifications de l'en-tête est mis à jour. Un administrateur, responsable des opérations ou responsable carburant peut la prendre en compte ; son identité et la date sont conservées. Une réception ou une correction d'inventaire qui ramène le stock au-dessus du seuil clôt automatiquement l'alerte. Un nouveau franchissement crée un nouveau cycle, sans doublon tant que la cuve reste sous le seuil. Les alertes initiales sont aussi créées pour les cuves déjà sous leur seuil lors de la migration.
 
 Un inventaire physique enregistre le solde attendu, la quantité comptée, l'écart, une référence et un motif. L'opération verrouille la cuve, empêche un comptage supérieur à sa capacité et refuse un comptage qui ne couvrirait pas les demandes en attente. L'écart crée, si nécessaire, un mouvement de correction append-only ; l'inventaire reste lui-même immuable et audité.
 
@@ -30,4 +30,4 @@ La demande de ravitaillement permet de marquer un plein complet et exige alors u
 
 Après au moins trois périodes précédentes comparables, un taux supérieur à 1,5 fois la médiane des cinq dernières périodes au maximum est signalé « à examiner ». Ce signal est un indicateur de contrôle, pas une conclusion de fraude ; il peut aussi refléter une charge, un terrain ou une utilisation différente. Les accès limités à un site ne voient que l'historique autorisé pour ce site.
 
-Les notifications de seuil, les achats fournisseurs et l'intégration des pompes restent à construire. Les sorties GPS ne sont pas une mesure de carburant.
+Les alertes sont internes à l'application ; les canaux externes (courriel, SMS ou messagerie) ne sont pas encore configurés. Les achats fournisseurs et l'intégration des pompes restent à construire. Les sorties GPS ne sont pas une mesure de carburant.

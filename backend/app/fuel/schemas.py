@@ -140,6 +140,21 @@ class FuelStocktakeOut(BaseModel):
     recorded_at: datetime
 
 
+class FuelStockAlertOut(BaseModel):
+    fuel_stock_alert_id: uuid.UUID
+    site_id: uuid.UUID
+    fuel_tank_id: uuid.UUID
+    tank_code: str
+    fuel_type: FuelType
+    threshold_liters: Decimal
+    balance_liters: Decimal
+    triggered_at: datetime
+    acknowledged_by: uuid.UUID | None
+    acknowledged_at: datetime | None
+    resolved_at: datetime | None
+    resolution_balance_liters: Decimal | None
+
+
 class FuelConsumptionOut(BaseModel):
     fuel_issue_id: uuid.UUID
     vehicle_id: uuid.UUID

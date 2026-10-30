@@ -522,6 +522,18 @@ export const GRANTS = {
       "SITE"
     ]
   },
+  "fuel.alert.acknowledge": {
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "fuel.issue.decide": {
     "FUEL_MANAGER": [
       "SITE"

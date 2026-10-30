@@ -1,4 +1,4 @@
-export type IconName = "dashboard" | "truck" | "gps" | "users" | "assignment" | "mission" | "tool" | "calendar" | "scale" | "chart" | "settings" | "menu" | "shield" | "phone" | "fuel";
+export type IconName = "dashboard" | "truck" | "gps" | "users" | "assignment" | "mission" | "tool" | "calendar" | "scale" | "chart" | "settings" | "menu" | "shield" | "phone" | "fuel" | "bell";
 
 const paths: Record<IconName, string> = {
   dashboard: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
@@ -16,6 +16,7 @@ const paths: Record<IconName, string> = {
   shield: "M12 2l9 4v6c0 6-9 10-9 10S3 18 3 12V6z M8 12l3 3 5-6",
   phone: "M7 2h10v20H7z M10 18h4",
   fuel: "M3 21h12 M5 21V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v16 M5 8h8 M14 10h2l3 3v5a2 2 0 0 0 4 0v-6l-3-3",
+  bell: "M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9 M10 21h4",
 };
 
 export function Icon({ name, className = "" }: { name: IconName; className?: string }) {
