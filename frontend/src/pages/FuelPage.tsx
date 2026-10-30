@@ -90,6 +90,8 @@ export function FuelPage() {
   const [pumpPage, setPumpPage] = useState(1);
   const [pumpToleranceLiters, setPumpToleranceLiters] = useState("5");
   const [pumpTolerancePercent, setPumpTolerancePercent] = useState("1");
+  const [pumpToleranceSaving, setPumpToleranceSaving] = useState(false);
+  const [anomalyOpeningId, setAnomalyOpeningId] = useState<string | null>(null);
   const [pumpOnlyAnomalies, setPumpOnlyAnomalies] = useState(false);
   const [issuePage, setIssuePage] = useState(1);
   const [consumptionPage, setConsumptionPage] = useState(1);
@@ -176,11 +178,11 @@ export function FuelPage() {
     queryFn: () => read("/fuel/pumps", { query: { site_id: siteId, page: 1, page_size: 200 } }),
   });
   const pumpReconciliations = useQuery({
-    queryKey: ["fuel-pump-reconciliations", selectedPumpId, pumpPage, pumpToleranceLiters, pumpTolerancePercent],
+    queryKey: ["fuel-pump-reconciliations", selectedPumpId, pumpPage],
     enabled: canRead && Boolean(selectedPumpId),
     queryFn: () => read("/fuel/pumps/{fuel_pump_id}/reconciliations", {
       path: { fuel_pump_id: selectedPumpId },
-      query: { page: pumpPage, page_size: PAGE_SIZE, tolerance_liters: Number(pumpToleranceLiters), tolerance_percent: Number(pumpTolerancePercent) },
+      query: { page: pumpPage, page_size: PAGE_SIZE },
     }),
   });
   const tanks = useQuery({
@@ -239,6 +241,7 @@ export function FuelPage() {
   const issueItems = issues.data?.items ?? [];
   const supplierItems = suppliers.data?.items ?? [];
   const purchaseItems = purchases.data?.items ?? [];
+  const selectedPump = pumps.data?.items.find((pump: Pump) => pump.fuel_pump_id === selectedPumpId);
   const submitPumpReading = async () => {
     if (!selectedPumpId || !meterReference.trim() || meterValue.trim() === "") return;
     setMeterSaving(true);
@@ -256,6 +259,32 @@ export function FuelPage() {
     } finally {
       setMeterSaving(false);
     }
+  };
+  const savePumpTolerance = async () => {
+    if (!selectedPumpId || pumpToleranceLiters === "" || pumpTolerancePercent === "") return;
+    setPumpToleranceSaving(true);
+    setError(null);
+    try {
+      await call("put", "/fuel/pumps/{fuel_pump_id}/anomaly-tolerance", {
+        path: { fuel_pump_id: selectedPumpId },
+        body: { tolerance_liters: pumpToleranceLiters, tolerance_percent: pumpTolerancePercent },
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["fuel-pumps"] }),
+        queryClient.invalidateQueries({ queryKey: ["fuel-pump-reconciliations", selectedPumpId] }),
+      ]);
+    } catch (err) { setError(err); } finally { setPumpToleranceSaving(false); }
+  };
+  const openAnomalyCase = async (item: PumpReconciliation) => {
+    setAnomalyOpeningId(item.end_reading_id);
+    setError(null);
+    try {
+      await call("post", "/fuel/pumps/{fuel_pump_id}/anomaly-cases", {
+        path: { fuel_pump_id: item.fuel_pump_id },
+        body: { start_reading_id: item.start_reading_id, end_reading_id: item.end_reading_id },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["fuel-anomaly-cases"] });
+    } catch (err) { setError(err); } finally { setAnomalyOpeningId(null); }
   };
   const refresh = async () => {
     setPanel(null);
@@ -343,26 +372,34 @@ export function FuelPage() {
       <div className="card">
         <div className="page-head"><div><h2>Pompes et rapprochements</h2><p className="muted">Volumes issus des compteurs, rapprochés des ravitaillements approuvés.</p></div></div>
         <DataState loading={pumps.isLoading} error={pumps.error} empty={(pumps.data?.items.length ?? 0) === 0} emptyText="Aucune pompe pour ce périmètre.">
-          <label>Pompe<select aria-label="Pompe à contrôler" value={selectedPumpId} onChange={(event) => { setSelectedPumpId(event.target.value); setPumpPage(1); }}><option value="">Sélectionner une pompe</option>{pumps.data?.items.map((pump: Pump) => <option key={pump.fuel_pump_id} value={pump.fuel_pump_id}>{pump.code} — {pump.name} · {pump.tank_code}</option>)}</select></label>
+          <label>Pompe<select aria-label="Pompe à contrôler" value={selectedPumpId} onChange={(event) => {
+            const pump = pumps.data?.items.find((item: Pump) => item.fuel_pump_id === event.target.value);
+            setSelectedPumpId(event.target.value); setPumpPage(1);
+            setPumpToleranceLiters(pump?.anomaly_tolerance_liters ?? "5");
+            setPumpTolerancePercent(pump?.anomaly_tolerance_percent ?? "1");
+          }}><option value="">Sélectionner une pompe</option>{pumps.data?.items.map((pump: Pump) => <option key={pump.fuel_pump_id} value={pump.fuel_pump_id}>{pump.code} — {pump.name} · {pump.tank_code}</option>)}</select></label>
         </DataState>
         {selectedPumpId && <div className="toolbar" aria-label="Paramètres de rapprochement">
-          <label>Tolérance (L)<input type="number" min="0" max="1000" step="0.1" value={pumpToleranceLiters} onChange={(event) => { setPumpToleranceLiters(event.target.value); setPumpPage(1); }} /></label>
-          <label>Tolérance (%)<input type="number" min="0" max="100" step="0.1" value={pumpTolerancePercent} onChange={(event) => { setPumpTolerancePercent(event.target.value); setPumpPage(1); }} /></label>
+          <label>Tolérance (L)<input type="number" min="0" max="1000" step="0.001" disabled={!canManagePumps} value={pumpToleranceLiters} onChange={(event) => setPumpToleranceLiters(event.target.value)} /></label>
+          <label>Tolérance (%)<input type="number" min="0" max="100" step="0.001" disabled={!canManagePumps} value={pumpTolerancePercent} onChange={(event) => setPumpTolerancePercent(event.target.value)} /></label>
+          {canManagePumps && <button type="button" disabled={pumpToleranceSaving || !selectedPump || pumpToleranceLiters === "" || pumpTolerancePercent === ""} onClick={() => void savePumpTolerance()}>{pumpToleranceSaving ? "Enregistrement…" : "Enregistrer les tolérances"}</button>}
           <label><input type="checkbox" checked={pumpOnlyAnomalies} onChange={(event) => setPumpOnlyAnomalies(event.target.checked)} /> Afficher uniquement les anomalies sur cette page</label>
         </div>}
+        {selectedPumpId && <p className="muted small">Ces seuils sont enregistrés sur la pompe et appliqués par le serveur lors de l’ouverture d’un dossier.</p>}
         {selectedPumpId && canRecordPumpMeter && <form aria-label="Nouveau relevé de pompe" onSubmit={(event) => { event.preventDefault(); void submitPumpReading(); }} className="toolbar">
           <label>Compteur cumulé (L)<input aria-label="Compteur cumulé (L)" type="number" min="0" step="0.001" required value={meterValue} onChange={(event) => setMeterValue(event.target.value)} /></label>
           <label>Référence de relevé<input aria-label="Référence de relevé" required maxLength={80} pattern="[A-Za-z0-9/_ .:-]{1,80}" value={meterReference} onChange={(event) => setMeterReference(event.target.value)} /></label>
           <button type="submit" disabled={meterSaving}>{meterSaving ? "Enregistrement…" : "Enregistrer le relevé"}</button>
         </form>}
         {selectedPumpId && <DataState loading={pumpReconciliations.isLoading} error={pumpReconciliations.error} empty={(pumpReconciliations.data?.items.length ?? 0) === 0} emptyText="Aucun intervalle de rapprochement. Deux relevés sont nécessaires.">
-          <table><thead><tr><th>Début</th><th>Fin</th><th>Compteur</th><th>Sorties approuvées</th><th>Écart</th><th>Analyse</th></tr></thead><tbody>
+          <table><thead><tr><th>Début</th><th>Fin</th><th>Compteur</th><th>Sorties approuvées</th><th>Écart</th><th>Analyse</th>{canManageAnomalies && <th>Action</th>}</tr></thead><tbody>
             {pumpReconciliations.data?.items.filter((item: PumpReconciliation) => !pumpOnlyAnomalies || item.is_anomaly).map((item: PumpReconciliation) => <tr key={item.end_reading_id}>
               <td>{formatDateTime(item.interval_start_at, timezoneOf(pumps.data?.items.find((pump: Pump) => pump.fuel_pump_id === item.fuel_pump_id)?.site_id))}</td>
               <td>{formatDateTime(item.interval_end_at, timezoneOf(pumps.data?.items.find((pump: Pump) => pump.fuel_pump_id === item.fuel_pump_id)?.site_id))}</td>
               <td>{liters(item.meter_delta_liters)}</td><td>{liters(item.approved_issue_liters)}</td>
               <td>{deltaLiters(item.variance_liters)} ({number(item.variance_percent)} %)</td>
               <td><Badge tone={item.is_anomaly ? "warn" : "ok"}>{item.is_anomaly ? "Écart à examiner" : "Dans la tolérance"}</Badge></td>
+              {canManageAnomalies && <td>{item.is_anomaly ? <button type="button" disabled={anomalyOpeningId === item.end_reading_id} onClick={() => void openAnomalyCase(item)}>{anomalyOpeningId === item.end_reading_id ? "Ouverture…" : "Ouvrir un dossier"}</button> : "—"}</td>}
             </tr>)}
           </tbody></table><Pager page={pumpPage} pageSize={PAGE_SIZE} total={pumpReconciliations.data?.total ?? 0} onPage={setPumpPage} />
         </DataState>}
@@ -374,10 +411,11 @@ export function FuelPage() {
           <option value="ALL">Tous les statuts</option><option value="OPEN">Ouverts</option><option value="ACKNOWLEDGED">Pris en charge</option><option value="JUSTIFIED">Justifiés</option><option value="CLOSED">Clôturés</option>
         </select></label>
         <DataState loading={anomalyCases.isLoading} error={anomalyCases.error} empty={(anomalyCases.data?.items.length ?? 0) === 0} emptyText="Aucun dossier d’anomalie enregistré.">
-          <table><thead><tr><th>Pompe</th><th>Statut</th><th>Intervalle de relevés</th><th>Créateur</th><th>Historique</th></tr></thead><tbody>
+          <table><thead><tr><th>Pompe</th><th>Statut</th><th>Qualification</th><th>Intervalle de relevés</th><th>Créateur</th><th>Historique</th></tr></thead><tbody>
             {anomalyCases.data?.items.map((entry: AnomalyCase) => <tr key={entry.fuel_pump_anomaly_case_id}>
               <td>{pumps.data?.items.find((pump: Pump) => pump.fuel_pump_id === entry.fuel_pump_id)?.code ?? entry.fuel_pump_id.slice(0, 8)}</td>
               <td>{entry.status === "OPEN" ? "Ouvert" : entry.status === "ACKNOWLEDGED" ? "Pris en charge" : entry.status === "JUSTIFIED" ? "Justifié" : "Clôturé"}</td>
+              <td>{entry.variance_liters === null ? "Dossier historique" : <><strong>{deltaLiters(entry.variance_liters)}</strong> ({number(entry.variance_percent ?? "0")} %)<br /><span className="muted small">Seuils {liters(entry.tolerance_liters ?? "0")} / {number(entry.tolerance_percent ?? "0")} %</span></>}</td>
               <td title={entry.start_reading_id + " → " + entry.end_reading_id}>{entry.start_reading_id.slice(0, 8)} → {entry.end_reading_id.slice(0, 8)}</td>
               <td title={entry.created_by}>{entry.created_by.slice(0, 8)}</td>
               <td><button type="button" onClick={() => { setSelectedAnomalyCaseId(entry.fuel_pump_anomaly_case_id); setAnomalyEventPage(1); setAnomalyJustification(""); }}>Consulter</button></td>

@@ -106,6 +106,13 @@ def test_anomaly_case_workflow_and_tenant_isolation(client: TestClient, api: Api
     assert created.status_code == 201, created.text
     case_id = created.json()["fuel_pump_anomaly_case_id"]
     assert created.json()["status"] == "OPEN"
+    assert created.json()["meter_delta_liters"] == "30.000"
+    assert created.json()["approved_issue_liters"] == "0.000"
+    assert created.json()["variance_liters"] == "30.000"
+    assert created.json()["variance_percent"] == "100.000"
+    assert created.json()["tolerance_liters"] == "5.000"
+    assert created.json()["tolerance_percent"] == "1.000"
+    assert created.json()["qualification_reason"] == "METER_VOLUME_EXCEEDS_APPROVED_ISSUES"
     assert client.post(case_path, headers=other, json=body).status_code == 409
 
     event_path = f"{API}/fuel/anomaly-cases/{case_id}/events"
@@ -333,3 +340,59 @@ def test_simultaneous_acknowledgements_only_create_one_event(client: TestClient,
     history = client.get(path, headers=headers)
     assert history.status_code == 200, history.text
     assert history.json()["total"] == 1
+
+
+def test_simultaneous_qualification_only_opens_one_case(client: TestClient, api: Api) -> None:
+    """Le verrou de pompe sérialise la qualification avant la contrainte unique."""
+    owner = api.tenant(sites=("MINE",))
+    headers = owner.admin.headers
+    tank = client.post(
+        f"{API}/fuel/tanks",
+        headers=headers,
+        json={
+            "site_id": str(owner.sites["MINE"]),
+            "code": "QUALIFY-CONCURRENT",
+            "fuel_type": "DIESEL",
+            "capacity_liters": 1000,
+        },
+    )
+    assert tank.status_code == 201, tank.text
+    pump = client.post(
+        f"{API}/fuel/pumps",
+        headers=headers,
+        json={
+            "fuel_tank_id": tank.json()["fuel_tank_id"],
+            "code": "QUALIFY-CONCURRENT",
+            "name": "Pompe qualification parallèle",
+        },
+    )
+    assert pump.status_code == 201, pump.text
+    pump_id = pump.json()["fuel_pump_id"]
+    started = datetime.now(UTC) - timedelta(minutes=10)
+    reading_ids: list[str] = []
+    for index, liters in enumerate((100, 130)):
+        response = client.post(
+            f"{API}/fuel/pumps/{pump_id}/meter-readings",
+            headers=headers,
+            json={
+                "cumulative_liters": liters,
+                "measured_at": (started + timedelta(minutes=index * 5)).isoformat(),
+                "source": "MANUAL",
+                "source_reference": f"QUALIFY-CONCURRENT-{index}",
+            },
+        )
+        assert response.status_code == 201, response.text
+        reading_ids.append(response.json()["fuel_pump_meter_reading_id"])
+    path = f"{API}/fuel/pumps/{pump_id}/anomaly-cases"
+    body = {"start_reading_id": reading_ids[0], "end_reading_id": reading_ids[1]}
+
+    def qualify(_: int) -> int:
+        return client.post(path, headers=headers, json=body).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        statuses = sorted(pool.map(qualify, range(2)))
+    assert statuses == [201, 409]
+    listed = client.get(f"{API}/fuel/anomaly-cases", headers=headers)
+    assert listed.status_code == 200, listed.text
+    matching = [item for item in listed.json()["items"] if item["fuel_pump_id"] == pump_id]
+    assert len(matching) == 1

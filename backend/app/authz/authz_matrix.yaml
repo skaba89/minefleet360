@@ -768,9 +768,11 @@ permissions:
       FUEL_MANAGER: [SITE]
   fuel.pump.manage:
     tranche: 1c
-    kind: create
+    kind: action
     site_bound: true
-    routes: [{ method: POST, path: /fuel/pumps, shape: collection, success: 201 }]
+    routes:
+      - { method: POST, path: /fuel/pumps, shape: collection, success: 201 }
+      - { method: PUT, path: "/fuel/pumps/{fuel_pump_id}/anomaly-tolerance", shape: item, success: 200 }
     audit: { action: fuel.pump.create }
     grants:
       TENANT_ADMIN: [TENANT]

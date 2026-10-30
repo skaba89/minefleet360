@@ -1,5 +1,4 @@
 import uuid
-from decimal import Decimal
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
@@ -24,6 +23,7 @@ from app.fuel.schemas import (
     FuelSupplierOut,
     IssueCreate,
     MeterKind,
+    PumpAnomalyToleranceUpdate,
     PumpCreate,
     PumpMeterReadingCreate,
     PurchaseCreate,
@@ -100,17 +100,22 @@ def list_pump_reconciliations(
     fuel_pump_id: uuid.UUID,
     auth: StockRead,
     page: Pagination,
-    tolerance_liters: Decimal = Query(default=Decimal("5"), ge=0, le=1_000),
-    tolerance_percent: Decimal = Query(default=Decimal("1"), ge=0, le=100),
 ) -> Page[FuelPumpReconciliationOut]:
-    items, total = service.list_pump_reconciliations(
-        auth,
-        fuel_pump_id,
-        page,
-        tolerance_liters=tolerance_liters,
-        tolerance_percent=tolerance_percent,
-    )
+    items, total = service.list_pump_reconciliations(auth, fuel_pump_id, page)
     return Page(items=items, page=page.page, page_size=page.page_size, total=total)
+
+
+@router.put(
+    "/fuel/pumps/{fuel_pump_id}/anomaly-tolerance",
+    response_model=FuelPumpOut,
+)
+def update_pump_anomaly_tolerance(
+    fuel_pump_id: uuid.UUID,
+    body: PumpAnomalyToleranceUpdate,
+    auth: PumpManage,
+) -> FuelPumpOut:
+    pump = service.update_pump_anomaly_tolerance(auth, fuel_pump_id, body)
+    return FuelPumpOut.model_validate(service.pump_output(auth, pump))
 
 
 @router.post(

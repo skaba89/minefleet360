@@ -48,6 +48,11 @@ class PumpCreate(StrictModel):
     name: str = Field(min_length=2, max_length=120)
 
 
+class PumpAnomalyToleranceUpdate(StrictModel):
+    tolerance_liters: Decimal = Field(ge=0, le=1_000, max_digits=12, decimal_places=3)
+    tolerance_percent: Decimal = Field(ge=0, le=100, max_digits=6, decimal_places=3)
+
+
 class PumpMeterReadingCreate(StrictModel):
     cumulative_liters: Decimal = Field(ge=0, le=9_999_999_999_999, max_digits=16, decimal_places=3)
     measured_at: AwareDatetime
@@ -151,6 +156,8 @@ class FuelPumpOut(BaseModel):
     fuel_type: FuelType
     code: str
     name: str
+    anomaly_tolerance_liters: Decimal
+    anomaly_tolerance_percent: Decimal
 
 
 class FuelPumpMeterReadingOut(BaseModel):
