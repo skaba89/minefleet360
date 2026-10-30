@@ -100,7 +100,7 @@ jobs:
         working-directory: frontend
         env:
           MF_API_URL: http://localhost:8000
-        run: npx playwright test --config=playwright.config.ts e2e/affectations.spec.ts
+        run: npx playwright test --config=playwright.config.ts e2e/affectations.spec.ts e2e/missions.spec.ts
 
       - name: Remove ephemeral credentials and traces
         if: always()
