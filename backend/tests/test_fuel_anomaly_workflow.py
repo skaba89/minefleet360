@@ -1,5 +1,6 @@
 """Tests métier du traitement des anomalies de pompes et de l'isolation inter-tenant."""
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
@@ -102,3 +103,59 @@ def test_anomaly_case_workflow_and_tenant_isolation(client: TestClient, api: Api
     history = client.get(event_path, headers=other)
     assert history.status_code == 200, history.text
     assert [item["event_type"] for item in history.json()["items"]] == ["ACKNOWLEDGED", "JUSTIFIED", "CLOSED"]
+
+
+def test_simultaneous_acknowledgements_only_create_one_event(client: TestClient, api: Api) -> None:
+    """Le verrou transactionnel sérialise deux décisions sur un même dossier."""
+    owner = api.tenant(sites=("MINE",))
+    headers = owner.admin.headers
+    tank = client.post(
+        f"{API}/fuel/tanks",
+        headers=headers,
+        json={"site_id": str(owner.sites["MINE"]), "code": "CONCURRENT", "fuel_type": "DIESEL", "capacity_liters": 1000},
+    )
+    assert tank.status_code == 201, tank.text
+    pump = client.post(
+        f"{API}/fuel/pumps",
+        headers=headers,
+        json={"fuel_tank_id": tank.json()["fuel_tank_id"], "code": "CONCURRENT", "name": "Pompe parallèle"},
+    )
+    assert pump.status_code == 201, pump.text
+    pump_id = pump.json()["fuel_pump_id"]
+    started = datetime.now(UTC) - timedelta(minutes=10)
+    ids = []
+    for index, liters in enumerate((20, 40)):
+        response = client.post(
+            f"{API}/fuel/pumps/{pump_id}/meter-readings",
+            headers=headers,
+            json={
+                "cumulative_liters": liters,
+                "measured_at": (started + timedelta(minutes=index * 5)).isoformat(),
+                "source": "MANUAL",
+                "source_reference": f"CONCURRENT-{index}",
+            },
+        )
+        assert response.status_code == 201, response.text
+        ids.append(response.json()["fuel_pump_meter_reading_id"])
+    opened = client.post(
+        f"{API}/fuel/pumps/{pump_id}/anomaly-cases",
+        headers=headers,
+        json={"start_reading_id": ids[0], "end_reading_id": ids[1]},
+    )
+    assert opened.status_code == 201, opened.text
+    path = f"{API}/fuel/anomaly-cases/{opened.json()['fuel_pump_anomaly_case_id']}/events"
+
+    def acknowledge(_: int) -> int:
+        response = client.post(
+            path,
+            headers=headers,
+            json={"event_type": "ACKNOWLEDGED", "justification": "Contrôle de concurrence effectué"},
+        )
+        return response.status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        statuses = sorted(pool.map(acknowledge, range(2)))
+    assert statuses == [201, 409]
+    history = client.get(path, headers=headers)
+    assert history.status_code == 200, history.text
+    assert history.json()["total"] == 1
