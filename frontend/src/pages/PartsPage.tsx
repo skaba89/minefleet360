@@ -22,6 +22,9 @@ export function PartsPage() {
   const [saveError, setSaveError] = useState<unknown>(null);
   const [message, setMessage] = useState("");
   const { siteId } = useSites();
+  const canReceive = can(me.grants, "maintenance.parts.receive", siteId);
+  const canIssue = can(me.grants, "maintenance.parts.issue", siteId);
+  const activeAction = canReceive && (action === "receipt" || !canIssue) ? "receipt" : "issue";
   const [tab, setTab] = useState<"stocks" | "movements" | "reservations">("stocks");
   const [page, setPage] = useState(1);
   const permitted = can(me.grants, "maintenance.parts.read", siteId);
@@ -82,7 +85,7 @@ export function PartsPage() {
                 quantity: Number(quantity),
                 reference: reference.trim(),
               };
-              if (action === "receipt") {
+              if (activeAction === "receipt") {
                 await call("post", "/part-movements/receipts", { body });
               } else {
                 await call("post", "/part-movements/issues", { body });
@@ -102,7 +105,7 @@ export function PartsPage() {
           <div className="filters">
             <label>
               Opération
-              <select value={action} onChange={(event) => setAction(event.target.value as "receipt" | "issue")}>
+              <select value={activeAction} onChange={(event) => setAction(event.target.value as "receipt" | "issue")}>
                 {can(me.grants, "maintenance.parts.receive", siteId) && <option value="receipt">Réception</option>}
                 {can(me.grants, "maintenance.parts.issue", siteId) && <option value="issue">Sortie</option>}
               </select>
@@ -143,7 +146,7 @@ export function PartsPage() {
             type="submit"
             disabled={saving || !partId || !storeId || !reference.trim() ||
               Number(quantity) <= 0 ||
-              !can(me.grants, action === "receipt" ? "maintenance.parts.receive" : "maintenance.parts.issue", siteId)}
+              !(activeAction === "receipt" ? canReceive : canIssue)}
           >
             {saving ? "Enregistrement…" : "Valider le mouvement"}
           </button>
