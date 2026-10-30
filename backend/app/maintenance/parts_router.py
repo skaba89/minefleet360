@@ -13,13 +13,21 @@ from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.errors import AppError
 from app.core.http import Page, Pagination, StrictModel
-from app.maintenance.parts_models import SparePart, SparePartBalance, SparePartMovement, SparePartStore
+from app.maintenance.models import WorkOrder
+from app.maintenance.parts_models import (
+    SparePart,
+    SparePartBalance,
+    SparePartMovement,
+    SparePartReservation,
+    SparePartStore,
+)
 
 router = APIRouter(tags=["pieces"], route_class=SecuredRoute)
 Read = Annotated[Authorized, Depends(Require("maintenance.parts.read"))]
 Manage = Annotated[Authorized, Depends(Require("maintenance.parts.manage"))]
 Receive = Annotated[Authorized, Depends(Require("maintenance.parts.receive"))]
 Issue = Annotated[Authorized, Depends(Require("maintenance.parts.issue"))]
+Reserve = Annotated[Authorized, Depends(Require("maintenance.parts.reserve"))]
 
 
 class PartOut(BaseModel):
@@ -90,6 +98,96 @@ def create_part_store(body: StoreCreate, auth: Manage) -> StoreOut:
         auth.db.rollback()
         raise AppError("CONFLICT") from None
     output = StoreOut.model_validate(store, from_attributes=True)
+    auth.db.commit()
+    return output
+
+
+class PartReservationIn(StrictModel):
+    work_order_id: uuid.UUID
+    spare_part_store_id: uuid.UUID
+    spare_part_id: uuid.UUID
+    quantity: Decimal = Field(gt=0, max_digits=16, decimal_places=3)
+    reference: str = Field(min_length=1, max_length=120)
+
+
+class PartReservationOut(BaseModel):
+    spare_part_reservation_id: uuid.UUID
+    work_order_id: uuid.UUID
+    spare_part_store_id: uuid.UUID
+    spare_part_id: uuid.UUID
+    quantity: Decimal
+    reference: str
+    status: str
+
+
+@router.post("/part-reservations", response_model=PartReservationOut, status_code=status.HTTP_201_CREATED)
+def reserve_part(body: PartReservationIn, auth: Reserve) -> PartReservationOut:
+    order = auth.db.scalar(
+        select(WorkOrder).where(
+            WorkOrder.tenant_id == auth.tenant_id,
+            WorkOrder.work_order_id == body.work_order_id,
+        )
+    )
+    store = auth.db.scalar(
+        select(SparePartStore).where(
+            SparePartStore.tenant_id == auth.tenant_id,
+            SparePartStore.spare_part_store_id == body.spare_part_store_id,
+        )
+    )
+    if (
+        order is None
+        or store is None
+        or order.site_id != store.site_id
+        or not auth.scope.covers_site(order.site_id)
+    ):
+        raise AppError("REFERENCE_NOT_FOUND")
+    if order.status in {"CLOSED", "REJECTED", "CANCELLED"}:
+        raise AppError("CONFLICT")
+    part_exists = auth.db.scalar(
+        select(SparePart.spare_part_id).where(
+            SparePart.tenant_id == auth.tenant_id,
+            SparePart.spare_part_id == body.spare_part_id,
+        )
+    )
+    if part_exists is None:
+        raise AppError("REFERENCE_NOT_FOUND")
+    try:
+        # L'UPDATE conditionnel sérialise les réservations concurrentes
+        # et ne permet jamais de réserver davantage que le stock disponible.
+        updated = auth.db.execute(
+            text(
+                "UPDATE spare_part_balance SET reserved = reserved + :quantity "
+                "WHERE tenant_id = :tenant_id AND site_id = :site_id "
+                "AND spare_part_store_id = :store_id AND spare_part_id = :part_id "
+                "AND on_hand - reserved >= :quantity RETURNING spare_part_balance_id"
+            ),
+            {
+                "tenant_id": auth.tenant_id,
+                "site_id": order.site_id,
+                "store_id": body.spare_part_store_id,
+                "part_id": body.spare_part_id,
+                "quantity": body.quantity,
+            },
+        ).first()
+        if updated is None:
+            auth.db.rollback()
+            raise AppError("CONFLICT")
+        reservation = SparePartReservation(
+            tenant_id=auth.tenant_id,
+            site_id=order.site_id,
+            work_order_id=body.work_order_id,
+            spare_part_store_id=body.spare_part_store_id,
+            spare_part_id=body.spare_part_id,
+            quantity=body.quantity,
+            reference=body.reference,
+            created_by=auth.user_id,
+        )
+        auth.db.add(reservation)
+        auth.db.flush()
+    except IntegrityError:
+        auth.db.rollback()
+        raise AppError("CONFLICT") from None
+    output = PartReservationOut.model_validate(reservation, from_attributes=True)
     auth.db.commit()
     return output
 
