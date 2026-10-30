@@ -87,4 +87,3 @@ class SparePartReservation(Base):
     status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'ACTIVE'"))
     reference: Mapped[str] = mapped_column(String, nullable=False)
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-
