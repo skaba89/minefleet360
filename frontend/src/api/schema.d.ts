@@ -1061,6 +1061,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/part-movements/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive Part */
+        post: operations["receive_part_api_v1_part_movements_receipts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/part-stores": {
         parameters: {
             query?: never;
@@ -4315,6 +4332,45 @@ export interface components {
             spare_part_id: string;
             /** Unit */
             unit: string;
+        };
+        /** PartReceiptIn */
+        PartReceiptIn: {
+            /** Quantity */
+            quantity: number | string;
+            /** Reference */
+            reference: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
+        };
+        /** PartReceiptOut */
+        PartReceiptOut: {
+            /** Quantity */
+            quantity: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /**
+             * Spare Part Movement Id
+             * Format: uuid
+             */
+            spare_part_movement_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
         };
         /** PhonePointIn */
         PhonePointIn: {
@@ -8388,6 +8444,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_BalanceOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    receive_part_api_v1_part_movements_receipts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartReceiptIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartReceiptOut"];
                 };
             };
             /** @description Validation Error */
