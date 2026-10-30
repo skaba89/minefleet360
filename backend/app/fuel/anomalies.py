@@ -48,7 +48,6 @@ class AnomalyEventOut(BaseModel):
     actor_user_id: uuid.UUID
 
 
-
 def _case_output(auth: Authorized, case: FuelPumpAnomalyCase) -> AnomalyCaseOut:
     last_status = auth.db.scalar(
         select(FuelPumpAnomalyEvent.event_type)
