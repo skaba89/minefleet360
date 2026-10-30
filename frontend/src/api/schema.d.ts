@@ -1071,7 +1071,8 @@ export interface paths {
         /** List Part Stores */
         get: operations["list_part_stores_api_v1_part_stores_get"];
         put?: never;
-        post?: never;
+        /** Create Part Store */
+        post: operations["create_part_store_api_v1_part_stores_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1088,7 +1089,8 @@ export interface paths {
         /** List Parts */
         get: operations["list_parts_api_v1_parts_get"];
         put?: never;
-        post?: never;
+        /** Create Part */
+        post: operations["create_part_api_v1_parts_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4288,6 +4290,18 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** PartCreate */
+        PartCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Unit
+             * @default EACH
+             */
+            unit: string;
+        };
         /** PartOut */
         PartOut: {
             /** Code */
@@ -4897,6 +4911,18 @@ export interface components {
             reason_code: "MEASUREMENT" | "LOSS" | "DATA_CORRECTION" | "OTHER";
             /** Reference */
             reference: string;
+        };
+        /** StoreCreate */
+        StoreCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
         };
         /** StoreOut */
         StoreOut: {
@@ -8410,6 +8436,41 @@ export interface operations {
             };
         };
     };
+    create_part_store_api_v1_part_stores_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoreCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_parts_api_v1_parts_get: {
         parameters: {
             query?: {
@@ -8431,6 +8492,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_PartOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_part_api_v1_parts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartOut"];
                 };
             };
             /** @description Validation Error */

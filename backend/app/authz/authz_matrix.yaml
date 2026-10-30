@@ -507,6 +507,20 @@ permissions:
     audit: { action: vehicle_assignment.end }
     grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
 
+  maintenance.parts.manage:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes:
+      - { method: POST, path: /parts, shape: collection, success: 201 }
+      - { method: POST, path: /part-stores, shape: collection, success: 201 }
+    audit: { action: parts.create }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      STOREKEEPER: [TENANT, SITE]
+
   maintenance.parts.read:
     tranche: 1c
     kind: read
