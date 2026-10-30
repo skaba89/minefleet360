@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
@@ -6,11 +7,12 @@ from fastapi import APIRouter, Depends, Query, status
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.http import Page, Pagination
-from app.fuel import service
+from app.fuel import dashboard, service
 from app.fuel.consumption import vehicle_consumption
 from app.fuel.schemas import (
     DecisionCreate,
     FuelConsumptionOut,
+    FuelDashboardOut,
     FuelIssueOut,
     FuelPumpMeterReadingOut,
     FuelPumpOut,
@@ -54,6 +56,23 @@ PurchaseDecide = Annotated[Authorized, Depends(Require("fuel.purchase.decide"))]
 PurchaseReceive = Annotated[Authorized, Depends(Require("fuel.purchase.receive"))]
 PumpManage = Annotated[Authorized, Depends(Require("fuel.pump.manage"))]
 PumpMeterRecord = Annotated[Authorized, Depends(Require("fuel.meter.record"))]
+
+
+@router.get("/fuel/dashboard", response_model=FuelDashboardOut)
+def get_fuel_dashboard(
+    auth: StockRead,
+    site_id: uuid.UUID | None = None,
+    from_at: Annotated[datetime | None, Query(alias="from")] = None,
+    to_at: Annotated[datetime | None, Query(alias="to")] = None,
+) -> FuelDashboardOut:
+    return FuelDashboardOut.model_validate(
+        dashboard.fuel_dashboard(
+            auth,
+            site_id=site_id,
+            from_at=from_at,
+            to_at=to_at,
+        )
+    )
 
 
 @router.get("/fuel/tanks", response_model=Page[TankOut])

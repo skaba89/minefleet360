@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -314,3 +314,40 @@ class FuelConsumptionOut(BaseModel):
     comparison_median_rate: Decimal | None
     comparison_interval_count: int
     is_anomaly: bool
+
+
+class FuelDashboardVehicleOut(BaseModel):
+    vehicle_id: uuid.UUID
+    vehicle_fleet_number: str
+    site_id: uuid.UUID
+    liters: Decimal
+
+
+class FuelDashboardSiteOut(BaseModel):
+    site_id: uuid.UUID
+    site_code: str
+    site_name: str
+    liters: Decimal
+
+
+class FuelDashboardDailyOut(BaseModel):
+    day: date
+    distributed_liters: Decimal
+    received_liters: Decimal
+
+
+class FuelDashboardOut(BaseModel):
+    period_start: datetime
+    period_end: datetime
+    distributed_liters: Decimal
+    received_liters: Decimal
+    stocktake_variance_liters: Decimal
+    qualified_anomaly_variance_liters: Decimal
+    open_anomaly_cases: int
+    closed_anomaly_cases: int
+    average_resolution_hours: Decimal | None
+    active_stock_alerts: int
+    unacknowledged_stock_alerts: int
+    vehicle_consumption: list[FuelDashboardVehicleOut]
+    site_consumption: list[FuelDashboardSiteOut]
+    daily_trend: list[FuelDashboardDailyOut]
