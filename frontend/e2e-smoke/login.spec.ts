@@ -24,12 +24,11 @@ test("recharge le shell hors ligne sans mettre l'API en cache", async ({ page, r
   const source = await worker.text();
   expect(source).toContain('url.pathname.startsWith("/api/")');
 
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready;
-    if (!navigator.serviceWorker.controller) {
-      await new Promise<void>((resolve) => navigator.serviceWorker.addEventListener("controllerchange", () => resolve(), { once: true }));
-    }
-  });
+  await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+  // Un premier rechargement en ligne garantit que la page est contrôlée, même si clients.claim()
+  // s'est produit entre la lecture de controller et l'abonnement à controllerchange.
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "MINEFLEET 360" })).toBeVisible();
