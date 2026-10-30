@@ -11,8 +11,8 @@ from app.assignment.models import VehicleAssignment
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.core.errors import AppError
-from app.core.tenancy import set_tenant_context
 from app.core.http import PageParams
+from app.core.tenancy import set_tenant_context
 from app.fleet.models import Vehicle, VehicleCategory
 from app.fuel.models import (
     FuelIssue,
