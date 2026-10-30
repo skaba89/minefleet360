@@ -784,6 +784,62 @@ permissions:
       TENANT_ADMIN: [TENANT]
       OPS_MANAGER: [TENANT, SITE]
       FUEL_MANAGER: [SITE]
+  fuel.purchase.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /fuel/suppliers, shape: collection, success: 200 }
+      - { method: GET, path: /fuel/purchases, shape: collection, success: 200 }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  fuel.supplier.manage:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /fuel/suppliers, shape: collection, success: 201 }]
+    audit: { action: fuel.supplier.create }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
+  fuel.purchase.create:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /fuel/purchases, shape: collection, success: 201 }]
+    audit: { action: fuel.purchase.create }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
+  fuel.purchase.decide:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: "/fuel/purchases/{fuel_purchase_order_id}/decision", shape: item, success: 200 }
+    audit: { action: fuel.purchase.decide }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+  fuel.purchase.receive:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes:
+      - { method: POST, path: "/fuel/purchases/{fuel_purchase_order_id}/receipts", shape: item, success: 201 }
+    audit: { action: fuel.purchase.receive }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
   fuel.stock.receive:
     tranche: 1c
     kind: create

@@ -22,7 +22,8 @@
 - Inventaires physiques et corrections append-only livrés ; les seuils bas sont configurables et signalés dans l'interface.
 - Consommation par km/heure et signalement des écarts livrés : calcul entre pleins complets approuvés, ravitaillements partiels cumulés, comparaison à la médiane historique après trois périodes comparables.
 - Alertes persistantes de stock bas livrées : déclenchement au franchissement du seuil, prise en compte nominative, clôture automatique après réapprovisionnement et compteur dans l'en-tête.
-- À poursuivre : achats et intégration des pompes.
+- Achats fournisseurs livrés : référentiel par site, commande chiffrée, approbation par une autre personne, livraisons partielles et alimentation atomique du journal de cuve.
+- À poursuivre : intégration des pompes.
 
 ## Phase 3 — enterprise et institutions
 - Sous-traitants, contrats, rentabilité complète, portail client et reporting institutionnel à accès contractualisé.

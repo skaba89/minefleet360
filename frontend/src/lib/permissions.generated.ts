@@ -558,6 +558,65 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "fuel.purchase.create": {
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "fuel.purchase.decide": {
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "fuel.purchase.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "fuel.purchase.receive": {
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "fuel.stock.manage": {
     "FUEL_MANAGER": [
       "SITE"
@@ -617,6 +676,18 @@ export const GRANTS = {
     ]
   },
   "fuel.stocktake.record": {
+    "FUEL_MANAGER": [
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "fuel.supplier.manage": {
     "FUEL_MANAGER": [
       "SITE"
     ],

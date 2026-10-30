@@ -30,4 +30,8 @@ La demande de ravitaillement permet de marquer un plein complet et exige alors u
 
 Après au moins trois périodes précédentes comparables, un taux supérieur à 1,5 fois la médiane des cinq dernières périodes au maximum est signalé « à examiner ». Ce signal est un indicateur de contrôle, pas une conclusion de fraude ; il peut aussi refléter une charge, un terrain ou une utilisation différente. Les accès limités à un site ne voient que l'historique autorisé pour ce site.
 
-Les alertes sont internes à l'application ; les canaux externes (courriel, SMS ou messagerie) ne sont pas encore configurés. Les achats fournisseurs et l'intégration des pompes restent à construire. Les sorties GPS ne sont pas une mesure de carburant.
+## Achats fournisseurs
+
+Les fournisseurs sont référencés par site. Une commande indique la cuve destinataire, le volume, le prix unitaire, la devise et une référence unique. La personne qui crée la commande ne peut pas l'approuver elle-même. Une commande approuvée peut être réceptionnée en plusieurs livraisons, sans jamais dépasser le volume commandé ni la capacité de la cuve. Chaque réception possède un bon de livraison unique et alimente le journal de stock dans la même transaction ; elle peut aussi clôturer automatiquement une alerte de stock bas.
+
+Les alertes sont internes à l'application ; les canaux externes (courriel, SMS ou messagerie) ne sont pas encore configurés. L'intégration des pompes reste à construire. Les sorties GPS ne sont pas une mesure de carburant.

@@ -12,6 +12,8 @@ MeterKind = Literal["ODOMETER", "HOUR_METER"]
 Decision = Literal["APPROVED", "REJECTED"]
 RejectReason = Literal["WRONG_VEHICLE", "INVALID_QUANTITY", "OTHER"]
 StocktakeReason = Literal["MEASUREMENT", "LOSS", "DATA_CORRECTION", "OTHER"]
+Currency = Literal["GNF", "USD", "EUR"]
+PurchaseRejectReason = Literal["BUDGET", "SUPPLIER", "QUANTITY", "OTHER"]
 
 
 class TankCreate(StrictModel):
@@ -49,6 +51,39 @@ class StocktakeCreate(StrictModel):
     counted_liters: Decimal = Field(ge=0, le=2_000_000, max_digits=12, decimal_places=3)
     reference: str = Field(min_length=1, max_length=60, pattern=r"^[A-Za-z0-9/_ .-]{1,60}$")
     reason_code: StocktakeReason
+    occurred_at: AwareDatetime
+
+
+class SupplierCreate(StrictModel):
+    site_id: uuid.UUID
+    code: str = Field(pattern=r"^[A-Za-z0-9_-]{1,32}$")
+    name: str = Field(min_length=2, max_length=120)
+
+
+class PurchaseCreate(StrictModel):
+    fuel_supplier_id: uuid.UUID
+    fuel_tank_id: uuid.UUID
+    reference: str = Field(min_length=1, max_length=60, pattern=r"^[A-Za-z0-9/_ .-]{1,60}$")
+    quantity_liters: Decimal = Field(gt=0, le=2_000_000, max_digits=12, decimal_places=3)
+    unit_price: Decimal = Field(gt=0, le=9_999_999_999_999, max_digits=16, decimal_places=2)
+    currency: Currency
+    ordered_at: AwareDatetime
+
+
+class PurchaseDecisionCreate(StrictModel):
+    decision: Decision
+    reason_code: PurchaseRejectReason | None = None
+
+    @model_validator(mode="after")
+    def reason_matches_decision(self) -> "PurchaseDecisionCreate":
+        if (self.decision == "REJECTED") != (self.reason_code is not None):
+            raise ValueError("Un refus exige un motif et une approbation n'en accepte pas.")
+        return self
+
+
+class PurchaseReceiptCreate(StrictModel):
+    liters: Decimal = Field(gt=0, le=2_000_000, max_digits=12, decimal_places=3)
+    delivery_reference: str = Field(min_length=1, max_length=60, pattern=r"^[A-Za-z0-9/_ .-]{1,60}$")
     occurred_at: AwareDatetime
 
 
@@ -91,6 +126,50 @@ class TankOut(BaseModel):
     balance_liters: Decimal
     reserved_liters: Decimal
     available_liters: Decimal
+
+
+class FuelSupplierOut(BaseModel):
+    fuel_supplier_id: uuid.UUID
+    site_id: uuid.UUID
+    code: str
+    name: str
+
+
+class FuelPurchaseOrderOut(BaseModel):
+    fuel_purchase_order_id: uuid.UUID
+    site_id: uuid.UUID
+    fuel_supplier_id: uuid.UUID
+    supplier_code: str
+    supplier_name: str
+    fuel_tank_id: uuid.UUID
+    tank_code: str
+    fuel_type: FuelType
+    reference: str
+    quantity_liters: Decimal
+    received_liters: Decimal
+    remaining_liters: Decimal
+    unit_price: Decimal
+    total_amount: Decimal
+    currency: Currency
+    ordered_at: datetime
+    created_by: uuid.UUID
+    created_at: datetime
+    status: Literal["PENDING_APPROVAL", "REJECTED", "APPROVED", "PARTIALLY_RECEIVED", "RECEIVED"]
+    decided_by: uuid.UUID | None
+    decided_at: datetime | None
+    reason_code: PurchaseRejectReason | None
+
+
+class FuelPurchaseReceiptOut(BaseModel):
+    fuel_purchase_receipt_id: uuid.UUID
+    fuel_purchase_order_id: uuid.UUID
+    site_id: uuid.UUID
+    fuel_tank_id: uuid.UUID
+    liters: Decimal
+    delivery_reference: str
+    occurred_at: datetime
+    recorded_by: uuid.UUID
+    recorded_at: datetime
 
 
 class FuelIssueOut(BaseModel):

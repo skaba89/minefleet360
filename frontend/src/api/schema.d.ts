@@ -1900,6 +1900,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fuel/suppliers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Suppliers */
+        get: operations["list_suppliers_api_v1_fuel_suppliers_get"];
+        put?: never;
+        /** Create Supplier */
+        post: operations["create_supplier_api_v1_fuel_suppliers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fuel/purchases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Purchases */
+        get: operations["list_purchases_api_v1_fuel_purchases_get"];
+        put?: never;
+        /** Create Purchase */
+        post: operations["create_purchase_api_v1_fuel_purchases_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fuel/purchases/{fuel_purchase_order_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Purchase */
+        post: operations["decide_purchase_api_v1_fuel_purchases__fuel_purchase_order_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fuel/purchases/{fuel_purchase_order_id}/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive Purchase */
+        post: operations["receive_purchase_api_v1_fuel_purchases__fuel_purchase_order_id__receipts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fuel/tanks/{fuel_tank_id}/stocktakes": {
         parameters: {
             query?: never;
@@ -2523,6 +2593,125 @@ export interface components {
             /** Reason Code */
             reason_code: string | null;
         };
+        /** FuelPurchaseOrderOut */
+        FuelPurchaseOrderOut: {
+            /**
+             * Fuel Purchase Order Id
+             * Format: uuid
+             */
+            fuel_purchase_order_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Fuel Supplier Id
+             * Format: uuid
+             */
+            fuel_supplier_id: string;
+            /** Supplier Code */
+            supplier_code: string;
+            /** Supplier Name */
+            supplier_name: string;
+            /**
+             * Fuel Tank Id
+             * Format: uuid
+             */
+            fuel_tank_id: string;
+            /** Tank Code */
+            tank_code: string;
+            /**
+             * Fuel Type
+             * @enum {string}
+             */
+            fuel_type: "DIESEL" | "PETROL";
+            /** Reference */
+            reference: string;
+            /** Quantity Liters */
+            quantity_liters: string;
+            /** Received Liters */
+            received_liters: string;
+            /** Remaining Liters */
+            remaining_liters: string;
+            /** Unit Price */
+            unit_price: string;
+            /** Total Amount */
+            total_amount: string;
+            /**
+             * Currency
+             * @enum {string}
+             */
+            currency: "GNF" | "USD" | "EUR";
+            /**
+             * Ordered At
+             * Format: date-time
+             */
+            ordered_at: string;
+            /**
+             * Created By
+             * Format: uuid
+             */
+            created_by: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "PARTIALLY_RECEIVED" | "RECEIVED";
+            /** Decided By */
+            decided_by: string | null;
+            /** Decided At */
+            decided_at: string | null;
+            /** Reason Code */
+            reason_code: ("BUDGET" | "SUPPLIER" | "QUANTITY" | "OTHER") | null;
+        };
+        /** FuelPurchaseReceiptOut */
+        FuelPurchaseReceiptOut: {
+            /**
+             * Fuel Purchase Receipt Id
+             * Format: uuid
+             */
+            fuel_purchase_receipt_id: string;
+            /**
+             * Fuel Purchase Order Id
+             * Format: uuid
+             */
+            fuel_purchase_order_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Fuel Tank Id
+             * Format: uuid
+             */
+            fuel_tank_id: string;
+            /** Liters */
+            liters: string;
+            /** Delivery Reference */
+            delivery_reference: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Recorded By
+             * Format: uuid
+             */
+            recorded_by: string;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+        };
         /** FuelReceiptOut */
         FuelReceiptOut: {
             /**
@@ -2649,6 +2838,23 @@ export interface components {
              * Format: date-time
              */
             recorded_at: string;
+        };
+        /** FuelSupplierOut */
+        FuelSupplierOut: {
+            /**
+             * Fuel Supplier Id
+             * Format: uuid
+             */
+            fuel_supplier_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
         };
         /** GpsLatestPositionOut */
         GpsLatestPositionOut: {
@@ -3397,6 +3603,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[FuelPurchaseOrderOut] */
+        Page_FuelPurchaseOrderOut_: {
+            /** Items */
+            items: components["schemas"]["FuelPurchaseOrderOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[FuelStockAlertOut] */
         Page_FuelStockAlertOut_: {
             /** Items */
@@ -3412,6 +3629,17 @@ export interface components {
         Page_FuelStocktakeOut_: {
             /** Items */
             items: components["schemas"]["FuelStocktakeOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[FuelSupplierOut] */
+        Page_FuelSupplierOut_: {
+            /** Items */
+            items: components["schemas"]["FuelSupplierOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -3766,6 +3994,57 @@ export interface components {
              */
             work_order_id: string;
         };
+        /** PurchaseCreate */
+        PurchaseCreate: {
+            /**
+             * Fuel Supplier Id
+             * Format: uuid
+             */
+            fuel_supplier_id: string;
+            /**
+             * Fuel Tank Id
+             * Format: uuid
+             */
+            fuel_tank_id: string;
+            /** Reference */
+            reference: string;
+            /** Quantity Liters */
+            quantity_liters: number | string;
+            /** Unit Price */
+            unit_price: number | string;
+            /**
+             * Currency
+             * @enum {string}
+             */
+            currency: "GNF" | "USD" | "EUR";
+            /**
+             * Ordered At
+             * Format: date-time
+             */
+            ordered_at: string;
+        };
+        /** PurchaseDecisionCreate */
+        PurchaseDecisionCreate: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "APPROVED" | "REJECTED";
+            /** Reason Code */
+            reason_code?: ("BUDGET" | "SUPPLIER" | "QUANTITY" | "OTHER") | null;
+        };
+        /** PurchaseReceiptCreate */
+        PurchaseReceiptCreate: {
+            /** Liters */
+            liters: number | string;
+            /** Delivery Reference */
+            delivery_reference: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+        };
         /** QualificationCreate */
         QualificationCreate: {
             /**
@@ -4048,6 +4327,18 @@ export interface components {
              * Format: date-time
              */
             occurred_at: string;
+        };
+        /** SupplierCreate */
+        SupplierCreate: {
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
         };
         /** TankCreate */
         TankCreate: {
@@ -9552,6 +9843,221 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FuelStockAlertOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_suppliers_api_v1_fuel_suppliers_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_FuelSupplierOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_supplier_api_v1_fuel_suppliers_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupplierCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuelSupplierOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_purchases_api_v1_fuel_purchases_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                status?: ("PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "PARTIALLY_RECEIVED" | "RECEIVED") | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_FuelPurchaseOrderOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_purchase_api_v1_fuel_purchases_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuelPurchaseOrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_purchase_api_v1_fuel_purchases__fuel_purchase_order_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                fuel_purchase_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseDecisionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuelPurchaseOrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    receive_purchase_api_v1_fuel_purchases__fuel_purchase_order_id__receipts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                fuel_purchase_order_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseReceiptCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuelPurchaseReceiptOut"];
                 };
             };
             /** @description Validation Error */

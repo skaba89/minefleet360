@@ -48,6 +48,80 @@ class FuelStockAlert(Base):
     resolution_balance_liters: Mapped[Decimal | None] = mapped_column(Numeric(12, 3))
 
 
+class FuelSupplier(AuditedColumns, Base):
+    __tablename__ = "fuel_supplier"
+    __mapper_args__ = {"eager_defaults": True}
+
+    fuel_supplier_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    code: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+
+
+class FuelPurchaseOrder(Base):
+    """Commande immuable ; sa décision et ses livraisons sont des événements séparés."""
+
+    __tablename__ = "fuel_purchase_order"
+    __mapper_args__ = {"eager_defaults": True}
+
+    fuel_purchase_order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    fuel_supplier_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    fuel_tank_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    reference: Mapped[str] = mapped_column(String, nullable=False)
+    quantity_liters: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(16, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String, nullable=False)
+    ordered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+
+class FuelPurchaseDecision(Base):
+    __tablename__ = "fuel_purchase_decision"
+    __mapper_args__ = {"eager_defaults": True}
+
+    fuel_purchase_decision_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    fuel_purchase_order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    decision: Mapped[str] = mapped_column(String, nullable=False)
+    reason_code: Mapped[str | None] = mapped_column(String)
+    decided_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    decided_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+
+class FuelPurchaseReceipt(Base):
+    __tablename__ = "fuel_purchase_receipt"
+    __mapper_args__ = {"eager_defaults": True}
+
+    fuel_purchase_receipt_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    fuel_purchase_order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    fuel_tank_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    liters: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    delivery_reference: Mapped[str] = mapped_column(String, nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    recorded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+
 class FuelIssue(Base):
     """Demande de ravitaillement immuable ; approbation/refus et sortie sont des événements distincts."""
 
@@ -133,6 +207,7 @@ class FuelStockMovement(Base):
     reference: Mapped[str | None] = mapped_column(String)
     fuel_issue_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     fuel_stocktake_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    fuel_purchase_receipt_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     recorded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     recorded_at: Mapped[datetime] = mapped_column(

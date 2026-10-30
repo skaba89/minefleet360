@@ -12,13 +12,20 @@ from app.fuel.schemas import (
     DecisionCreate,
     FuelConsumptionOut,
     FuelIssueOut,
+    FuelPurchaseOrderOut,
+    FuelPurchaseReceiptOut,
     FuelReceiptOut,
     FuelStockAlertOut,
     FuelStocktakeOut,
+    FuelSupplierOut,
     IssueCreate,
     MeterKind,
+    PurchaseCreate,
+    PurchaseDecisionCreate,
+    PurchaseReceiptCreate,
     ReceiptCreate,
     StocktakeCreate,
+    SupplierCreate,
     TankCreate,
     TankOut,
     ThresholdUpdate,
@@ -34,6 +41,11 @@ StocktakeRead = Annotated[Authorized, Depends(Require("fuel.stock.read"))]
 StocktakeRecord = Annotated[Authorized, Depends(Require("fuel.stocktake.record"))]
 ThresholdManage = Annotated[Authorized, Depends(Require("fuel.stock.threshold"))]
 AlertAcknowledge = Annotated[Authorized, Depends(Require("fuel.alert.acknowledge"))]
+PurchaseRead = Annotated[Authorized, Depends(Require("fuel.purchase.read"))]
+SupplierManage = Annotated[Authorized, Depends(Require("fuel.supplier.manage"))]
+PurchaseCreateGrant = Annotated[Authorized, Depends(Require("fuel.purchase.create"))]
+PurchaseDecide = Annotated[Authorized, Depends(Require("fuel.purchase.decide"))]
+PurchaseReceive = Annotated[Authorized, Depends(Require("fuel.purchase.receive"))]
 
 
 @router.get("/fuel/tanks", response_model=Page[TankOut])
@@ -89,6 +101,61 @@ def list_stock_alerts(
 def acknowledge_stock_alert(fuel_stock_alert_id: uuid.UUID, auth: AlertAcknowledge) -> FuelStockAlertOut:
     alert = service.acknowledge_stock_alert(auth, fuel_stock_alert_id)
     return FuelStockAlertOut.model_validate(service.stock_alert_output(auth, alert))
+
+
+@router.get("/fuel/suppliers", response_model=Page[FuelSupplierOut])
+def list_suppliers(
+    auth: PurchaseRead, page: Pagination, site_id: uuid.UUID | None = None
+) -> Page[FuelSupplierOut]:
+    suppliers, total = service.list_suppliers(auth, page, site_id=site_id)
+    items = [FuelSupplierOut.model_validate(item, from_attributes=True) for item in suppliers]
+    return Page(items=items, page=page.page, page_size=page.page_size, total=total)
+
+
+@router.post("/fuel/suppliers", response_model=FuelSupplierOut, status_code=status.HTTP_201_CREATED)
+def create_supplier(body: SupplierCreate, auth: SupplierManage) -> FuelSupplierOut:
+    return FuelSupplierOut.model_validate(service.create_supplier(auth, body), from_attributes=True)
+
+
+@router.get("/fuel/purchases", response_model=Page[FuelPurchaseOrderOut])
+def list_purchases(
+    auth: PurchaseRead,
+    page: Pagination,
+    site_id: uuid.UUID | None = None,
+    purchase_status: Annotated[
+        Literal["PENDING_APPROVAL", "REJECTED", "APPROVED", "PARTIALLY_RECEIVED", "RECEIVED"] | None,
+        Query(alias="status"),
+    ] = None,
+) -> Page[FuelPurchaseOrderOut]:
+    rows, total = service.list_purchases(auth, page, site_id=site_id, status=purchase_status)
+    items = [FuelPurchaseOrderOut.model_validate(row) for row in rows]
+    return Page(items=items, page=page.page, page_size=page.page_size, total=total)
+
+
+@router.post("/fuel/purchases", response_model=FuelPurchaseOrderOut, status_code=status.HTTP_201_CREATED)
+def create_purchase(body: PurchaseCreate, auth: PurchaseCreateGrant) -> FuelPurchaseOrderOut:
+    purchase = service.create_purchase(auth, body)
+    return FuelPurchaseOrderOut.model_validate(service.purchase_output(auth, purchase))
+
+
+@router.post("/fuel/purchases/{fuel_purchase_order_id}/decision", response_model=FuelPurchaseOrderOut)
+def decide_purchase(
+    fuel_purchase_order_id: uuid.UUID, body: PurchaseDecisionCreate, auth: PurchaseDecide
+) -> FuelPurchaseOrderOut:
+    purchase = service.decide_purchase(auth, fuel_purchase_order_id, body)
+    return FuelPurchaseOrderOut.model_validate(service.purchase_output(auth, purchase))
+
+
+@router.post(
+    "/fuel/purchases/{fuel_purchase_order_id}/receipts",
+    response_model=FuelPurchaseReceiptOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def receive_purchase(
+    fuel_purchase_order_id: uuid.UUID, body: PurchaseReceiptCreate, auth: PurchaseReceive
+) -> FuelPurchaseReceiptOut:
+    receipt = service.receive_purchase(auth, fuel_purchase_order_id, body)
+    return FuelPurchaseReceiptOut.model_validate(receipt, from_attributes=True)
 
 
 @router.post(

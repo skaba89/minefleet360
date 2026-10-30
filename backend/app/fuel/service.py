@@ -16,16 +16,24 @@ from app.fleet.models import Vehicle, VehicleCategory
 from app.fuel.models import (
     FuelIssue,
     FuelIssueDecision,
+    FuelPurchaseDecision,
+    FuelPurchaseOrder,
+    FuelPurchaseReceipt,
     FuelStockAlert,
     FuelStockMovement,
     FuelStocktake,
+    FuelSupplier,
     FuelTank,
 )
 from app.fuel.schemas import (
     DecisionCreate,
     IssueCreate,
+    PurchaseCreate,
+    PurchaseDecisionCreate,
+    PurchaseReceiptCreate,
     ReceiptCreate,
     StocktakeCreate,
+    SupplierCreate,
     TankCreate,
     ThresholdUpdate,
 )
@@ -36,6 +44,10 @@ Decision = FuelIssueDecision
 Movement = FuelStockMovement
 Tank = FuelTank
 StockAlert = FuelStockAlert
+Supplier = FuelSupplier
+PurchaseOrder = FuelPurchaseOrder
+PurchaseDecision = FuelPurchaseDecision
+PurchaseReceipt = FuelPurchaseReceipt
 ZERO = Decimal("0")
 
 
@@ -72,7 +84,7 @@ def _balance(db: Session, tenant_id: uuid.UUID, tank_id: uuid.UUID) -> Decimal:
                 func.sum(
                     case(
                         (
-                            Movement.movement_type.in_(("RECEIPT", "STOCKTAKE_IN")),
+                            Movement.movement_type.in_(("RECEIPT", "STOCKTAKE_IN", "PURCHASE_RECEIPT")),
                             Movement.liters,
                         ),
                         else_=-Movement.liters,
@@ -404,6 +416,321 @@ def _alert_output(alert: StockAlert, tank_code: str, fuel_type: str) -> dict[str
         "acknowledged_at": alert.acknowledged_at,
         "resolved_at": alert.resolved_at,
         "resolution_balance_liters": alert.resolution_balance_liters,
+    }
+
+
+def list_suppliers(
+    auth: Authorized, page: PageParams, *, site_id: uuid.UUID | None
+) -> tuple[list[Supplier], int]:
+    stmt = select(Supplier).where(Supplier.tenant_id == auth.tenant_id)
+    if not auth.scope.tenant_wide:
+        stmt = stmt.where(Supplier.site_id.in_(auth.scope.site_ids))
+    if site_id is not None:
+        stmt = stmt.where(Supplier.site_id == site_id)
+    total = auth.db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    items = list(
+        auth.db.scalars(
+            stmt.order_by(Supplier.site_id, Supplier.name, Supplier.fuel_supplier_id)
+            .offset(page.offset)
+            .limit(page.page_size)
+        )
+    )
+    return items, total
+
+
+def create_supplier(auth: Authorized, body: SupplierCreate) -> Supplier:
+    if not _in_scope(auth, body.site_id):
+        raise AppError("NOT_FOUND")
+    supplier = Supplier(
+        tenant_id=auth.tenant_id,
+        site_id=body.site_id,
+        code=body.code,
+        name=body.name.strip(),
+        created_by=auth.user_id,
+        updated_by=auth.user_id,
+    )
+    auth.db.add(supplier)
+    auth.db.flush()
+    _audit(auth, "fuel.supplier.create", supplier.fuel_supplier_id, supplier.site_id)
+    auth.db.commit()
+    return supplier
+
+
+def create_purchase(auth: Authorized, body: PurchaseCreate) -> PurchaseOrder:
+    tank = _tank(auth, body.fuel_tank_id)
+    supplier = auth.db.scalar(
+        select(Supplier).where(
+            Supplier.tenant_id == auth.tenant_id,
+            Supplier.fuel_supplier_id == body.fuel_supplier_id,
+            Supplier.site_id == tank.site_id,
+        )
+    )
+    if supplier is None:
+        raise AppError("NOT_FOUND")
+    now = auth.clock.now()
+    if body.ordered_at > now + timedelta(seconds=5) or body.ordered_at < now - timedelta(days=90):
+        raise AppError("VALIDATION_ERROR")
+    purchase = PurchaseOrder(
+        tenant_id=auth.tenant_id,
+        site_id=tank.site_id,
+        fuel_supplier_id=supplier.fuel_supplier_id,
+        fuel_tank_id=tank.fuel_tank_id,
+        reference=body.reference,
+        quantity_liters=body.quantity_liters,
+        unit_price=body.unit_price,
+        currency=body.currency,
+        ordered_at=body.ordered_at,
+        created_by=auth.user_id,
+    )
+    auth.db.add(purchase)
+    auth.db.flush()
+    _audit(auth, "fuel.purchase.create", purchase.fuel_purchase_order_id, purchase.site_id)
+    auth.db.commit()
+    return purchase
+
+
+def decide_purchase(auth: Authorized, purchase_id: uuid.UUID, body: PurchaseDecisionCreate) -> PurchaseOrder:
+    purchase = auth.db.scalar(
+        select(PurchaseOrder)
+        .where(
+            PurchaseOrder.tenant_id == auth.tenant_id,
+            PurchaseOrder.fuel_purchase_order_id == purchase_id,
+        )
+        .with_for_update()
+    )
+    if purchase is None or not _in_scope(auth, purchase.site_id):
+        raise AppError("NOT_FOUND")
+    if purchase.created_by == auth.user_id:
+        raise AppError("CONFLICT")
+    if auth.db.scalar(
+        select(PurchaseDecision.fuel_purchase_decision_id).where(
+            PurchaseDecision.tenant_id == auth.tenant_id,
+            PurchaseDecision.fuel_purchase_order_id == purchase_id,
+        )
+    ):
+        raise AppError("CONFLICT")
+    decision = PurchaseDecision(
+        tenant_id=auth.tenant_id,
+        fuel_purchase_order_id=purchase.fuel_purchase_order_id,
+        decision=body.decision,
+        reason_code=body.reason_code,
+        decided_by=auth.user_id,
+    )
+    auth.db.add(decision)
+    auth.db.flush()
+    _audit(auth, "fuel.purchase.decide", purchase.fuel_purchase_order_id, purchase.site_id)
+    auth.db.commit()
+    return purchase
+
+
+def receive_purchase(
+    auth: Authorized, purchase_id: uuid.UUID, body: PurchaseReceiptCreate
+) -> PurchaseReceipt:
+    purchase = auth.db.scalar(
+        select(PurchaseOrder)
+        .where(
+            PurchaseOrder.tenant_id == auth.tenant_id,
+            PurchaseOrder.fuel_purchase_order_id == purchase_id,
+        )
+        .with_for_update()
+    )
+    if purchase is None or not _in_scope(auth, purchase.site_id):
+        raise AppError("NOT_FOUND")
+    decision = auth.db.scalar(
+        select(PurchaseDecision).where(
+            PurchaseDecision.tenant_id == auth.tenant_id,
+            PurchaseDecision.fuel_purchase_order_id == purchase_id,
+        )
+    )
+    if decision is None or decision.decision != "APPROVED":
+        raise AppError("CONFLICT")
+    if body.occurred_at < purchase.ordered_at or body.occurred_at > auth.clock.now() + timedelta(seconds=5):
+        raise AppError("VALIDATION_ERROR")
+    received = _purchase_received(auth.db, auth.tenant_id, purchase.fuel_purchase_order_id)
+    if body.liters > purchase.quantity_liters - received:
+        raise AppError("CONFLICT")
+    tank = _tank(auth, purchase.fuel_tank_id, lock=True)
+    if _balance(auth.db, auth.tenant_id, tank.fuel_tank_id) + body.liters > tank.capacity_liters:
+        raise AppError("CONFLICT")
+    receipt = PurchaseReceipt(
+        tenant_id=auth.tenant_id,
+        site_id=purchase.site_id,
+        fuel_purchase_order_id=purchase.fuel_purchase_order_id,
+        fuel_tank_id=purchase.fuel_tank_id,
+        liters=body.liters,
+        delivery_reference=body.delivery_reference,
+        occurred_at=body.occurred_at,
+        recorded_by=auth.user_id,
+    )
+    auth.db.add(receipt)
+    auth.db.flush()
+    auth.db.add(
+        Movement(
+            tenant_id=auth.tenant_id,
+            site_id=purchase.site_id,
+            fuel_tank_id=purchase.fuel_tank_id,
+            movement_type="PURCHASE_RECEIPT",
+            liters=body.liters,
+            fuel_purchase_receipt_id=receipt.fuel_purchase_receipt_id,
+            occurred_at=body.occurred_at,
+            recorded_by=auth.user_id,
+        )
+    )
+    auth.db.flush()
+    _sync_low_stock_alert(auth, tank)
+    _audit(auth, "fuel.purchase.receive", receipt.fuel_purchase_receipt_id, receipt.site_id)
+    auth.db.commit()
+    return receipt
+
+
+def list_purchases(
+    auth: Authorized,
+    page: PageParams,
+    *,
+    site_id: uuid.UUID | None,
+    status: str | None,
+) -> tuple[list[dict[str, object]], int]:
+    received = (
+        select(
+            PurchaseReceipt.tenant_id.label("tenant_id"),
+            PurchaseReceipt.fuel_purchase_order_id.label("purchase_id"),
+            func.sum(PurchaseReceipt.liters).label("received_liters"),
+        )
+        .group_by(PurchaseReceipt.tenant_id, PurchaseReceipt.fuel_purchase_order_id)
+        .subquery()
+    )
+    stmt = (
+        select(
+            PurchaseOrder,
+            Supplier.code,
+            Supplier.name,
+            Tank.code,
+            Tank.fuel_type,
+            PurchaseDecision,
+            func.coalesce(received.c.received_liters, ZERO),
+        )
+        .join(
+            Supplier,
+            (Supplier.tenant_id == PurchaseOrder.tenant_id)
+            & (Supplier.fuel_supplier_id == PurchaseOrder.fuel_supplier_id),
+        )
+        .join(
+            Tank,
+            (Tank.tenant_id == PurchaseOrder.tenant_id) & (Tank.fuel_tank_id == PurchaseOrder.fuel_tank_id),
+        )
+        .outerjoin(
+            PurchaseDecision,
+            (PurchaseDecision.tenant_id == PurchaseOrder.tenant_id)
+            & (PurchaseDecision.fuel_purchase_order_id == PurchaseOrder.fuel_purchase_order_id),
+        )
+        .outerjoin(
+            received,
+            (received.c.tenant_id == PurchaseOrder.tenant_id)
+            & (received.c.purchase_id == PurchaseOrder.fuel_purchase_order_id),
+        )
+        .where(PurchaseOrder.tenant_id == auth.tenant_id)
+    )
+    if not auth.scope.tenant_wide:
+        stmt = stmt.where(PurchaseOrder.site_id.in_(auth.scope.site_ids))
+    if site_id is not None:
+        stmt = stmt.where(PurchaseOrder.site_id == site_id)
+    rows = auth.db.execute(stmt.order_by(PurchaseOrder.ordered_at.desc())).all()
+    items = [
+        _purchase_output(
+            order,
+            supplier_code,
+            supplier_name,
+            tank_code,
+            fuel_type,
+            decision,
+            Decimal(received_liters),
+        )
+        for order, supplier_code, supplier_name, tank_code, fuel_type, decision, received_liters in rows
+    ]
+    if status is not None:
+        items = [item for item in items if item["status"] == status]
+    total = len(items)
+    return items[page.offset : page.offset + page.page_size], total
+
+
+def purchase_output(auth: Authorized, purchase: PurchaseOrder) -> dict[str, object]:
+    supplier = auth.db.scalar(
+        select(Supplier).where(
+            Supplier.tenant_id == auth.tenant_id,
+            Supplier.fuel_supplier_id == purchase.fuel_supplier_id,
+        )
+    )
+    tank = _tank(auth, purchase.fuel_tank_id)
+    decision = auth.db.scalar(
+        select(PurchaseDecision).where(
+            PurchaseDecision.tenant_id == auth.tenant_id,
+            PurchaseDecision.fuel_purchase_order_id == purchase.fuel_purchase_order_id,
+        )
+    )
+    received = _purchase_received(auth.db, auth.tenant_id, purchase.fuel_purchase_order_id)
+    return _purchase_output(
+        purchase,
+        supplier.code if supplier else "?",
+        supplier.name if supplier else "?",
+        tank.code,
+        tank.fuel_type,
+        decision,
+        received,
+    )
+
+
+def _purchase_received(db: Session, tenant_id: uuid.UUID, purchase_id: uuid.UUID) -> Decimal:
+    value = db.scalar(
+        select(func.coalesce(func.sum(PurchaseReceipt.liters), ZERO)).where(
+            PurchaseReceipt.tenant_id == tenant_id,
+            PurchaseReceipt.fuel_purchase_order_id == purchase_id,
+        )
+    )
+    return Decimal(value or ZERO)
+
+
+def _purchase_output(
+    purchase: PurchaseOrder,
+    supplier_code: str,
+    supplier_name: str,
+    tank_code: str,
+    fuel_type: str,
+    decision: PurchaseDecision | None,
+    received: Decimal,
+) -> dict[str, object]:
+    if decision is None:
+        status = "PENDING_APPROVAL"
+    elif decision.decision == "REJECTED":
+        status = "REJECTED"
+    elif received == ZERO:
+        status = "APPROVED"
+    elif received < purchase.quantity_liters:
+        status = "PARTIALLY_RECEIVED"
+    else:
+        status = "RECEIVED"
+    return {
+        "fuel_purchase_order_id": purchase.fuel_purchase_order_id,
+        "site_id": purchase.site_id,
+        "fuel_supplier_id": purchase.fuel_supplier_id,
+        "supplier_code": supplier_code,
+        "supplier_name": supplier_name,
+        "fuel_tank_id": purchase.fuel_tank_id,
+        "tank_code": tank_code,
+        "fuel_type": fuel_type,
+        "reference": purchase.reference,
+        "quantity_liters": purchase.quantity_liters,
+        "received_liters": received,
+        "remaining_liters": purchase.quantity_liters - received,
+        "unit_price": purchase.unit_price,
+        "total_amount": purchase.quantity_liters * purchase.unit_price,
+        "currency": purchase.currency,
+        "ordered_at": purchase.ordered_at,
+        "created_by": purchase.created_by,
+        "created_at": purchase.created_at,
+        "status": status,
+        "decided_by": decision.decided_by if decision else None,
+        "decided_at": decision.decided_at if decision else None,
+        "reason_code": decision.reason_code if decision else None,
     }
 
 
