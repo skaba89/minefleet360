@@ -88,5 +88,24 @@ jobs:
         run: npx vite build
       - name: Audit des dépendances
         run: npm audit --omit=dev --audit-level=high
-      # E2E Playwright : exige l'API et une base chargée par `minefleet seed-fictif` ; exécutés en local
-      # (frontend/README.md) tant que la CI ne monte pas la pile complète.
+      # Les tests E2E métier complets nécessitent une API, PostgreSQL et des comptes seedés.
+      # Seul le smoke navigateur public et sans authentification est exécuté ci-dessous.
+
+  browser-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Installer Chromium Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Smoke navigateur (page de connexion sans API)
+        run: npx playwright test --config=playwright.smoke.config.ts
