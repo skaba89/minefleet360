@@ -75,6 +75,9 @@ export function FuelPage() {
   const { siteId, sites, timezoneOf } = useSites();
   const [tankPage, setTankPage] = useState(1);
   const [selectedPumpId, setSelectedPumpId] = useState("");
+  const [meterValue, setMeterValue] = useState("");
+  const [meterReference, setMeterReference] = useState("");
+  const [meterSaving, setMeterSaving] = useState(false);
   const [pumpPage, setPumpPage] = useState(1);
   const [issuePage, setIssuePage] = useState(1);
   const [consumptionPage, setConsumptionPage] = useState(1);
@@ -93,6 +96,7 @@ export function FuelPage() {
   const [purchaseRejectReason, setPurchaseRejectReason] = useState<keyof typeof PURCHASE_REJECT_REASONS>("OTHER");
   const [error, setError] = useState<unknown>(null);
   const canRead = can(me.grants, "fuel.stock.read", siteId);
+  const canRecordPumpMeter = can(me.grants, "fuel.meter.record", siteId);
   const canManage = can(me.grants, "fuel.stock.manage", siteId);
   const canReceive = can(me.grants, "fuel.stock.receive", siteId);
   const canRequest = can(me.grants, "fuel.issue.request", siteId);
@@ -174,6 +178,24 @@ export function FuelPage() {
   const issueItems = issues.data?.items ?? [];
   const supplierItems = suppliers.data?.items ?? [];
   const purchaseItems = purchases.data?.items ?? [];
+  const submitPumpReading = async () => {
+    if (!selectedPumpId || !meterReference.trim() || meterValue.trim() === "") return;
+    setMeterSaving(true);
+    setError(null);
+    try {
+      await call("post", "/fuel/pumps/{fuel_pump_id}/meter-readings", {
+        path: { fuel_pump_id: selectedPumpId },
+        body: { cumulative_liters: meterValue, measured_at: new Date().toISOString(), source: "MANUAL", source_reference: meterReference.trim() },
+      });
+      setMeterValue("");
+      setMeterReference("");
+      await queryClient.invalidateQueries({ queryKey: ["fuel-pump-reconciliations", selectedPumpId] });
+    } catch (err) {
+      setError(err);
+    } finally {
+      setMeterSaving(false);
+    }
+  };
   const refresh = async () => {
     setPanel(null);
     setError(null);
@@ -259,6 +281,11 @@ export function FuelPage() {
         <DataState loading={pumps.isLoading} error={pumps.error} empty={(pumps.data?.items.length ?? 0) === 0} emptyText="Aucune pompe pour ce périmètre.">
           <label>Pompe<select aria-label="Pompe à contrôler" value={selectedPumpId} onChange={(event) => { setSelectedPumpId(event.target.value); setPumpPage(1); }}><option value="">Sélectionner une pompe</option>{pumps.data?.items.map((pump: Pump) => <option key={pump.fuel_pump_id} value={pump.fuel_pump_id}>{pump.code} — {pump.name} · {pump.tank_code}</option>)}</select></label>
         </DataState>
+        {selectedPumpId && canRecordPumpMeter && <form aria-label="Nouveau relevé de pompe" onSubmit={(event) => { event.preventDefault(); void submitPumpReading(); }} className="toolbar">
+          <label>Compteur cumulé (L)<input aria-label="Compteur cumulé (L)" type="number" min="0" step="0.001" required value={meterValue} onChange={(event) => setMeterValue(event.target.value)} /></label>
+          <label>Référence de relevé<input aria-label="Référence de relevé" required maxLength={80} pattern="[A-Za-z0-9/_ .:-]{1,80}" value={meterReference} onChange={(event) => setMeterReference(event.target.value)} /></label>
+          <button type="submit" disabled={meterSaving}>{meterSaving ? "Enregistrement…" : "Enregistrer le relevé"}</button>
+        </form>}
         {selectedPumpId && <DataState loading={pumpReconciliations.isLoading} error={pumpReconciliations.error} empty={(pumpReconciliations.data?.items.length ?? 0) === 0} emptyText="Aucun intervalle de rapprochement. Deux relevés sont nécessaires.">
           <table><thead><tr><th>Début</th><th>Fin</th><th>Compteur</th><th>Sorties approuvées</th><th>Écart</th><th>Analyse</th></tr></thead><tbody>
             {pumpReconciliations.data?.items.map((item: PumpReconciliation) => <tr key={item.end_reading_id}>
