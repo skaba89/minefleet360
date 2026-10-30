@@ -80,6 +80,16 @@ jobs:
       - name: Permissions de l'interface alignées sur authz_matrix.yaml
         run: pip install pyyaml==6.0.3 && python ../scripts/gen_permissions.py --check
       - run: npm ci
+      - name: Contrat OpenAPI synchronisé avec le backend
+        env:
+          MF_ENV: test
+          MF_APP_PASSWORD: contract-check-only
+          MF_JWT_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+        run: |
+          python -m pip install -e ../backend
+          python ../scripts/export_openapi.py --output "${RUNNER_TEMP}/minefleet-openapi.json"
+          npx openapi-typescript "${RUNNER_TEMP}/minefleet-openapi.json" -o src/api/schema.d.ts
+          git diff --exit-code -- src/api/schema.d.ts
       - name: Types
         run: npm run typecheck
       - name: Tests unitaires
@@ -90,7 +100,6 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
       # Les tests E2E métier complets nécessitent une API, PostgreSQL et des comptes seedés.
       # Seul le smoke navigateur public et sans authentification est exécuté ci-dessous.
-
   browser-smoke:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
