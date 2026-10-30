@@ -41,7 +41,9 @@ export async function uiLogin(page: Page, a: Account): Promise<void> {
   await page.getByLabel("Adresse e-mail").fill(a.email);
   await page.getByLabel("Mot de passe").fill(a.password);
   await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page.getByRole("heading", { name: /^Bonjour/ })).toBeVisible();
+  // La page d’accueil peut être un tableau de bord pour les rôles autorisés à lire la flotte.
+  // Le menu principal est affiché uniquement après authentification.
+  await expect(page.getByRole("navigation", { name: "Navigation principale" })).toBeVisible();
 }
 
 /** Site du dispatcher : sa seule attribution de portée SITE. */
