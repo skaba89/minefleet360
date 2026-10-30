@@ -40,14 +40,14 @@ self.addEventListener("fetch", (event) => {
           if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", response.clone()));
           return response;
         })
-        .catch(() => caches.match("/index.html")),
+        .catch(() => caches.match("/index.html", { ignoreVary: true })),
     );
     return;
   }
 
   if (["script", "style", "image", "font"].includes(request.destination)) {
     event.respondWith(
-      caches.match(request).then((cached) => cached ?? fetch(request).then((response) => {
+      caches.match(request, { ignoreVary: true }).then((cached) => cached ?? fetch(request).then((response) => {
         if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
         return response;
       })),
