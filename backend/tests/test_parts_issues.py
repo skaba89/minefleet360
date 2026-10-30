@@ -10,11 +10,13 @@ def test_issue_prevents_negative_balance_and_duplicates(client: TestClient, api:
     keeper = api.user(tenant, "STOREKEEPER", "SITE", "MINE")
     driver = api.user(tenant, "DRIVER", "SITE", "MINE")
     part = client.post(
-        f"{API}/parts", headers=keeper.headers,
+        f"{API}/parts",
+        headers=keeper.headers,
         json={"code": "PART-ISSUE", "name": "Filtre", "unit": "EACH"},
     ).json()
     store = client.post(
-        f"{API}/part-stores", headers=keeper.headers,
+        f"{API}/part-stores",
+        headers=keeper.headers,
         json={"site_id": str(tenant.sites["MINE"]), "code": "ISSUE-ST", "name": "Magasin"},
     ).json()
     payload = {
@@ -26,9 +28,7 @@ def test_issue_prevents_negative_balance_and_duplicates(client: TestClient, api:
     endpoint = f"{API}/part-movements/issues"
     assert client.post(endpoint, headers=keeper.headers, json=payload).status_code == 409
     receipt = {**payload, "quantity": "3.000", "reference": "RECEIPT-001"}
-    received = client.post(
-        f"{API}/part-movements/receipts", headers=keeper.headers, json=receipt
-    )
+    received = client.post(f"{API}/part-movements/receipts", headers=keeper.headers, json=receipt)
     assert received.status_code == 201, received.text
     issued = client.post(endpoint, headers=keeper.headers, json=payload)
     assert issued.status_code == 201, issued.text
