@@ -57,7 +57,7 @@ PurchaseReceipt = FuelPurchaseReceipt
 Pump = FuelPump
 PumpMeterReading = FuelPumpMeterReading
 ZERO = Decimal("0")
-LITER_QUANTUM = Decimal("0.001")
+THREE_DECIMALS = Decimal("0.001")
 
 
 def _audit(auth: Authorized, action: str, entity_id: uuid.UUID, site_id: uuid.UUID) -> None:
@@ -427,16 +427,15 @@ def _reconciliation_result(
     end_meter_liters: Decimal,
     approved_issue_liters: Decimal,
 ) -> dict[str, object]:
-    approved_issue_liters = approved_issue_liters.quantize(LITER_QUANTUM)
+    approved_issue_liters = approved_issue_liters.quantize(THREE_DECIMALS)
     meter_delta = end_meter_liters - start_meter_liters
     variance = meter_delta - approved_issue_liters
     absolute_variance = abs(variance)
     if approved_issue_liters > ZERO:
-        variance_percent = (absolute_variance * Decimal("100") / approved_issue_liters).quantize(
-            Decimal("0.001")
-        )
+        variance_percent = absolute_variance * Decimal("100") / approved_issue_liters
     else:
         variance_percent = Decimal("0") if meter_delta == ZERO else Decimal("100")
+    variance_percent = variance_percent.quantize(THREE_DECIMALS)
     return {
         "fuel_pump_id": pump.fuel_pump_id,
         "start_reading_id": start_reading_id,
