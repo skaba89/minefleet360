@@ -60,7 +60,7 @@ class StoreCreate(StrictModel):
 def create_part(body: PartCreate, auth: Manage) -> PartOut:
     part = SparePart(tenant_id=auth.tenant_id, code=body.code, name=body.name.strip(), unit=body.unit)
     if not part.name:
-        raise AppError("INVALID_INPUT")
+        raise AppError("VALIDATION_ERROR")
     auth.db.add(part)
     try:
         auth.db.flush()
@@ -80,7 +80,7 @@ def create_part_store(body: StoreCreate, auth: Manage) -> StoreOut:
         tenant_id=auth.tenant_id, site_id=body.site_id, code=body.code, name=body.name.strip()
     )
     if not store.name:
-        raise AppError("INVALID_INPUT")
+        raise AppError("VALIDATION_ERROR")
     auth.db.add(store)
     try:
         auth.db.flush()
