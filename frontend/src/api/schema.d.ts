@@ -1061,6 +1061,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/part-movements/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue Part */
+        post: operations["issue_part_api_v1_part_movements_issues_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/part-movements/receipts": {
         parameters: {
             query?: never;
@@ -4318,6 +4335,45 @@ export interface components {
              * @default EACH
              */
             unit: string;
+        };
+        /** PartIssueIn */
+        PartIssueIn: {
+            /** Quantity */
+            quantity: number | string;
+            /** Reference */
+            reference: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
+        };
+        /** PartIssueOut */
+        PartIssueOut: {
+            /** Quantity */
+            quantity: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /**
+             * Spare Part Movement Id
+             * Format: uuid
+             */
+            spare_part_movement_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
         };
         /** PartOut */
         PartOut: {
@@ -8444,6 +8500,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_BalanceOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    issue_part_api_v1_part_movements_issues_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartIssueIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartIssueOut"];
                 };
             };
             /** @description Validation Error */
