@@ -11,6 +11,8 @@ import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
 import { useSites } from "../site/SiteContext";
 
 type Tank = Schemas["TankOut"];
+type Pump = Schemas["FuelPumpOut"];
+type PumpReconciliation = Schemas["FuelPumpReconciliationOut"];
 type FuelIssue = Schemas["FuelIssueOut"];
 type FuelType = Schemas["TankCreate"]["fuel_type"];
 type MeterKind = NonNullable<FuelIssue["meter_kind"]>;
@@ -72,6 +74,8 @@ export function FuelPage() {
   const queryClient = useQueryClient();
   const { siteId, sites, timezoneOf } = useSites();
   const [tankPage, setTankPage] = useState(1);
+  const [selectedPumpId, setSelectedPumpId] = useState("");
+  const [pumpPage, setPumpPage] = useState(1);
   const [issuePage, setIssuePage] = useState(1);
   const [consumptionPage, setConsumptionPage] = useState(1);
   const [vehicleId, setVehicleId] = useState("");
@@ -101,6 +105,19 @@ export function FuelPage() {
   const canCreatePurchase = can(me.grants, "fuel.purchase.create", siteId);
   const canDecidePurchase = can(me.grants, "fuel.purchase.decide", siteId);
   const canReceivePurchase = can(me.grants, "fuel.purchase.receive", siteId);
+  const pumps = useQuery({
+    queryKey: ["fuel-pumps", siteId],
+    enabled: canRead,
+    queryFn: () => read("/fuel/pumps", { query: { site_id: siteId, page: 1, page_size: 200 } }),
+  });
+  const pumpReconciliations = useQuery({
+    queryKey: ["fuel-pump-reconciliations", selectedPumpId, pumpPage],
+    enabled: canRead && Boolean(selectedPumpId),
+    queryFn: () => read("/fuel/pumps/{fuel_pump_id}/reconciliations", {
+      path: { fuel_pump_id: selectedPumpId },
+      query: { page: pumpPage, page_size: PAGE_SIZE },
+    }),
+  });
   const tanks = useQuery({
     queryKey: ["fuel-tanks", siteId, tankPage],
     enabled: canRead,
@@ -236,6 +253,24 @@ export function FuelPage() {
       {panel === "supplier" && <SupplierForm siteId={siteId} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "purchase" && <PurchaseForm tanks={tankItems} suppliers={supplierItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "purchase-receipt" && <PurchaseReceiptForm purchase={purchaseItems.find((item) => item.fuel_purchase_order_id === selectedPurchaseId)} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
+
+      <div className="card">
+        <div className="page-head"><div><h2>Pompes et rapprochements</h2><p className="muted">Volumes issus des compteurs, rapprochés des ravitaillements approuvés.</p></div></div>
+        <DataState loading={pumps.isLoading} error={pumps.error} empty={(pumps.data?.items.length ?? 0) === 0} emptyText="Aucune pompe pour ce périmètre.">
+          <label>Pompe<select aria-label="Pompe à contrôler" value={selectedPumpId} onChange={(event) => { setSelectedPumpId(event.target.value); setPumpPage(1); }}><option value="">Sélectionner une pompe</option>{pumps.data?.items.map((pump: Pump) => <option key={pump.fuel_pump_id} value={pump.fuel_pump_id}>{pump.code} — {pump.name} · {pump.tank_code}</option>)}</select></label>
+        </DataState>
+        {selectedPumpId && <DataState loading={pumpReconciliations.isLoading} error={pumpReconciliations.error} empty={(pumpReconciliations.data?.items.length ?? 0) === 0} emptyText="Aucun intervalle de rapprochement. Deux relevés sont nécessaires.">
+          <table><thead><tr><th>Début</th><th>Fin</th><th>Compteur</th><th>Sorties approuvées</th><th>Écart</th><th>Analyse</th></tr></thead><tbody>
+            {pumpReconciliations.data?.items.map((item: PumpReconciliation) => <tr key={item.end_reading_id}>
+              <td>{formatDateTime(item.interval_start_at, timezoneOf(pumps.data?.items.find((pump: Pump) => pump.fuel_pump_id === item.fuel_pump_id)?.site_id))}</td>
+              <td>{formatDateTime(item.interval_end_at, timezoneOf(pumps.data?.items.find((pump: Pump) => pump.fuel_pump_id === item.fuel_pump_id)?.site_id))}</td>
+              <td>{liters(item.meter_delta_liters)}</td><td>{liters(item.approved_issue_liters)}</td>
+              <td>{deltaLiters(item.variance_liters)} ({number(item.variance_percent)} %)</td>
+              <td><Badge tone={item.is_anomaly ? "warn" : "ok"}>{item.is_anomaly ? "Écart à examiner" : "Dans la tolérance"}</Badge></td>
+            </tr>)}
+          </tbody></table><Pager page={pumpPage} pageSize={PAGE_SIZE} total={pumpReconciliations.data?.total ?? 0} onPage={setPumpPage} />
+        </DataState>}
+      </div>
 
       <div className="card">
         <div className="page-head"><div><h2>Alertes de stock bas</h2><p className="muted">Une alerte reste active jusqu'au retour de la cuve au-dessus de son seuil.</p></div>
