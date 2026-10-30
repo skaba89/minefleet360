@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { account, apiLogin, uiLogin } from "./fixtures";
+import { account, apiLogin, dispatcherSite, uiLogin } from "./fixtures";
 
 // Authentification et autorisation effectives : la disparition d'un menu ne suffit pas
 // pour protéger les API métier. Tous les utilisateurs sont issus du seed fictif.
@@ -32,11 +32,10 @@ test("un utilisateur RH ne peut pas consulter les stocks de carburant", async ({
 test("réception en cuve : le stock augmente et un doublon de référence est refusé", async ({ request }) => {
   const manager = account("OPS_MANAGER", "fictif-minier");
   const headers = await apiLogin(request, manager);
-  const meResponse = await request.get("/api/v1/me", { headers });
-  expect(meResponse.status()).toBe(200);
-  const me = await meResponse.json();
-  const siteId = me.grants.find((g: { scope_type: string; site_id: string | null }) => g.scope_type === "SITE")?.site_id;
-  expect(siteId, "le compte doit être affecté à un site").toBeTruthy();
+  const siteId = await dispatcherSite(
+    request,
+    await apiLogin(request, account("DISPATCHER", manager.workspace)),
+  );
 
   const suffix = Math.random().toString(36).slice(2, 10).toUpperCase();
   const tank = await request.post("/api/v1/fuel/tanks", {
