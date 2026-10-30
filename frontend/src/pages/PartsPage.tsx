@@ -21,9 +21,19 @@ export function PartsPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<unknown>(null);
   const [message, setMessage] = useState("");
+  const [reservationOrderId, setReservationOrderId] = useState("");
+  const [reservationPartId, setReservationPartId] = useState("");
+  const [reservationStoreId, setReservationStoreId] = useState("");
+  const [reservationQuantity, setReservationQuantity] = useState("1");
+  const [reservationReference, setReservationReference] = useState("");
+  const [reservationBusy, setReservationBusy] = useState(false);
+  const [reservationError, setReservationError] = useState<unknown>(null);
   const { siteId } = useSites();
   const canReceive = can(me.grants, "maintenance.parts.receive", siteId);
   const canIssue = can(me.grants, "maintenance.parts.issue", siteId);
+  const canReserve = can(me.grants, "maintenance.parts.reserve", siteId);
+  const canRelease = can(me.grants, "maintenance.parts.release", siteId);
+  const canConsume = can(me.grants, "maintenance.parts.consume", siteId);
   const activeAction = canReceive && (action === "receipt" || !canIssue) ? "receipt" : "issue";
   const [tab, setTab] = useState<"stocks" | "movements" | "reservations">("stocks");
   const [page, setPage] = useState(1);
@@ -154,6 +164,74 @@ export function PartsPage() {
           {message && <p role="status">{message}</p>}
         </form>
       )}
+      {canReserve && (
+        <form onSubmit={async (event) => {
+          event.preventDefault();
+          if (reservationBusy) return;
+          setReservationBusy(true);
+          setReservationError(null);
+          setMessage("");
+          try {
+            await call("post", "/part-reservations", { body: {
+              work_order_id: reservationOrderId.trim(),
+              spare_part_id: reservationPartId,
+              spare_part_store_id: reservationStoreId,
+              quantity: Number(reservationQuantity),
+              reference: reservationReference.trim(),
+            } });
+            setReservationReference("");
+            setMessage("Réservation enregistrée.");
+            await queryClient.invalidateQueries({ queryKey: ["part-reservations"] });
+            await queryClient.invalidateQueries({ queryKey: ["part-balances"] });
+          } catch (error) {
+            setReservationError(error);
+          } finally {
+            setReservationBusy(false);
+          }
+        }}>
+          <h2>Réserver des pièces pour un ordre de travail</h2>
+          <div className="filters">
+            <label>Identifiant de l'ordre de travail
+              <input required value={reservationOrderId}
+                onChange={(event) => setReservationOrderId(event.target.value)} />
+            </label>
+            <label>Pièce
+              <select required value={reservationPartId}
+                onChange={(event) => setReservationPartId(event.target.value)}>
+                <option value="">Choisir une pièce</option>
+                {parts.data?.items.map((part) => (
+                  <option key={part.spare_part_id} value={part.spare_part_id}>{part.code} — {part.name}</option>
+                ))}
+              </select>
+            </label>
+            <label>Magasin
+              <select required value={reservationStoreId}
+                onChange={(event) => setReservationStoreId(event.target.value)}>
+                <option value="">Choisir un magasin</option>
+                {stores.data?.items.map((store) => (
+                  <option key={store.spare_part_store_id} value={store.spare_part_store_id}>
+                    {store.code} — {store.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>Quantité
+              <input required type="number" min="0.001" step="0.001" value={reservationQuantity}
+                onChange={(event) => setReservationQuantity(event.target.value)} />
+            </label>
+            <label>Référence unique
+              <input required maxLength={120} value={reservationReference}
+                onChange={(event) => setReservationReference(event.target.value)} />
+            </label>
+          </div>
+          <button className="primary" type="submit" disabled={reservationBusy || !reservationOrderId.trim() ||
+            !reservationPartId || !reservationStoreId || !reservationReference.trim() ||
+            Number(reservationQuantity) <= 0}>
+            {reservationBusy ? "Réservation…" : "Réserver"}
+          </button>
+          {reservationError !== null && <ErrorMessage error={reservationError} />}
+        </form>
+      )}
       <div className="filters" role="group" aria-label="Vue du magasin">
         {([
           ["stocks", "Stocks"],
@@ -205,12 +283,52 @@ export function PartsPage() {
             <tbody>{reservations.data?.items.map((item) => (
               <tr key={item.spare_part_reservation_id}>
                 <td>{item.reference}</td><td><Link to={`/atelier/${item.work_order_id}`}>Voir l’OT</Link></td>
-                <td>{partLabel(item.spare_part_id)}</td><td>{item.quantity}</td><td>{item.status}</td>
+                <td>{partLabel(item.spare_part_id)}</td><td>{item.quantity}</td>
+                <td>
+                  {item.status}
+                  {item.status === "ACTIVE" && (canRelease || canConsume) && (
+                    <div className="filters">
+                      {(["release", "consume"] as const).filter((operation) =>
+                        operation === "release" ? canRelease : canConsume).map((operation) => (
+                        <button key={operation} type="button" disabled={reservationBusy}
+                          onClick={async () => {
+                            if (reservationBusy) return;
+                            setReservationBusy(true);
+                            setReservationError(null);
+                            setMessage("");
+                            try {
+                              if (operation === "release") {
+                                await call("post", "/part-reservations/{reservation_id}/release", {
+                                  path: { reservation_id: item.spare_part_reservation_id },
+                                });
+                              } else {
+                                await call("post", "/part-reservations/{reservation_id}/consume", {
+                                  path: { reservation_id: item.spare_part_reservation_id },
+                                });
+                              }
+                              setMessage(operation === "release" ? "Réservation libérée." : "Pièces consommées.");
+                              await queryClient.invalidateQueries({ queryKey: ["part-reservations"] });
+                              await queryClient.invalidateQueries({ queryKey: ["part-balances"] });
+                              await queryClient.invalidateQueries({ queryKey: ["part-movements"] });
+                            } catch (error) {
+                              setReservationError(error);
+                            } finally {
+                              setReservationBusy(false);
+                            }
+                          }}>
+                          {operation === "release" ? "Libérer" : "Consommer"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </td>
               </tr>
             ))}</tbody>
           </table>
         </DataState>
       )}
+      {reservationError !== null && <ErrorMessage error={reservationError} />}
+      {message && <p role="status">{message}</p>}
       {current.data && (
         <Pager page={page} pageSize={PAGE_SIZE} total={current.data.total} onPage={setPage} />
       )}
