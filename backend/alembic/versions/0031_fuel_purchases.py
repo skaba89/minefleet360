@@ -66,7 +66,9 @@ CREATE UNIQUE INDEX uq_fuel_purchase_reference
   ON fuel_purchase_order (tenant_id, lower(reference));
 CREATE INDEX ix_fuel_purchase_site_time
   ON fuel_purchase_order (tenant_id, site_id, ordered_at DESC);
-SELECT app.apply_tenant_rls('fuel_purchase_order', 'SELECT, INSERT');
+-- UPDATE est requis par SELECT ... FOR UPDATE ; le trigger append-only interdit
+-- toujours toute modification effective de la commande.
+SELECT app.apply_tenant_rls('fuel_purchase_order', 'SELECT, INSERT, UPDATE');
 CREATE TRIGGER tg_fuel_purchase_order_append_only
   BEFORE UPDATE OR DELETE ON fuel_purchase_order
   FOR EACH ROW EXECUTE FUNCTION app.tg_append_only();
