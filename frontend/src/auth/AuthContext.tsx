@@ -12,6 +12,8 @@ import {
   type Schemas,
 } from "../api/client";
 
+import { clearOfflineDrafts } from "../lib/offlineDrafts";
+
 type Me = Schemas["MeOut"];
 
 /** Mot de passe correct, second facteur attendu (C-03) : jeton de défi à présenter avec le code. */
@@ -108,8 +110,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // personne suivante sur un poste partagé récupérerait la session. On ne simule pas la déconnexion.
       if (!(err instanceof ApiError) || err.status === 0 || err.status >= 500) throw err;
     }
-    reset();
-  }, [reset]);
+    try {
+      if (me) await clearOfflineDrafts(`${me.workspace_code}:${me.user_account_id}`);
+    } finally {
+      // Révocation confirmée : ne conserver aucune session même si IndexedDB échoue.
+      // L'erreur de purge remonte à l'UI, car un brouillon peut subsister sur le poste.
+      reset();
+    }
+  }, [me, reset]);
 
   const value = useMemo(
     () => ({ status, me, login, verifyMfa, refreshMe, logout }),
