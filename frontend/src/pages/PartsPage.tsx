@@ -237,26 +237,6 @@ export function PartsPage() {
             Number(reservationQuantity) <= 0}>
             {reservationBusy ? "Réservation…" : "Réserver"}
           </button>
-          {tab === "replenishments" && (
-        <DataState loading={replenishments.isLoading} error={replenishments.error}
-          empty={!replenishments.data?.items.length}>
-          <table>
-            <thead><tr><th>Référence</th><th>Pièce</th><th>Magasin</th><th>Quantité</th><th>Statut</th></tr></thead>
-            <tbody>{replenishments.data?.items.map((item) => (
-              <tr key={item.replenishment_id}>
-                <td>{item.reference}</td>
-                <td>{partLabel(item.spare_part_id)}</td>
-                <td>{storeLabel(item.spare_part_store_id)}</td>
-                <td>{item.quantity}</td>
-                <td>{({
-                  DRAFT: "Brouillon", SUBMITTED: "Soumis",
-                  APPROVED: "Approuvé", REJECTED: "Rejeté",
-                } as Record<string, string>)[item.status] ?? item.status}</td>
-              </tr>
-            ))}</tbody>
-          </table>
-        </DataState>
-      )}
       {reservationError !== null && <ErrorMessage error={reservationError} />}
         </form>
       )}
@@ -389,6 +369,26 @@ export function PartsPage() {
                     </div>
                   )}
                 </td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </DataState>
+      )}
+      {tab === "replenishments" && (
+        <DataState loading={replenishments.isLoading} error={replenishments.error}
+          empty={!replenishments.data?.items.length}>
+          <table>
+            <thead><tr><th>Référence</th><th>Pièce</th><th>Magasin</th><th>Quantité</th><th>Statut</th></tr></thead>
+            <tbody>{replenishments.data?.items.map((item) => (
+              <tr key={item.replenishment_id}>
+                <td>{item.reference}</td>
+                <td>{partLabel(item.spare_part_id)}</td>
+                <td>{storeLabel(item.spare_part_store_id)}</td>
+                <td>{item.quantity}</td>
+                <td>{({
+                  DRAFT: "Brouillon", SUBMITTED: "Soumis",
+                  APPROVED: "Approuvé", REJECTED: "Rejeté",
+                } as Record<string, string>)[item.status] ?? item.status}</td>
               </tr>
             ))}</tbody>
           </table>
