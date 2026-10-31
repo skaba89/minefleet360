@@ -1,0 +1,25 @@
+[Unit]
+Description=MineFleet 360 staging operational monitoring and alert delivery
+Documentation=file:/opt/minefleet/docs/MONITORING_HEALTH.md
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=minefleet-monitor
+Group=minefleet-monitor
+WorkingDirectory=/opt/minefleet
+EnvironmentFile=/etc/minefleet/monitor.env
+ExecStart=/usr/bin/python3 /opt/minefleet/infra/deploy/run-alert-monitor.py --state-dir /var/lib/minefleet-monitor --threshold 3
+StateDirectory=minefleet-monitor
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/minefleet-monitor
+LimitNOFILE=1024
+TimeoutStartSec=240
+# Docker access for the database probe is intentionally NOT granted by default.
+# Install only after proving a least-privilege probe method on staging.
