@@ -1,12 +1,13 @@
 """Create and list procurement drafts without approving orders or changing stock."""
 
 import uuid
+from datetime import datetime
 from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
-from sqlalchemy import Numeric, String, func, select, text
+from sqlalchemy import DateTime, Numeric, String, func, select, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column
@@ -40,6 +41,8 @@ class ReplenishmentDraft(Base):
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     decision_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     decision_note: Mapped[str | None] = mapped_column(String, nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class DraftCreate(StrictModel):
@@ -57,6 +60,11 @@ class DraftOut(BaseModel):
     quantity: Decimal
     reference: str
     status: str
+    created_by: uuid.UUID
+    decision_by: uuid.UUID | None
+    decision_note: str | None
+    submitted_at: datetime | None
+    decided_at: datetime | None
 
 
 @router.post("/part-replenishments", response_model=DraftOut, status_code=status.HTTP_201_CREATED)
@@ -138,15 +146,8 @@ def submit_draft(replenishment_id: uuid.UUID, auth: Manage) -> DraftOut:
     if changed is None:
         auth.db.rollback()
         raise AppError("CONFLICT")
-    result = DraftOut(
-        replenishment_id=draft.replenishment_id,
-        site_id=draft.site_id,
-        spare_part_store_id=draft.spare_part_store_id,
-        spare_part_id=draft.spare_part_id,
-        quantity=draft.quantity,
-        reference=draft.reference,
-        status="SUBMITTED",
-    )
+    auth.db.refresh(draft)
+    result = DraftOut.model_validate(draft, from_attributes=True)
     auth.db.commit()
     return result
 
@@ -189,14 +190,7 @@ def decide_replenishment(replenishment_id: uuid.UUID, body: DecisionIn, auth: Ma
     if changed is None:
         auth.db.rollback()
         raise AppError("CONFLICT")
-    result = DraftOut(
-        replenishment_id=draft.replenishment_id,
-        site_id=draft.site_id,
-        spare_part_store_id=draft.spare_part_store_id,
-        spare_part_id=draft.spare_part_id,
-        quantity=draft.quantity,
-        reference=draft.reference,
-        status=new_status,
-    )
+    auth.db.refresh(draft)
+    result = DraftOut.model_validate(draft, from_attributes=True)
     auth.db.commit()
     return result

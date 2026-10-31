@@ -471,6 +471,13 @@ export function PartsPage() {
                   APPROVED: "Approuvé", REJECTED: "Rejeté",
                 } as Record<string, string>)[item.status] ?? item.status}</td>
                 <td>
+                  <span>Demandeur : {item.created_by}</span>
+                  {item.submitted_at && <div>Soumise : {new Date(item.submitted_at).toLocaleString("fr-FR")}</div>}
+                  {item.decision_by && <div>Décideur : {item.decision_by}</div>}
+                  {item.decided_at && <div>Décision : {new Date(item.decided_at).toLocaleString("fr-FR")}</div>}
+                  {item.decision_note && <div>Motif : {item.decision_note}</div>}
+                </td>
+                <td>
                   {canManageParts && item.status === "DRAFT" && (
                     <button type="button" disabled={actingReplenishmentId !== null}
                       onClick={async () => {
