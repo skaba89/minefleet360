@@ -8,6 +8,11 @@ export interface OfflineDraft {
   workOrderId: string;
   note: string;
   createdAt: string;
+  pending?: {
+    idempotencyKey: string;
+    ifMatch: string;
+    body: { action: "NOTE"; diagnosis: string; work_done: string; parts_note: string };
+  };
 }
 
 const DB_NAME = "minefleet-offline-drafts-v1";
@@ -26,8 +31,21 @@ export function validateOfflineDraft(value: OfflineDraft): void {
     throw new Error("Brouillon hors périmètre ou trop long");
   }
   if (!Number.isFinite(Date.parse(value.createdAt))) throw new Error("Date invalide");
-  if (Object.keys(value).some((key) => !["id", "ownerScope", "kind", "workOrderId", "note", "createdAt"].includes(key))) {
+  if (Object.keys(value).some((key) => !["id", "ownerScope", "kind", "workOrderId", "note", "createdAt", "pending"].includes(key))) {
     throw new Error("Champ non autorisé dans le stockage local");
+  }
+  if (value.pending !== undefined) {
+    const p = value.pending;
+    if (p === null || typeof p !== "object"
+      || Object.keys(p).some((key) => !["idempotencyKey", "ifMatch", "body"].includes(key))
+      || p.idempotencyKey !== value.id || !/^"[0-9]+"$/.test(p.ifMatch)
+      || !p.body || typeof p.body !== "object"
+      || Object.keys(p.body).some((key) => !["action", "diagnosis", "work_done", "parts_note"].includes(key))
+      || p.body.action !== "NOTE" || p.body.work_done !== value.note.trim()
+      || typeof p.body.diagnosis !== "string" || p.body.diagnosis.length > 4000
+      || typeof p.body.parts_note !== "string" || p.body.parts_note.length > 2000) {
+      throw new Error("Opération locale de transmission invalide");
+    }
   }
 }
 
@@ -122,5 +140,45 @@ export async function clearOfflineDrafts(ownerScope: string): Promise<void> {
       remove.onerror = () => reject(remove.error ?? new Error("Suppression impossible"));
     };
     cursor.onerror = () => reject(cursor.error ?? new Error("Parcours des brouillons impossible"));
+  });
+}
+
+/** Prepare once: preserve the exact request across reconnects and ambiguous replies.
+ * Do not call this helper for a fresh payload after the first transmission attempt.
+ */
+export async function prepareOfflineNoteTransmission(
+  id: string,
+  ownerScope: string,
+  ifMatch: string,
+  diagnosis: string,
+  partsNote: string,
+): Promise<NonNullable<OfflineDraft["pending"]>> {
+  return transact<NonNullable<OfflineDraft["pending"]>>("readwrite", (store, set, reject) => {
+    const req = store.get(id);
+    req.onsuccess = () => {
+      const draft = req.result as OfflineDraft | undefined;
+      if (!draft || draft.ownerScope !== ownerScope || draft.kind !== "work_order_note") {
+        reject(new Error("Brouillon inaccessible")); return;
+      }
+      if (draft.pending) {
+        try { validateOfflineDraft(draft); set(draft.pending); } catch (error) {
+          reject(error instanceof Error ? error : new Error("Brouillon invalide"));
+        }
+        return;
+      }
+      const pending: NonNullable<OfflineDraft["pending"]> = {
+        idempotencyKey: draft.id,
+        ifMatch,
+        body: { action: "NOTE", diagnosis, work_done: draft.note.trim(), parts_note: partsNote },
+      };
+      const prepared = { ...draft, pending };
+      try { validateOfflineDraft(prepared); } catch (error) {
+        reject(error instanceof Error ? error : new Error("Brouillon invalide")); return;
+      }
+      const write = store.put(prepared);
+      write.onsuccess = () => set(pending);
+      write.onerror = () => reject(write.error ?? new Error("Préparation locale impossible"));
+    };
+    req.onerror = () => reject(req.error ?? new Error("Brouillon inaccessible"));
   });
 }
