@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { clearOfflineDrafts, listOfflineDrafts } from "../lib/offlineDrafts";
@@ -26,7 +26,7 @@ beforeEach(() => {
   }]);
   vi.mocked(clearOfflineDrafts).mockResolvedValue(undefined);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 it("ne supprime rien sans confirmation de l'utilisateur", async () => {
   vi.stubGlobal("confirm", vi.fn(() => false));
