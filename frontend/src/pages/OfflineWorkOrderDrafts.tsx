@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useMe } from "../auth/AuthContext";
 import { discardOfflineDraft, listOfflineDrafts, saveOfflineDraft, type OfflineDraft } from "../lib/offlineDrafts";
 
-export function OfflineWorkOrderDrafts({ workOrderId }: { workOrderId: string }) {
+export function OfflineWorkOrderDrafts({ workOrderId, onRestore }: { workOrderId: string; onRestore?: (note: string) => void }) {
   const me = useMe();
   const ownerScope = `${me.workspace_code}:${me.user_account_id}`;
   const [drafts, setDrafts] = useState<OfflineDraft[]>([]);
@@ -52,6 +52,7 @@ export function OfflineWorkOrderDrafts({ workOrderId }: { workOrderId: string })
     {error && <p role="alert">{error}</p>}
     <ul>{drafts.map((draft) => <li key={draft.id}>
       <p>{draft.note}</p>
+      {onRestore && <button type="button" disabled={busy} onClick={() => onRestore(draft.note)}>Reprendre dans le compte rendu</button>}
       <button type="button" disabled={busy} onClick={() => void discard(draft.id)}>Supprimer ce brouillon</button>
     </li>)}</ul>
   </div>;

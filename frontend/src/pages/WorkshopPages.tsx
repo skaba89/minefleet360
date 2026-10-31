@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { call, read, type Schemas } from "../api/client";
@@ -218,6 +218,7 @@ export function WorkOrderPage() {
   const queryClient = useQueryClient();
   const { timezoneOf } = useSites();
   const [panel, setPanel] = useState<Panel>(null);
+  const [restoredDraft, setRestoredDraft] = useState<{ id: string; note: string } | null>(null);
   const [error, setError] = useState<unknown>(null);
   const order = useQuery({
     queryKey: ["work-order", workOrderId],
@@ -343,8 +344,8 @@ export function WorkOrderPage() {
               allowed={can(me.grants, "maintenance.preventive.manage", o.site_id)}
               timeZone={tz}
             />
-            <OfflineWorkOrderDrafts workOrderId={o.work_order_id} />
-            <Report order={o} canExecute={canExecute} onSave={(fields, submit) => act(submit ? "SUBMIT" : "NOTE", fields)} />
+            <OfflineWorkOrderDrafts workOrderId={o.work_order_id} onRestore={(note) => setRestoredDraft({ id: crypto.randomUUID(), note })} />
+            <Report order={o} canExecute={canExecute} restoredDraft={restoredDraft} onSave={(fields, submit) => act(submit ? "SUBMIT" : "NOTE", fields)} />
             <Labour order={o} canExecute={canExecute} onDone={() => void refresh()} />
             <h2>Chronologie</h2>
             <ol className="timeline">
@@ -450,10 +451,12 @@ function ReasonForm({
 function Report({
   order,
   canExecute,
+  restoredDraft,
   onSave,
 }: {
   order: WorkOrder;
   canExecute: boolean;
+  restoredDraft: { id: string; note: string } | null;
   onSave: (fields: { diagnosis: string; work_done: string; parts_note: string }, submit: boolean) => Promise<unknown>;
 }) {
   // Compte rendu figé pendant le contrôle qualité : le valideur examine ce qui a été soumis.
@@ -463,6 +466,9 @@ function Report({
     work_done: order.work_done ?? "",
     parts_note: order.parts_note ?? "",
   });
+  useEffect(() => {
+    if (restoredDraft && editable) setForm((current) => ({ ...current, work_done: restoredDraft.note }));
+  }, [restoredDraft, editable]);
   if (!editable) {
     return (
       <>
