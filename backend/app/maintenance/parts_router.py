@@ -318,6 +318,8 @@ def consume_part_reservation(reservation_id: uuid.UUID, auth: Consume) -> PartCo
             movement_type="ISSUE",
             quantity=reservation.quantity,
             reference=f"OT-CONSUME-{reservation_id}",
+            work_order_id=reservation.work_order_id,
+            spare_part_reservation_id=reservation_id,
             recorded_by=auth.user_id,
         )
         auth.db.add(movement)
