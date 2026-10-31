@@ -105,7 +105,7 @@ export function LegalRegistriesPage() {
           <button type="submit" disabled={saving || !reference.trim() || !title.trim() || !counterparty.trim()}>
             {saving ? "Enregistrement…" : "Enregistrer le brouillon"}
           </button>
-          {saveError && <ErrorMessage error={saveError} />}
+          {saveError !== null && <ErrorMessage error={saveError} />}
           {notice && <p role="status">{notice}</p>}
         </form>
       )}
