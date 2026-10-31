@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-import { listOfflineDrafts, type OfflineDraft } from "../lib/offlineDrafts";
+import { discardOfflineDraft, listOfflineDrafts, type OfflineDraft } from "../lib/offlineDrafts";
 import { OfflineWorkOrderDrafts } from "./OfflineWorkOrderDrafts";
 
 vi.mock("../auth/AuthContext", () => ({
@@ -53,4 +53,16 @@ it("réaffiche l'état IndexedDB après un envoi échoué", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Transmettre cette note en ligne" }));
   await screen.findByText("Transmission incertaine — vérifier l’OT");
   expect(screen.getByRole("alert").textContent).toContain("Envoi incertain");
+});
+
+it("ne supprime pas une opération incertaine sans confirmation explicite", async () => {
+  vi.mocked(listOfflineDrafts).mockResolvedValue([{ ...draft, pending: {
+    idempotencyKey: draft.id, ifMatch: '"3"', deliveryStatus: "uncertain",
+    body: { action: "NOTE", diagnosis: "", work_done: draft.note, parts_note: "" },
+  } }]);
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+  render(<OfflineWorkOrderDrafts workOrderId={draft.workOrderId} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Supprimer ce brouillon" }));
+  expect(confirm).toHaveBeenCalledOnce();
+  expect(discardOfflineDraft).not.toHaveBeenCalled();
 });
