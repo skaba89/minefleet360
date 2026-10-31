@@ -18,9 +18,7 @@ class WorkOrderPartsCost:
         return self.unvalued_movements == 0
 
 
-def aggregate_parts_cost(
-    costs: list[Decimal | None], *, currency_count: int = 1
-) -> WorkOrderPartsCost:
+def aggregate_parts_cost(costs: list[Decimal | None], *, currency_count: int = 1) -> WorkOrderPartsCost:
     """Agrège uniquement les coûts historiques connus, en devise homogène.
 
     Le résultat connu n'est pas un coût total lorsque complete est faux.
