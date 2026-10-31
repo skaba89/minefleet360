@@ -14,7 +14,6 @@ from app.authz.routing import SecuredRoute
 from app.core.errors import AppError
 from app.core.http import Page, Pagination, StrictModel
 from app.maintenance.models import WorkOrder
-from app.maintenance.valued_receipts import record_valued_receipt
 from app.maintenance.parts_models import (
     SparePart,
     SparePartBalance,
@@ -22,6 +21,7 @@ from app.maintenance.parts_models import (
     SparePartReservation,
     SparePartStore,
 )
+from app.maintenance.valued_receipts import record_valued_receipt
 
 router = APIRouter(tags=["pieces"], route_class=SecuredRoute)
 Read = Annotated[Authorized, Depends(Require("maintenance.parts.read"))]
