@@ -78,10 +78,18 @@ export async function submitPreparedOfflineWorkOrderNote(draft: OfflineDraft): P
         ifMatch: pending.ifMatch,
         body: pending.body,
       });
-      await setOfflineNoteDeliveryStatus(draft.id, draft.ownerScope, "confirmed");
+      try {
+        await setOfflineNoteDeliveryStatus(draft.id, draft.ownerScope, "confirmed");
+      } catch {
+        throw new Error("Note enregistrée sur le serveur, mais confirmation locale impossible. Vérifiez l'OT avant de supprimer le brouillon.");
+      }
     } catch (error) {
       if (error instanceof ApiError && error.status === 0) {
-        await setOfflineNoteDeliveryStatus(draft.id, draft.ownerScope, "uncertain");
+        try {
+          await setOfflineNoteDeliveryStatus(draft.id, draft.ownerScope, "uncertain");
+        } catch {
+          throw new Error("Envoi incertain et état local non enregistré. Ne supprimez pas le brouillon ; vérifiez l'OT avant de réessayer.");
+        }
         throw new Error("Transmission incertaine. La commande est conservée : vérifiez l'OT puis relancez la même opération.");
       }
       throw error;
