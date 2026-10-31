@@ -27,5 +27,34 @@ class AlertStateTests(unittest.TestCase):
         _, event = module.transition({}, 124, 1)
         self.assertEqual(event, "ALERT")
 
+    def test_transition_and_outbox_are_persisted_together(self):
+        import json
+        import subprocess
+        import sys
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            probe = root / "failed.sh"
+            probe.write_text("#!/bin/sh\\nexit 2\\n")
+            state = root / "health.json"
+            for _ in range(3):
+                run = subprocess.run(
+                    [sys.executable, str(path), "--state-file", str(state),
+                     "--probe", str(probe), "--threshold", "3"],
+                    capture_output=True, text=True, timeout=10,
+                )
+                self.assertEqual(run.returncode, 0, run.stderr)
+            stored = json.loads(state.read_text())
+            self.assertTrue(stored["active"])
+            self.assertEqual(stored["pending_notifications"], ["ALERT"])
+            # No duplicate event while failure persists.
+            subprocess.run(
+                [sys.executable, str(path), "--state-file", str(state),
+                 "--probe", str(probe), "--threshold", "3"],
+                check=True, capture_output=True, timeout=10,
+            )
+            self.assertEqual(json.loads(state.read_text())["pending_notifications"], ["ALERT"])
+
+
 if __name__ == "__main__":
     unittest.main()

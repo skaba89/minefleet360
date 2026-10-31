@@ -82,3 +82,11 @@ python3 infra/deploy/run-alert-monitor.py \
 Les variables `MF_ALERT_SMTP_*` et `MF_ALERT_EMAIL_*` sont nécessaires pour envoyer des emails. Le répertoire d'état doit être réservé au compte technique de supervision (droits `0700`) ; les fichiers sont créés avec les droits `0600`. **Ne jamais exécuter deux ordonnanceurs différents sur le même état**. Tester une panne simulée et la reprise SMTP en staging avant d'activer les notifications opérationnelles.
 
 La livraison est *au moins une fois* : une interruption après acceptation SMTP et avant la suppression de la file peut provoquer un doublon. Une interruption entre l'enregistrement d'une transition et sa mise en file peut aussi nécessiter une réconciliation manuelle des événements. Il n'y a pas encore de supervision externe, de preuves de réception effective des emails, ni de mécanisme automatique de résorption des erreurs persistantes.
+
+## Journal d'alertes atomique (PR suivante à #207)
+
+Une transition `ALERT` ou `RECOVERED` est désormais enregistrée **dans le même fichier d'état que la liste `pending_notifications`**, sous un même verrou et avant d'afficher l'événement. L'orchestrateur utilise directement cette liste pour l'envoi et n'a plus besoin d'un second enregistrement du message : une interruption entre les deux opérations ne peut donc plus faire disparaître l'alerte.
+
+**Migration :** avant d'activer cette version sur un serveur où `pending-notifications.json` existe, arrêter le service de monitoring, sauvegarder les deux fichiers d'état et examiner les notifications encore présentes dans l'ancienne file. Les transférer ou les traiter manuellement avant de démarrer le nouveau script. Ne pas supprimer automatiquement une file contenant des messages non traités.
+
+Le risque de doublon après acceptation SMTP demeure. L'écriture d'un fichier JSON en place reste vulnérable à une coupure système au milieu d'une écriture ; des tests de résistance sur la durabilité et une stratégie de récupération de fichier corrompu restent nécessaires.
