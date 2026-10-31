@@ -33,6 +33,8 @@ export function PartsPage() {
   const [replenishmentQuantity, setReplenishmentQuantity] = useState("1");
   const [replenishmentReference, setReplenishmentReference] = useState("");
   const [replenishmentBusy, setReplenishmentBusy] = useState(false);
+  const [decisionNote, setDecisionNote] = useState("");
+  const [actingReplenishmentId, setActingReplenishmentId] = useState<string | null>(null);
   const [replenishmentError, setReplenishmentError] = useState<unknown>(null);
   const [reservationError, setReservationError] = useState<unknown>(null);
   const { siteId } = useSites();
@@ -333,7 +335,7 @@ export function PartsPage() {
       {tab === "reservations" && (
         <DataState loading={reservations.isLoading} error={reservations.error} empty={!reservations.data?.items.length}>
           <table>
-            <thead><tr><th>Référence</th><th>Ordre de travail</th><th>Pièce</th><th>Quantité</th><th>Statut</th></tr></thead>
+            <thead><tr><th>Référence</th><th>Ordre de travail</th><th>Pièce</th><th>Quantité</th><th>Statut</th><th>Actions</th></tr></thead>
             <tbody>{reservations.data?.items.map((item) => (
               <tr key={item.spare_part_reservation_id}>
                 <td>{item.reference}</td><td><Link to={`/atelier/${item.work_order_id}`}>Voir l’OT</Link></td>
@@ -447,6 +449,12 @@ export function PartsPage() {
           {replenishmentError !== null && <ErrorMessage error={replenishmentError} />}
         </form>
       )}
+      {tab === "replenishments" && canManageParts && (
+        <label>Justification de la décision (obligatoire)
+          <input value={decisionNote} maxLength={500}
+            onChange={(event) => setDecisionNote(event.target.value)} />
+        </label>
+      )}
       {tab === "replenishments" && (
         <DataState loading={replenishments.isLoading} error={replenishments.error}
           empty={!replenishments.data?.items.length}>
@@ -462,11 +470,57 @@ export function PartsPage() {
                   DRAFT: "Brouillon", SUBMITTED: "Soumis",
                   APPROVED: "Approuvé", REJECTED: "Rejeté",
                 } as Record<string, string>)[item.status] ?? item.status}</td>
+                <td>
+                  {canManageParts && item.status === "DRAFT" && (
+                    <button type="button" disabled={actingReplenishmentId !== null}
+                      onClick={async () => {
+                        setActingReplenishmentId(item.replenishment_id);
+                        setReplenishmentError(null);
+                        try {
+                          await call("post", "/part-replenishments/{replenishment_id}/submit", {
+                            path: { replenishment_id: item.replenishment_id },
+                          });
+                          setMessage("Demande soumise.");
+                          await queryClient.invalidateQueries({ queryKey: ["part-replenishments"] });
+                        } catch (error) {
+                          setReplenishmentError(error);
+                        } finally {
+                          setActingReplenishmentId(null);
+                        }
+                      }}>Soumettre</button>
+                  )}
+                  {canManageParts && item.status === "SUBMITTED" && (
+                    <div className="filters">
+                      {(["APPROVE", "REJECT"] as const).map((decision) => (
+                        <button key={decision} type="button"
+                          disabled={actingReplenishmentId !== null || !decisionNote.trim()}
+                          onClick={async () => {
+                            setActingReplenishmentId(item.replenishment_id);
+                            setReplenishmentError(null);
+                            try {
+                              await call("post", "/part-replenishments/{replenishment_id}/decision", {
+                                path: { replenishment_id: item.replenishment_id },
+                                body: { action: decision, note: decisionNote.trim() },
+                              });
+                              setDecisionNote("");
+                              setMessage(decision === "APPROVE" ? "Demande approuvée." : "Demande rejetée.");
+                              await queryClient.invalidateQueries({ queryKey: ["part-replenishments"] });
+                            } catch (error) {
+                              setReplenishmentError(error);
+                            } finally {
+                              setActingReplenishmentId(null);
+                            }
+                          }}>{decision === "APPROVE" ? "Approuver" : "Rejeter"}</button>
+                      ))}
+                    </div>
+                  )}
+                </td>
               </tr>
             ))}</tbody>
           </table>
         </DataState>
       )}
+      {replenishmentError !== null && <ErrorMessage error={replenishmentError} />}
       {reservationError !== null && <ErrorMessage error={reservationError} />}
       {message && <p role="status">{message}</p>}
       {current.data && (
