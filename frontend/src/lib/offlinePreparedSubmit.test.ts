@@ -1,13 +1,13 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { call } from "../api/client";
-import { listOfflineDrafts, prepareOfflineNoteTransmission, validateOfflineDraft, type OfflineDraft } from "./offlineDrafts";
+import { listOfflineDrafts, prepareOfflineNoteTransmission, setOfflineNoteDeliveryStatus, validateOfflineDraft, type OfflineDraft } from "./offlineDrafts";
 import { submitPreparedOfflineWorkOrderNote } from "./offlineWorkOrderSubmit";
 
 vi.mock("../api/client", async (original) => ({
   ...await original<typeof import("../api/client")>(), call: vi.fn(),
 }));
 vi.mock("./offlineDrafts", () => ({
-  listOfflineDrafts: vi.fn(), prepareOfflineNoteTransmission: vi.fn(), validateOfflineDraft: vi.fn(),
+  listOfflineDrafts: vi.fn(), prepareOfflineNoteTransmission: vi.fn(), setOfflineNoteDeliveryStatus: vi.fn(), validateOfflineDraft: vi.fn(),
 }));
 
 const draft: OfflineDraft = {
@@ -57,4 +57,27 @@ it("refuse l'envoi quand le brouillon n'existe plus", async () => {
   await expect(submitPreparedOfflineWorkOrderNote(draft)).rejects.toThrow(/introuvable/);
   expect(call).not.toHaveBeenCalled();
   expect(validateOfflineDraft).toHaveBeenCalled();
+});
+
+it("conserve la confirmation de transmission après succès", async () => {
+  await submitPreparedOfflineWorkOrderNote(draft);
+  expect(setOfflineNoteDeliveryStatus).toHaveBeenCalledWith(draft.id, draft.ownerScope, "confirmed");
+});
+
+it("ne renvoie pas une transmission déjà confirmée", async () => {
+  vi.mocked(listOfflineDrafts).mockResolvedValue([{
+    ...draft, pending: { ...pending, deliveryStatus: "confirmed" as const },
+  }]);
+  await submitPreparedOfflineWorkOrderNote(draft);
+  expect(call).not.toHaveBeenCalled();
+});
+
+it("conserve l'état incertain après coupure de transmission", async () => {
+  vi.mocked(call).mockResolvedValueOnce({ data: {
+    status: "IN_PROGRESS", work_done: null, diagnosis: "Freins", parts_note: "",
+  }, etag: '"3"' } as never).mockRejectedValueOnce(new (await import("../api/client")).ApiError(0, {
+    code: "NETWORK_ERROR", message_fr: "Coupure réseau", details: null, request_id: null,
+  }));
+  await expect(submitPreparedOfflineWorkOrderNote(draft)).rejects.toThrow(/incertaine/);
+  expect(setOfflineNoteDeliveryStatus).toHaveBeenCalledWith(draft.id, draft.ownerScope, "uncertain");
 });

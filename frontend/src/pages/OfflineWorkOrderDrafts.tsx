@@ -38,6 +38,7 @@ export function OfflineWorkOrderDrafts({ workOrderId, onRestore, onSubmit }: { w
     setBusy(true); setError("");
     try {
       await onSubmit?.(draft);
+      setDrafts((await listOfflineDrafts(ownerScope)).filter((item) => item.workOrderId === workOrderId));
       setError("Note transmise. Le brouillon local est conservé : vous pouvez le supprimer après vérification.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Envoi non confirmé. Vérifiez l'OT avant de réessayer.");
@@ -80,8 +81,9 @@ export function OfflineWorkOrderDrafts({ workOrderId, onRestore, onSubmit }: { w
     <div className="toolbar"><button type="button" className="danger" disabled={busy} onClick={() => void purge()}>Effacer tous mes brouillons locaux</button></div>
     <ul>{drafts.map((draft) => <li key={draft.id}>
       <p>{draft.note}</p>
+      <p className="muted small">{draft.pending?.deliveryStatus === "confirmed" ? "Transmission confirmée" : draft.pending?.deliveryStatus === "uncertain" ? "Transmission incertaine — vérifier l’OT" : draft.pending ? "Commande préparée, non confirmée" : "Brouillon non transmis"}</p>
       {onRestore && <button type="button" disabled={busy} onClick={() => onRestore(draft.note)}>Reprendre dans le compte rendu</button>}
-      {onSubmit && <button type="button" disabled={busy || !navigator.onLine} onClick={() => void submit(draft)}>Transmettre cette note en ligne</button>}
+      {onSubmit && <button type="button" disabled={busy || !navigator.onLine || draft.pending?.deliveryStatus === "confirmed"} onClick={() => void submit(draft)}>Transmettre cette note en ligne</button>}
       <button type="button" disabled={busy} onClick={() => void discard(draft.id)}>Supprimer ce brouillon</button>
     </li>)}</ul>
   </div>;
