@@ -514,6 +514,7 @@ permissions:
     routes:
       - { method: POST, path: /parts, shape: collection, success: 201 }
       - { method: POST, path: /part-stores, shape: collection, success: 201 }
+      - { method: POST, path: /part-replenishments, shape: collection, success: 201 }
     audit: { action: parts.create }
     grants:
       TENANT_ADMIN: [TENANT]
@@ -593,6 +594,7 @@ permissions:
       - { method: GET, path: /part-balances, shape: collection, success: 200 }
       - { method: GET, path: /part-movements, shape: collection, success: 200 }
       - { method: GET, path: /part-reservations, shape: collection, success: 200 }
+      - { method: GET, path: /part-replenishments, shape: collection, success: 200 }
     grants:
       TENANT_ADMIN: [TENANT]
       DIRECTION: [TENANT]
