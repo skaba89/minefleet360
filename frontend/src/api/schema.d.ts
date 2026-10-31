@@ -2851,6 +2851,17 @@ export interface components {
         };
         /** DraftOut */
         DraftOut: {
+            /**
+             * Created By
+             * Format: uuid
+             */
+            created_by: string;
+            /** Decided At */
+            decided_at: string | null;
+            /** Decision By */
+            decision_by: string | null;
+            /** Decision Note */
+            decision_note: string | null;
             /** Quantity */
             quantity: string;
             /** Reference */
@@ -2877,28 +2888,8 @@ export interface components {
             spare_part_store_id: string;
             /** Status */
             status: string;
-            /**
-             * Created By
-             * Format: uuid
-             */
-            created_by: string;
-            /**
-             * Decision By
-             * Format: uuid
-             */
-            decision_by: string | null;
-            /** Decision Note */
-            decision_note: string | null;
-            /**
-             * Submitted At
-             * Format: date-time
-             */
+            /** Submitted At */
             submitted_at: string | null;
-            /**
-             * Decided At
-             * Format: date-time
-             */
-            decided_at: string | null;
         };
         /** DriverAccountIn */
         DriverAccountIn: {
