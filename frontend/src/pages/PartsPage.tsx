@@ -59,9 +59,9 @@ export function PartsPage() {
   const storeLabel = (id: string) => storeLabels.get(id) ?? id;
 
   const balances = useQuery({
-    queryKey: ["part-balances", siteId, page],
+    queryKey: ["part-balances", siteId, page, criticalOnly],
     enabled: permitted && tab === "stocks",
-    queryFn: () => read("/part-balances", { query: { site_id: siteId, page, page_size: PAGE_SIZE } }),
+    queryFn: () => read("/part-balances", { query: { site_id: siteId, page, page_size: PAGE_SIZE, critical_only: criticalOnly } }),
   });
   const movements = useQuery({
     queryKey: ["part-movements", siteId, page],
@@ -252,16 +252,15 @@ export function PartsPage() {
       </div>
       {tab === "stocks" && (
         <label className="checkbox">
-          <input type="checkbox" checked={criticalOnly} onChange={(event) => setCriticalOnly(event.target.checked)} />
-          Afficher uniquement les stocks critiques de cette page
+          <input type="checkbox" checked={criticalOnly} onChange={(event) => { setCriticalOnly(event.target.checked); setPage(1); }} />
+          Afficher tous les stocks critiques
         </label>
       )}
       {tab === "stocks" && (
         <DataState loading={balances.isLoading} error={balances.error} empty={!balances.data?.items.length}>
           <table>
             <thead><tr><th>Pièce</th><th>Magasin</th><th>Physique</th><th>Réservé</th><th>Disponible</th><th>Seuil</th><th>Alerte</th></tr></thead>
-            <tbody>{balances.data?.items.filter((item) =>
-              !criticalOnly || item.on_hand - item.reserved <= item.low_stock_threshold).map((item) => (
+            <tbody>{balances.data?.items.map((item) => (
               <tr key={item.spare_part_balance_id}>
                 <td>{partLabel(item.spare_part_id)}</td><td>{storeLabel(item.spare_part_store_id)}</td>
                 <td>{item.on_hand}</td><td>{item.reserved}</td>
@@ -274,7 +273,7 @@ export function PartsPage() {
           </table>
           {criticalOnly && balances.data && !balances.data.items.some((item) =>
             item.on_hand - item.reserved <= item.low_stock_threshold) && (
-            <p role="status">Aucun stock critique sur cette page.</p>
+            <p role="status">Aucun stock critique pour cette recherche.</p>
           )}
         </DataState>
       )}
