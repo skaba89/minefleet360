@@ -36,7 +36,7 @@ export function PartsPage() {
   const canRelease = can(me.grants, "maintenance.parts.release", siteId);
   const canConsume = can(me.grants, "maintenance.parts.consume", siteId);
   const activeAction = canReceive && (action === "receipt" || !canIssue) ? "receipt" : "issue";
-  const [tab, setTab] = useState<"stocks" | "movements" | "reservations">("stocks");
+  const [tab, setTab] = useState<"stocks" | "movements" | "reservations" | "replenishments">("stocks");
   const [page, setPage] = useState(1);
   const [criticalOnly, setCriticalOnly] = useState(false);
   const permitted = can(me.grants, "maintenance.parts.read", siteId);
@@ -74,7 +74,13 @@ export function PartsPage() {
     enabled: permitted && tab === "reservations",
     queryFn: () => read("/part-reservations", { query: { site_id: siteId, page, page_size: PAGE_SIZE } }),
   });
-  const current = tab === "stocks" ? balances : tab === "movements" ? movements : reservations;
+  const replenishments = useQuery({
+    queryKey: ["part-replenishments", siteId, page],
+    enabled: permitted && tab === "replenishments",
+    queryFn: () => read("/part-replenishments", { query: { site_id: siteId, page, page_size: PAGE_SIZE } }),
+  });
+  const current = tab === "stocks" ? balances : tab === "movements" ? movements :
+    tab === "reservations" ? reservations : replenishments;
   if (!permitted) return <p role="alert">Vous n'avez pas accès au magasin de pièces.</p>;
 
   return (
@@ -231,7 +237,27 @@ export function PartsPage() {
             Number(reservationQuantity) <= 0}>
             {reservationBusy ? "Réservation…" : "Réserver"}
           </button>
-          {reservationError !== null && <ErrorMessage error={reservationError} />}
+          {tab === "replenishments" && (
+        <DataState loading={replenishments.isLoading} error={replenishments.error}
+          empty={!replenishments.data?.items.length}>
+          <table>
+            <thead><tr><th>Référence</th><th>Pièce</th><th>Magasin</th><th>Quantité</th><th>Statut</th></tr></thead>
+            <tbody>{replenishments.data?.items.map((item) => (
+              <tr key={item.replenishment_id}>
+                <td>{item.reference}</td>
+                <td>{partLabel(item.spare_part_id)}</td>
+                <td>{storeLabel(item.spare_part_store_id)}</td>
+                <td>{item.quantity}</td>
+                <td>{({
+                  DRAFT: "Brouillon", SUBMITTED: "Soumis",
+                  APPROVED: "Approuvé", REJECTED: "Rejeté",
+                } as Record<string, string>)[item.status] ?? item.status}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </DataState>
+      )}
+      {reservationError !== null && <ErrorMessage error={reservationError} />}
         </form>
       )}
       <div className="filters" role="group" aria-label="Vue du magasin">
@@ -239,6 +265,7 @@ export function PartsPage() {
           ["stocks", "Stocks"],
           ["movements", "Mouvements"],
           ["reservations", "Réservations"],
+          ["replenishments", "Réapprovisionnements"],
         ] as const).map(([value, label]) => (
           <button
             key={value}
