@@ -5250,6 +5250,44 @@ export interface components {
             /** Reason Code */
             reason_code?: ("BUDGET" | "SUPPLIER" | "QUANTITY" | "OTHER") | null;
         };
+        /** PurchaseOrderCreate */
+        PurchaseOrderCreate: {
+            /**
+             * Replenishment Id
+             * Format: uuid
+             */
+            replenishment_id: string;
+            /** Supplier Name */
+            supplier_name: string;
+            /** Supplier Reference */
+            supplier_reference: string;
+        };
+        /** PurchaseOrderOut */
+        PurchaseOrderOut: {
+            /**
+             * Purchase Order Id
+             * Format: uuid
+             */
+            purchase_order_id: string;
+            /** Quantity */
+            quantity: string;
+            /**
+             * Replenishment Id
+             * Format: uuid
+             */
+            replenishment_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Status */
+            status: string;
+            /** Supplier Name */
+            supplier_name: string;
+            /** Supplier Reference */
+            supplier_reference: string;
+        };
         /** PurchaseReceiptCreate */
         PurchaseReceiptCreate: {
             /** Delivery Reference */
