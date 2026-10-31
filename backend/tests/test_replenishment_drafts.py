@@ -40,3 +40,14 @@ def test_replenishment_submit_requires_permission(client: TestClient, api: Api) 
         headers=driver.headers,
     )
     assert response.status_code == 403
+
+
+def test_replenishment_decision_requires_permission(client: TestClient, api: Api) -> None:
+    tenant = api.tenant(sites=("MINE",))
+    driver = api.user(tenant, "DRIVER", "SITE", "MINE")
+    response = client.post(
+        f"{API}/part-replenishments/00000000-0000-4000-8000-000000000011/decision",
+        headers=driver.headers,
+        json={"action": "APPROVE", "note": "Contrôle effectué"},
+    )
+    assert response.status_code == 403
