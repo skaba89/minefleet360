@@ -5,10 +5,11 @@ from datetime import date
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel
-from sqlalchemy import Date, Numeric, String, func, select
+from sqlalchemy import Date, Numeric, String, func, select, text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.authz.dependencies import Authorized, Require
@@ -16,15 +17,19 @@ from app.authz.routing import SecuredRoute
 from app.core.db import Base
 from app.core.errors import AppError
 from app.core.http import Page, Pagination
+from app.legal.schemas import ContractDraftInput
 
 router = APIRouter(tags=["juridique"], route_class=SecuredRoute)
 ContractRead = Annotated[Authorized, Depends(Require("legal.contract.read"))]
+ContractCreate = Annotated[Authorized, Depends(Require("legal.contract.create"))]
 InsuranceRead = Annotated[Authorized, Depends(Require("legal.insurance.read"))]
 
 
 class LegalContract(Base):
     __tablename__ = "legal_contract"
-    contract_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    contract_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
     site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
     reference: Mapped[str] = mapped_column(String)
@@ -33,6 +38,7 @@ class LegalContract(Base):
     counterparty_name: Mapped[str] = mapped_column(String)
     status: Mapped[str] = mapped_column(String)
     document_sha256: Mapped[str | None] = mapped_column(String)
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
 
 
 class InsurancePolicy(Base):
@@ -118,3 +124,30 @@ def list_insurance(
         page_size=page.page_size,
         total=total,
     )
+
+
+@router.post("/legal-contracts", response_model=ContractOut, status_code=status.HTTP_201_CREATED)
+def create_contract_draft(body: ContractDraftInput, auth: ContractCreate) -> ContractOut:
+    """Create a draft only; signing and activation require separate workflows."""
+    if not auth.scope.covers_site(body.site_id):
+        raise AppError("NOT_FOUND")
+    contract = LegalContract(
+        tenant_id=auth.tenant_id,
+        site_id=body.site_id,
+        reference=body.reference,
+        title=body.title,
+        contract_type=body.contract_type,
+        counterparty_name=body.counterparty_name,
+        status="DRAFT",
+        document_sha256=body.document_sha256,
+        created_by=auth.user_id,
+    )
+    auth.db.add(contract)
+    try:
+        auth.db.flush()
+    except IntegrityError:
+        auth.db.rollback()
+        raise AppError("CONFLICT") from None
+    result = ContractOut.model_validate(contract, from_attributes=True)
+    auth.db.commit()
+    return result
