@@ -292,28 +292,43 @@ def consume_part_reservation(reservation_id: uuid.UUID, auth: Consume) -> PartCo
         if changed is None:
             auth.db.rollback()
             raise AppError("CONFLICT")
-        # Les deux colonnes sont décrémentées ensemble, sans stock négatif.
-        changed_balance = auth.db.execute(
-            text(
-                "UPDATE spare_part_balance SET "
-                "on_hand = on_hand - :quantity, reserved = reserved - :quantity "
-                "WHERE tenant_id = :tenant_id AND site_id = :site_id "
-                "AND spare_part_store_id = :store_id AND spare_part_id = :part_id "
-                "AND reserved >= :quantity AND on_hand >= :quantity "
-                "AND stock_value IS NULL AND valuation_currency IS NULL "
-                "RETURNING spare_part_balance_id"
-            ),
-            {
-                "tenant_id": auth.tenant_id,
-                "site_id": reservation.site_id,
-                "store_id": reservation.spare_part_store_id,
-                "part_id": reservation.spare_part_id,
-                "quantity": reservation.quantity,
-            },
-        ).first()
-        if changed_balance is None:
+        # Le verrou de ligne sérialise réceptions, sorties et consommations CMP.
+        balance = auth.db.scalar(
+            select(SparePartBalance)
+            .where(
+                SparePartBalance.tenant_id == auth.tenant_id,
+                SparePartBalance.site_id == reservation.site_id,
+                SparePartBalance.spare_part_store_id == reservation.spare_part_store_id,
+                SparePartBalance.spare_part_id == reservation.spare_part_id,
+            )
+            .with_for_update()
+        )
+        if (
+            balance is None
+            or balance.reserved < reservation.quantity
+            or balance.on_hand < reservation.quantity
+        ):
             auth.db.rollback()
             raise AppError("CONFLICT")
+
+        unit_cost = None
+        total_cost = None
+        currency = None
+        if balance.stock_value is not None and balance.valuation_currency is not None:
+            before = Valuation(quantity=balance.on_hand, value=balance.stock_value)
+            after, total_cost = issue_cmp(before, reservation.quantity)
+            unit_cost = (total_cost / reservation.quantity).quantize(Decimal("0.000001"))
+            currency = balance.valuation_currency
+            balance.stock_value = after.value
+            balance.on_hand = after.quantity
+        elif balance.stock_value is None and balance.valuation_currency is None:
+            # Les anciens stocks non valorisés conservent leur comportement historique.
+            balance.on_hand -= reservation.quantity
+        else:
+            auth.db.rollback()
+            raise AppError("CONFLICT")
+        balance.reserved -= reservation.quantity
+
         movement = SparePartMovement(
             tenant_id=auth.tenant_id,
             site_id=reservation.site_id,
@@ -321,6 +336,9 @@ def consume_part_reservation(reservation_id: uuid.UUID, auth: Consume) -> PartCo
             spare_part_id=reservation.spare_part_id,
             movement_type="ISSUE",
             quantity=reservation.quantity,
+            unit_cost=unit_cost,
+            total_cost=total_cost,
+            valuation_currency=currency,
             reference=f"OT-CONSUME-{reservation_id}",
             work_order_id=reservation.work_order_id,
             spare_part_reservation_id=reservation_id,
