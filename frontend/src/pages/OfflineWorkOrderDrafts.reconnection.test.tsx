@@ -30,13 +30,13 @@ afterEach(() => {
 it("désactive puis réactive le bouton selon les événements réseau du navigateur", async () => {
   render(<OfflineWorkOrderDrafts workOrderId={draft.workOrderId} onSubmit={vi.fn()} />);
   const button = await screen.findByRole("button", { name: "Transmettre cette note en ligne" });
-  expect(button).not.toBeDisabled();
+  expect((button as HTMLButtonElement).disabled).toBe(false);
   vi.stubGlobal("navigator", { onLine: false });
   fireEvent(window, new Event("offline"));
-  await waitFor(() => expect(button).toBeDisabled());
+  await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(true));
   vi.stubGlobal("navigator", { onLine: true });
   fireEvent(window, new Event("online"));
-  await waitFor(() => expect(button).not.toBeDisabled());
+  await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
 });
 
 it("réaffiche l'état IndexedDB après un envoi échoué", async () => {
@@ -52,5 +52,5 @@ it("réaffiche l'état IndexedDB après un envoi échoué", async () => {
   render(<OfflineWorkOrderDrafts workOrderId={draft.workOrderId} onSubmit={onSubmit} />);
   fireEvent.click(await screen.findByRole("button", { name: "Transmettre cette note en ligne" }));
   await screen.findByText("Transmission incertaine — vérifier l’OT");
-  expect(screen.getByRole("alert")).toHaveTextContent("Envoi incertain");
+  expect(screen.getByRole("alert").textContent).toContain("Envoi incertain");
 });
