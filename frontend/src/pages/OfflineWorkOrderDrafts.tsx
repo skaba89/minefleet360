@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 
 import { useMe } from "../auth/AuthContext";
+import { useConnectivity } from "../lib/connectivity";
 import { clearOfflineDrafts, discardOfflineDraft, listOfflineDrafts, saveOfflineDraft, type OfflineDraft } from "../lib/offlineDrafts";
 
 export function OfflineWorkOrderDrafts({ workOrderId, onRestore, onSubmit }: { workOrderId: string; onRestore?: (note: string) => void; onSubmit?: (draft: OfflineDraft) => Promise<void> }) {
   const me = useMe();
+  const online = useConnectivity();
   const ownerScope = `${me.workspace_code}:${me.user_account_id}`;
   const [drafts, setDrafts] = useState<OfflineDraft[]>([]);
   const [note, setNote] = useState("");
@@ -72,6 +74,7 @@ export function OfflineWorkOrderDrafts({ workOrderId, onRestore, onSubmit }: { w
 
   return <div className="card">
     <h2>Notes locales hors ligne</h2>
+    <p className="muted small" role="status">{online ? "Connexion réseau détectée. Transmissions manuelles uniquement." : "Sans connexion : brouillons conservés, transmission suspendue."}</p>
     <p className="muted small">Brouillons conservés sur cet appareil, non transmis au serveur. Ils ne constituent pas un compte rendu enregistré. N'y saisissez aucune donnée personnelle ou sensible.</p>
     <label>Note brouillon
       <textarea maxLength={1000} value={note} onChange={(event) => setNote(event.target.value)} />
@@ -83,7 +86,7 @@ export function OfflineWorkOrderDrafts({ workOrderId, onRestore, onSubmit }: { w
       <p>{draft.note}</p>
       <p className="muted small">{draft.pending?.deliveryStatus === "confirmed" ? "Transmission confirmée" : draft.pending?.deliveryStatus === "uncertain" ? "Transmission incertaine — vérifier l’OT" : draft.pending ? "Commande préparée, non confirmée" : "Brouillon non transmis"}</p>
       {onRestore && <button type="button" disabled={busy} onClick={() => onRestore(draft.note)}>Reprendre dans le compte rendu</button>}
-      {onSubmit && <button type="button" disabled={busy || !navigator.onLine || draft.pending?.deliveryStatus === "confirmed"} onClick={() => void submit(draft)}>Transmettre cette note en ligne</button>}
+      {onSubmit && <button type="button" disabled={busy || !online || draft.pending?.deliveryStatus === "confirmed"} onClick={() => void submit(draft)}>Transmettre cette note en ligne</button>}
       <button type="button" disabled={busy} onClick={() => void discard(draft.id)}>Supprimer ce brouillon</button>
     </li>)}</ul>
   </div>;
