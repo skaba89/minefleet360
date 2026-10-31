@@ -16,6 +16,7 @@ import {
   WORK_ORDER_TONE,
 } from "../lib/labels";
 import { can } from "../lib/permissions";
+import { submitOfflineWorkOrderNote } from "../lib/offlineWorkOrderSubmit";
 import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
 import { useSites } from "../site/SiteContext";
 import { PreventiveCompletionPanel } from "./PreventiveCompletionPanel";
@@ -344,7 +345,7 @@ export function WorkOrderPage() {
               allowed={can(me.grants, "maintenance.preventive.manage", o.site_id)}
               timeZone={tz}
             />
-            <OfflineWorkOrderDrafts workOrderId={o.work_order_id} onRestore={(note) => setRestoredDraft({ id: crypto.randomUUID(), note })} />
+            <OfflineWorkOrderDrafts workOrderId={o.work_order_id} onRestore={(note) => setRestoredDraft({ id: crypto.randomUUID(), note })} onSubmit={canExecute ? async (note) => { await submitOfflineWorkOrderNote(o.work_order_id, note); await refresh(); } : undefined} />
             <Report order={o} canExecute={canExecute} restoredDraft={restoredDraft} onSave={(fields, submit) => act(submit ? "SUBMIT" : "NOTE", fields)} />
             <Labour order={o} canExecute={canExecute} onDone={() => void refresh()} />
             <h2>Chronologie</h2>
