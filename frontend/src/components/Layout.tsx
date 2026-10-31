@@ -47,10 +47,11 @@ export function Layout() {
     },
     { to: "/pieces", text: "Pièces", show: can(me.grants, "maintenance.parts.read", siteId) },
     { to: "/pesees", text: "Pesées", show: can(me.grants, "dispatch.weighing.read") },
+    { to: "/juridique", text: "Contrats & assurances", show: can(me.grants, "legal.contract.read", siteId) || can(me.grants, "legal.insurance.read", siteId) },
     { to: "/indicateurs", text: "Indicateurs", show: can(me.grants, "dispatch.indicators.read") },
     { to: "/administration", text: "Administration", show: canAdminister(me.grants) },
   ];
-  const icons: IconName[] = ["truck", "gps", "phone", "users", "assignment", "mission", "tool", "calendar", "fuel", "tool", "scale", "chart", "settings"];
+  const icons: IconName[] = ["truck", "gps", "phone", "users", "assignment", "mission", "tool", "calendar", "fuel", "tool", "scale", "shield", "chart", "settings"];
   return (
     <div className={`shell${menuOpen ? " menu-open" : ""}`}>
       <header className="topbar">
