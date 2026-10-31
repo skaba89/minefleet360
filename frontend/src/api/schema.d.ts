@@ -770,6 +770,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/insurance-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Insurance */
+        get: operations["list_insurance_api_v1_insurance_policies_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/legal-contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Contracts */
+        get: operations["list_contracts_api_v1_legal_contracts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/maintenance-mechanics": {
         parameters: {
             query?: never;
@@ -2764,6 +2798,31 @@ export interface components {
             /** Warnings */
             warnings: components["schemas"]["Issue"][];
         };
+        /** ContractOut */
+        ContractOut: {
+            /**
+             * Contract Id
+             * Format: uuid
+             */
+            contract_id: string;
+            /** Contract Type */
+            contract_type: string;
+            /** Counterparty Name */
+            counterparty_name: string;
+            /** Document Sha256 */
+            document_sha256: string | null;
+            /** Reference */
+            reference: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+        };
         /** DecisionCreate */
         DecisionCreate: {
             /**
@@ -3788,6 +3847,41 @@ export interface components {
             /** Rows */
             rows: components["schemas"]["IndicatorRow"][];
         };
+        /** InsuranceOut */
+        InsuranceOut: {
+            /** Contract Id */
+            contract_id: string | null;
+            /**
+             * Coverage End
+             * Format: date
+             */
+            coverage_end: string;
+            /**
+             * Coverage Start
+             * Format: date
+             */
+            coverage_start: string;
+            /** Coverage Type */
+            coverage_type: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Insurance Policy Id
+             * Format: uuid
+             */
+            insurance_policy_id: string;
+            /** Insurer Name */
+            insurer_name: string;
+            /** Policy Number */
+            policy_number: string;
+            /** Premium Amount */
+            premium_amount: string | null;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+        };
         /**
          * Issue
          * @description Motif d'inéligibilité, de non-conformité ou avertissement ; `date` = échéance concernée.
@@ -4407,6 +4501,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[ContractOut] */
+        Page_ContractOut_: {
+            /** Items */
+            items: components["schemas"]["ContractOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[DraftOut] */
         Page_DraftOut_: {
             /** Items */
@@ -4532,6 +4637,17 @@ export interface components {
         Page_GpsVehicleOut_: {
             /** Items */
             items: components["schemas"]["GpsVehicleOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[InsuranceOut] */
+        Page_InsuranceOut_: {
+            /** Items */
+            items: components["schemas"]["InsuranceOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -8499,6 +8615,76 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    list_insurance_api_v1_insurance_policies_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_InsuranceOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_contracts_api_v1_legal_contracts_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ContractOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
