@@ -36,7 +36,5 @@ def test_valued_receipt_api_returns_financial_movement(client: TestClient, api: 
     assert Decimal(str(data["total_cost"])) == Decimal("300")
     assert Decimal(str(data["unit_cost"])) == Decimal("100")
     assert data["valuation_currency"] == "GNF"
-    duplicate = client.post(
-        f"{API}/part-movements/valued-receipts", headers=keeper.headers, json=payload
-    )
+    duplicate = client.post(f"{API}/part-movements/valued-receipts", headers=keeper.headers, json=payload)
     assert duplicate.status_code == 409
