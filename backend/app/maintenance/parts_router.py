@@ -162,7 +162,8 @@ def reserve_part(body: PartReservationIn, auth: Reserve) -> PartReservationOut:
                 "UPDATE spare_part_balance SET reserved = reserved + :quantity "
                 "WHERE tenant_id = :tenant_id AND site_id = :site_id "
                 "AND spare_part_store_id = :store_id AND spare_part_id = :part_id "
-                "AND on_hand - reserved >= :quantity RETURNING spare_part_balance_id"
+                "AND on_hand - reserved >= :quantity "
+                "RETURNING spare_part_balance_id"
             ),
             {
                 "tenant_id": auth.tenant_id,
@@ -298,6 +299,7 @@ def consume_part_reservation(reservation_id: uuid.UUID, auth: Consume) -> PartCo
                 "WHERE tenant_id = :tenant_id AND site_id = :site_id "
                 "AND spare_part_store_id = :store_id AND spare_part_id = :part_id "
                 "AND reserved >= :quantity AND on_hand >= :quantity "
+                "AND stock_value IS NULL AND valuation_currency IS NULL "
                 "RETURNING spare_part_balance_id"
             ),
             {
@@ -379,6 +381,7 @@ def issue_part(body: PartIssueIn, auth: Issue) -> PartIssueOut:
                 "UPDATE spare_part_balance SET on_hand = on_hand - :quantity "
                 "WHERE tenant_id = :tenant_id AND spare_part_store_id = :store_id "
                 "AND spare_part_id = :part_id AND on_hand - reserved >= :quantity "
+                "AND stock_value IS NULL AND valuation_currency IS NULL "
                 "RETURNING spare_part_balance_id"
             ),
             {
