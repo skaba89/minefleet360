@@ -113,7 +113,9 @@ def progress_work_order(
     if idempotency_key is None:
         return _tagged(service.progress(auth, work_order_id, body, version), response)
     if body.action != "NOTE":
-        raise AppError("VALIDATION_ERROR", details=[{"field": "Idempotency-Key", "type": "unsupported_action"}])
+        raise AppError(
+            "VALIDATION_ERROR", details=[{"field": "Idempotency-Key", "type": "unsupported_action"}]
+        )
     payload = json.dumps(
         {"if_match": version, "body": body.model_dump(mode="json")},
         sort_keys=True,
@@ -130,7 +132,11 @@ def progress_work_order(
         now=auth.clock.now(),
     )
     if owned.is_replay:
-        if owned.replay is None or owned.replay.resource_type != "work_order" or owned.replay.resource_id != work_order_id:
+        if (
+            owned.replay is None
+            or owned.replay.resource_type != "work_order"
+            or owned.replay.resource_id != work_order_id
+        ):
             raise AppError("IDEMPOTENCY_KEY_REUSED")
         order = service.work_order_in_scope(auth, work_order_id)
         service._ensure_executor(auth, order)
