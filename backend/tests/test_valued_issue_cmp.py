@@ -66,10 +66,6 @@ def test_cmp_issue_reduces_quantity_and_value(
     assert duplicate.status_code == 409, duplicate.text
     balances = client.get(f"{API}/part-balances", headers=keeper.headers)
     assert balances.status_code == 200
-    matching = [
-        item
-        for item in balances.json()["items"]
-        if item["spare_part_id"] == stock["spare_part_id"]
-    ]
+    matching = [item for item in balances.json()["items"] if item["spare_part_id"] == stock["spare_part_id"]]
     assert len(matching) == 1
     assert Decimal(str(matching[0]["on_hand"])) == Decimal("1")
