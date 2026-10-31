@@ -161,6 +161,7 @@ export interface CallOptions<O> {
   query?: QueryOf<O>;
   body?: BodyOf<O>;
   ifMatch?: string | null;
+  idempotencyKey?: string;
 }
 
 /** Appel typé : `call("get", "/vehicles/{vehicle_id}", { path: { vehicle_id } })`. */
