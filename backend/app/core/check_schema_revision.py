@@ -2,6 +2,7 @@
 
 Run from the migration image with the owner account, never from the public API.
 """
+
 from __future__ import annotations
 
 import sys
