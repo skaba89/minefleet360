@@ -780,7 +780,8 @@ export interface paths {
         /** List Insurance */
         get: operations["list_insurance_api_v1_insurance_policies_get"];
         put?: never;
-        post?: never;
+        /** Create Insurance Policy */
+        post: operations["create_insurance_policy_api_v1_insurance_policies_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3901,6 +3902,43 @@ export interface components {
             policy_number: string;
             /** Premium Amount */
             premium_amount: string | null;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+        };
+        /** InsurancePolicyInput */
+        InsurancePolicyInput: {
+            /** Contract Id */
+            contract_id?: string | null;
+            /**
+             * Coverage End
+             * Format: date
+             */
+            coverage_end: string;
+            /**
+             * Coverage Start
+             * Format: date
+             */
+            coverage_start: string;
+            /**
+             * Coverage Type
+             * @enum {string}
+             */
+            coverage_type: "FLEET" | "VEHICLE" | "CARGO" | "LIABILITY" | "EMPLOYEE" | "EQUIPMENT" | "OTHER";
+            /**
+             * Currency
+             * @default GNF
+             * @constant
+             */
+            currency: "GNF";
+            /** Insurer Name */
+            insurer_name: string;
+            /** Policy Number */
+            policy_number: string;
+            /** Premium Amount */
+            premium_amount?: number | string | null;
             /**
              * Site Id
              * Format: uuid
@@ -8666,6 +8704,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_InsuranceOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_insurance_policy_api_v1_insurance_policies_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InsurancePolicyInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsuranceOut"];
                 };
             };
             /** @description Validation Error */
