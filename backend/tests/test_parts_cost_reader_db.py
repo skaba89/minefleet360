@@ -6,6 +6,7 @@ from decimal import Decimal
 from fastapi.testclient import TestClient
 
 from app.core.db import new_session
+from app.core.tenancy import set_tenant_context
 from app.maintenance.parts_cost_reader import load_work_order_parts_cost
 from tests.conftest import API, Api
 from tests.test_assignment import World, _vehicle, w  # noqa: F401
@@ -13,7 +14,9 @@ from tests.test_maintenance import _report
 
 
 def test_reader_does_not_invent_cost_for_consumed_part(
-    client: TestClient, api: Api, w: World  # noqa: F811
+    client: TestClient,
+    api: Api,
+    w: World,  # noqa: F811
 ) -> None:
     keeper = api.user(w.t, "STOREKEEPER", "SITE", "S1")
     vehicle = _vehicle(client, w)
@@ -64,10 +67,7 @@ def test_reader_does_not_invent_cost_for_consumed_part(
     assert consumed.status_code == 200, consumed.text
 
     with new_session() as db:
-        # Scope RLS appliqué par la connexion applicative (même tenant).
-        from sqlalchemy import text
-
-        db.execute(text("SELECT set_config('app.tenant_id', :id, true)"), {"id": str(w.t.tenant_id)})
+        set_tenant_context(db, w.t.tenant_id)
         cost, currency = load_work_order_parts_cost(
             db,
             tenant_id=w.t.tenant_id,
