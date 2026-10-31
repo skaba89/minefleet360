@@ -515,6 +515,7 @@ permissions:
       - { method: POST, path: /parts, shape: collection, success: 201 }
       - { method: POST, path: /part-stores, shape: collection, success: 201 }
       - { method: POST, path: /part-replenishments, shape: collection, success: 201 }
+      - { method: POST, path: "/part-replenishments/{replenishment_id}/submit", shape: item, success: 200 }
     audit: { action: parts.create }
     grants:
       TENANT_ADMIN: [TENANT]
