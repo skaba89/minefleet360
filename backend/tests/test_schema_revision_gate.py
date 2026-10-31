@@ -1,4 +1,5 @@
 """Tests for the Alembic readiness comparison (no database required)."""
+
 from app.core.check_schema_revision import revisions_match
 
 
