@@ -6,6 +6,7 @@ import { call, read } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { DataState, ErrorMessage, Pager } from "../components/common";
 import { can } from "../lib/permissions";
+import { replenishmentCsv } from "../lib/replenishmentCsv";
 import { useSites } from "../site/SiteContext";
 
 const PAGE_SIZE = 25;
@@ -255,6 +256,29 @@ export function PartsPage() {
           <input type="checkbox" checked={criticalOnly} onChange={(event) => { setCriticalOnly(event.target.checked); setPage(1); }} />
           Afficher tous les stocks critiques
         </label>
+      )}
+      {tab === "stocks" && (
+        <div>
+          <button type="button" disabled={!balances.data?.items.length}
+            onClick={() => {
+              const rows = (balances.data?.items ?? []).map((item) => ({
+                part: partLabel(item.spare_part_id),
+                store: storeLabel(item.spare_part_store_id),
+                available: item.on_hand - item.reserved,
+                threshold: item.low_stock_threshold,
+              }));
+              const blob = new Blob([replenishmentCsv(rows)], { type: "text/csv;charset=utf-8" });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = "minefleet-reapprovisionnement-brouillon.csv";
+              link.click();
+              URL.revokeObjectURL(url);
+            }}>
+            Exporter un brouillon de réapprovisionnement (page affichée)
+          </button>
+          <p className="muted small">Export local de la page courante uniquement, sans commande d'achat.</p>
+        </div>
       )}
       {tab === "stocks" && (
         <DataState loading={balances.isLoading} error={balances.error} empty={!balances.data?.items.length}>
