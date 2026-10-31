@@ -10,7 +10,9 @@ from tests.test_maintenance import _report
 
 
 def test_unpriced_issue_and_consumption_rejected_for_valued_balance(
-    client: TestClient, api: Api, w: World  # noqa: F811
+    client: TestClient,
+    api: Api,
+    w: World,  # noqa: F811
 ) -> None:
     keeper = api.user(w.t, "STOREKEEPER", "SITE", "S1")
     order_response = _report(client, w, _vehicle(client, w))
