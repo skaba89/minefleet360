@@ -28,8 +28,15 @@ export function PartsPage() {
   const [reservationQuantity, setReservationQuantity] = useState("1");
   const [reservationReference, setReservationReference] = useState("");
   const [reservationBusy, setReservationBusy] = useState(false);
+  const [replenishmentPartId, setReplenishmentPartId] = useState("");
+  const [replenishmentStoreId, setReplenishmentStoreId] = useState("");
+  const [replenishmentQuantity, setReplenishmentQuantity] = useState("1");
+  const [replenishmentReference, setReplenishmentReference] = useState("");
+  const [replenishmentBusy, setReplenishmentBusy] = useState(false);
+  const [replenishmentError, setReplenishmentError] = useState<unknown>(null);
   const [reservationError, setReservationError] = useState<unknown>(null);
   const { siteId } = useSites();
+  const canManageParts = can(me.grants, "maintenance.parts.manage", siteId);
   const canReceive = can(me.grants, "maintenance.parts.receive", siteId);
   const canIssue = can(me.grants, "maintenance.parts.issue", siteId);
   const canReserve = can(me.grants, "maintenance.parts.reserve", siteId);
@@ -373,6 +380,72 @@ export function PartsPage() {
             ))}</tbody>
           </table>
         </DataState>
+      )}
+      {tab === "replenishments" && canManageParts && (
+        <form onSubmit={async (event) => {
+          event.preventDefault();
+          if (replenishmentBusy) return;
+          setReplenishmentBusy(true);
+          setReplenishmentError(null);
+          setMessage("");
+          try {
+            await call("post", "/part-replenishments", { body: {
+              spare_part_id: replenishmentPartId,
+              spare_part_store_id: replenishmentStoreId,
+              quantity: Number(replenishmentQuantity),
+              reference: replenishmentReference.trim(),
+            } });
+            setReplenishmentReference("");
+            setMessage("Brouillon de réapprovisionnement créé.");
+            setPage(1);
+            await queryClient.invalidateQueries({ queryKey: ["part-replenishments"] });
+          } catch (error) {
+            setReplenishmentError(error);
+          } finally {
+            setReplenishmentBusy(false);
+          }
+        }}>
+          <h2>Créer une demande de réapprovisionnement</h2>
+          <div className="filters">
+            <label>Pièce
+              <select required value={replenishmentPartId}
+                onChange={(event) => setReplenishmentPartId(event.target.value)}>
+                <option value="">Choisir une pièce</option>
+                {parts.data?.items.map((part) => (
+                  <option key={part.spare_part_id} value={part.spare_part_id}>
+                    {part.code} — {part.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>Magasin
+              <select required value={replenishmentStoreId}
+                onChange={(event) => setReplenishmentStoreId(event.target.value)}>
+                <option value="">Choisir un magasin</option>
+                {stores.data?.items.map((store) => (
+                  <option key={store.spare_part_store_id} value={store.spare_part_store_id}>
+                    {store.code} — {store.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>Quantité
+              <input type="number" required min="0.001" step="0.001"
+                value={replenishmentQuantity}
+                onChange={(event) => setReplenishmentQuantity(event.target.value)} />
+            </label>
+            <label>Référence unique
+              <input required maxLength={120} value={replenishmentReference}
+                onChange={(event) => setReplenishmentReference(event.target.value)} />
+            </label>
+          </div>
+          <button className="primary" type="submit"
+            disabled={replenishmentBusy || !replenishmentPartId || !replenishmentStoreId ||
+              !replenishmentReference.trim() || !(Number(replenishmentQuantity) > 0)}>
+            {replenishmentBusy ? "Création…" : "Créer le brouillon"}
+          </button>
+          {replenishmentError !== null && <ErrorMessage error={replenishmentError} />}
+        </form>
       )}
       {tab === "replenishments" && (
         <DataState loading={replenishments.isLoading} error={replenishments.error}
