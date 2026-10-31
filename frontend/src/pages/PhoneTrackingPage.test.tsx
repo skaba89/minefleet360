@@ -21,7 +21,7 @@ beforeEach(() => {
   vi.mocked(get).mockResolvedValue([{ vehicle_id: "vehicle", fleet_number: "PARC-FICTIF", registration_number: null, site_id: "site" }]);
   vi.mocked(request).mockImplementation(async (path) => ({ data: path === "/me/gps/shares" ? share : undefined, etag: null }));
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); });
 it("demande le consentement et coupe les envois après l'arrêt", async () => {
   setup();
   const start = await screen.findByRole("button", { name: "Démarrer le partage" });
