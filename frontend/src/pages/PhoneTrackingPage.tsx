@@ -93,6 +93,7 @@ export function PhoneTrackingPage() {
       setRunning(true);
       setMessage("Autorisez la localisation dans votre navigateur…");
       const sample = () => {
+        if (generation.current !== run || !active.current) return;
         if (!navigator.onLine) {
           setMessage("Réseau indisponible : transmission GPS suspendue. Aucun relevé mis en attente.");
           timer.current = setTimeout(sample, 10_000);
