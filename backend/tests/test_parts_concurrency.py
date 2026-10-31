@@ -55,10 +55,7 @@ def test_concurrent_stock_issues_do_not_overdraw(client: TestClient, api: Api) -
         params={"site_id": str(tenant.sites["MINE"])},
     )
     assert balances.status_code == 200, balances.text
-    actual = [
-        row for row in balances.json()["items"]
-        if row["spare_part_id"] == part["spare_part_id"]
-    ]
+    actual = [row for row in balances.json()["items"] if row["spare_part_id"] == part["spare_part_id"]]
     assert len(actual) == 1
     assert actual[0]["on_hand"] == 1.0
     assert actual[0]["reserved"] == 0.0
@@ -70,6 +67,4 @@ def test_concurrent_stock_issues_do_not_overdraw(client: TestClient, api: Api) -
     )
     assert movements.status_code == 200, movements.text
     assert movements.json()["total"] == 2
-    assert sorted(row["movement_type"] for row in movements.json()["items"]) == [
-        "ISSUE", "RECEIPT"
-    ]
+    assert sorted(row["movement_type"] for row in movements.json()["items"]) == ["ISSUE", "RECEIPT"]
