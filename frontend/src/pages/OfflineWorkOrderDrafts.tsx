@@ -43,6 +43,9 @@ export function OfflineWorkOrderDrafts({ workOrderId, onRestore, onSubmit }: { w
       setDrafts((await listOfflineDrafts(ownerScope)).filter((item) => item.workOrderId === workOrderId));
       setError("Note transmise. Le brouillon local est conservé : vous pouvez le supprimer après vérification.");
     } catch (err) {
+      try {
+        setDrafts((await listOfflineDrafts(ownerScope)).filter((item) => item.workOrderId === workOrderId));
+      } catch { /* Priorité au message original d'erreur d'envoi. */ }
       setError(err instanceof Error ? err.message : "Envoi non confirmé. Vérifiez l'OT avant de réessayer.");
     } finally { setBusy(false); }
   }
