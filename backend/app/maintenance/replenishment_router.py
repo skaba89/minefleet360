@@ -40,6 +40,7 @@ class ReplenishmentDraft(Base):
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
 
 
+
 class DraftCreate(StrictModel):
     spare_part_store_id: uuid.UUID
     spare_part_id: uuid.UUID
@@ -113,3 +114,37 @@ def list_drafts(auth: Read, page: Pagination, site_id: uuid.UUID | None = None) 
         page_size=page.page_size,
         total=total,
     )
+
+
+@router.post("/part-replenishments/{replenishment_id}/submit", response_model=DraftOut)
+def submit_draft(replenishment_id: uuid.UUID, auth: Manage) -> DraftOut:
+    draft = auth.db.scalar(
+        select(ReplenishmentDraft).where(
+            ReplenishmentDraft.tenant_id == auth.tenant_id,
+            ReplenishmentDraft.replenishment_id == replenishment_id,
+        )
+    )
+    if draft is None or not auth.scope.covers_site(draft.site_id):
+        raise AppError("NOT_FOUND")
+    changed = auth.db.execute(
+        text(
+            "UPDATE spare_part_replenishment SET status = 'SUBMITTED', submitted_at = now() "
+            "WHERE tenant_id = :tenant_id AND replenishment_id = :replenishment_id "
+            "AND status = 'DRAFT' RETURNING replenishment_id"
+        ),
+        {"tenant_id": auth.tenant_id, "replenishment_id": replenishment_id},
+    ).first()
+    if changed is None:
+        auth.db.rollback()
+        raise AppError("CONFLICT")
+    result = DraftOut(
+        replenishment_id=draft.replenishment_id,
+        site_id=draft.site_id,
+        spare_part_store_id=draft.spare_part_store_id,
+        spare_part_id=draft.spare_part_id,
+        quantity=draft.quantity,
+        reference=draft.reference,
+        status="SUBMITTED",
+    )
+    auth.db.commit()
+    return result
