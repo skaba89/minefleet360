@@ -1129,6 +1129,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/part-movements/valued-receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive Valued Part */
+        post: operations["receive_valued_part_api_v1_part_movements_valued_receipts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/part-reservations": {
         parameters: {
             query?: never;
@@ -5671,6 +5688,55 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** ValuedPartReceiptIn */
+        ValuedPartReceiptIn: {
+            /** Currency */
+            currency: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Reference */
+            reference: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
+            /** Unit Cost */
+            unit_cost: number | string;
+        };
+        /** ValuedPartReceiptOut */
+        ValuedPartReceiptOut: {
+            /** Quantity */
+            quantity: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /**
+             * Spare Part Movement Id
+             * Format: uuid
+             */
+            spare_part_movement_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
+            /** Total Cost */
+            total_cost: string;
+            /** Unit Cost */
+            unit_cost: string;
+            /** Valuation Currency */
+            valuation_currency: string;
+        };
         /** VehicleCategoryOut */
         VehicleCategoryOut: {
             /** Code */
@@ -8976,6 +9042,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartReceiptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    receive_valued_part_api_v1_part_movements_valued_receipts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ValuedPartReceiptIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ValuedPartReceiptOut"];
                 };
             };
             /** @description Validation Error */

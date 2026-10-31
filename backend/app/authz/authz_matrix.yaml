@@ -527,6 +527,7 @@ permissions:
     site_bound: true
     routes:
       - { method: POST, path: /part-movements/receipts, shape: collection, success: 201 }
+      - { method: POST, path: /part-movements/valued-receipts, shape: collection, success: 201 }
     audit: { action: parts.receipt }
     grants:
       STOREKEEPER: [TENANT, SITE]

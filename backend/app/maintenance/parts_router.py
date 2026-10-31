@@ -21,6 +21,7 @@ from app.maintenance.parts_models import (
     SparePartReservation,
     SparePartStore,
 )
+from app.maintenance.valued_receipts import record_valued_receipt
 
 router = APIRouter(tags=["pieces"], route_class=SecuredRoute)
 Read = Annotated[Authorized, Depends(Require("maintenance.parts.read"))]
@@ -494,6 +495,63 @@ def receive_part(body: PartReceiptIn, auth: Receive) -> PartReceiptOut:
     output = PartReceiptOut.model_validate(movement, from_attributes=True)
     auth.db.commit()
     return output
+
+
+class ValuedPartReceiptIn(PartReceiptIn):
+    unit_cost: Decimal = Field(ge=0, max_digits=20, decimal_places=6)
+    currency: str = Field(min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
+
+
+class ValuedPartReceiptOut(PartReceiptOut):
+    unit_cost: Decimal
+    total_cost: Decimal
+    valuation_currency: str
+
+
+@router.post(
+    "/part-movements/valued-receipts",
+    response_model=ValuedPartReceiptOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def receive_valued_part(body: ValuedPartReceiptIn, auth: Receive) -> ValuedPartReceiptOut:
+    store = auth.db.scalar(
+        select(SparePartStore).where(
+            SparePartStore.tenant_id == auth.tenant_id,
+            SparePartStore.spare_part_store_id == body.spare_part_store_id,
+        )
+    )
+    if store is None or not auth.scope.covers_site(store.site_id):
+        raise AppError("REFERENCE_NOT_FOUND")
+    part_exists = auth.db.scalar(
+        select(SparePart.spare_part_id).where(
+            SparePart.tenant_id == auth.tenant_id,
+            SparePart.spare_part_id == body.spare_part_id,
+        )
+    )
+    if part_exists is None:
+        raise AppError("REFERENCE_NOT_FOUND")
+    try:
+        movement = record_valued_receipt(
+            auth.db,
+            tenant_id=auth.tenant_id,
+            site_id=store.site_id,
+            store_id=body.spare_part_store_id,
+            part_id=body.spare_part_id,
+            user_id=auth.user_id,
+            quantity=body.quantity,
+            unit_cost=body.unit_cost,
+            currency=body.currency,
+            reference=body.reference,
+        )
+        output = ValuedPartReceiptOut.model_validate(movement, from_attributes=True)
+        auth.db.commit()
+        return output
+    except IntegrityError:
+        auth.db.rollback()
+        raise AppError("CONFLICT") from None
+    except ValueError:
+        auth.db.rollback()
+        raise AppError("CONFLICT") from None
 
 
 @router.get("/parts", response_model=Page[PartOut])
