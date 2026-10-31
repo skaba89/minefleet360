@@ -32,9 +32,7 @@ class InsurancePolicyInput(StrictModel):
     site_id: uuid.UUID
     policy_number: str = Field(min_length=1, max_length=120)
     insurer_name: str = Field(min_length=1, max_length=240)
-    coverage_type: Literal[
-        "FLEET", "VEHICLE", "CARGO", "LIABILITY", "EMPLOYEE", "EQUIPMENT", "OTHER"
-    ]
+    coverage_type: Literal["FLEET", "VEHICLE", "CARGO", "LIABILITY", "EMPLOYEE", "EQUIPMENT", "OTHER"]
     coverage_start: date
     coverage_end: date
     premium_amount: Decimal | None = Field(default=None, ge=0, max_digits=18, decimal_places=2)
