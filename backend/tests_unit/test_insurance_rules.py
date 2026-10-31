@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from app.legal.insurance_rules import CoverageStatus, coverage_status
+from app.legal.insurance_rules import CoverageStatus, coverage_status, renewal_reminder_dates
 
 
 @pytest.mark.parametrize(
@@ -42,3 +42,21 @@ def test_zero_day_warning_is_expiring_only_on_last_day() -> None:
 def test_invalid_coverage_inputs(start: date, end: date, warning_days: int) -> None:
     with pytest.raises(ValueError):
         coverage_status(start, end, date(2026, 10, 31), warning_days)
+
+
+def test_renewal_reminders_are_ordered_unique_and_bounded() -> None:
+    assert renewal_reminder_dates(date(2026, 12, 20), date(2026, 12, 31), (30, 7, 7, 0)) == (
+        date(2026, 12, 24),
+        date(2026, 12, 31),
+    )
+
+
+def test_renewal_reminders_accept_empty_schedule() -> None:
+    assert renewal_reminder_dates(date(2026, 1, 1), date(2026, 12, 31), ()) == ()
+
+
+def test_renewal_reminders_reject_invalid_ranges() -> None:
+    with pytest.raises(ValueError):
+        renewal_reminder_dates(date(2027, 1, 1), date(2026, 12, 31))
+    with pytest.raises(ValueError):
+        renewal_reminder_dates(date(2026, 1, 1), date(2026, 12, 31), (-1,))
