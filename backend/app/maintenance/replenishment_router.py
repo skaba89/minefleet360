@@ -105,9 +105,7 @@ def list_drafts(auth: Read, page: Pagination, site_id: uuid.UUID | None = None) 
         query = query.where(ReplenishmentDraft.site_id == site_id)
     total = auth.db.scalar(select(func.count()).select_from(query.subquery())) or 0
     rows = auth.db.scalars(
-        query.order_by(ReplenishmentDraft.replenishment_id.desc())
-        .offset(page.offset)
-        .limit(page.page_size)
+        query.order_by(ReplenishmentDraft.replenishment_id.desc()).offset(page.offset).limit(page.page_size)
     ).all()
     return Page(
         items=[DraftOut.model_validate(row, from_attributes=True) for row in rows],
