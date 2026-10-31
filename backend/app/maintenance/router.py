@@ -1,3 +1,4 @@
+import json
 import uuid
 from typing import Annotated
 
@@ -5,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
+from app.core.errors import AppError
 from app.core.http import IfMatch, Page, Pagination, etag
 from app.core.idempotency import claim, optional_idempotency_key
 from app.maintenance import preventive_service, service
@@ -111,13 +113,7 @@ def progress_work_order(
     if idempotency_key is None:
         return _tagged(service.progress(auth, work_order_id, body, version), response)
     if body.action != "NOTE":
-        from app.core.errors import AppError
-
         raise AppError("VALIDATION_ERROR", details=[{"field": "Idempotency-Key", "type": "unsupported_action"}])
-    import json
-
-    from app.core.errors import AppError
-
     payload = json.dumps(
         {"if_match": version, "body": body.model_dump(mode="json")},
         sort_keys=True,
