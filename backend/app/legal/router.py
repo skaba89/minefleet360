@@ -75,7 +75,9 @@ class InsuranceOut(BaseModel):
 
 
 @router.get("/legal-contracts", response_model=Page[ContractOut])
-def list_contracts(auth: ContractRead, page: Pagination, site_id: uuid.UUID | None = None) -> Page[ContractOut]:
+def list_contracts(
+    auth: ContractRead, page: Pagination, site_id: uuid.UUID | None = None
+) -> Page[ContractOut]:
     if site_id is not None and not auth.scope.covers_site(site_id):
         raise AppError("NOT_FOUND")
     query = select(LegalContract).where(LegalContract.tenant_id == auth.tenant_id)
@@ -96,7 +98,9 @@ def list_contracts(auth: ContractRead, page: Pagination, site_id: uuid.UUID | No
 
 
 @router.get("/insurance-policies", response_model=Page[InsuranceOut])
-def list_insurance(auth: InsuranceRead, page: Pagination, site_id: uuid.UUID | None = None) -> Page[InsuranceOut]:
+def list_insurance(
+    auth: InsuranceRead, page: Pagination, site_id: uuid.UUID | None = None
+) -> Page[InsuranceOut]:
     if site_id is not None and not auth.scope.covers_site(site_id):
         raise AppError("NOT_FOUND")
     query = select(InsurancePolicy).where(InsurancePolicy.tenant_id == auth.tenant_id)
