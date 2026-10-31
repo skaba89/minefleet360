@@ -12,7 +12,8 @@ from app.legal.insurance_rules import CoverageStatus, coverage_status
     [
         (date(2025, 12, 31), CoverageStatus.NOT_STARTED),
         (date(2026, 1, 1), CoverageStatus.ACTIVE),
-        (date(2026, 11, 30), CoverageStatus.EXPIRING),
+        (date(2026, 11, 30), CoverageStatus.ACTIVE),
+        (date(2026, 12, 1), CoverageStatus.EXPIRING),
         (date(2026, 12, 31), CoverageStatus.EXPIRING),
         (date(2027, 1, 1), CoverageStatus.EXPIRED),
     ],
