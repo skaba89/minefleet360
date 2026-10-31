@@ -525,8 +525,12 @@ def _ensure_executor(auth: Authorized, order: WorkOrder) -> None:
 
 
 def progress(
-    auth: Authorized, work_order_id: uuid.UUID, body: WorkOrderProgress, version: int,
-    *, idempotency_claim: IdempotencyClaim | None = None,
+    auth: Authorized,
+    work_order_id: uuid.UUID,
+    body: WorkOrderProgress,
+    version: int,
+    *,
+    idempotency_claim: IdempotencyClaim | None = None,
 ) -> WorkOrderOut:
     """US-3.04 : intervention (début, attente de pièces, reprise, fin de travaux) et compte rendu."""
     db = auth.db
@@ -577,8 +581,12 @@ def progress(
         if body.action != "NOTE":
             raise ValueError("l'idempotence du compte rendu est limitée à NOTE")
         complete(
-            db, idempotency_claim, response_status=200, resource_type="work_order",
-            resource_id=work_order_id, completed_at=auth.clock.now(),
+            db,
+            idempotency_claim,
+            response_status=200,
+            resource_type="work_order",
+            resource_id=work_order_id,
+            completed_at=auth.clock.now(),
         )
     db.commit()
     return out
