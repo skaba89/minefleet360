@@ -2877,6 +2877,28 @@ export interface components {
             spare_part_store_id: string;
             /** Status */
             status: string;
+            /**
+             * Created By
+             * Format: uuid
+             */
+            created_by: string;
+            /**
+             * Decision By
+             * Format: uuid
+             */
+            decision_by: string | null;
+            /** Decision Note */
+            decision_note: string | null;
+            /**
+             * Submitted At
+             * Format: date-time
+             */
+            submitted_at: string | null;
+            /**
+             * Decided At
+             * Format: date-time
+             */
+            decided_at: string | null;
         };
         /** DriverAccountIn */
         DriverAccountIn: {
