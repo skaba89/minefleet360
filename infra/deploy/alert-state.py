@@ -51,6 +51,12 @@ def main() -> int:
             except (OSError, subprocess.TimeoutExpired):
                 result = 3
             new, event = transition(old, result, args.threshold)
+            pending = old.get("pending_notifications", [])
+            if not isinstance(pending, list) or any(x not in ("ALERT", "RECOVERED") for x in pending):
+                raise ValueError("Invalid notification outbox")
+            if event in ("ALERT", "RECOVERED"):
+                pending = [*pending, event]
+            new["pending_notifications"] = pending
             stream.seek(0)
             json.dump(new, stream)
             stream.truncate()
