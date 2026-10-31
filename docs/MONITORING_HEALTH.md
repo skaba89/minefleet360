@@ -13,3 +13,13 @@ Codes de sortie : `0` = OK ; `2` = critique ou configuration invalide ; `3` = pr
 ## Limites et prochaines vérifications
 
 La réponse HTTP de `/health` est une sonde de disponibilité **de l'API**, pas une preuve que PostgreSQL fonctionne, que les migrations sont courantes ou que le service respecte un SLO. Ajouter une sonde de préparation vérifiant la base avec un accès non privilégié, puis superviser les sauvegardes, la réplication externe, la saturation disque, l'expiration TLS, les erreurs 5xx et les délais p95/p99. Aucun mot de passe ou URL contenant un token ne doit figurer dans les logs de monitoring. Un essai de panne simulée et de notification est requis avant le pilote.
+
+## Contrôle PostgreSQL depuis l'hôte Docker
+
+```bash
+bash infra/deploy/probe-database.sh
+```
+
+La sonde vérifie d'abord `pg_isready`, puis un véritable `SELECT 1` sur la base `minefleet`. Elle utilise le conteneur Docker local, sans publier de port et sans afficher de secret. Exécuter avec les droits Docker appropriés, uniquement sur l'hôte de déploiement : **l'accès au socket Docker donne des privilèges élevés**. L'absence de `.env.prod` ou des prérequis produit le code `3`, une indisponibilité SQL le code `2`, un succès le code `0`.
+
+Cette sonde ne vérifie pas la fraîcheur de la sauvegarde, les permissions de l'utilisateur applicatif `mf_app`, les migrations, ni la performance sous charge. Pour l'alerte de disponibilité, corréler la sonde externe HTTP avec la sonde SQL interne : API OK + DB KO doit être traité comme un incident critique de base, tandis que HTTP KO + DB OK oriente vers le réseau, le proxy ou l'API.
