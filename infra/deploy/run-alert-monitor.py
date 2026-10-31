@@ -15,6 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from monitor_state import read_state, write_state
+
 EVENTS = {"ALERT", "RECOVERED"}
 
 
@@ -53,16 +55,16 @@ def main() -> int:
             print("ERROR: operational alert check returned failure", file=sys.stderr)
             return 3
 
-        # The transition and outbox were persisted together by alert-state.py.
-        # Use the SAME file lock while acknowledging delivery.
-        with os.fdopen(os.open(state_file, os.O_RDWR | os.O_NOFOLLOW), "r+", encoding="utf-8") as state_stream:
-            fcntl.flock(state_stream, fcntl.LOCK_EX)
+        # Lock a stable inode: replacing health-state.json itself invalidates file locks.
+        state_lock = state_file.with_name(state_file.name + ".lock")
+        with os.fdopen(os.open(state_lock, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600), "r+") as state_guard:
+            fcntl.flock(state_guard, fcntl.LOCK_EX)
             try:
-                state = json.load(state_stream)
+                state = read_state(state_file)
                 queue = state["pending_notifications"]
                 if not isinstance(queue, list) or any(x not in EVENTS for x in queue):
                     raise ValueError("invalid outbox")
-            except (ValueError, KeyError, TypeError):
+            except (ValueError, KeyError, TypeError, OSError, json.JSONDecodeError):
                 print("ERROR: invalid monitoring state", file=sys.stderr)
                 return 3
             while queue:
@@ -77,13 +79,10 @@ def main() -> int:
                 if result.returncode != 0:
                     print("WARNING: SMTP delivery failed; event retained", file=sys.stderr)
                     return 2
-                event = queue.pop(0)
-                state["pending_notifications"] = queue
-                state_stream.seek(0)
-                json.dump(state, state_stream)
-                state_stream.truncate()
-                state_stream.flush()
-                os.fsync(state_stream.fileno())
+                event = queue[0]
+                state["pending_notifications"] = queue[1:]
+                write_state(state_file, state)
+                queue = state["pending_notifications"]
                 print(f"DELIVERED: {event} notification accepted by SMTP")
     return 0
 
