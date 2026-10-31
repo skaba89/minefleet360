@@ -1,0 +1,120 @@
+"""Read-only legal and insurance registries, constrained by RBAC and site scope."""
+
+import uuid
+from datetime import date
+from decimal import Decimal
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
+from sqlalchemy import Date, Numeric, String, func, select
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.authz.dependencies import Authorized, Require
+from app.authz.routing import SecuredRoute
+from app.core.db import Base
+from app.core.errors import AppError
+from app.core.http import Page, Pagination
+
+router = APIRouter(tags=["juridique"], route_class=SecuredRoute)
+ContractRead = Annotated[Authorized, Depends(Require("legal.contract.read"))]
+InsuranceRead = Annotated[Authorized, Depends(Require("legal.insurance.read"))]
+
+
+class LegalContract(Base):
+    __tablename__ = "legal_contract"
+    contract_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    reference: Mapped[str] = mapped_column(String)
+    title: Mapped[str] = mapped_column(String)
+    contract_type: Mapped[str] = mapped_column(String)
+    counterparty_name: Mapped[str] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String)
+    document_sha256: Mapped[str | None] = mapped_column(String)
+
+
+class InsurancePolicy(Base):
+    __tablename__ = "insurance_policy"
+    insurance_policy_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    policy_number: Mapped[str] = mapped_column(String)
+    insurer_name: Mapped[str] = mapped_column(String)
+    coverage_type: Mapped[str] = mapped_column(String)
+    coverage_start: Mapped[date] = mapped_column(Date)
+    coverage_end: Mapped[date] = mapped_column(Date)
+    premium_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
+    currency: Mapped[str] = mapped_column(String)
+    contract_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+
+
+class ContractOut(BaseModel):
+    contract_id: uuid.UUID
+    site_id: uuid.UUID
+    reference: str
+    title: str
+    contract_type: str
+    counterparty_name: str
+    status: str
+    document_sha256: str | None
+
+
+class InsuranceOut(BaseModel):
+    insurance_policy_id: uuid.UUID
+    site_id: uuid.UUID
+    policy_number: str
+    insurer_name: str
+    coverage_type: str
+    coverage_start: date
+    coverage_end: date
+    premium_amount: Decimal | None
+    currency: str
+    contract_id: uuid.UUID | None
+
+
+@router.get("/legal-contracts", response_model=Page[ContractOut])
+def list_contracts(
+    auth: ContractRead, page: Pagination, site_id: uuid.UUID | None = None
+) -> Page[ContractOut]:
+    if site_id is not None and not auth.scope.covers_site(site_id):
+        raise AppError("NOT_FOUND")
+    query = select(LegalContract).where(LegalContract.tenant_id == auth.tenant_id)
+    if not auth.scope.tenant_wide:
+        query = query.where(LegalContract.site_id.in_(auth.scope.site_ids))
+    if site_id is not None:
+        query = query.where(LegalContract.site_id == site_id)
+    total = auth.db.scalar(select(func.count()).select_from(query.subquery())) or 0
+    rows = auth.db.scalars(
+        query.order_by(LegalContract.contract_id.desc()).offset(page.offset).limit(page.page_size)
+    ).all()
+    return Page(
+        items=[ContractOut.model_validate(row, from_attributes=True) for row in rows],
+        page=page.page,
+        page_size=page.page_size,
+        total=total,
+    )
+
+
+@router.get("/insurance-policies", response_model=Page[InsuranceOut])
+def list_insurance(
+    auth: InsuranceRead, page: Pagination, site_id: uuid.UUID | None = None
+) -> Page[InsuranceOut]:
+    if site_id is not None and not auth.scope.covers_site(site_id):
+        raise AppError("NOT_FOUND")
+    query = select(InsurancePolicy).where(InsurancePolicy.tenant_id == auth.tenant_id)
+    if not auth.scope.tenant_wide:
+        query = query.where(InsurancePolicy.site_id.in_(auth.scope.site_ids))
+    if site_id is not None:
+        query = query.where(InsurancePolicy.site_id == site_id)
+    total = auth.db.scalar(select(func.count()).select_from(query.subquery())) or 0
+    rows = auth.db.scalars(
+        query.order_by(InsurancePolicy.insurance_policy_id.desc()).offset(page.offset).limit(page.page_size)
+    ).all()
+    return Page(
+        items=[InsuranceOut.model_validate(row, from_attributes=True) for row in rows],
+        page=page.page,
+        page_size=page.page_size,
+        total=total,
+    )
