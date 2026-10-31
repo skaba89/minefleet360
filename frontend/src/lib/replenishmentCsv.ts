@@ -7,7 +7,7 @@ export interface ReplenishmentLine {
 }
 function cell(value: string | number): string {
   const raw = String(value);
-  const safe = /^[\s]*[=+@-\t\r]/.test(raw) ? "'" + raw : raw;
+  const safe = /^[\s]*[=+@\t\r-]/.test(raw) ? "'" + raw : raw;
   return '"' + safe.replaceAll('"', '""') + '"';
 }
 export function replenishmentCsv(lines: ReplenishmentLine[]): string {
