@@ -1053,6 +1053,16 @@ permissions:
       DIRECTION: [TENANT]
       OPS_MANAGER: [TENANT, SITE]
       AUDITOR: [TENANT]
+  legal.insurance.create:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /insurance-policies, shape: collection, success: 201 }]
+    audit: { action: legal.insurance.create }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
   legal.insurance.read:
     tranche: 1c
     kind: read
