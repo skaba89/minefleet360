@@ -22,6 +22,19 @@ describe("offline drafts safety boundaries", () => {
     expect(() => validateOfflineDraft({ ...draft, note: "x".repeat(1001) })).toThrow();
     expect(() => validateOfflineDraft({ ...draft, kind: "gps_position" as OfflineDraft["kind"] })).toThrow();
   });
+  it("valide la clé durable et le contenu immuable de transmission", () => {
+    const pending = {
+      idempotencyKey: draft.id,
+      ifMatch: '"3"',
+      body: { action: "NOTE" as const, diagnosis: "Freins", work_done: draft.note, parts_note: "" },
+    };
+    expect(() => validateOfflineDraft({ ...draft, pending })).not.toThrow();
+    expect(() => validateOfflineDraft({ ...draft, pending: { ...pending, idempotencyKey: "another" } })).toThrow();
+    expect(() => validateOfflineDraft({ ...draft, pending: { ...pending, ifMatch: "stale" } })).toThrow();
+    expect(() => validateOfflineDraft({ ...draft, pending: {
+      ...pending, body: { ...pending.body, work_done: "Note modifiée" },
+    } })).toThrow();
+  });
   it("refuse les identifiants et horodatages invalides", () => {
     expect(() => validateOfflineDraft({ ...draft, id: "invalid" })).toThrow();
     expect(() => validateOfflineDraft({ ...draft, createdAt: "not-a-date" })).toThrow();
