@@ -875,6 +875,15 @@ export const GRANTS = {
       "SITE"
     ]
   },
+  "legal.contract.create": {
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "legal.contract.read": {
     "AUDITOR": [
       "TENANT"

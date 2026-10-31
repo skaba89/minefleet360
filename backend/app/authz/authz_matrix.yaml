@@ -1034,6 +1034,15 @@ permissions:
       FUEL_MANAGER: [SITE]
 
   # --- legal contracts and insurance (read-only foundation) ------------------------------------------
+  legal.contract.create:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /legal-contracts, shape: collection, success: 201 }]
+    audit: { action: legal.contract.create }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
   legal.contract.read:
     tranche: 1c
     kind: read

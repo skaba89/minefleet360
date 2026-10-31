@@ -797,7 +797,11 @@ export interface paths {
         /** List Contracts */
         get: operations["list_contracts_api_v1_legal_contracts_get"];
         put?: never;
-        post?: never;
+        /**
+         * Create Contract Draft
+         * @description Create a draft only; signing and activation require separate workflows.
+         */
+        post: operations["create_contract_draft_api_v1_legal_contracts_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2797,6 +2801,27 @@ export interface components {
             status: "COMPLIANT" | "NON_COMPLIANT";
             /** Warnings */
             warnings: components["schemas"]["Issue"][];
+        };
+        /** ContractDraftInput */
+        ContractDraftInput: {
+            /**
+             * Contract Type
+             * @enum {string}
+             */
+            contract_type: "SUPPLIER" | "TRANSPORT" | "SUBCONTRACTOR" | "EMPLOYMENT" | "LEASE" | "OTHER";
+            /** Counterparty Name */
+            counterparty_name: string;
+            /** Document Sha256 */
+            document_sha256?: string | null;
+            /** Reference */
+            reference: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Title */
+            title: string;
         };
         /** ContractOut */
         ContractOut: {
@@ -8676,6 +8701,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_ContractOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_contract_draft_api_v1_legal_contracts_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractDraftInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractOut"];
                 };
             };
             /** @description Validation Error */
