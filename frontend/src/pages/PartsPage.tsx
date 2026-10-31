@@ -252,12 +252,15 @@ export function PartsPage() {
       {tab === "stocks" && (
         <DataState loading={balances.isLoading} error={balances.error} empty={!balances.data?.items.length}>
           <table>
-            <thead><tr><th>Pièce</th><th>Magasin</th><th>Physique</th><th>Réservé</th><th>Disponible</th></tr></thead>
+            <thead><tr><th>Pièce</th><th>Magasin</th><th>Physique</th><th>Réservé</th><th>Disponible</th><th>Seuil</th><th>Alerte</th></tr></thead>
             <tbody>{balances.data?.items.map((item) => (
               <tr key={item.spare_part_balance_id}>
                 <td>{partLabel(item.spare_part_id)}</td><td>{storeLabel(item.spare_part_store_id)}</td>
                 <td>{item.on_hand}</td><td>{item.reserved}</td>
                 <td>{item.on_hand - item.reserved}</td>
+                <td>{item.low_stock_threshold}</td>
+                <td>{item.on_hand - item.reserved <= item.low_stock_threshold ?
+                  <strong className="warn-text">Stock faible</strong> : "Stock suffisant"}</td>
               </tr>
             ))}</tbody>
           </table>
