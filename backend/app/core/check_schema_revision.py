@@ -9,6 +9,7 @@ import sys
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import get_settings
 
@@ -26,13 +27,17 @@ def main() -> int:
     try:
         with engine.connect() as conn:
             current = {str(row[0]) for row in conn.execute(text("SELECT version_num FROM alembic_version"))}
-    except Exception:
+    except (SQLAlchemyError, OSError):
         print("FAIL: cannot inspect Alembic revision (details withheld)", file=sys.stderr)
         return 2
     finally:
         engine.dispose()
     if not revisions_match(current, expected):
-        print(f"FAIL: database schema revision differs from deployed code (db heads={len(current)}, code heads={len(expected)})", file=sys.stderr)
+        print(
+            f"FAIL: database schema revision differs from deployed code "
+            f"(db heads={len(current)}, code heads={len(expected)})",
+            file=sys.stderr,
+        )
         return 2
     print("OK: database revision matches all Alembic heads")
     return 0
