@@ -65,3 +65,18 @@ it("ne démarre pas le GPS si la création finit après avoir quitté la page", 
   await waitFor(() => expect(vi.mocked(request).mock.calls.some(([p]) => p.endsWith("/stop"))).toBe(true));
   expect(locate).not.toHaveBeenCalled();
 });
+
+it("bloque le démarrage sans réseau et annonce l'absence de mise en attente", async () => {
+  setup();
+  await screen.findByRole("button", { name: "Démarrer le partage" });
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+  act(() => window.dispatchEvent(new Event("offline")));
+  expect(screen.getByText(/Connexion absente : aucun nouveau relevé GPS/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("checkbox"));
+  const button = screen.getByRole("button", { name: "Démarrer le partage" }) as HTMLButtonElement;
+  expect(button.disabled).toBe(true);
+  expect(vi.mocked(request)).not.toHaveBeenCalled();
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+  act(() => window.dispatchEvent(new Event("online")));
+  expect(button.disabled).toBe(false);
+});
