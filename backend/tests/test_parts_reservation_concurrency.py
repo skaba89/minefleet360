@@ -61,7 +61,9 @@ def test_concurrent_reservations_do_not_overbook(client: TestClient, api: Api, w
         codes = list(pool.map(reserve, (1, 2)))
     assert sorted(codes) == [201, 409]
 
-    balances = client.get(f"{API}/part-balances", headers=keeper.headers, params={"site_id": order["site_id"]})
+    balances = client.get(
+        f"{API}/part-balances", headers=keeper.headers, params={"site_id": order["site_id"]}
+    )
     assert balances.status_code == 200, balances.text
     match = [row for row in balances.json()["items"] if row["spare_part_id"] == part["spare_part_id"]]
     assert len(match) == 1
