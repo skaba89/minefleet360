@@ -70,6 +70,8 @@ class SparePartMovement(Base):
     unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(20, 6), nullable=True)
     total_cost: Mapped[Decimal | None] = mapped_column(Numeric(20, 6), nullable=True)
     valuation_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    work_order_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    spare_part_reservation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     movement_type: Mapped[str] = mapped_column(String, nullable=False)
     quantity: Mapped[Decimal] = mapped_column(Numeric(16, 3), nullable=False)
     reference: Mapped[str] = mapped_column(String, nullable=False)
