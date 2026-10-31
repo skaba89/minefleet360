@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateOfflineDraft, type OfflineDraft } from "./offlineDrafts";
+import { clearOfflineDrafts, validateOfflineDraft, type OfflineDraft } from "./offlineDrafts";
 
 const draft: OfflineDraft = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -25,5 +25,12 @@ describe("offline drafts safety boundaries", () => {
   it("refuse les identifiants et horodatages invalides", () => {
     expect(() => validateOfflineDraft({ ...draft, id: "invalid" })).toThrow();
     expect(() => validateOfflineDraft({ ...draft, createdAt: "not-a-date" })).toThrow();
+  });
+});
+
+describe("scoped purge safeguards", () => {
+  it("rejects invalid scope before accessing IndexedDB", async () => {
+    await expect(clearOfflineDrafts("")).rejects.toThrow("Périmètre");
+    await expect(clearOfflineDrafts("other-workspace")).rejects.toThrow("Périmètre");
   });
 });

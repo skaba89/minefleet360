@@ -105,8 +105,22 @@ export async function discardOfflineDraft(id: string, ownerScope: string): Promi
   });
 }
 
-/** À déclencher lors de la déconnexion après confirmation explicite de la perte des brouillons locaux. */
+/** Efface atomiquement les brouillons du seul compte et espace de travail actifs.
+ * Une erreur annule l'ensemble de la transaction IndexedDB.
+ */
 export async function clearOfflineDrafts(ownerScope: string): Promise<void> {
-  const drafts = await listOfflineDrafts(ownerScope);
-  await Promise.all(drafts.map((draft) => discardOfflineDraft(draft.id, ownerScope)));
+  if (!/^[a-zA-Z0-9_-]{1,64}:[0-9a-f-]{36}$/i.test(ownerScope)) {
+    throw new Error("Périmètre utilisateur/tenant invalide");
+  }
+  return transact<void>("readwrite", (store, set, reject) => {
+    const cursor = store.index("ownerScope").openKeyCursor(IDBKeyRange.only(ownerScope));
+    cursor.onsuccess = () => {
+      const entry = cursor.result;
+      if (!entry) { set(undefined); return; }
+      const remove = store.delete(entry.primaryKey);
+      remove.onsuccess = () => entry.continue();
+      remove.onerror = () => reject(remove.error ?? new Error("Suppression impossible"));
+    };
+    cursor.onerror = () => reject(cursor.error ?? new Error("Parcours des brouillons impossible"));
+  });
 }
