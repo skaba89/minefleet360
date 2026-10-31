@@ -123,8 +123,6 @@ def test_historical_unvalued_stock_is_not_repriced(client: TestClient, api: Api)
         db.rollback()
     balance_result = client.get(f"{API}/part-balances", headers=keeper.headers)
     assert balance_result.status_code == 200, balance_result.text
-    matching = [
-        row for row in balance_result.json()["items"] if row["spare_part_id"] == str(part_id)
-    ]
+    matching = [row for row in balance_result.json()["items"] if row["spare_part_id"] == str(part_id)]
     assert len(matching) == 1
     assert matching[0]["on_hand"] == 3.0
