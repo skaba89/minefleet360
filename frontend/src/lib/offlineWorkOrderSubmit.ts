@@ -1,3 +1,4 @@
+import { listOfflineDrafts, prepareOfflineNoteTransmission, validateOfflineDraft, type OfflineDraft } from "./offlineDrafts";
 import { ApiError, call } from "../api/client";
 
 /** Explicit online transfer of a local OT note. Never replay automatically. */
@@ -37,6 +38,51 @@ export async function submitOfflineWorkOrderNote(workOrderId: string, note: stri
     }
     throw error;
   }
+  } finally {
+    activeWorkOrders.delete(workOrderId);
+  }
+}
+
+/** Replays the exact persisted NOTE command, never rebuilding the payload after an uncertain send. */
+export async function submitPreparedOfflineWorkOrderNote(draft: OfflineDraft): Promise<void> {
+  const workOrderId = draft.workOrderId;
+  if (activeWorkOrders.has(workOrderId)) throw new Error("Une transmission de cette note OT est déjà en cours.");
+  activeWorkOrders.add(workOrderId);
+  try {
+    validateOfflineDraft(draft);
+    const stored = (await listOfflineDrafts(draft.ownerScope)).find((item) => item.id === draft.id);
+    if (!stored || stored.workOrderId !== workOrderId || stored.note !== draft.note) {
+      throw new Error("Brouillon local modifié ou introuvable : aucun envoi effectué.");
+    }
+    validateOfflineDraft(stored);
+    let pending = stored.pending;
+    if (!pending) {
+      const latest = await call("get", "/work-orders/{work_order_id}", { path: { work_order_id: workOrderId } });
+      const order = latest.data;
+      if (!latest.etag) throw new Error("Version de l'OT indisponible : aucun envoi effectué.");
+      if (!["ASSIGNED", "IN_PROGRESS", "AWAITING_PARTS"].includes(order.status)) {
+        throw new Error("Cet ordre de travail n'accepte plus de compte rendu.");
+      }
+      if (order.work_done?.trim()) {
+        throw new Error("Un compte rendu existe déjà : reprenez le brouillon manuellement.");
+      }
+      pending = await prepareOfflineNoteTransmission(
+        draft.id, draft.ownerScope, latest.etag, order.diagnosis ?? "", order.parts_note ?? "",
+      );
+    }
+    try {
+      await call("post", "/work-orders/{work_order_id}/progress", {
+        path: { work_order_id: workOrderId },
+        idempotencyKey: pending.idempotencyKey,
+        ifMatch: pending.ifMatch,
+        body: pending.body,
+      });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 0) {
+        throw new Error("Transmission incertaine. La commande est conservée : vérifiez l'OT puis relancez la même opération.");
+      }
+      throw error;
+    }
   } finally {
     activeWorkOrders.delete(workOrderId);
   }

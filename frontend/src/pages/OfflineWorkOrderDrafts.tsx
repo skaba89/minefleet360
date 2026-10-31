@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useMe } from "../auth/AuthContext";
 import { clearOfflineDrafts, discardOfflineDraft, listOfflineDrafts, saveOfflineDraft, type OfflineDraft } from "../lib/offlineDrafts";
 
-export function OfflineWorkOrderDrafts({ workOrderId, onRestore, onSubmit }: { workOrderId: string; onRestore?: (note: string) => void; onSubmit?: (note: string) => Promise<void> }) {
+export function OfflineWorkOrderDrafts({ workOrderId, onRestore, onSubmit }: { workOrderId: string; onRestore?: (note: string) => void; onSubmit?: (draft: OfflineDraft) => Promise<void> }) {
   const me = useMe();
   const ownerScope = `${me.workspace_code}:${me.user_account_id}`;
   const [drafts, setDrafts] = useState<OfflineDraft[]>([]);
@@ -33,11 +33,11 @@ export function OfflineWorkOrderDrafts({ workOrderId, onRestore, onSubmit }: { w
     finally { setBusy(false); }
   }
 
-  async function submit(note: string) {
+  async function submit(draft: OfflineDraft) {
     if (!window.confirm("Transmettre volontairement cette note au serveur ? Le brouillon restera sur cet appareil.")) return;
     setBusy(true); setError("");
     try {
-      await onSubmit?.(note);
+      await onSubmit?.(draft);
       setError("Note transmise. Le brouillon local est conservé : vous pouvez le supprimer après vérification.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Envoi non confirmé. Vérifiez l'OT avant de réessayer.");
@@ -81,7 +81,7 @@ export function OfflineWorkOrderDrafts({ workOrderId, onRestore, onSubmit }: { w
     <ul>{drafts.map((draft) => <li key={draft.id}>
       <p>{draft.note}</p>
       {onRestore && <button type="button" disabled={busy} onClick={() => onRestore(draft.note)}>Reprendre dans le compte rendu</button>}
-      {onSubmit && <button type="button" disabled={busy || !navigator.onLine} onClick={() => void submit(draft.note)}>Transmettre cette note en ligne</button>}
+      {onSubmit && <button type="button" disabled={busy || !navigator.onLine} onClick={() => void submit(draft)}>Transmettre cette note en ligne</button>}
       <button type="button" disabled={busy} onClick={() => void discard(draft.id)}>Supprimer ce brouillon</button>
     </li>)}</ul>
   </div>;
