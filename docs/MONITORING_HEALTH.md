@@ -45,3 +45,15 @@ MINEFLEET_BASE_URL=https://minefleet.example.org bash infra/deploy/probe-all.sh
 Le script `probe-all.sh` exécute trois contrôles **en lecture seule** : PostgreSQL, fraîcheur des sauvegardes locales et disponibilité HTTPS externe. Il fournit une ligne de statut par contrôle sans relayer les détails internes ou les secrets. Retour `0` si tous les contrôles sont verts, `2` si au moins un est critique, et `3` en cas de configuration manquante ou contrôle indéterminé. L'absence d'URL HTTPS est volontairement classée UNKNOWN, pas OK.
 
 Cette consolidation ne configure ni planification ni notifications. Pour une exploitation pilote, intégrer le script au système de supervision (exécution avec identité technique à privilèges restreints), déclencher une alerte après plusieurs échecs consécutifs, et tester le canal d'escalade. L'accès au socket Docker reste hautement privilégié ; ne pas exposer ce script par une API web.
+
+## Détection des incidents récurrents
+
+`infra/deploy/alert-state.py` exécute la sonde consolidée, conserve un compteur dans un fichier local (mode 0600) et produit les transitions `PENDING`, `ALERT`, `ALERT_ACTIVE`, `RECOVERED`, `OK`. Trois échecs consécutifs sont nécessaires par défaut avant une nouvelle alerte ; une réussite confirme le rétablissement. Une exécution concurrente est sérialisée par verrou de fichier.
+
+```bash
+MINEFLEET_BASE_URL=https://minefleet.example.org \
+python3 infra/deploy/alert-state.py \
+  --state-file /var/lib/minefleet-monitor/health-state.json --threshold 3
+```
+
+**Ce programme n'envoie aucune notification** : l'intégrer à un superviseur qui relève les événements `ALERT` et `RECOVERED` (sans afficher de secrets). L'exploitant doit installer le cron/systemd timer, configurer un canal d'alerte et tester un incident fictif. Ne pas placer le fichier d'état dans un répertoire accessible publiquement. Une instance dédiée de supervision est préférable pour éviter une panne commune avec l'application.
