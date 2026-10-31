@@ -105,7 +105,9 @@ def create_draft(body: DraftCreate, auth: Manage) -> DraftOut:
 
 
 @router.get("/part-replenishments", response_model=Page[DraftOut])
-def list_drafts(auth: Read, page: Pagination, site_id: uuid.UUID | None = None) -> Page[DraftOut]:
+def list_drafts(
+    auth: Read, page: Pagination, site_id: uuid.UUID | None = None, request_status: str | None = None
+) -> Page[DraftOut]:
     if site_id is not None and not auth.scope.covers_site(site_id):
         raise AppError("NOT_FOUND")
     query = select(ReplenishmentDraft).where(ReplenishmentDraft.tenant_id == auth.tenant_id)
@@ -113,6 +115,10 @@ def list_drafts(auth: Read, page: Pagination, site_id: uuid.UUID | None = None) 
         query = query.where(ReplenishmentDraft.site_id.in_(auth.scope.site_ids))
     if site_id is not None:
         query = query.where(ReplenishmentDraft.site_id == site_id)
+    if request_status is not None:
+        if request_status not in {"DRAFT", "SUBMITTED", "APPROVED", "REJECTED"}:
+            raise AppError("VALIDATION_ERROR")
+        query = query.where(ReplenishmentDraft.status == request_status)
     total = auth.db.scalar(select(func.count()).select_from(query.subquery())) or 0
     rows = auth.db.scalars(
         query.order_by(ReplenishmentDraft.replenishment_id.desc()).offset(page.offset).limit(page.page_size)
