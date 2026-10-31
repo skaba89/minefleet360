@@ -19,13 +19,16 @@ export function validateOfflineDraft(value: OfflineDraft): void {
   if (!/^[0-9a-f-]{36}$/i.test(value.id) || !/^[0-9a-f-]{36}$/i.test(value.workOrderId)) {
     throw new Error("Identifiant de brouillon invalide");
   }
-  if (!/^[0-9a-f-]{36}:[0-9a-f-]{36}$/i.test(value.ownerScope)) {
+  if (!/^[a-zA-Z0-9_-]{1,64}:[0-9a-f-]{36}$/i.test(value.ownerScope)) {
     throw new Error("Périmètre utilisateur/tenant invalide");
   }
   if (value.kind !== "work_order_note" || !value.note.trim() || value.note.length > MAX_NOTE_LENGTH) {
     throw new Error("Brouillon hors périmètre ou trop long");
   }
   if (!Number.isFinite(Date.parse(value.createdAt))) throw new Error("Date invalide");
+  if (Object.keys(value).some((key) => !["id", "ownerScope", "kind", "workOrderId", "note", "createdAt"].includes(key))) {
+    throw new Error("Champ non autorisé dans le stockage local");
+  }
 }
 
 function openDatabase(): Promise<IDBDatabase> {
