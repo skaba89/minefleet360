@@ -3,6 +3,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 directory="${MF_BACKUP_DIR:-backups}"
+if [[ "$directory" != /* ]]; then
+  directory="$(pwd)/$directory"
+fi
 max_age="${MF_BACKUP_MAX_AGE_HOURS:-26}"
 if [[ ! "$max_age" =~ ^[1-9][0-9]*$ ]] || (( max_age > 720 )); then
   echo "UNKNOWN: MF_BACKUP_MAX_AGE_HOURS must be an integer 1..720" >&2
@@ -11,6 +14,10 @@ fi
 if [[ ! -d "$directory" ]]; then
   echo "CRITICAL: backup directory missing" >&2
   exit 2
+fi
+if [[ ! -r "$directory" || ! -x "$directory" ]]; then
+  echo "UNKNOWN: backup directory is not readable by monitoring identity" >&2
+  exit 3
 fi
 newest=""
 newest_time=0
