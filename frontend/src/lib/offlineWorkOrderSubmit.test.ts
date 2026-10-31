@@ -45,3 +45,25 @@ it("signale un résultat ambigu après une panne réseau sans renvoyer la mutati
   await expect(submitOfflineWorkOrderNote(id, "Inspection")).rejects.toThrow(/peut-être enregistré/);
   expect(call).toHaveBeenCalledTimes(2);
 });
+
+it("bloque les notes vides ou trop longues avant tout appel serveur", async () => {
+  await expect(submitOfflineWorkOrderNote(id, "   ")).rejects.toThrow(/Note vide/);
+  await expect(submitOfflineWorkOrderNote(id, "x".repeat(1001))).rejects.toThrow(/Note vide/);
+  expect(call).not.toHaveBeenCalled();
+});
+
+it("signale un conflit de version sans relancer la mutation", async () => {
+  vi.mocked(call).mockResolvedValueOnce({ data: server, etag: '"3"' } as never);
+  vi.mocked(call).mockRejectedValueOnce(new ApiError(412, {
+    code: "VERSION_CONFLICT", message_fr: "Version périmée", details: null, request_id: null,
+  }));
+  await expect(submitOfflineWorkOrderNote(id, " Inspection ")).rejects.toThrow(/Conflit de version/);
+  expect(call).toHaveBeenCalledTimes(2);
+});
+
+it("normalise les espaces avant la transmission", async () => {
+  await submitOfflineWorkOrderNote(id, "  Inspection  ");
+  expect(call).toHaveBeenLastCalledWith("post", "/work-orders/{work_order_id}/progress", expect.objectContaining({
+    body: expect.objectContaining({ work_done: "Inspection" }),
+  }));
+});
