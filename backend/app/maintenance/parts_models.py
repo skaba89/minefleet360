@@ -49,6 +49,8 @@ class SparePartBalance(Base):
     spare_part_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     on_hand: Mapped[Decimal] = mapped_column(Numeric(16, 3), nullable=False, server_default=text("0"))
     reserved: Mapped[Decimal] = mapped_column(Numeric(16, 3), nullable=False, server_default=text("0"))
+    stock_value: Mapped[Decimal | None] = mapped_column(Numeric(20, 6), nullable=True)
+    valuation_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     low_stock_threshold: Mapped[Decimal] = mapped_column(
         Numeric(16, 3), nullable=False, server_default=text("0")
     )
@@ -65,6 +67,9 @@ class SparePartMovement(Base):
     site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     spare_part_store_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     spare_part_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(20, 6), nullable=True)
+    total_cost: Mapped[Decimal | None] = mapped_column(Numeric(20, 6), nullable=True)
+    valuation_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     movement_type: Mapped[str] = mapped_column(String, nullable=False)
     quantity: Mapped[Decimal] = mapped_column(Numeric(16, 3), nullable=False)
     reference: Mapped[str] = mapped_column(String, nullable=False)
