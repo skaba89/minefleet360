@@ -30,3 +30,23 @@ def test_parts_read_endpoints_and_permissions(client: TestClient, api: Api) -> N
         params={"site_id": str(outsider.sites["OTHER"])},
     )
     assert hidden_stock.status_code == 404
+
+
+def test_critical_balance_filter_requires_read_permission(client: TestClient, api: Api) -> None:
+    tenant = api.tenant(sites=("MINE",))
+    storekeeper = api.user(tenant, "STOREKEEPER", "SITE", "MINE")
+    unauthorized = api.user(tenant, "DRIVER", "SITE", "MINE")
+    for flag in ("true", "false"):
+        response = client.get(
+            f"{API}/part-balances",
+            headers=storekeeper.headers,
+            params={"critical_only": flag},
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["total"] == 0
+        denied = client.get(
+            f"{API}/part-balances",
+            headers=unauthorized.headers,
+            params={"critical_only": flag},
+        )
+        assert denied.status_code == 403
