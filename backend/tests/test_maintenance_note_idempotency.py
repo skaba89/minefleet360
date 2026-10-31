@@ -34,4 +34,5 @@ def test_note_idempotency_replays_without_new_event(
     mismatched = client.post(
         f"{url}/progress", headers=headers, json={"action": "NOTE", "work_done": "Autre"}
     )
-    assert mismatched.status_code == 409
+    assert mismatched.status_code == 422
+    assert mismatched.json()["code"] == "IDEMPOTENCY_KEY_REUSED"
