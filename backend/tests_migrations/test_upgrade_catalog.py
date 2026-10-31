@@ -126,6 +126,44 @@ def _assert_database_protections(owner_engine: Engine) -> None:
         assert connection.execute(text("SELECT count(*) FROM tenant")).scalar_one() == 0
 
 
+
+
+def _assert_legal_insurance_tenant_isolation(app_engine: Engine) -> None:
+    """Contracts and insurance records must never cross tenant boundaries."""
+    contract_id = uuid.uuid4()
+    actor_id = uuid.uuid4()
+    with app_engine.begin() as connection:
+        _context(connection, TENANT_A)
+        connection.execute(
+            text(
+                "INSERT INTO legal_contract "
+                "(contract_id, tenant_id, site_id, reference, title, contract_type, "
+                "counterparty_name, created_by) VALUES "
+                "(:id, :tenant, :site, 'LEGAL-TEST-1', 'Transport', 'TRANSPORT', "
+                "'Transporteur A', :actor)"
+            ),
+            {"id": contract_id, "tenant": TENANT_A, "site": SITE_A, "actor": actor_id},
+        )
+        connection.execute(
+            text(
+                "INSERT INTO insurance_policy "
+                "(tenant_id, site_id, policy_number, insurer_name, coverage_type, "
+                "coverage_start, coverage_end, contract_id, created_by) VALUES "
+                "(:tenant, :site, 'INS-TEST-1', 'Assureur A', 'FLEET', "
+                "'2026-01-01', '2026-12-31', :contract, :actor)"
+            ),
+            {"tenant": TENANT_A, "site": SITE_A, "contract": contract_id, "actor": actor_id},
+        )
+    with app_engine.connect() as connection:
+        _context(connection, TENANT_B)
+        assert connection.execute(text("SELECT count(*) FROM legal_contract")).scalar_one() == 0
+        assert connection.execute(text("SELECT count(*) FROM insurance_policy")).scalar_one() == 0
+        connection.rollback()
+        _context(connection, TENANT_A)
+        assert connection.execute(text("SELECT count(*) FROM legal_contract")).scalar_one() == 1
+        assert connection.execute(text("SELECT count(*) FROM insurance_policy")).scalar_one() == 1
+        connection.rollback()
+
 def test_01_upgrade_repairs_existing_tenants_and_is_idempotent() -> None:
     settings = get_settings()
     config = _alembic_config()
@@ -185,6 +223,8 @@ def test_01_upgrade_repairs_existing_tenants_and_is_idempotent() -> None:
                     {"tenant": str(TENANT_A), "site": str(SITE_A), "category": category_b},
                 )
             connection.rollback()
+
+        _assert_legal_insurance_tenant_isolation(app_engine)
 
         _assert_database_protections(owner_engine)
 
