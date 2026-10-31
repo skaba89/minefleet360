@@ -40,7 +40,6 @@ class ReplenishmentDraft(Base):
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
 
 
-
 class DraftCreate(StrictModel):
     spare_part_store_id: uuid.UUID
     spare_part_id: uuid.UUID
