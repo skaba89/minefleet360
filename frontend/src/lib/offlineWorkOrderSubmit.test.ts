@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { call } from "../api/client";
+import { ApiError, call } from "../api/client";
 import { submitOfflineWorkOrderNote } from "./offlineWorkOrderSubmit";
 
 vi.mock("../api/client", () => ({ call: vi.fn() }));
@@ -31,5 +31,14 @@ it("refuse les états clos et les OT sans version", async () => {
   await expect(submitOfflineWorkOrderNote(id, "Nouvelle note")).rejects.toThrow(/n'accepte plus/);
   vi.mocked(call).mockResolvedValueOnce({ data: server, etag: null } as never);
   await expect(submitOfflineWorkOrderNote(id, "Nouvelle note")).rejects.toThrow(/Version/);
+  expect(call).toHaveBeenCalledTimes(2);
+});
+
+it("signale un résultat ambigu après une panne réseau sans renvoyer la mutation", async () => {
+  vi.mocked(call).mockResolvedValueOnce({ data: server, etag: '"3"' } as never);
+  vi.mocked(call).mockRejectedValueOnce(new ApiError(0, {
+    code: "NETWORK_ERROR", message_fr: "Réseau interrompu", details: null, request_id: null,
+  }));
+  await expect(submitOfflineWorkOrderNote(id, "Inspection")).rejects.toThrow(/peut-être enregistré/);
   expect(call).toHaveBeenCalledTimes(2);
 });
