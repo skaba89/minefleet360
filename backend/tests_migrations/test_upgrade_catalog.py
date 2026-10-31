@@ -126,8 +126,6 @@ def _assert_database_protections(owner_engine: Engine) -> None:
         assert connection.execute(text("SELECT count(*) FROM tenant")).scalar_one() == 0
 
 
-
-
 def _assert_legal_insurance_tenant_isolation(app_engine: Engine) -> None:
     """Contracts and insurance records must never cross tenant boundaries."""
     contract_id = uuid.uuid4()
@@ -163,6 +161,7 @@ def _assert_legal_insurance_tenant_isolation(app_engine: Engine) -> None:
         assert connection.execute(text("SELECT count(*) FROM legal_contract")).scalar_one() == 1
         assert connection.execute(text("SELECT count(*) FROM insurance_policy")).scalar_one() == 1
         connection.rollback()
+
 
 def test_01_upgrade_repairs_existing_tenants_and_is_idempotent() -> None:
     settings = get_settings()
