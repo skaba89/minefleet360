@@ -21,6 +21,7 @@ from app.maintenance.parts_models import (
     SparePartReservation,
     SparePartStore,
 )
+from app.maintenance.valuation import Valuation, issue_cmp
 from app.maintenance.valued_receipts import record_valued_receipt
 
 router = APIRouter(tags=["pieces"], route_class=SecuredRoute)
@@ -553,6 +554,82 @@ def receive_valued_part(body: ValuedPartReceiptIn, auth: Receive) -> ValuedPartR
         auth.db.rollback()
         raise AppError("CONFLICT") from None
     except ValueError:
+        auth.db.rollback()
+        raise AppError("CONFLICT") from None
+
+
+class ValuedPartIssueOut(PartIssueOut):
+    unit_cost: Decimal
+    total_cost: Decimal
+    valuation_currency: str
+
+
+@router.post(
+    "/part-movements/valued-issues",
+    response_model=ValuedPartIssueOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def issue_valued_part(body: PartIssueIn, auth: Issue) -> ValuedPartIssueOut:
+    store = auth.db.scalar(
+        select(SparePartStore).where(
+            SparePartStore.tenant_id == auth.tenant_id,
+            SparePartStore.spare_part_store_id == body.spare_part_store_id,
+        )
+    )
+    if store is None or not auth.scope.covers_site(store.site_id):
+        raise AppError("REFERENCE_NOT_FOUND")
+    part_exists = auth.db.scalar(
+        select(SparePart.spare_part_id).where(
+            SparePart.tenant_id == auth.tenant_id,
+            SparePart.spare_part_id == body.spare_part_id,
+        )
+    )
+    if part_exists is None:
+        raise AppError("REFERENCE_NOT_FOUND")
+    try:
+        # FOR UPDATE protects quantity and CMP value from concurrent movements.
+        balance = auth.db.scalar(
+            select(SparePartBalance)
+            .where(
+                SparePartBalance.tenant_id == auth.tenant_id,
+                SparePartBalance.site_id == store.site_id,
+                SparePartBalance.spare_part_store_id == body.spare_part_store_id,
+                SparePartBalance.spare_part_id == body.spare_part_id,
+            )
+            .with_for_update()
+        )
+        if (
+            balance is None
+            or balance.stock_value is None
+            or balance.valuation_currency is None
+            or balance.on_hand - balance.reserved < body.quantity
+        ):
+            auth.db.rollback()
+            raise AppError("CONFLICT")
+        before = Valuation(quantity=balance.on_hand, value=balance.stock_value)
+        after, cost = issue_cmp(before, body.quantity)
+        balance.on_hand = after.quantity
+        balance.stock_value = after.value
+        unit_cost = (cost / body.quantity).quantize(Decimal("0.000001"))
+        movement = SparePartMovement(
+            tenant_id=auth.tenant_id,
+            site_id=store.site_id,
+            spare_part_store_id=body.spare_part_store_id,
+            spare_part_id=body.spare_part_id,
+            movement_type="ISSUE",
+            quantity=body.quantity,
+            unit_cost=unit_cost,
+            total_cost=cost,
+            valuation_currency=balance.valuation_currency,
+            reference=body.reference,
+            recorded_by=auth.user_id,
+        )
+        auth.db.add(movement)
+        auth.db.flush()
+        output = ValuedPartIssueOut.model_validate(movement, from_attributes=True)
+        auth.db.commit()
+        return output
+    except (IntegrityError, ValueError):
         auth.db.rollback()
         raise AppError("CONFLICT") from None
 
