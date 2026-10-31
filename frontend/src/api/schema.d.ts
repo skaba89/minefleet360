@@ -1181,6 +1181,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/part-replenishments/{replenishment_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Replenishment */
+        post: operations["decide_replenishment_api_v1_part_replenishments__replenishment_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/part-replenishments/{replenishment_id}/submit": {
         parameters: {
             query?: never;
@@ -2738,6 +2755,13 @@ export interface components {
             decision: "APPROVED" | "REJECTED";
             /** Reason Code */
             reason_code?: ("WRONG_VEHICLE" | "INVALID_QUANTITY" | "OTHER") | null;
+        };
+        /** DecisionIn */
+        DecisionIn: {
+            /** Action */
+            action: string;
+            /** Note */
+            note: string;
         };
         /** DocumentCreate */
         DocumentCreate: {
@@ -9315,6 +9339,43 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_replenishment_api_v1_part_replenishments__replenishment_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                replenishment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

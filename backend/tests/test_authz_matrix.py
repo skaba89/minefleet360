@@ -76,6 +76,7 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
     },
     ("PUT", "/vehicle-categories/{category_id}/required-documents"): {"doc_types": ["INSURANCE"]},
     ("POST", "/vehicle-documents/{vehicle_document_id}/withdraw"): {"reason_code": "ENTRY_ERROR"},
+    ("POST", "/part-replenishments/{replenishment_id}/decision"): {"action": "APPROVE", "note": "Revu"},
     ("POST", "/work-orders/{work_order_id}/decision"): {"action": "APPROVE"},
     ("POST", "/work-orders/{work_order_id}/progress"): {"action": "NOTE", "diagnosis": "Diagnostic fictif"},
     ("POST", "/work-orders/{work_order_id}/labour"): {"minutes": 10, "performed_on": "2026-01-01"},
