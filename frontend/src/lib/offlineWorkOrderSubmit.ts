@@ -81,6 +81,7 @@ export async function submitPreparedOfflineWorkOrderNote(draft: OfflineDraft): P
       await setOfflineNoteDeliveryStatus(draft.id, draft.ownerScope, "confirmed");
     } catch (error) {
       if (error instanceof ApiError && error.status === 0) {
+        await setOfflineNoteDeliveryStatus(draft.id, draft.ownerScope, "uncertain");
         throw new Error("Transmission incertaine. La commande est conservée : vérifiez l'OT puis relancez la même opération.");
       }
       throw error;
