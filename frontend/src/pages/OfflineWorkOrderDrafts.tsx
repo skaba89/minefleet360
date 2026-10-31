@@ -51,6 +51,10 @@ export function OfflineWorkOrderDrafts({ workOrderId, onRestore, onSubmit }: { w
   }
 
   async function discard(id: string) {
+    const draft = drafts.find((item) => item.id === id);
+    if (draft?.pending?.deliveryStatus !== "confirmed" && draft?.pending) {
+      if (!window.confirm("Cette transmission n'est pas confirmée. La supprimer effacera aussi la clé permettant un rejeu sans doublon. Confirmer la suppression définitive ?")) return;
+    }
     setBusy(true); setError("");
     try {
       await discardOfflineDraft(id, ownerScope);
@@ -60,7 +64,7 @@ export function OfflineWorkOrderDrafts({ workOrderId, onRestore, onSubmit }: { w
   }
 
   async function purge() {
-    if (!window.confirm("Supprimer définitivement tous vos brouillons locaux de cet espace de travail sur cet appareil ?")) return;
+    if (!window.confirm("Supprimer définitivement tous vos brouillons locaux de cet espace de travail sur cet appareil, y compris les transmissions non confirmées et leurs clés de rejeu ?")) return;
     setBusy(true); setError("");
     try {
       await clearOfflineDrafts(ownerScope);
