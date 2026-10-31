@@ -23,3 +23,13 @@ bash infra/deploy/probe-database.sh
 La sonde vérifie d'abord `pg_isready`, puis un véritable `SELECT 1` sur la base `minefleet`. Elle utilise le conteneur Docker local, sans publier de port et sans afficher de secret. Exécuter avec les droits Docker appropriés, uniquement sur l'hôte de déploiement : **l'accès au socket Docker donne des privilèges élevés**. L'absence de `.env.prod` ou des prérequis produit le code `3`, une indisponibilité SQL le code `2`, un succès le code `0`.
 
 Cette sonde ne vérifie pas la fraîcheur de la sauvegarde, les permissions de l'utilisateur applicatif `mf_app`, les migrations, ni la performance sous charge. Pour l'alerte de disponibilité, corréler la sonde externe HTTP avec la sonde SQL interne : API OK + DB KO doit être traité comme un incident critique de base, tandis que HTTP KO + DB OK oriente vers le réseau, le proxy ou l'API.
+
+## Fraîcheur des sauvegardes locales PostgreSQL
+
+```bash
+MF_BACKUP_MAX_AGE_HOURS=26 bash infra/deploy/probe-backup-freshness.sh
+```
+
+La sonde est en lecture seule : elle recherche les fichiers locaux non vides `backups/minefleet-*.dump` et contrôle l'horodatage de modification du plus récent. Valeur par défaut : 26 heures pour des sauvegardes quotidiennes, à adapter à l'ordonnancement. Codes de sortie : `0` fraîcheur conforme, `2` aucune archive valide ou archive trop ancienne, `3` erreur de configuration ou d'horloge.
+
+**Limites :** un fichier récent peut être corrompu. La fraîcheur locale ne prouve ni copie hors site, ni déchiffrement, ni restauration. Exécuter périodiquement `verify-restore.sh` sur une machine de confiance et ajouter la supervision du transfert distant ; créer une alerte si la sonde retourne un code non nul. Ne jamais consigner le contenu des archives.
