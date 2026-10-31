@@ -687,7 +687,9 @@ def list_part_stores(auth: Read, page: Pagination, site_id: uuid.UUID | None = N
 
 
 @router.get("/part-balances", response_model=Page[BalanceOut])
-def list_part_balances(auth: Read, page: Pagination, site_id: uuid.UUID | None = None) -> Page[BalanceOut]:
+def list_part_balances(
+    auth: Read, page: Pagination, site_id: uuid.UUID | None = None, critical_only: bool = False
+) -> Page[BalanceOut]:
     if site_id is not None and not auth.scope.covers_site(site_id):
         raise AppError("NOT_FOUND")
     stmt = select(SparePartBalance).where(SparePartBalance.tenant_id == auth.tenant_id)
@@ -695,6 +697,10 @@ def list_part_balances(auth: Read, page: Pagination, site_id: uuid.UUID | None =
         stmt = stmt.where(SparePartBalance.site_id.in_(auth.scope.site_ids))
     if site_id is not None:
         stmt = stmt.where(SparePartBalance.site_id == site_id)
+    if critical_only:
+        stmt = stmt.where(
+            SparePartBalance.on_hand - SparePartBalance.reserved <= SparePartBalance.low_stock_threshold
+        )
     total = auth.db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     rows = auth.db.scalars(
         stmt.order_by(SparePartBalance.spare_part_balance_id).offset(page.offset).limit(page.page_size)

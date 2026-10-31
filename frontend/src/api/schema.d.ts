@@ -8962,6 +8962,7 @@ export interface operations {
         parameters: {
             query?: {
                 site_id?: string | null;
+                critical_only?: boolean;
                 page?: number;
                 page_size?: number | null;
             };
