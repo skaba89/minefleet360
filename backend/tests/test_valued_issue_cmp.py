@@ -9,7 +9,11 @@ from tests.test_assignment import World, _vehicle, w  # noqa: F401
 from tests.test_maintenance import _report
 
 
-def test_cmp_issue_reduces_quantity_and_value(client: TestClient, api: Api, w: World) -> None:  # noqa: F811
+def test_cmp_issue_reduces_quantity_and_value(
+    client: TestClient,
+    api: Api,
+    w: World,  # noqa: F811
+) -> None:
     keeper = api.user(w.t, "STOREKEEPER", "SITE", "S1")
     order = _report(client, w, _vehicle(client, w))
     assert order.status_code == 201, order.text
@@ -36,7 +40,13 @@ def test_cmp_issue_reduces_quantity_and_value(client: TestClient, api: Api, w: W
     receipt = client.post(
         f"{API}/part-movements/valued-receipts",
         headers=keeper.headers,
-        json={**stock, "quantity": "3", "unit_cost": "100", "currency": "GNF", "reference": "CMP-IN"},
+        json={
+            **stock,
+            "quantity": "3",
+            "unit_cost": "100",
+            "currency": "GNF",
+            "reference": "CMP-IN",
+        },
     )
     assert receipt.status_code == 201, receipt.text
     issue = client.post(
