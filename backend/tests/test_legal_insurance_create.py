@@ -26,6 +26,25 @@ def test_insurance_policy_create_guards(client: TestClient, api: Api) -> None:
         json={**payload, "site_id": str(foreign.sites["OTHER"])},
     )
     assert hidden.status_code == 404
+    foreign_contract = client.post(
+        f"{API}/legal-contracts",
+        headers=foreign.admin.headers,
+        json={
+            "site_id": str(foreign.sites["OTHER"]),
+            "reference": "FOREIGN-LEGAL-1",
+            "title": "Contrat externe",
+            "contract_type": "TRANSPORT",
+            "counterparty_name": "Transporteur externe",
+        },
+    )
+    assert foreign_contract.status_code == 201, foreign_contract.text
+    cross_tenant = client.post(
+        f"{API}/insurance-policies",
+        headers=manager.headers,
+        json={**payload, "contract_id": foreign_contract.json()["contract_id"]},
+    )
+    assert cross_tenant.status_code == 404
+
     invalid_contract = client.post(
         f"{API}/insurance-policies",
         headers=manager.headers,
