@@ -1,4 +1,5 @@
 """Transactional replay of an offline work-order NOTE."""
+
 import uuid
 
 from fastapi.testclient import TestClient
