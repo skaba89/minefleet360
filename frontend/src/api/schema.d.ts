@@ -2756,6 +2756,13 @@ export interface components {
             /** Reason Code */
             reason_code?: ("WRONG_VEHICLE" | "INVALID_QUANTITY" | "OTHER") | null;
         };
+        /** DecisionIn */
+        DecisionIn: {
+            /** Action */
+            action: string;
+            /** Note */
+            note: string;
+        };
         /** DocumentCreate */
         DocumentCreate: {
             /**
@@ -2816,13 +2823,6 @@ export interface components {
              * Format: uuid
              */
             vehicle_id: string;
-        };
-        /** DecisionIn */
-        DecisionIn: {
-            /** Action */
-            action: string;
-            /** Note */
-            note: string;
         };
         /** DocumentWithdraw */
         DocumentWithdraw: {
