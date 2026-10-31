@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useMe } from "../auth/AuthContext";
-import { discardOfflineDraft, listOfflineDrafts, saveOfflineDraft, type OfflineDraft } from "../lib/offlineDrafts";
+import { clearOfflineDrafts, discardOfflineDraft, listOfflineDrafts, saveOfflineDraft, type OfflineDraft } from "../lib/offlineDrafts";
 
 export function OfflineWorkOrderDrafts({ workOrderId, onRestore }: { workOrderId: string; onRestore?: (note: string) => void }) {
   const me = useMe();
@@ -42,6 +42,22 @@ export function OfflineWorkOrderDrafts({ workOrderId, onRestore }: { workOrderId
     finally { setBusy(false); }
   }
 
+  async function purge() {
+    if (!window.confirm("Supprimer définitivement tous vos brouillons locaux de cet espace de travail sur cet appareil ?")) return;
+    setBusy(true); setError("");
+    try {
+      await clearOfflineDrafts(ownerScope);
+      setDrafts([]);
+      setNote("");
+    } catch {
+      setError("Effacement incomplet : certains brouillons peuvent subsister. Réessayez.");
+      try {
+        const remaining = await listOfflineDrafts(ownerScope);
+        setDrafts(remaining.filter((item) => item.workOrderId === workOrderId));
+      } catch { /* Les données n'ont pas été déclarées effacées. */ }
+    } finally { setBusy(false); }
+  }
+
   return <div className="card">
     <h2>Notes locales hors ligne</h2>
     <p className="muted small">Brouillons conservés sur cet appareil, non transmis au serveur. Ils ne constituent pas un compte rendu enregistré. N'y saisissez aucune donnée personnelle ou sensible.</p>
@@ -50,6 +66,7 @@ export function OfflineWorkOrderDrafts({ workOrderId, onRestore }: { workOrderId
     </label>
     <button type="button" disabled={busy || !note.trim()} onClick={() => void save()}>Conserver sur cet appareil</button>
     {error && <p role="alert">{error}</p>}
+    <div className="toolbar"><button type="button" className="danger" disabled={busy} onClick={() => void purge()}>Effacer tous mes brouillons locaux</button></div>
     <ul>{drafts.map((draft) => <li key={draft.id}>
       <p>{draft.note}</p>
       {onRestore && <button type="button" disabled={busy} onClick={() => onRestore(draft.note)}>Reprendre dans le compte rendu</button>}
