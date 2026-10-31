@@ -2,7 +2,10 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { ApiError, call } from "../api/client";
 import { submitOfflineWorkOrderNote } from "./offlineWorkOrderSubmit";
 
-vi.mock("../api/client", () => ({ call: vi.fn() }));
+vi.mock("../api/client", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../api/client")>(),
+  call: vi.fn(),
+}));
 const id = "44444444-4444-4444-8444-444444444444";
 const server = { status: "IN_PROGRESS", work_done: null, diagnosis: "Pompe", parts_note: "Joint" };
 
