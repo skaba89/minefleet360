@@ -45,9 +45,10 @@ def test_invalid_coverage_inputs(start: date, end: date, warning_days: int) -> N
 
 
 def test_renewal_reminders_are_ordered_unique_and_bounded() -> None:
-    assert renewal_reminder_dates(
-        date(2026, 12, 20), date(2026, 12, 31), (30, 7, 7, 0)
-    ) == (date(2026, 12, 24), date(2026, 12, 31))
+    assert renewal_reminder_dates(date(2026, 12, 20), date(2026, 12, 31), (30, 7, 7, 0)) == (
+        date(2026, 12, 24),
+        date(2026, 12, 31),
+    )
 
 
 def test_renewal_reminders_accept_empty_schedule() -> None:
