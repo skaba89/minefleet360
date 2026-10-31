@@ -1,4 +1,4 @@
-import { listOfflineDrafts, prepareOfflineNoteTransmission, validateOfflineDraft, type OfflineDraft } from "./offlineDrafts";
+import { listOfflineDrafts, prepareOfflineNoteTransmission, setOfflineNoteDeliveryStatus, validateOfflineDraft, type OfflineDraft } from "./offlineDrafts";
 import { ApiError, call } from "../api/client";
 
 /** Explicit online transfer of a local OT note. Never replay automatically. */
@@ -56,6 +56,7 @@ export async function submitPreparedOfflineWorkOrderNote(draft: OfflineDraft): P
     }
     validateOfflineDraft(stored);
     let pending = stored.pending;
+    if (pending?.deliveryStatus === "confirmed") return;
     if (!pending) {
       const latest = await call("get", "/work-orders/{work_order_id}", { path: { work_order_id: workOrderId } });
       const order = latest.data;
@@ -77,6 +78,7 @@ export async function submitPreparedOfflineWorkOrderNote(draft: OfflineDraft): P
         ifMatch: pending.ifMatch,
         body: pending.body,
       });
+      await setOfflineNoteDeliveryStatus(draft.id, draft.ownerScope, "confirmed");
     } catch (error) {
       if (error instanceof ApiError && error.status === 0) {
         throw new Error("Transmission incertaine. La commande est conservée : vérifiez l'OT puis relancez la même opération.");
