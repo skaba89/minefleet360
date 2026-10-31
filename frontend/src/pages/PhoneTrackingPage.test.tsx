@@ -21,7 +21,7 @@ beforeEach(() => {
   vi.mocked(get).mockResolvedValue([{ vehicle_id: "vehicle", fleet_number: "PARC-FICTIF", registration_number: null, site_id: "site" }]);
   vi.mocked(request).mockImplementation(async (path) => ({ data: path === "/me/gps/shares" ? share : undefined, etag: null }));
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); });
 it("demande le consentement et coupe les envois après l'arrêt", async () => {
   setup();
   const start = await screen.findByRole("button", { name: "Démarrer le partage" });
@@ -64,4 +64,19 @@ it("ne démarre pas le GPS si la création finit après avoir quitté la page", 
   await waitFor(() => expect(request).toHaveBeenCalledOnce()); view.unmount(); finish({ data: share, etag: null });
   await waitFor(() => expect(vi.mocked(request).mock.calls.some(([p]) => p.endsWith("/stop"))).toBe(true));
   expect(locate).not.toHaveBeenCalled();
+});
+
+it("bloque le démarrage sans réseau et annonce l'absence de mise en attente", async () => {
+  setup();
+  await screen.findByRole("button", { name: "Démarrer le partage" });
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+  act(() => window.dispatchEvent(new Event("offline")));
+  expect(screen.getByText(/Connexion absente : aucun nouveau relevé GPS/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("checkbox"));
+  const button = screen.getByRole("button", { name: "Démarrer le partage" }) as HTMLButtonElement;
+  expect(button.disabled).toBe(true);
+  expect(vi.mocked(request)).not.toHaveBeenCalled();
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+  act(() => window.dispatchEvent(new Event("online")));
+  expect(button.disabled).toBe(false);
 });
