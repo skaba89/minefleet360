@@ -4,9 +4,9 @@ Cette livraison fournit **des modèles**, sans installation ou activation automa
 
 ## Prérequis bloquants
 
-Le contrôle `probe-database.sh` existant invoque `docker compose exec`. **Un compte autorisé à utiliser le socket Docker dispose de privilèges proches de root.** Pour cette raison, ne pas ajouter `minefleet-monitor` au groupe `docker` ni accorder des droits sur `/var/run/docker.sock` uniquement pour faire fonctionner la sonde. L'installation reste **bloquée** tant que ce contrôle n'est pas remplacé par une sonde SQL utilisant un accès à privilèges minimaux, ou par un superviseur dédié avec configuration validée.
+La sonde PostgreSQL utilise maintenant `GET /api/v1/ready` sur l'API HTTPS ; la requête SQL `SELECT 1` est exécutée côté serveur avec le rôle applicatif restreint. Le compte `minefleet-monitor` **ne doit jamais** être membre du groupe Docker et n'a besoin d'aucun identifiant PostgreSQL.
 
-Le compte de service devra aussi avoir lecture du répertoire local de sauvegarde, sans accès en écriture à ces fichiers. Ne pas contourner cette limite avec des permissions trop larges.
+Le compte de service doit pouvoir lire les métadonnées du répertoire de sauvegardes, sans modification possible. Ce droit de lecture reste à configurer et vérifier sur staging. La sonde readiness teste la connexion SQL mais ne prouve ni les migrations courantes ni l'isolation multi-tenant. Protéger l'endpoint par les mêmes contrôles de trafic et de disponibilité que l'API.
 
 ## Fichiers fournis
 
