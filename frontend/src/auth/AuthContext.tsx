@@ -12,7 +12,7 @@ import {
   type Schemas,
 } from "../api/client";
 
-import { clearOfflineDrafts } from "../lib/offlineDrafts";
+import { purgeDraftsForSignedOutUser } from "../lib/offlineLogout";
 
 type Me = Schemas["MeOut"];
 
@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!(err instanceof ApiError) || err.status === 0 || err.status >= 500) throw err;
     }
     try {
-      if (me) await clearOfflineDrafts(`${me.workspace_code}:${me.user_account_id}`);
+      if (me) await purgeDraftsForSignedOutUser(me);
     } finally {
       // Révocation confirmée : ne conserver aucune session même si IndexedDB échoue.
       // L'erreur de purge remonte à l'UI, car un brouillon peut subsister sur le poste.
