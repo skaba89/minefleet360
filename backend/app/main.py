@@ -101,9 +101,15 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
             CORSMiddleware,
             allow_origins=settings.allowed_origin_list,
             allow_credentials=True,
-            allow_methods=["GET", "POST", "PATCH"],
-            allow_headers=["Authorization", "Content-Type", "If-Match", "X-Request-ID"],
-            expose_headers=["ETag", "X-Request-ID", "Retry-After"],
+            allow_methods=["GET", "POST", "PATCH", "PUT"],
+            allow_headers=[
+                "Authorization",
+                "Content-Type",
+                "Idempotency-Key",
+                "If-Match",
+                "X-Request-ID",
+            ],
+            expose_headers=["ETag", "Idempotency-Replayed", "X-Request-ID", "Retry-After"],
         )
 
     health = APIRouter(route_class=SecuredRoute, tags=["santé"])

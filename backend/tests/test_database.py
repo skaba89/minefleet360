@@ -16,6 +16,7 @@ TENANT_TABLES = (
     "user_role_assignment",
     "account_token",
     "auth_session",
+    "idempotency_record",
     "audit_event",
     "vehicle",
     "driver",

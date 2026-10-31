@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     refresh_grace_period: timedelta = timedelta(seconds=30)
     invitation_ttl: timedelta = timedelta(days=7)
     reset_token_ttl: timedelta = timedelta(hours=1)
+    # Fenêtre pendant laquelle un rejeu hors ligne est garanti sans double effet (D-14, à valider au pilote).
+    idempotency_ttl: timedelta = Field(
+        default=timedelta(days=7), ge=timedelta(hours=1), le=timedelta(days=30)
+    )
     login_max_failures: int = 5
     # Par adresse IP : seuil plus haut (plusieurs utilisateurs d'un site derrière un même NAT).
     login_ip_max_failures: int = 50

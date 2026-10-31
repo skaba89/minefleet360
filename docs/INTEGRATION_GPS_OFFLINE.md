@@ -96,14 +96,20 @@ sequenceDiagram
 
 ### 2.0 État d'implémentation
 
-La première tranche du socle PWA est livrée : manifeste installable, cache du shell et des ressources statiques,
+La première tranche du socle PWA est livrée par la PR #158 : manifeste installable, cache du shell et des ressources statiques,
 indicateur de connectivité et avertissement explicite en cas de coupure. Le Service Worker exclut volontairement
 `/api/` et toutes les mutations. Tant que l'application reste ouverte, les écrans déjà chargés restent visibles ;
 un rechargement hors ligne ne restaure pas une session expirée et aucune écriture métier n'est encore mise en file.
 
-La synchronisation des saisies décrite ci-dessous reste à implémenter après l'idempotence serveur, le cloisonnement
-local par tenant et utilisateur, la purge à la déconnexion et les écrans de résolution de conflits. Cette séparation
-évite les doubles écritures et la persistance non maîtrisée de données multi-tenant sur un appareil partagé.
+La deuxième tranche introduit le socle d'idempotence serveur : migration `0039`, clé cloisonnée par tenant et
+utilisateur, empreinte SHA-256 du contenu sans stockage du corps, réservation concurrente et référence de ressource
+pour reconstruire le rejeu. La clé est finalisée dans la transaction de la mutation métier ; une même clé avec un
+contenu différent est refusée. La durée de rétention est configurable entre une heure et trente jours (sept jours
+par défaut) et doit être validée pendant le pilote en Guinée.
+
+Cette fondation n'est pas encore branchée à une route métier et ne constitue donc pas une promesse de saisie hors
+ligne. L'outbox IndexedDB, son cloisonnement local par tenant/utilisateur, la purge à la déconnexion et le premier
+parcours append-only restent à livrer avant d'activer la synchronisation terrain.
 
 ### 2.1 Principes
 - Priorité terrain : réseau faible/intermittent. Le client enregistre localement puis synchronise ; l'état affiché distingue clairement **« enregistré localement »** et **« synchronisé »**.

@@ -366,7 +366,7 @@ Affectation d'un conducteur à un véhicule sur un intervalle `[valid_from, vali
 
 | Table | Lot | Décision | Remarque |
 |-------|-----|----------|----------|
-| `idempotency_record` | **lot 4** (offline) | D-14 | Au lot 1, les doublons sont empêchés par les contraintes d'unicité et d'exclusion ; aucune `Idempotency-Key` au lot 1. Esquisse dans `MODELE_PHYSIQUE_LOT1.md` §11 |
+| `idempotency_record` | **lot 4** (offline), migration `0039` | D-14 | Socle générique : PK tenant/utilisateur/clé, empreinte SHA-256, état `IN_PROGRESS`/`COMPLETED`, référence de ressource et expiration. Aucun corps de requête/réponse stocké ; activation route par route à venir |
 | `vehicle_meter_reading` | avec la **première story de compteur** | D-16 | Sources en anglais (`MANUAL`, `MOBILE_CHECKLIST`, `CAN_ECU`, `GPS_DERIVED`, `IMPORT`) ; types `ODOMETER_KM`, `HOUR_METER_H` ; natures `READING`, `CORRECTION`, `METER_REPLACEMENT` ; append-only ; valeur courante par vue, aucune colonne sur `vehicle`. Esquisse en `MODELE_PHYSIQUE_LOT1.md` §5.8. GPS dérivé : jamais écrasant (RM-064) |
 | `vehicle_document` | lot 2 (C-06) | D-16 | Documents véhicule bloquants inconnus |
 | `support_access_session` | pilote (C-10) | D-16 | Pas d'accès support plateforme au lot 1 |
