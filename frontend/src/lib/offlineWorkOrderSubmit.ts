@@ -1,7 +1,11 @@
 import { ApiError, call } from "../api/client";
 
 /** Explicit online transfer of a local OT note. Never replay automatically. */
+const activeWorkOrders = new Set<string>();
 export async function submitOfflineWorkOrderNote(workOrderId: string, note: string): Promise<void> {
+  if (activeWorkOrders.has(workOrderId)) throw new Error("Une transmission de cette note OT est déjà en cours.");
+  activeWorkOrders.add(workOrderId);
+  try {
   const trimmed = note.trim();
   if (!trimmed || trimmed.length > 1000) throw new Error("Note vide ou trop longue : aucun envoi effectué.");
   const latest = await call("get", "/work-orders/{work_order_id}", { path: { work_order_id: workOrderId } });
@@ -32,5 +36,8 @@ export async function submitOfflineWorkOrderNote(workOrderId: string, note: stri
       throw new Error("Envoi non confirmé : le serveur a peut-être enregistré la note. Rechargez l'OT et vérifiez son compte rendu avant toute nouvelle tentative.");
     }
     throw error;
+  }
+  } finally {
+    activeWorkOrders.delete(workOrderId);
   }
 }
