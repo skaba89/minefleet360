@@ -38,6 +38,8 @@ class ReplenishmentDraft(Base):
     reference: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, server_default=text("'DRAFT'"))
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    decision_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    decision_note: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
 class DraftCreate(StrictModel):
@@ -144,6 +146,57 @@ def submit_draft(replenishment_id: uuid.UUID, auth: Manage) -> DraftOut:
         quantity=draft.quantity,
         reference=draft.reference,
         status="SUBMITTED",
+    )
+    auth.db.commit()
+    return result
+
+
+class DecisionIn(StrictModel):
+    action: str
+    note: str = Field(min_length=1, max_length=500)
+
+
+@router.post("/part-replenishments/{replenishment_id}/decision", response_model=DraftOut)
+def decide_replenishment(replenishment_id: uuid.UUID, body: DecisionIn, auth: Manage) -> DraftOut:
+    if body.action not in {"APPROVE", "REJECT"} or not body.note.strip():
+        raise AppError("VALIDATION_ERROR")
+    draft = auth.db.scalar(
+        select(ReplenishmentDraft).where(
+            ReplenishmentDraft.tenant_id == auth.tenant_id,
+            ReplenishmentDraft.replenishment_id == replenishment_id,
+        )
+    )
+    if draft is None or not auth.scope.covers_site(draft.site_id):
+        raise AppError("NOT_FOUND")
+    if draft.created_by == auth.user_id:
+        raise AppError("CONFLICT")
+    new_status = "APPROVED" if body.action == "APPROVE" else "REJECTED"
+    changed = auth.db.execute(
+        text(
+            "UPDATE spare_part_replenishment SET status = :new_status, "
+            "decision_by = :actor, decision_note = :note, decided_at = now() "
+            "WHERE tenant_id = :tenant_id AND replenishment_id = :replenishment_id "
+            "AND status = 'SUBMITTED' RETURNING replenishment_id"
+        ),
+        {
+            "new_status": new_status,
+            "actor": auth.user_id,
+            "note": body.note.strip(),
+            "tenant_id": auth.tenant_id,
+            "replenishment_id": replenishment_id,
+        },
+    ).first()
+    if changed is None:
+        auth.db.rollback()
+        raise AppError("CONFLICT")
+    result = DraftOut(
+        replenishment_id=draft.replenishment_id,
+        site_id=draft.site_id,
+        spare_part_store_id=draft.spare_part_store_id,
+        spare_part_id=draft.spare_part_id,
+        quantity=draft.quantity,
+        reference=draft.reference,
+        status=new_status,
     )
     auth.db.commit()
     return result
