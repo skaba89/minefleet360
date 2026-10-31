@@ -12245,6 +12245,7 @@ export interface operations {
             header?: {
                 authorization?: string | null;
                 "if-match"?: string | null;
+                "Idempotency-Key"?: string | null;
             };
             path: {
                 work_order_id: string;
