@@ -32,7 +32,7 @@ if [[ "${2:-}" == "--live" ]]; then
   BASE_URL="${BASE_URL%/}"
   # No redirect, insecure TLS, credentials or response bodies.
   for route in / /api/v1/health /api/v1/ready; do
-    if ! code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \\
+    if ! code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
       --connect-timeout 5 --max-time 12 --proto '=https' "$BASE_URL$route")"; then
       echo "FAIL: staging HTTPS probe unreachable: $route" >&2
       exit 1
