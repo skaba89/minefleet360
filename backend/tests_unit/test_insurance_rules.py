@@ -23,8 +23,7 @@ def test_coverage_lifecycle(today: date, expected: CoverageStatus) -> None:
 
 def test_zero_day_warning_is_expiring_only_on_last_day() -> None:
     assert (
-        coverage_status(date(2026, 1, 1), date(2026, 12, 31), date(2026, 12, 30), 0)
-        == CoverageStatus.ACTIVE
+        coverage_status(date(2026, 1, 1), date(2026, 12, 31), date(2026, 12, 30), 0) == CoverageStatus.ACTIVE
     )
     assert (
         coverage_status(date(2026, 1, 1), date(2026, 12, 31), date(2026, 12, 31), 0)
