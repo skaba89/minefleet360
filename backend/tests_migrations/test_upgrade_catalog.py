@@ -162,6 +162,38 @@ def _assert_legal_insurance_tenant_isolation(app_engine: Engine) -> None:
         assert connection.execute(text("SELECT count(*) FROM insurance_policy")).scalar_one() == 1
         connection.rollback()
 
+    # A contract from tenant A cannot be attached to a policy of tenant B.
+    with app_engine.connect() as connection:
+        _context(connection, TENANT_B)
+        with pytest.raises(IntegrityError):
+            connection.execute(
+                text(
+                    "INSERT INTO insurance_policy "
+                    "(tenant_id, site_id, policy_number, insurer_name, coverage_type, "
+                    "coverage_start, coverage_end, contract_id, created_by) VALUES "
+                    "(:tenant, :site, 'INS-FOREIGN', 'Assureur B', 'FLEET', "
+                    "'2026-01-01', '2026-12-31', :contract, :actor)"
+                ),
+                {"tenant": TENANT_B, "site": SITE_B, "contract": contract_id, "actor": actor_id},
+            )
+        connection.rollback()
+
+    # Invalid insurance coverage dates are rejected at database level.
+    with app_engine.connect() as connection:
+        _context(connection, TENANT_A)
+        with pytest.raises(IntegrityError):
+            connection.execute(
+                text(
+                    "INSERT INTO insurance_policy "
+                    "(tenant_id, site_id, policy_number, insurer_name, coverage_type, "
+                    "coverage_start, coverage_end, created_by) VALUES "
+                    "(:tenant, :site, 'INS-INVALID-DATES', 'Assureur A', 'FLEET', "
+                    "'2026-12-31', '2026-01-01', :actor)"
+                ),
+                {"tenant": TENANT_A, "site": SITE_A, "actor": actor_id},
+            )
+        connection.rollback()
+
 
 def test_01_upgrade_repairs_existing_tenants_and_is_idempotent() -> None:
     settings = get_settings()
