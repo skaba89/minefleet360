@@ -57,3 +57,14 @@ python3 infra/deploy/alert-state.py \
 ```
 
 **Ce programme n'envoie aucune notification** : l'intégrer à un superviseur qui relève les événements `ALERT` et `RECOVERED` (sans afficher de secrets). L'exploitant doit installer le cron/systemd timer, configurer un canal d'alerte et tester un incident fictif. Ne pas placer le fichier d'état dans un répertoire accessible publiquement. Une instance dédiée de supervision est préférable pour éviter une panne commune avec l'application.
+
+## Envoi d'une notification SMTP (adaptateur)
+
+Le programme `infra/deploy/notify-alert-smtp.py` envoie un événement explicite `ALERT` ou `RECOVERED` avec SMTP STARTTLS. Il exige les variables `MF_ALERT_SMTP_HOST`, `MF_ALERT_SMTP_USERNAME`, `MF_ALERT_SMTP_PASSWORD`, `MF_ALERT_EMAIL_FROM`, `MF_ALERT_EMAIL_TO`, `MF_ALERT_INSTANCE` (et éventuellement `MF_ALERT_SMTP_PORT`, 587 par défaut). Conserver les identifiants hors du dépôt dans un gestionnaire de secrets ; privilégier une identité technique dédiée.
+
+```bash
+python3 infra/deploy/notify-alert-smtp.py ALERT
+python3 infra/deploy/notify-alert-smtp.py RECOVERED
+```
+
+L'adaptateur ne transmet que des messages génériques et n'insère pas les diagnostics des sondes. Il ne fournit **ni ordonnanceur, ni couplage automatique avec alert-state.py, ni file de livraison persistante**. Une connexion SMTP acceptée ne garantit pas la réception. Avant tout pilote, installer un superviseur qui invoque l'adaptateur uniquement sur transition, gère les tentatives de livraison échouées sans perdre les alertes, et teste les destinataires et le rétablissement. Les variables d'environnement ne doivent pas être enregistrées dans les logs.
