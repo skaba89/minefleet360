@@ -454,13 +454,16 @@ def receive_part(body: PartReceiptIn, auth: Receive) -> PartReceiptOut:
         raise AppError("CONFLICT")
     try:
         # UPSERT atomique : les réceptions concurrentes additionnent leurs quantités.
-        auth.db.execute(
+        updated = auth.db.execute(
             text(
                 "INSERT INTO spare_part_balance "
                 "(tenant_id, site_id, spare_part_store_id, spare_part_id, on_hand) "
                 "VALUES (:tenant_id, :site_id, :store_id, :part_id, :quantity) "
                 "ON CONFLICT (tenant_id, spare_part_store_id, spare_part_id) "
-                "DO UPDATE SET on_hand = spare_part_balance.on_hand + EXCLUDED.on_hand"
+                "DO UPDATE SET on_hand = spare_part_balance.on_hand + EXCLUDED.on_hand "
+                "WHERE spare_part_balance.stock_value IS NULL "
+                "AND spare_part_balance.valuation_currency IS NULL "
+                "RETURNING spare_part_balance_id"
             ),
             {
                 "tenant_id": auth.tenant_id,
@@ -470,6 +473,9 @@ def receive_part(body: PartReceiptIn, auth: Receive) -> PartReceiptOut:
                 "quantity": body.quantity,
             },
         )
+        if updated.first() is None:
+            auth.db.rollback()
+            raise AppError("CONFLICT")
         movement = SparePartMovement(
             tenant_id=auth.tenant_id,
             site_id=store.site_id,
