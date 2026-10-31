@@ -27,8 +27,8 @@ from app.fleet.router import router as fleet_router
 from app.fuel.anomalies import router as fuel_anomalies_router
 from app.fuel.router import router as fuel_router
 from app.identity.auth_service import AuthLimiters
-from app.legal.router import router as legal_router
 from app.identity.router import auth_router, me_router, role_router, user_router
+from app.legal.router import router as legal_router
 from app.maintenance.parts_router import router as parts_router
 from app.maintenance.purchase_order_router import router as purchase_order_router
 from app.maintenance.replenishment_router import router as replenishment_router
