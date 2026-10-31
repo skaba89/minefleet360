@@ -35,40 +35,15 @@ def main() -> int:
         print("ERROR: state directory must not be a symlink", file=sys.stderr)
         return 3
     scripts = Path(__file__).resolve().parent
-    queue_file = args.state_dir / "pending-notifications.json"
+    state_file = args.state_dir / "health-state.json"
     lock_file = args.state_dir / "monitor.lock"
 
     with os.fdopen(os.open(lock_file, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600), "r+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        if queue_file.is_symlink():
-            print("ERROR: queue file must not be a symlink", file=sys.stderr)
-            return 3
-        try:
-            raw = json.loads(queue_file.read_text()) if queue_file.exists() else []
-            if not isinstance(raw, list) or any(x not in EVENTS for x in raw):
-                raise ValueError("invalid queue")
-            queue = raw
-        except (OSError, ValueError):
-            print("ERROR: notification queue cannot be read", file=sys.stderr)
-            return 3
-
-        def persist() -> None:
-            temp = args.state_dir / f".pending-{os.getpid()}.tmp"
-            try:
-                with os.fdopen(os.open(temp, os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW, 0o600), "w") as out:
-                    json.dump(queue, out)
-                    out.flush()
-                    os.fsync(out.fileno())
-                os.replace(temp, queue_file)
-            finally:
-                temp.unlink(missing_ok=True)
-
-        # Never start delivery before the event has been durably queued.
         try:
             probe = subprocess.run(
                 [sys.executable, str(scripts / "alert-state.py"),
-                 "--state-file", str(args.state_dir / "health-state.json"),
-                 "--threshold", str(args.threshold)],
+                 "--state-file", str(state_file), "--threshold", str(args.threshold)],
                 capture_output=True, text=True, timeout=95, check=False,
             )
         except (OSError, subprocess.TimeoutExpired):
@@ -77,25 +52,39 @@ def main() -> int:
         if probe.returncode != 0:
             print("ERROR: operational alert check returned failure", file=sys.stderr)
             return 3
-        updated = add_event(queue, probe.stdout.strip())
-        if updated != queue:
-            queue = updated
-            persist()
-        while queue:
+
+        # The transition and outbox were persisted together by alert-state.py.
+        # Use the SAME file lock while acknowledging delivery.
+        with os.fdopen(os.open(state_file, os.O_RDWR | os.O_NOFOLLOW), "r+", encoding="utf-8") as state_stream:
+            fcntl.flock(state_stream, fcntl.LOCK_EX)
             try:
-                result = subprocess.run(
-                    [sys.executable, str(scripts / "notify-alert-smtp.py"), queue[0]],
-                    capture_output=True, timeout=30, check=False,
-                )
-            except (OSError, subprocess.TimeoutExpired):
-                print("WARNING: SMTP delivery failed; event retained", file=sys.stderr)
-                return 2
-            if result.returncode != 0:
-                print("WARNING: SMTP delivery failed; event retained", file=sys.stderr)
-                return 2
-            event = queue.pop(0)
-            persist()
-            print(f"DELIVERED: {event} notification accepted by SMTP")
+                state = json.load(state_stream)
+                queue = state["pending_notifications"]
+                if not isinstance(queue, list) or any(x not in EVENTS for x in queue):
+                    raise ValueError("invalid outbox")
+            except (ValueError, KeyError, TypeError):
+                print("ERROR: invalid monitoring state", file=sys.stderr)
+                return 3
+            while queue:
+                try:
+                    result = subprocess.run(
+                        [sys.executable, str(scripts / "notify-alert-smtp.py"), queue[0]],
+                        capture_output=True, timeout=30, check=False,
+                    )
+                except (OSError, subprocess.TimeoutExpired):
+                    print("WARNING: SMTP delivery failed; event retained", file=sys.stderr)
+                    return 2
+                if result.returncode != 0:
+                    print("WARNING: SMTP delivery failed; event retained", file=sys.stderr)
+                    return 2
+                event = queue.pop(0)
+                state["pending_notifications"] = queue
+                state_stream.seek(0)
+                json.dump(state, state_stream)
+                state_stream.truncate()
+                state_stream.flush()
+                os.fsync(state_stream.fileno())
+                print(f"DELIVERED: {event} notification accepted by SMTP")
     return 0
 
 
