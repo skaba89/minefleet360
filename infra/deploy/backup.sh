@@ -11,14 +11,14 @@ dump="backups/minefleet-$(date -u +%Y%m%dT%H%M%SZ).dump"
 # Write to a temporary file: a failed dump must never look like a usable backup.
 partial="$dump.partial"
 trap 'rm -f -- "$partial"' EXIT
-docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T db \\
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T db \
   pg_dump -U postgres -Fc minefleet > "$partial" </dev/null
 if [ ! -s "$partial" ]; then
   echo "FAIL: PostgreSQL dump is empty" >&2
   exit 1
 fi
 # pg_restore --list checks archive readability without restoring production data.
-if ! docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T db \\
+if ! docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T db \
   pg_restore --list < "$partial" > /dev/null; then
   echo "FAIL: PostgreSQL backup archive is invalid" >&2
   exit 1
