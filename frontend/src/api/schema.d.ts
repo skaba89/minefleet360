@@ -1285,19 +1285,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/parts-purchase-orders": {
-        parameters: { query?: never; header?: never; path?: never; cookie?: never; };
-        /** List Purchase Drafts */
-        get: operations["list_purchase_drafts_api_v1_parts_purchase_orders_get"];
-        put?: never;
-        /** Create Purchase Draft */
-        post: operations["create_purchase_draft_api_v1_parts_purchase_orders_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/parts": {
         parameters: {
             query?: never;
@@ -1310,6 +1297,24 @@ export interface paths {
         put?: never;
         /** Create Part */
         post: operations["create_part_api_v1_parts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/parts-purchase-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Purchase Drafts */
+        get: operations["list_purchase_drafts_api_v1_parts_purchase_orders_get"];
+        put?: never;
+        /** Create Purchase Draft */
+        post: operations["create_purchase_draft_api_v1_parts_purchase_orders_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9503,32 +9508,6 @@ export interface operations {
             };
         };
     };
-    list_purchase_drafts_api_v1_parts_purchase_orders_get: {
-        parameters: {
-            query?: { site_id?: string | null; page?: number; page_size?: number | null; };
-            header?: { authorization?: string | null; };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: { headers: { [name: string]: unknown }; content: { "application/json": components["schemas"]["Page_PurchaseOrderOut_"] }; };
-            422: { headers: { [name: string]: unknown }; content: { "application/json": components["schemas"]["HTTPValidationError"] }; };
-        };
-    };
-    create_purchase_draft_api_v1_parts_purchase_orders_post: {
-        parameters: {
-            query?: never;
-            header?: { authorization?: string | null; };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: { content: { "application/json": components["schemas"]["PurchaseOrderCreate"]; }; };
-        responses: {
-            201: { headers: { [name: string]: unknown }; content: { "application/json": components["schemas"]["PurchaseOrderOut"] }; };
-            422: { headers: { [name: string]: unknown }; content: { "application/json": components["schemas"]["HTTPValidationError"] }; };
-        };
-    };
     list_part_reservations_api_v1_part_reservations_get: {
         parameters: {
             query?: {
@@ -9794,6 +9773,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_purchase_drafts_api_v1_parts_purchase_orders_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PurchaseOrderOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_purchase_draft_api_v1_parts_purchase_orders_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseOrderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderOut"];
                 };
             };
             /** @description Validation Error */
