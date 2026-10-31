@@ -83,6 +83,7 @@ export interface RequestOptions {
   body?: unknown;
   query?: Record<string, string | number | boolean | null | undefined>;
   ifMatch?: string | null;
+  idempotencyKey?: string;
 }
 
 export interface ApiResponse<T> {
@@ -104,6 +105,7 @@ export async function request<T>(path: string, options: RequestOptions = {}, ret
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (options.ifMatch) headers["If-Match"] = options.ifMatch;
+  if (options.idempotencyKey) headers["Idempotency-Key"] = options.idempotencyKey;
   let response: Response;
   try {
     response = await fetch(buildUrl(path, options.query), {
@@ -174,6 +176,7 @@ export function call<P extends ApiPath, M extends MethodsOf<P>>(
     query: options.query as RequestOptions["query"],
     body: options.body,
     ifMatch: options.ifMatch,
+    idempotencyKey: options.idempotencyKey,
   });
 }
 
