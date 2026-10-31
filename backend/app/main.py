@@ -5,9 +5,11 @@ import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, FastAPI, Request, Response
+from fastapi import APIRouter, FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.assignment.router import router as assignment_router
 from app.audit.router import router as audit_router
@@ -117,6 +119,17 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
     @health.get("/health")
     def healthcheck() -> dict[str, str]:
         return {"status": "ok"}
+
+    @health.get("/ready", include_in_schema=False)
+    def database_readiness() -> Response:
+        """Read-only DB readiness using the API's existing restricted database role."""
+        try:
+            with get_engine().connect() as connection:
+                connection.execute(text("SELECT 1")).scalar_one()
+        except (SQLAlchemyError, OSError, TimeoutError):
+            # Do not reveal connection strings, roles or SQL errors publicly.
+            return JSONResponse({"status": "unavailable"}, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return JSONResponse({"status": "ok"})
 
     for router in (
         health,

@@ -1,26 +1,20 @@
 #!/usr/bin/env bash
-# Contrôle de disponibilité PostgreSQL en lecture seule, depuis l'hôte Docker MineFleet.
+# Restricted DB readiness probe through the HTTPS API, no Docker socket or DB credentials.
 set -euo pipefail
-cd "$(dirname "$0")"
-if [[ ! -f .env.prod ]]; then
-  echo "UNKNOWN: configuration .env.prod absente" >&2
+url="${MINEFLEET_BASE_URL:-}"
+if [[ ! "$url" =~ ^https://[a-zA-Z0-9._:-]+/?$ ]]; then
+  echo "UNKNOWN: set MINEFLEET_BASE_URL to a valid HTTPS origin" >&2
   exit 3
 fi
-if ! command -v docker >/dev/null 2>&1 || ! command -v timeout >/dev/null 2>&1; then
-  echo "UNKNOWN: docker et timeout requis" >&2
-  exit 3
-fi
-# Execute within the private DB container. No database ports are published or passwords logged.
-if ! timeout 15 docker compose -f docker-compose.prod.yml --env-file .env.prod \
-  exec -T db pg_isready -q -U postgres -d minefleet >/dev/null 2>&1; then
-  echo "CRITICAL: PostgreSQL not accepting connections" >&2
+command -v curl >/dev/null || { echo "UNKNOWN: curl missing" >&2; exit 3; }
+url="${url%/}"
+if ! status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+  --proto '=https' --connect-timeout 5 --max-time 12 "$url/api/v1/ready")"; then
+  echo "CRITICAL: database readiness endpoint unavailable" >&2
   exit 2
 fi
-# pg_isready alone can succeed without the target database being queryable.
-if ! timeout 15 docker compose -f docker-compose.prod.yml --env-file .env.prod \
-  exec -T -u postgres db psql -X -q -t -A -v ON_ERROR_STOP=1 \
-  -U postgres -d minefleet -c 'SELECT 1' 2>/dev/null | grep -qx 1; then
-  echo "CRITICAL: PostgreSQL read-only query failed" >&2
+if [[ "$status" != "200" ]]; then
+  echo "CRITICAL: database readiness returned HTTP $status" >&2
   exit 2
 fi
-echo "OK: PostgreSQL accepts connections and SELECT 1 succeeded"
+echo "OK: database readiness checked through restricted API role"
