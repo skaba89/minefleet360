@@ -11,15 +11,22 @@ const PAGE_SIZE = 25;
 type Contract = Schemas["ContractOut"];
 type Policy = Schemas["InsuranceOut"];
 
+type LegalTab = "contracts" | "insurance";
+
+export function authorizedLegalTab(tab: LegalTab, contracts: boolean, insurance: boolean): LegalTab {
+  if (tab === "contracts" && !contracts && insurance) return "insurance";
+  if (tab === "insurance" && !insurance && contracts) return "contracts";
+  return tab;
+}
+
 export function LegalRegistriesPage() {
   const me = useMe();
   const { siteId } = useSites();
-  const [tab, setTab] = useState<"contracts" | "insurance">("contracts");
+  const [tab, setTab] = useState<LegalTab>("contracts");
   const [page, setPage] = useState(1);
   const canReadContracts = can(me.grants, "legal.contract.read", siteId);
   const canReadPolicies = can(me.grants, "legal.insurance.read", siteId);
-  const activeTab = tab === "contracts" && !canReadContracts && canReadPolicies ? "insurance" :
-    tab === "insurance" && !canReadPolicies && canReadContracts ? "contracts" : tab;
+  const activeTab = authorizedLegalTab(tab, canReadContracts, canReadPolicies);
   const contracts = useQuery({
     queryKey: ["legal-contracts", siteId, page],
     enabled: activeTab === "contracts" && canReadContracts,
