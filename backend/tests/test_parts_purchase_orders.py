@@ -33,9 +33,7 @@ def test_purchase_order_drafts_access_guards(client: TestClient, api: Api) -> No
     assert denied_create.status_code == 403
 
 
-def test_purchase_order_cannot_reference_missing_or_foreign_request(
-    client: TestClient, api: Api
-) -> None:
+def test_purchase_order_cannot_reference_missing_or_foreign_request(client: TestClient, api: Api) -> None:
     """A permitted storekeeper cannot create an order outside their tenant."""
     tenant = api.tenant(sites=("MINE",))
     keeper = api.user(tenant, "STOREKEEPER", "SITE", "MINE")
