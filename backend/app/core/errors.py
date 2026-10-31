@@ -87,6 +87,9 @@ CATALOG: dict[str, ErrorDef] = {
     "FUEL_INTERVAL_NOT_ANOMALOUS": ErrorDef(
         409, "Cet intervalle de pompe est dans les tolérances configurées et ne peut pas ouvrir de dossier."
     ),
+    "IDEMPOTENCY_IN_PROGRESS": ErrorDef(
+        409, "Cette opération est déjà en cours de traitement. Réessayez dans quelques instants."
+    ),
     # 422
     "VALIDATION_ERROR": ErrorDef(422, "Les données envoyées sont invalides."),
     "IF_MATCH_REQUIRED": ErrorDef(422, "L'en-tête If-Match est obligatoire pour une modification."),
@@ -114,6 +117,9 @@ CATALOG: dict[str, ErrorDef] = {
     ),
     "SELF_APPROVAL_FORBIDDEN": ErrorDef(
         422, "Une saisie dégradée doit être approuvée par une autre personne que celle qui l'a saisie."
+    ),
+    "IDEMPOTENCY_KEY_REUSED": ErrorDef(
+        422, "Cette clé de synchronisation a déjà été utilisée pour une autre opération."
     ),
     # D-29 : un seul code d'inéligibilité, `details.reasons[]` liste tous les motifs.
     "ASSIGNMENT_NOT_ELIGIBLE": ErrorDef(422, "L'affectation ne respecte pas les conditions d'éligibilité."),
