@@ -17,7 +17,8 @@ def test_note_idempotency_replays_without_new_event(
     vehicle = _vehicle(client, w)
     oid = _report(client, w, vehicle).json()["work_order_id"]
     assert _act(client, "decision", oid, chief.headers, action="APPROVE").status_code == 200
-    assert _act(client, "decision", oid, chief.headers, action="ASSIGN", assigned_to=str(chief.user_id)).status_code == 200
+    assigned = _act(client, "decision", oid, chief.headers, action="ASSIGN", assigned_to=str(chief.user_id))
+    assert assigned.status_code == 200
     url = f"/api/v1/work-orders/{oid}"
     version = client.get(url, headers=chief.headers).headers["ETag"]
     key = str(uuid.uuid4())
@@ -29,5 +30,7 @@ def test_note_idempotency_replays_without_new_event(
     assert replay.status_code == 200, replay.text
     assert replay.json()["work_done"] == "Inspection hors ligne"
     assert replay.json()["events"] == first.json()["events"]
-    mismatched = client.post(f"{url}/progress", headers=headers, json={"action": "NOTE", "work_done": "Autre"})
+    mismatched = client.post(
+        f"{url}/progress", headers=headers, json={"action": "NOTE", "work_done": "Autre"}
+    )
     assert mismatched.status_code == 409
