@@ -37,6 +37,7 @@ export function PartsPage() {
   const activeAction = canReceive && (action === "receipt" || !canIssue) ? "receipt" : "issue";
   const [tab, setTab] = useState<"stocks" | "movements" | "reservations">("stocks");
   const [page, setPage] = useState(1);
+  const [criticalOnly, setCriticalOnly] = useState(false);
   const permitted = can(me.grants, "maintenance.parts.read", siteId);
   const parts = useQuery({
     queryKey: ["parts-catalogue-labels"],
@@ -250,10 +251,17 @@ export function PartsPage() {
         ))}
       </div>
       {tab === "stocks" && (
+        <label className="checkbox">
+          <input type="checkbox" checked={criticalOnly} onChange={(event) => setCriticalOnly(event.target.checked)} />
+          Afficher uniquement les stocks critiques de cette page
+        </label>
+      )}
+      {tab === "stocks" && (
         <DataState loading={balances.isLoading} error={balances.error} empty={!balances.data?.items.length}>
           <table>
             <thead><tr><th>Pièce</th><th>Magasin</th><th>Physique</th><th>Réservé</th><th>Disponible</th><th>Seuil</th><th>Alerte</th></tr></thead>
-            <tbody>{balances.data?.items.map((item) => (
+            <tbody>{balances.data?.items.filter((item) =>
+              !criticalOnly || item.on_hand - item.reserved <= item.low_stock_threshold).map((item) => (
               <tr key={item.spare_part_balance_id}>
                 <td>{partLabel(item.spare_part_id)}</td><td>{storeLabel(item.spare_part_store_id)}</td>
                 <td>{item.on_hand}</td><td>{item.reserved}</td>
@@ -264,6 +272,10 @@ export function PartsPage() {
               </tr>
             ))}</tbody>
           </table>
+          {criticalOnly && balances.data && !balances.data.items.some((item) =>
+            item.on_hand - item.reserved <= item.low_stock_threshold) && (
+            <p role="status">Aucun stock critique sur cette page.</p>
+          )}
         </DataState>
       )}
       {tab === "movements" && (
