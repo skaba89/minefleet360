@@ -81,3 +81,21 @@ it("conserve l'état incertain après coupure de transmission", async () => {
   await expect(submitPreparedOfflineWorkOrderNote(draft)).rejects.toThrow(/incertaine/);
   expect(setOfflineNoteDeliveryStatus).toHaveBeenCalledWith(draft.id, draft.ownerScope, "uncertain");
 });
+
+it("distingue le succès serveur de l'échec de confirmation IndexedDB", async () => {
+  vi.mocked(setOfflineNoteDeliveryStatus).mockRejectedValueOnce(new Error("Quota IndexedDB"));
+  await expect(submitPreparedOfflineWorkOrderNote(draft)).rejects.toThrow(/enregistrée sur le serveur/);
+  expect(call).toHaveBeenCalledTimes(2);
+  expect(setOfflineNoteDeliveryStatus).toHaveBeenCalledWith(draft.id, draft.ownerScope, "confirmed");
+});
+
+it("signale explicitement une coupure dont l'état local n'a pas pu être sauvegardé", async () => {
+  vi.mocked(call).mockResolvedValueOnce({ data: {
+    status: "IN_PROGRESS", work_done: null, diagnosis: "Freins", parts_note: "",
+  }, etag: '"3"' } as never).mockRejectedValueOnce(new (await import("../api/client")).ApiError(0, {
+    code: "NETWORK_ERROR", message_fr: "Coupure", details: null, request_id: null,
+  }));
+  vi.mocked(setOfflineNoteDeliveryStatus).mockRejectedValueOnce(new Error("IndexedDB indisponible"));
+  await expect(submitPreparedOfflineWorkOrderNote(draft)).rejects.toThrow(/état local non enregistré/);
+  expect(call).toHaveBeenCalledTimes(2);
+});
