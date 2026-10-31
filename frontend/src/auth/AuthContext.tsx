@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import {
   ApiError,
@@ -36,16 +36,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [me, setMe] = useState<Me | null>(null);
   const [status, setStatus] = useState<AuthState["status"]>("loading");
+  const profileRef = useRef<Me | null>(null);
 
   const reset = useCallback(() => {
     setAccessToken(null);
+    profileRef.current = null;
     setMe(null);
     setStatus("anonymous");
     queryClient.clear(); // aucune donnée d'une session ne survit à la suivante
   }, [queryClient]);
 
   useEffect(() => {
-    onSessionExpired(reset);
+    onSessionExpired(() => {
+      const profile = profileRef.current;
+      // Reset immediately; purge best-effort without leaking stale session data into React.
+      reset();
+      if (profile) void purgeDraftsForSignedOutUser(profile).catch(() => {
+        // Storage may be unavailable: do not claim local data were erased.
+      });
+    });
     let cancelled = false;
     // Restauration de session au chargement : le cookie de rafraîchissement, s'il existe, suffit.
     void (async () => {
@@ -58,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const profile = await read("/me");
         if (!cancelled) {
+          profileRef.current = profile;
           setMe(profile);
           setStatus("authenticated");
         }
@@ -72,7 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const enter = useCallback(async (accessToken: string) => {
     setAccessToken(accessToken);
-    setMe(await read("/me"));
+    const profile = await read("/me");
+    profileRef.current = profile;
+    setMe(profile);
     setStatus("authenticated");
   }, []);
 
@@ -99,7 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const refreshMe = useCallback(async () => {
-    setMe(await read("/me"));
+    const profile = await read("/me");
+    profileRef.current = profile;
+    setMe(profile);
   }, []);
 
   const logout = useCallback(async () => {
