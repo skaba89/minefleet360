@@ -51,3 +51,27 @@ def test_replenishment_decision_requires_permission(client: TestClient, api: Api
         json={"action": "APPROVE", "note": "Contrôle effectué"},
     )
     assert response.status_code == 403
+
+
+def test_replenishment_filter_rejects_invalid_status(client: TestClient, api: Api) -> None:
+    tenant = api.tenant(sites=("MINE",))
+    storekeeper = api.user(tenant, "STOREKEEPER", "SITE", "MINE")
+    response = client.get(
+        f"{API}/part-replenishments",
+        headers=storekeeper.headers,
+        params={"request_status": "UNRECOGNIZED"},
+    )
+    assert response.status_code == 422
+
+
+def test_replenishment_filter_accepts_all_valid_statuses(client: TestClient, api: Api) -> None:
+    tenant = api.tenant(sites=("MINE",))
+    storekeeper = api.user(tenant, "STOREKEEPER", "SITE", "MINE")
+    for request_status in ("DRAFT", "SUBMITTED", "APPROVED", "REJECTED"):
+        response = client.get(
+            f"{API}/part-replenishments",
+            headers=storekeeper.headers,
+            params={"request_status": request_status},
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["total"] == 0
