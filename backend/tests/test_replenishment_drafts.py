@@ -1,4 +1,5 @@
 """Tenant and role guards for replenishment drafts."""
+
 from fastapi.testclient import TestClient
 
 from tests.conftest import API, Api
@@ -21,8 +22,11 @@ def test_replenishment_drafts_require_role_and_site_scope(client: TestClient, ap
     forbidden_create = client.post(
         f"{API}/part-replenishments",
         headers=driver.headers,
-        json={"spare_part_store_id": str(other.sites["OTHER"]),
-              "spare_part_id": str(other.sites["OTHER"]),
-              "quantity": "2", "reference": "REF-TEST"},
+        json={
+            "spare_part_store_id": str(other.sites["OTHER"]),
+            "spare_part_id": str(other.sites["OTHER"]),
+            "quantity": "2",
+            "reference": "REF-TEST",
+        },
     )
     assert forbidden_create.status_code == 403
