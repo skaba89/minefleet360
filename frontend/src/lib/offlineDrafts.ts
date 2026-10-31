@@ -11,6 +11,7 @@ export interface OfflineDraft {
   pending?: {
     idempotencyKey: string;
     ifMatch: string;
+    deliveryStatus?: "ready" | "uncertain" | "confirmed";
     body: { action: "NOTE"; diagnosis: string; work_done: string; parts_note: string };
   };
 }
@@ -37,8 +38,9 @@ export function validateOfflineDraft(value: OfflineDraft): void {
   if (value.pending !== undefined) {
     const p = value.pending;
     if (p === null || typeof p !== "object"
-      || Object.keys(p).some((key) => !["idempotencyKey", "ifMatch", "body"].includes(key))
+      || Object.keys(p).some((key) => !["idempotencyKey", "ifMatch", "body", "deliveryStatus"].includes(key))
       || p.idempotencyKey !== value.id || !/^"[0-9]+"$/.test(p.ifMatch)
+      || (p.deliveryStatus !== undefined && !["ready", "uncertain", "confirmed"].includes(p.deliveryStatus))
       || !p.body || typeof p.body !== "object"
       || Object.keys(p.body).some((key) => !["action", "diagnosis", "work_done", "parts_note"].includes(key))
       || p.body.action !== "NOTE" || p.body.work_done !== value.note.trim()
@@ -169,6 +171,7 @@ export async function prepareOfflineNoteTransmission(
       const pending: NonNullable<OfflineDraft["pending"]> = {
         idempotencyKey: draft.id,
         ifMatch,
+        deliveryStatus: "ready",
         body: { action: "NOTE", diagnosis, work_done: draft.note.trim(), parts_note: partsNote },
       };
       const prepared = { ...draft, pending };
@@ -180,5 +183,32 @@ export async function prepareOfflineNoteTransmission(
       write.onerror = () => reject(write.error ?? new Error("Préparation locale impossible"));
     };
     req.onerror = () => reject(req.error ?? new Error("Brouillon inaccessible"));
+  });
+}
+
+/** Persist the delivery outcome without altering the original request fingerprint. */
+export async function setOfflineNoteDeliveryStatus(
+  id: string,
+  ownerScope: string,
+  deliveryStatus: "uncertain" | "confirmed",
+): Promise<void> {
+  return transact<void>("readwrite", (store, set, reject) => {
+    const req = store.get(id);
+    req.onsuccess = () => {
+      const draft = req.result as OfflineDraft | undefined;
+      if (!draft || draft.ownerScope !== ownerScope || !draft.pending) {
+        reject(new Error("Opération de transmission inaccessible")); return;
+      }
+      try { validateOfflineDraft(draft); } catch (error) {
+        reject(error instanceof Error ? error : new Error("Brouillon invalide")); return;
+      }
+      if (draft.pending.deliveryStatus === "confirmed" && deliveryStatus !== "confirmed") {
+        reject(new Error("Transmission déjà confirmée")); return;
+      }
+      const write = store.put({ ...draft, pending: { ...draft.pending, deliveryStatus } });
+      write.onsuccess = () => set(undefined);
+      write.onerror = () => reject(write.error ?? new Error("Enregistrement du statut impossible"));
+    };
+    req.onerror = () => reject(req.error ?? new Error("Opération inaccessible"));
   });
 }
