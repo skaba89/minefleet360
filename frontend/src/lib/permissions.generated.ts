@@ -875,44 +875,44 @@ export const GRANTS = {
       "SITE"
     ]
   },
-    "legal.contract.read": {
-      "AUDITOR": [
-        "TENANT"
-      ],
-      "DIRECTION": [
-        "TENANT"
-      ],
-      "OPS_MANAGER": [
-        "TENANT",
-        "SITE"
-      ],
-      "TENANT_ADMIN": [
-        "TENANT"
-      ]
-    },
-    "legal.insurance.read": {
-      "AUDITOR": [
-        "TENANT"
-      ],
-      "DIRECTION": [
-        "TENANT"
-      ],
-      "FINANCE": [
-        "TENANT",
-        "SITE"
-      ],
-      "HSE": [
-        "TENANT",
-        "SITE"
-      ],
-      "OPS_MANAGER": [
-        "TENANT",
-        "SITE"
-      ],
-      "TENANT_ADMIN": [
-        "TENANT"
-      ]
-    },
+  "legal.contract.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "legal.insurance.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "maintenance.parts.consume": {
     "OPS_MANAGER": [
       "TENANT",
