@@ -2817,6 +2817,13 @@ export interface components {
              */
             vehicle_id: string;
         };
+        /** DecisionIn */
+        DecisionIn: {
+            /** Action */
+            action: string;
+            /** Note */
+            note: string;
+        };
         /** DocumentWithdraw */
         DocumentWithdraw: {
             /**
@@ -2824,13 +2831,6 @@ export interface components {
              * @enum {string}
              */
             reason_code: "REPLACED" | "LOST" | "REVOKED_BY_AUTHORITY" | "ENTRY_ERROR" | "OTHER";
-        };
-        /** DecisionIn */
-        DecisionIn: {
-            /** Action */
-            action: string;
-            /** Note */
-            note: string;
         };
         /** DraftCreate */
         DraftCreate: {
