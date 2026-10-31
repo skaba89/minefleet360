@@ -1,9 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { read, type Schemas } from "../api/client";
+import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
-import { DataState, Pager } from "../components/common";
+import { DataState, ErrorMessage, Pager } from "../components/common";
 import { can } from "../lib/permissions";
 import { useSites } from "../site/SiteContext";
 
@@ -21,10 +21,19 @@ export function authorizedLegalTab(tab: LegalTab, contracts: boolean, insurance:
 
 export function LegalRegistriesPage() {
   const me = useMe();
+  const queryClient = useQueryClient();
+  const [reference, setReference] = useState("");
+  const [title, setTitle] = useState("");
+  const [counterparty, setCounterparty] = useState("");
+  const [contractType, setContractType] = useState<Schemas["ContractDraftInput"]["contract_type"]>("SUPPLIER");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<unknown>(null);
+  const [notice, setNotice] = useState("");
   const { siteId } = useSites();
   const [tab, setTab] = useState<LegalTab>("contracts");
   const [page, setPage] = useState(1);
   const canReadContracts = can(me.grants, "legal.contract.read", siteId);
+  const canCreateContract = Boolean(siteId) && can(me.grants, "legal.contract.create", siteId);
   const canReadPolicies = can(me.grants, "legal.insurance.read", siteId);
   const activeTab = authorizedLegalTab(tab, canReadContracts, canReadPolicies);
   const contracts = useQuery({
@@ -50,6 +59,56 @@ export function LegalRegistriesPage() {
         {canReadContracts && <button type="button" aria-pressed={activeTab === "contracts"} onClick={() => { setTab("contracts"); setPage(1); }}>Contrats</button>}
         {canReadPolicies && <button type="button" aria-pressed={activeTab === "insurance"} onClick={() => { setTab("insurance"); setPage(1); }}>Assurances</button>}
       </div>
+      {activeTab === "contracts" && canCreateContract && siteId && (
+        <form onSubmit={async (event) => {
+          event.preventDefault();
+          if (saving) return;
+          setSaving(true);
+          setSaveError(null);
+          setNotice("");
+          try {
+            await call("post", "/legal-contracts", {
+              body: {
+                site_id: siteId,
+                reference: reference.trim(),
+                title: title.trim(),
+                counterparty_name: counterparty.trim(),
+                contract_type: contractType,
+              },
+            });
+            setReference("");
+            setTitle("");
+            setCounterparty("");
+            setPage(1);
+            await queryClient.invalidateQueries({ queryKey: ["legal-contracts"] });
+            setNotice("Contrat enregistré comme brouillon. Aucune signature n'a été effectuée.");
+          } catch (error) {
+            setSaveError(error);
+          } finally {
+            setSaving(false);
+          }
+        }}>
+          <h2>Nouveau contrat — brouillon</h2>
+          <label>Référence <input required maxLength={120} value={reference} onChange={(e) => setReference(e.target.value)} /></label>
+          <label>Intitulé <input required maxLength={240} value={title} onChange={(e) => setTitle(e.target.value)} /></label>
+          <label>Contrepartie <input required maxLength={240} value={counterparty} onChange={(e) => setCounterparty(e.target.value)} /></label>
+          <label>Type de contrat
+            <select value={contractType} onChange={(e) => setContractType(e.target.value as Schemas["ContractDraftInput"]["contract_type"])}>
+              <option value="SUPPLIER">Fournisseur</option>
+              <option value="TRANSPORT">Transport</option>
+              <option value="SUBCONTRACTOR">Sous-traitance</option>
+              <option value="EMPLOYMENT">Emploi</option>
+              <option value="LEASE">Location</option>
+              <option value="OTHER">Autre</option>
+            </select>
+          </label>
+          <button type="submit" disabled={saving || !reference.trim() || !title.trim() || !counterparty.trim()}>
+            {saving ? "Enregistrement…" : "Enregistrer le brouillon"}
+          </button>
+          {saveError && <ErrorMessage error={saveError} />}
+          {notice && <p role="status">{notice}</p>}
+        </form>
+      )}
       {!allowed ? <p className="error" role="alert">Accès non autorisé pour ce registre.</p> : (
         <DataState loading={current.isLoading} error={current.error} empty={!current.data?.items.length}>
           {activeTab === "contracts" ? (
