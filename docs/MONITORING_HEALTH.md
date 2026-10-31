@@ -90,3 +90,9 @@ Une transition `ALERT` ou `RECOVERED` est désormais enregistrée **dans le mêm
 **Migration :** avant d'activer cette version sur un serveur où `pending-notifications.json` existe, arrêter le service de monitoring, sauvegarder les deux fichiers d'état et examiner les notifications encore présentes dans l'ancienne file. Les transférer ou les traiter manuellement avant de démarrer le nouveau script. Ne pas supprimer automatiquement une file contenant des messages non traités.
 
 Le risque de doublon après acceptation SMTP demeure. L'écriture d'un fichier JSON en place reste vulnérable à une coupure système au milieu d'une écriture ; des tests de résistance sur la durabilité et une stratégie de récupération de fichier corrompu restent nécessaires.
+
+## Écritures atomiques de l'état du monitoring
+
+Le stockage des transitions d'alerte et de leur file SMTP utilise désormais une écriture dans un fichier temporaire du même répertoire, suivie de `fsync`, `os.replace` et `fsync` du répertoire. Les verrous sont placés dans un fichier `health-state.json.lock` stable et partagé par le producteur et le consommateur. Une corruption existante entraîne un échec explicite plutôt qu'une remise à zéro silencieuse de l'historique.
+
+Le répertoire de monitoring doit être local, privé et accessible uniquement au compte technique. NFS et autres systèmes de fichiers dont les garanties de verrouillage et de synchronisation sont incertaines ne sont pas recommandés. Le risque de notifications en double après une acceptation SMTP suivie d'une interruption demeure.
