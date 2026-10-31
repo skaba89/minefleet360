@@ -15,9 +15,7 @@ class CoverageStatus(StrEnum):
     EXPIRED = "EXPIRED"
 
 
-def coverage_status(
-    start: date, end: date, as_of: date, warning_days: int = 30
-) -> CoverageStatus:
+def coverage_status(start: date, end: date, as_of: date, warning_days: int = 30) -> CoverageStatus:
     """Classify coverage; policy end date is inclusive."""
     if end < start:
         raise ValueError("coverage_end must not precede coverage_start")
