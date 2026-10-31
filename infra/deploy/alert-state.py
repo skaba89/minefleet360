@@ -14,6 +14,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from monitor_state import read_state, write_state
+
 def transition(previous: dict[str, object], result: int, threshold: int) -> tuple[dict[str, object], str]:
     failures = int(previous.get("failures", 0))
     active = bool(previous.get("active", False))
@@ -35,36 +37,29 @@ def main() -> int:
     if not 1 <= args.threshold <= 100:
         parser.error("threshold must be between 1 and 100")
     args.state_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    fd = os.open(args.state_file, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
-    try:
-        with os.fdopen(fd, "r+", encoding="utf-8") as stream:
-            fcntl.flock(stream, fcntl.LOCK_EX)
-            try:
-                old = json.load(stream)
-                if not isinstance(old, dict):
-                    raise ValueError("invalid state")
-            except (ValueError, json.JSONDecodeError):
-                old = {}
-            try:
-                run = subprocess.run(["bash", str(args.probe.resolve())], capture_output=True, timeout=75, check=False)
-                result = run.returncode
-            except (OSError, subprocess.TimeoutExpired):
-                result = 3
-            new, event = transition(old, result, args.threshold)
-            pending = old.get("pending_notifications", [])
-            if not isinstance(pending, list) or any(x not in ("ALERT", "RECOVERED") for x in pending):
-                raise ValueError("Invalid notification outbox")
-            if event in ("ALERT", "RECOVERED"):
-                pending = [*pending, event]
-            new["pending_notifications"] = pending
-            stream.seek(0)
-            json.dump(new, stream)
-            stream.truncate()
-            stream.flush()
-            os.fsync(stream.fileno())
-            print(f"{event}: operational probe exit={result}")
-    finally:
-        pass
+    lock_path = args.state_file.with_name(args.state_file.name + ".lock")
+    with os.fdopen(os.open(lock_path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600), "r+") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            old = read_state(args.state_file)
+        except (ValueError, OSError, json.JSONDecodeError):
+            print("ERROR: monitoring state unreadable; refusing to overwrite", file=sys.stderr)
+            return 3
+        try:
+            run = subprocess.run(["bash", str(args.probe.resolve())], capture_output=True, timeout=75, check=False)
+            result = run.returncode
+        except (OSError, subprocess.TimeoutExpired):
+            result = 3
+        new, event = transition(old, result, args.threshold)
+        pending = old.get("pending_notifications", [])
+        if not isinstance(pending, list) or any(x not in ("ALERT", "RECOVERED") for x in pending):
+            print("ERROR: invalid notification outbox", file=sys.stderr)
+            return 3
+        if event in ("ALERT", "RECOVERED"):
+            pending = [*pending, event]
+        new["pending_notifications"] = pending
+        write_state(args.state_file, new)
+        print(f"{event}: operational probe exit={result}")
     return 0
 
 if __name__ == "__main__":
