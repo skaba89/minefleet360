@@ -69,12 +69,12 @@ it("normalise les espaces avant la transmission", async () => {
 });
 
 it("refuse deux transmissions simultanées du même OT", async () => {
-  let release: ((value: never) => void) | undefined;
+  let release!: (value: never) => void;
   vi.mocked(call).mockImplementationOnce(() => new Promise((resolve) => { release = resolve as (value: never) => void; }));
   const first = submitOfflineWorkOrderNote(id, "Inspection");
   await expect(submitOfflineWorkOrderNote(id, "Inspection bis")).rejects.toThrow(/déjà en cours/);
   expect(call).toHaveBeenCalledOnce();
-  release?.({ data: server, etag: '"3"' } as never);
+  release({ data: server, etag: '"3"' } as never);
   await first;
   expect(call).toHaveBeenCalledTimes(2);
 });
