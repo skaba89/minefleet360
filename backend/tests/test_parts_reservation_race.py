@@ -11,7 +11,9 @@ from tests.test_maintenance import _report
 
 
 def test_release_and_consume_same_reservation_are_exclusive(
-    client: TestClient, api: Api, w: World  # noqa: F811
+    client: TestClient,
+    api: Api,
+    w: World,  # noqa: F811
 ) -> None:
     keeper = api.user(w.t, "STOREKEEPER", "SITE", "S1")
     vehicle = _vehicle(client, w)
@@ -76,9 +78,7 @@ def test_release_and_consume_same_reservation_are_exclusive(
         params={"work_order_id": order["work_order_id"]},
     )
     assert rows.status_code == 200, rows.text
-    reservations = [
-        row for row in rows.json()["items"] if row["spare_part_reservation_id"] == reservation_id
-    ]
+    reservations = [row for row in rows.json()["items"] if row["spare_part_reservation_id"] == reservation_id]
     assert len(reservations) == 1
     assert reservations[0]["status"] in {"CONSUMED", "RELEASED"}
 
