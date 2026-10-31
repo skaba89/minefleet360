@@ -68,3 +68,17 @@ python3 infra/deploy/notify-alert-smtp.py RECOVERED
 ```
 
 L'adaptateur ne transmet que des messages génériques et n'insère pas les diagnostics des sondes. Il ne fournit **ni ordonnanceur, ni couplage automatique avec alert-state.py, ni file de livraison persistante**. Une connexion SMTP acceptée ne garantit pas la réception. Avant tout pilote, installer un superviseur qui invoque l'adaptateur uniquement sur transition, gère les tentatives de livraison échouées sans perdre les alertes, et teste les destinataires et le rétablissement. Les variables d'environnement ne doivent pas être enregistrées dans les logs.
+
+## Exécution intégrée avec reprise des notifications
+
+`run-alert-monitor.py` relie `alert-state.py` à l'adaptateur SMTP et conserve les événements à envoyer dans une file JSON, sous verrou exclusif. Une panne SMTP conserve l'événement pour une prochaine exécution, et les événements sont délivrés dans l'ordre. Exemple pour une exécution périodique par systemd timer :
+
+```bash
+MINEFLEET_BASE_URL=https://minefleet.example.org \
+python3 infra/deploy/run-alert-monitor.py \
+  --state-dir /var/lib/minefleet-monitor --threshold 3
+```
+
+Les variables `MF_ALERT_SMTP_*` et `MF_ALERT_EMAIL_*` sont nécessaires pour envoyer des emails. Le répertoire d'état doit être réservé au compte technique de supervision (droits `0700`) ; les fichiers sont créés avec les droits `0600`. **Ne jamais exécuter deux ordonnanceurs différents sur le même état**. Tester une panne simulée et la reprise SMTP en staging avant d'activer les notifications opérationnelles.
+
+La livraison est *au moins une fois* : une interruption après acceptation SMTP et avant la suppression de la file peut provoquer un doublon. Une interruption entre l'enregistrement d'une transition et sa mise en file peut aussi nécessiter une réconciliation manuelle des événements. Il n'y a pas encore de supervision externe, de preuves de réception effective des emails, ni de mécanisme automatique de résorption des erreurs persistantes.
