@@ -1,3 +1,4 @@
+import json
 import uuid
 from typing import Annotated
 
@@ -5,7 +6,9 @@ from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
+from app.core.errors import AppError
 from app.core.http import IfMatch, Page, Pagination, etag
+from app.core.idempotency import claim, optional_idempotency_key
 from app.maintenance import preventive_service, service
 from app.maintenance.preventive_complete import complete_preventive_due
 from app.maintenance.preventive_completion_read import preventive_completion_context
@@ -105,8 +108,40 @@ def progress_work_order(
     auth: WorkOrderExecute,
     version: IfMatch,
     response: Response,
+    idempotency_key: Annotated[str | None, Depends(optional_idempotency_key)],
 ) -> WorkOrderOut:
-    return _tagged(service.progress(auth, work_order_id, body, version), response)
+    if idempotency_key is None:
+        return _tagged(service.progress(auth, work_order_id, body, version), response)
+    if body.action != "NOTE":
+        raise AppError(
+            "VALIDATION_ERROR", details=[{"field": "Idempotency-Key", "type": "unsupported_action"}]
+        )
+    payload = json.dumps(
+        {"if_match": version, "body": body.model_dump(mode="json")},
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    owned = claim(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        user_account_id=auth.user_id,
+        key=idempotency_key,
+        method="POST",
+        path=f"/work-orders/{work_order_id}/progress",
+        body=payload,
+        now=auth.clock.now(),
+    )
+    if owned.is_replay:
+        if (
+            owned.replay is None
+            or owned.replay.resource_type != "work_order"
+            or owned.replay.resource_id != work_order_id
+        ):
+            raise AppError("IDEMPOTENCY_KEY_REUSED")
+        order = service.work_order_in_scope(auth, work_order_id)
+        service._ensure_executor(auth, order)
+        return _tagged(service.work_orders_out(auth, [order], detail=True)[0], response)
+    return _tagged(service.progress(auth, work_order_id, body, version, idempotency_claim=owned), response)
 
 
 @router.post(

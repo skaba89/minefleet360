@@ -20,6 +20,7 @@ from app.authz.dependencies import Authorized
 from app.authz.principal import evaluate
 from app.core.errors import AppError
 from app.core.http import PageParams, check_version
+from app.core.idempotency import IdempotencyClaim, complete
 from app.core.logging import security_logger
 from app.dispatch.contracts import mission_vehicle, suspend_running_missions
 from app.fleet.contracts import VehicleFacts, change_status_for_maintenance, vehicle_facts
@@ -524,7 +525,12 @@ def _ensure_executor(auth: Authorized, order: WorkOrder) -> None:
 
 
 def progress(
-    auth: Authorized, work_order_id: uuid.UUID, body: WorkOrderProgress, version: int
+    auth: Authorized,
+    work_order_id: uuid.UUID,
+    body: WorkOrderProgress,
+    version: int,
+    *,
+    idempotency_claim: IdempotencyClaim | None = None,
 ) -> WorkOrderOut:
     """US-3.04 : intervention (début, attente de pièces, reprise, fin de travaux) et compte rendu."""
     db = auth.db
@@ -571,6 +577,17 @@ def progress(
     )
     db.flush()
     out = work_orders_out(auth, [order], detail=True)[0]
+    if idempotency_claim is not None:
+        if body.action != "NOTE":
+            raise ValueError("l'idempotence du compte rendu est limitée à NOTE")
+        complete(
+            db,
+            idempotency_claim,
+            response_status=200,
+            resource_type="work_order",
+            resource_id=work_order_id,
+            completed_at=auth.clock.now(),
+        )
     db.commit()
     return out
 
