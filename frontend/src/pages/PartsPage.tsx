@@ -48,6 +48,7 @@ export function PartsPage() {
   const [tab, setTab] = useState<"stocks" | "movements" | "reservations" | "replenishments">("stocks");
   const [page, setPage] = useState(1);
   const [criticalOnly, setCriticalOnly] = useState(false);
+  const [replenishmentStatus, setReplenishmentStatus] = useState("");
   const permitted = can(me.grants, "maintenance.parts.read", siteId);
   const parts = useQuery({
     queryKey: ["parts-catalogue-labels"],
@@ -84,9 +85,9 @@ export function PartsPage() {
     queryFn: () => read("/part-reservations", { query: { site_id: siteId, page, page_size: PAGE_SIZE } }),
   });
   const replenishments = useQuery({
-    queryKey: ["part-replenishments", siteId, page],
+    queryKey: ["part-replenishments", siteId, page, replenishmentStatus],
     enabled: permitted && tab === "replenishments",
-    queryFn: () => read("/part-replenishments", { query: { site_id: siteId, page, page_size: PAGE_SIZE } }),
+    queryFn: () => read("/part-replenishments", { query: { site_id: siteId, page, page_size: PAGE_SIZE, request_status: replenishmentStatus || undefined } }),
   });
   const current = tab === "stocks" ? balances : tab === "movements" ? movements :
     tab === "reservations" ? reservations : replenishments;
@@ -453,6 +454,20 @@ export function PartsPage() {
         <label>Justification de la décision (obligatoire)
           <input value={decisionNote} maxLength={500}
             onChange={(event) => setDecisionNote(event.target.value)} />
+        </label>
+      )}
+      {tab === "replenishments" && (
+        <label>Filtrer les demandes par statut
+          <select value={replenishmentStatus} onChange={(event) => {
+            setReplenishmentStatus(event.target.value);
+            setPage(1);
+          }}>
+            <option value="">Tous les statuts</option>
+            <option value="DRAFT">Brouillon</option>
+            <option value="SUBMITTED">Soumis</option>
+            <option value="APPROVED">Approuvé</option>
+            <option value="REJECTED">Rejeté</option>
+          </select>
         </label>
       )}
       {tab === "replenishments" && (
