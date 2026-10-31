@@ -21,20 +21,27 @@ echo "OK: Compose configuration parsed."
 
 if [[ "${2:-}" == "--live" ]]; then
   BASE_URL="${MINEFLEET_STAGING_URL:-}"
-  if [[ -z "$BASE_URL" || "$BASE_URL" != https://* ]]; then
-    echo "FAIL: set MINEFLEET_STAGING_URL to an HTTPS staging origin" >&2
+  if [[ ! "$BASE_URL" =~ ^https://[a-zA-Z0-9._:-]+/?$ ]]; then
+    echo "FAIL: MINEFLEET_STAGING_URL must be an HTTPS origin without paths, query or credentials" >&2
     exit 1
   fi
   if ! command -v curl >/dev/null 2>&1; then
     echo "FAIL: curl command is required" >&2
     exit 1
   fi
-  # Do not disable certificate verification, follow redirects or send credentials.
-  if ! curl --fail --silent --show-error --max-time 12 \
-    --proto '=https' --output /dev/null "$BASE_URL/"; then
-    echo "FAIL: staging HTTPS smoke test failed" >&2
-    exit 1
-  fi
-  echo "OK: staging HTTPS reachable."
+  BASE_URL="${BASE_URL%/}"
+  # No redirect, insecure TLS, credentials or response bodies.
+  for route in / /api/v1/health /api/v1/ready; do
+    if ! code="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \\
+      --connect-timeout 5 --max-time 12 --proto '=https' "$BASE_URL$route")"; then
+      echo "FAIL: staging HTTPS probe unreachable: $route" >&2
+      exit 1
+    fi
+    if [[ "$code" != "200" ]]; then
+      echo "FAIL: staging probe $route returned HTTP $code" >&2
+      exit 1
+    fi
+    echo "OK: staging $route returned HTTP 200"
+  done
 fi
 echo "NOTICE: this is a smoke gate, not proof of backups, monitoring, restore or security."
