@@ -67,3 +67,21 @@ it("normalise les espaces avant la transmission", async () => {
     body: expect.objectContaining({ work_done: "Inspection" }),
   }));
 });
+
+it("refuse deux transmissions simultanées du même OT", async () => {
+  let release: ((value: never) => void) | undefined;
+  vi.mocked(call).mockImplementationOnce(() => new Promise((resolve) => { release = resolve as (value: never) => void; }));
+  const first = submitOfflineWorkOrderNote(id, "Inspection");
+  await expect(submitOfflineWorkOrderNote(id, "Inspection bis")).rejects.toThrow(/déjà en cours/);
+  expect(call).toHaveBeenCalledOnce();
+  release?.({ data: server, etag: '"3"' } as never);
+  await first;
+  expect(call).toHaveBeenCalledTimes(2);
+});
+
+it("relâche le verrou après une erreur et autorise une nouvelle tentative contrôlée", async () => {
+  vi.mocked(call).mockRejectedValueOnce(new Error("Serveur indisponible"));
+  await expect(submitOfflineWorkOrderNote(id, "Inspection")).rejects.toThrow(/indisponible/);
+  await submitOfflineWorkOrderNote(id, "Inspection");
+  expect(call).toHaveBeenCalledTimes(3);
+});
