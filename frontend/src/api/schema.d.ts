@@ -1163,6 +1163,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/part-replenishments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Drafts */
+        get: operations["list_drafts_api_v1_part_replenishments_get"];
+        put?: never;
+        /** Create Draft */
+        post: operations["create_draft_api_v1_part_replenishments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/part-reservations": {
         parameters: {
             query?: never;
@@ -2773,6 +2791,52 @@ export interface components {
              */
             reason_code: "REPLACED" | "LOST" | "REVOKED_BY_AUTHORITY" | "ENTRY_ERROR" | "OTHER";
         };
+        /** DraftCreate */
+        DraftCreate: {
+            /** Quantity */
+            quantity: number | string;
+            /** Reference */
+            reference: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
+        };
+        /** DraftOut */
+        DraftOut: {
+            /** Quantity */
+            quantity: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Replenishment Id
+             * Format: uuid
+             */
+            replenishment_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Spare Part Id
+             * Format: uuid
+             */
+            spare_part_id: string;
+            /**
+             * Spare Part Store Id
+             * Format: uuid
+             */
+            spare_part_store_id: string;
+            /** Status */
+            status: string;
+        };
         /** DriverAccountIn */
         DriverAccountIn: {
             /** User Account Id */
@@ -4264,6 +4328,17 @@ export interface components {
         Page_BalanceOut_: {
             /** Items */
             items: components["schemas"]["BalanceOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[DraftOut] */
+        Page_DraftOut_: {
+            /** Items */
+            items: components["schemas"]["DraftOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -9158,6 +9233,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ValuedPartReceiptOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_drafts_api_v1_part_replenishments_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_DraftOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_draft_api_v1_part_replenishments_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftOut"];
                 };
             };
             /** @description Validation Error */
