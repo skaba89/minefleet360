@@ -899,6 +899,19 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "legal.insurance.create": {
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "legal.insurance.read": {
     "AUDITOR": [
       "TENANT"

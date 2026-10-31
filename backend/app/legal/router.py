@@ -17,12 +17,13 @@ from app.authz.routing import SecuredRoute
 from app.core.db import Base
 from app.core.errors import AppError
 from app.core.http import Page, Pagination
-from app.legal.schemas import ContractDraftInput
+from app.legal.schemas import ContractDraftInput, InsurancePolicyInput
 
 router = APIRouter(tags=["juridique"], route_class=SecuredRoute)
 ContractRead = Annotated[Authorized, Depends(Require("legal.contract.read"))]
 ContractCreate = Annotated[Authorized, Depends(Require("legal.contract.create"))]
 InsuranceRead = Annotated[Authorized, Depends(Require("legal.insurance.read"))]
+InsuranceCreate = Annotated[Authorized, Depends(Require("legal.insurance.create"))]
 
 
 class LegalContract(Base):
@@ -43,7 +44,9 @@ class LegalContract(Base):
 
 class InsurancePolicy(Base):
     __tablename__ = "insurance_policy"
-    insurance_policy_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    insurance_policy_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
     site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
     policy_number: Mapped[str] = mapped_column(String)
@@ -54,6 +57,7 @@ class InsurancePolicy(Base):
     premium_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))
     currency: Mapped[str] = mapped_column(String)
     contract_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
 
 
 class ContractOut(BaseModel):
@@ -149,5 +153,43 @@ def create_contract_draft(body: ContractDraftInput, auth: ContractCreate) -> Con
         auth.db.rollback()
         raise AppError("CONFLICT") from None
     result = ContractOut.model_validate(contract, from_attributes=True)
+    auth.db.commit()
+    return result
+
+
+@router.post("/insurance-policies", response_model=InsuranceOut, status_code=status.HTTP_201_CREATED)
+def create_insurance_policy(body: InsurancePolicyInput, auth: InsuranceCreate) -> InsuranceOut:
+    if not auth.scope.covers_site(body.site_id):
+        raise AppError("NOT_FOUND")
+    if body.contract_id is not None:
+        linked = auth.db.scalar(
+            select(LegalContract.contract_id).where(
+                LegalContract.tenant_id == auth.tenant_id,
+                LegalContract.contract_id == body.contract_id,
+                LegalContract.site_id == body.site_id,
+            )
+        )
+        if linked is None:
+            raise AppError("NOT_FOUND")
+    policy = InsurancePolicy(
+        tenant_id=auth.tenant_id,
+        site_id=body.site_id,
+        policy_number=body.policy_number,
+        insurer_name=body.insurer_name,
+        coverage_type=body.coverage_type,
+        coverage_start=body.coverage_start,
+        coverage_end=body.coverage_end,
+        premium_amount=body.premium_amount,
+        currency=body.currency,
+        contract_id=body.contract_id,
+        created_by=auth.user_id,
+    )
+    auth.db.add(policy)
+    try:
+        auth.db.flush()
+    except IntegrityError:
+        auth.db.rollback()
+        raise AppError("CONFLICT") from None
+    result = InsuranceOut.model_validate(policy, from_attributes=True)
     auth.db.commit()
     return result
