@@ -66,7 +66,7 @@ it("conserve la confirmation de transmission après succès", async () => {
 
 it("ne renvoie pas une transmission déjà confirmée", async () => {
   vi.mocked(listOfflineDrafts).mockResolvedValue([{
-    ...draft, pending: { ...pending, deliveryStatus: "confirmed" },
+    ...draft, pending: { ...pending, deliveryStatus: "confirmed" as const },
   }]);
   await submitPreparedOfflineWorkOrderNote(draft);
   expect(call).not.toHaveBeenCalled();
