@@ -1033,6 +1033,30 @@ permissions:
       OPS_MANAGER: [TENANT, SITE]
       FUEL_MANAGER: [SITE]
 
+  # --- legal contracts and insurance (read-only foundation) ------------------------------------------
+  legal.contract.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes: [{ method: GET, path: /legal-contracts, shape: collection, success: 200 }]
+    grants:
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  legal.insurance.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes: [{ method: GET, path: /insurance-policies, shape: collection, success: 200 }]
+    grants:
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+
 public_routes:
   # Authentification machine obligatoire dans la route ; aucun accès anonyme aux données.
   - { method: POST, path: /gps/telemetry }
