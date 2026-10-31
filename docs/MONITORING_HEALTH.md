@@ -33,3 +33,15 @@ MF_BACKUP_MAX_AGE_HOURS=26 bash infra/deploy/probe-backup-freshness.sh
 La sonde est en lecture seule : elle recherche les fichiers locaux non vides `backups/minefleet-*.dump` et contrôle l'horodatage de modification du plus récent. Valeur par défaut : 26 heures pour des sauvegardes quotidiennes, à adapter à l'ordonnancement. Codes de sortie : `0` fraîcheur conforme, `2` aucune archive valide ou archive trop ancienne, `3` erreur de configuration ou d'horloge.
 
 **Limites :** un fichier récent peut être corrompu. La fraîcheur locale ne prouve ni copie hors site, ni déchiffrement, ni restauration. Exécuter périodiquement `verify-restore.sh` sur une machine de confiance et ajouter la supervision du transfert distant ; créer une alerte si la sonde retourne un code non nul. Ne jamais consigner le contenu des archives.
+
+## Vue consolidée des contrôles P0
+
+Depuis l'hôte de déploiement (avec droits Docker), lancer :
+
+```bash
+MINEFLEET_BASE_URL=https://minefleet.example.org bash infra/deploy/probe-all.sh
+```
+
+Le script `probe-all.sh` exécute trois contrôles **en lecture seule** : PostgreSQL, fraîcheur des sauvegardes locales et disponibilité HTTPS externe. Il fournit une ligne de statut par contrôle sans relayer les détails internes ou les secrets. Retour `0` si tous les contrôles sont verts, `2` si au moins un est critique, et `3` en cas de configuration manquante ou contrôle indéterminé. L'absence d'URL HTTPS est volontairement classée UNKNOWN, pas OK.
+
+Cette consolidation ne configure ni planification ni notifications. Pour une exploitation pilote, intégrer le script au système de supervision (exécution avec identité technique à privilèges restreints), déclencher une alerte après plusieurs échecs consécutifs, et tester le canal d'escalade. L'accès au socket Docker reste hautement privilégié ; ne pas exposer ce script par une API web.
