@@ -1,4 +1,4 @@
-import { prepareOfflineNoteTransmission, type OfflineDraft } from "./offlineDrafts";
+import { listOfflineDrafts, prepareOfflineNoteTransmission, validateOfflineDraft, type OfflineDraft } from "./offlineDrafts";
 import { ApiError, call } from "../api/client";
 
 /** Explicit online transfer of a local OT note. Never replay automatically. */
@@ -49,7 +49,13 @@ export async function submitPreparedOfflineWorkOrderNote(draft: OfflineDraft): P
   if (activeWorkOrders.has(workOrderId)) throw new Error("Une transmission de cette note OT est déjà en cours.");
   activeWorkOrders.add(workOrderId);
   try {
-    let pending = draft.pending;
+    validateOfflineDraft(draft);
+    const stored = (await listOfflineDrafts(draft.ownerScope)).find((item) => item.id === draft.id);
+    if (!stored || stored.workOrderId !== workOrderId || stored.note !== draft.note) {
+      throw new Error("Brouillon local modifié ou introuvable : aucun envoi effectué.");
+    }
+    validateOfflineDraft(stored);
+    let pending = stored.pending;
     if (!pending) {
       const latest = await call("get", "/work-orders/{work_order_id}", { path: { work_order_id: workOrderId } });
       const order = latest.data;
