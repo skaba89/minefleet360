@@ -1303,6 +1303,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/parts-purchase-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Purchase Drafts */
+        get: operations["list_purchase_drafts_api_v1_parts_purchase_orders_get"];
+        put?: never;
+        /** Create Purchase Draft */
+        post: operations["create_purchase_draft_api_v1_parts_purchase_orders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/tenants": {
         parameters: {
             query?: never;
@@ -4576,6 +4594,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[PurchaseOrderOut] */
+        Page_PurchaseOrderOut_: {
+            /** Items */
+            items: components["schemas"]["PurchaseOrderOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[RoleAssignmentOut] */
         Page_RoleAssignmentOut_: {
             /** Items */
@@ -5225,6 +5254,44 @@ export interface components {
             decision: "APPROVED" | "REJECTED";
             /** Reason Code */
             reason_code?: ("BUDGET" | "SUPPLIER" | "QUANTITY" | "OTHER") | null;
+        };
+        /** PurchaseOrderCreate */
+        PurchaseOrderCreate: {
+            /**
+             * Replenishment Id
+             * Format: uuid
+             */
+            replenishment_id: string;
+            /** Supplier Name */
+            supplier_name: string;
+            /** Supplier Reference */
+            supplier_reference: string;
+        };
+        /** PurchaseOrderOut */
+        PurchaseOrderOut: {
+            /**
+             * Purchase Order Id
+             * Format: uuid
+             */
+            purchase_order_id: string;
+            /** Quantity */
+            quantity: string;
+            /**
+             * Replenishment Id
+             * Format: uuid
+             */
+            replenishment_id: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Status */
+            status: string;
+            /** Supplier Name */
+            supplier_name: string;
+            /** Supplier Reference */
+            supplier_reference: string;
         };
         /** PurchaseReceiptCreate */
         PurchaseReceiptCreate: {
@@ -9706,6 +9773,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PartOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_purchase_drafts_api_v1_parts_purchase_orders_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PurchaseOrderOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_purchase_draft_api_v1_parts_purchase_orders_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchaseOrderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderOut"];
                 };
             };
             /** @description Validation Error */

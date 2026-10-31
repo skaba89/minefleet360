@@ -29,6 +29,7 @@ from app.fuel.router import router as fuel_router
 from app.identity.auth_service import AuthLimiters
 from app.identity.router import auth_router, me_router, role_router, user_router
 from app.maintenance.parts_router import router as parts_router
+from app.maintenance.purchase_order_router import router as purchase_order_router
 from app.maintenance.replenishment_router import router as replenishment_router
 from app.maintenance.router import router as maintenance_router
 from app.organization.router import platform_router, site_router, tenant_router
@@ -149,6 +150,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         dispatch_router,
         maintenance_router,
         parts_router,
+        purchase_order_router,
         replenishment_router,
         fuel_router,
         fuel_anomalies_router,
