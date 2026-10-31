@@ -28,3 +28,7 @@ Sur **un serveur de staging**, après revue de sécurité des accès :
 **Attention :** systemd EnvironmentFile expose potentiellement les variables aux processus dotés de privilèges suffisants ; les variables d'environnement ne constituent pas un coffre à secrets. Prévoir une rotation SMTP, des destinataires de test et le traitement des incidents de fuite. Les erreurs d'une sonde ne doivent pas interrompre l'exploitation de l'API.
 
 Aucune de ces commandes n'a été lancée sur un serveur réel dans cette PR.
+
+## Contrôle du répertoire des sauvegardes
+
+Définir `MF_BACKUP_DIR` comme un chemin **absolu** vers les sauvegardes créées par `backup.sh` (dans l'exemple : `/opt/minefleet/infra/deploy/backups`). Vérifier la présence et la lecture par le compte `minefleet-monitor` sans lui octroyer un accès en écriture. La sonde retourne `UNKNOWN` si le répertoire est inaccessible et `CRITICAL` si aucune archive non vide et récente n'existe. Avant activation du timer, exécuter manuellement la sonde sous le compte de service puis contrôler les résultats. La lecture des métadonnées ne suffit pas à démontrer qu'une archive peut être restaurée.
