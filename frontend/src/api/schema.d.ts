@@ -9304,6 +9304,7 @@ export interface operations {
         parameters: {
             query?: {
                 site_id?: string | null;
+                request_status?: string | null;
                 page?: number;
                 page_size?: number | null;
             };
