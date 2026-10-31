@@ -9,7 +9,7 @@ from tests.test_assignment import World, _vehicle, w  # noqa: F401
 from tests.test_maintenance import _report
 
 
-def test_unpriced_issue_and_consumption_rejected_for_valued_balance(
+def test_unpriced_issue_rejected_but_reserved_consumption_valued_at_cmp(
     client: TestClient,
     api: Api,
     w: World,  # noqa: F811
@@ -56,10 +56,15 @@ def test_unpriced_issue_and_consumption_rejected_for_valued_balance(
         f"{API}/part-reservations/{reserved.json()['spare_part_reservation_id']}/consume",
         headers=keeper.headers,
     )
-    assert consumed.status_code == 409, consumed.text
+    assert consumed.status_code == 200, consumed.text
+    repeated = client.post(
+        f"{API}/part-reservations/{reserved.json()['spare_part_reservation_id']}/consume",
+        headers=keeper.headers,
+    )
+    assert repeated.status_code == 409, repeated.text
     balances = client.get(f"{API}/part-balances", headers=keeper.headers)
     assert balances.status_code == 200
     matching = [item for item in balances.json()["items"] if item["spare_part_id"] == stock["spare_part_id"]]
     assert len(matching) == 1
-    assert Decimal(str(matching[0]["on_hand"])) == Decimal("3")
-    assert Decimal(str(matching[0]["reserved"])) == Decimal("1")
+    assert Decimal(str(matching[0]["on_hand"])) == Decimal("2")
+    assert Decimal(str(matching[0]["reserved"])) == Decimal("0")
