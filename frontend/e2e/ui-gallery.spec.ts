@@ -35,12 +35,18 @@ test("galerie des écrans métier sur données fictives", async ({ page }) => {
   }
   await uiLogin(page, demo);
   await mkdir(destination, { recursive: true });
+  const captured: string[] = [];
   for (const item of pages) {
-    await page.goto(item.route);
-    await expect(page.getByRole("navigation", { name: "Navigation principale" })).toBeVisible();
-    await expect(page).not.toHaveURL(/\/connexion(?:\?|$)/);
-    await page.screenshot({ path: resolve(destination, `${item.slug}.png`), fullPage: true, animations: "disabled" });
+    await test.step(`Capture ${item.label}`, async () => {
+      await page.goto(item.route);
+      await expect(page.getByRole("navigation", { name: "Navigation principale" })).toBeVisible();
+      await expect(page).not.toHaveURL(/\/connexion(?:\?|$)/);
+      await expect(page.getByText("Page introuvable.")).toHaveCount(0);
+      await page.screenshot({ path: resolve(destination, `${item.slug}.png`), fullPage: true, animations: "disabled" });
+      captured.push(item.slug);
+    });
   }
+  if (captured.length !== pages.length) throw new Error("Galerie incomplète");
   const cards = pages.map((item) => `<article><h2>${item.label}</h2><p>${item.maturity} · ${item.route}</p><a href="${item.slug}.png"><img loading="lazy" alt="${item.label}" src="${item.slug}.png"></a></article>`).join("\n");
   const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MineFleet360 — Galerie locale</title><style>body{font:16px system-ui;background:#f4f6f9;color:#172337;max-width:1400px;margin:auto;padding:24px}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:18px}article{background:white;border:1px solid #dae0e8;border-radius:12px;padding:16px}h2{margin:0}p{color:#526277}img{width:100%;height:auto;border-radius:6px}</style></head><body><h1>MineFleet360 — Interfaces réelles</h1><p>Captures locales sur des données fictives ; les niveaux de maturité sont indicatifs, pas des validations fonctionnelles.</p><main>${cards}</main></body></html>`;
   await writeFile(resolve(destination, "index.html"), html, "utf8");
