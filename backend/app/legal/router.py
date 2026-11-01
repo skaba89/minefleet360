@@ -238,10 +238,12 @@ async def upload_contract_document(
 ) -> dict[str, str]:
     """Store scanned PDF metadata as PENDING; never certify a document automatically."""
     contract = auth.db.scalar(
-        select(LegalContract).where(
+        select(LegalContract)
+        .where(
             LegalContract.tenant_id == auth.tenant_id,
             LegalContract.contract_id == contract_id,
-        ).with_for_update()
+        )
+        .with_for_update()
     )
     if contract is None or not auth.scope.covers_site(contract.site_id):
         raise AppError("NOT_FOUND")
