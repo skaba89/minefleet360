@@ -27,7 +27,10 @@ def test_keys_change_across_tenants_and_contracts() -> None:
     assert first != contract_document_key(tenant, uuid.uuid4())
 
 
-@pytest.mark.parametrize("tenant,contract", [(uuid.UUID(int=0), uuid.uuid4()), (uuid.uuid4(), uuid.UUID(int=0))])
+@pytest.mark.parametrize(
+    "tenant,contract",
+    [(uuid.UUID(int=0), uuid.uuid4()), (uuid.uuid4(), uuid.UUID(int=0))],
+)
 def test_nil_ids_rejected(tenant: uuid.UUID, contract: uuid.UUID) -> None:
     with pytest.raises(ValueError):
         contract_document_key(tenant, contract)
