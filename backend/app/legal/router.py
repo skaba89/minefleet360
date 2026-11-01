@@ -15,6 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
+from app.core.config import get_settings
 from app.core.db import Base
 from app.core.errors import AppError
 from app.core.http import Page, Pagination
@@ -24,7 +25,6 @@ from app.legal.document_registry import record_pending_contract_document
 from app.legal.document_upload_policy import DocumentUploadContext, contract_document_upload_allowed
 from app.legal.document_validation import MAX_PDF_BYTES
 from app.legal.s3_factory import build_private_contract_store
-from app.core.config import get_settings
 from app.legal.schemas import ContractDraftInput, InsurancePolicyInput
 
 router = APIRouter(tags=["juridique"], route_class=SecuredRoute)
@@ -258,7 +258,7 @@ async def upload_contract_document(
     if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/pdf":
         raise AppError("VALIDATION_ERROR")
     name = filename.strip()
-    if not name or len(name) > 255 or "/" in name or "\\\\" in name:
+    if not name or len(name) > 255 or "/" in name or "\\" in name:
         raise AppError("VALIDATION_ERROR")
     chunks = bytearray()
     async for part in request.stream():
