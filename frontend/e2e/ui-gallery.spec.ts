@@ -1,8 +1,8 @@
-"""Capture d'écrans réels à partir de comptes EXCLUSIVEMENT fictifs.
+/**Capture d'écrans réels à partir de comptes EXCLUSIVEMENT fictifs.
 
 Exécution manuelle : npm run e2e -- ui-gallery.spec.ts
 Les images sont conservées uniquement dans un dossier local ignoré par Git.
-"""
+ */
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
