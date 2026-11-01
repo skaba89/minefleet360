@@ -84,7 +84,9 @@ def test_filename_validator_normalizes_safe_name() -> None:
     assert validate_contract_document_filename("  contrat.pdf  ") == "contrat.pdf"
 
 
-@pytest.mark.parametrize("filename", ["", "../contrat.pdf", "folder/file.pdf", "folder\\\\file.pdf", "a" * 256])
+@pytest.mark.parametrize(
+    "filename", ["", "../contrat.pdf", "folder/file.pdf", "folder\\\\file.pdf", "a" * 256]
+)
 def test_filename_validator_rejects_unsafe_names(filename: str) -> None:
     with pytest.raises(ValueError, match="filename"):
         validate_contract_document_filename(filename)
