@@ -809,6 +809,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/legal-contracts/storage-reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Contract Storage Reconciliation
+         * @description Tenant-wide reviewers only; expose counts, not private object keys.
+         */
+        get: operations["get_contract_storage_reconciliation_api_v1_legal_contracts_storage_reconciliation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/legal-contracts/{contract_id}/decision": {
         parameters: {
             query?: never;
@@ -5654,6 +5674,15 @@ export interface components {
             /** Reference */
             reference: string;
         };
+        /** ReconciliationSummaryOut */
+        ReconciliationSummaryOut: {
+            /** Consistent */
+            consistent: boolean;
+            /** Missing Count */
+            missing_count: number;
+            /** Orphan Count */
+            orphan_count: number;
+        };
         /** ResetRequest */
         ResetRequest: {
             /** Email */
@@ -8896,6 +8925,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContractOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_contract_storage_reconciliation_api_v1_legal_contracts_storage_reconciliation_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconciliationSummaryOut"];
                 };
             };
             /** @description Validation Error */
