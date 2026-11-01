@@ -809,6 +809,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/legal-contracts/{contract_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Decide Contract
+         * @description Approve or reject a submitted contract; never act as an electronic signature.
+         */
+        post: operations["decide_contract_api_v1_legal_contracts__contract_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/legal-contracts/{contract_id}/submit": {
         parameters: {
             query?: never;
@@ -2822,6 +2842,13 @@ export interface components {
             status: "COMPLIANT" | "NON_COMPLIANT";
             /** Warnings */
             warnings: components["schemas"]["Issue"][];
+        };
+        /** ContractDecisionIn */
+        ContractDecisionIn: {
+            /** Action */
+            action: string;
+            /** Note */
+            note: string;
         };
         /** ContractDraftInput */
         ContractDraftInput: {
@@ -8824,6 +8851,43 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_contract_api_v1_legal_contracts__contract_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                contract_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ContractDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
