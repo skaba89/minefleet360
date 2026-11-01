@@ -56,3 +56,26 @@ def test_document_verification_denied_does_not_commit(monkeypatch: pytest.Monkey
         legal_router.verify_contract_document(uuid.uuid4(), uuid.uuid4(), auth)
     db.commit.assert_not_called()
     db.rollback.assert_called_once()
+
+
+def test_missing_document_returns_404_before_storage_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    db = MagicMock()
+    db.scalar.return_value = False
+    auth = SimpleNamespace(
+        db=db,
+        tenant_id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        scope=SimpleNamespace(tenant_wide=True, site_ids=set()),
+    )
+    settings = MagicMock()
+    service = MagicMock()
+    monkeypatch.setattr(legal_router, "get_settings", settings)
+    monkeypatch.setattr(legal_router, "verify_contract_pdf_usecase", service)
+    with pytest.raises(AppError) as caught:
+        legal_router.verify_contract_document(uuid.uuid4(), uuid.uuid4(), auth)
+    assert caught.value.code == "NOT_FOUND"
+    settings.assert_not_called()
+    service.assert_not_called()
+    db.commit.assert_not_called()
