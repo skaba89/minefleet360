@@ -24,3 +24,6 @@ var/
 infra/deploy/.env.prod
 infra/deploy/backups/
 infra/deploy/offsite.env
+
+# Captures locales de démonstration, ne jamais publier les données affichées.
+frontend/artifacts/
