@@ -29,6 +29,12 @@ export function LegalRegistriesPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
+  const [reviewId, setReviewId] = useState<string | null>(null);
+  const [reviewAction, setReviewAction] = useState<"APPROVE" | "REJECT">("APPROVE");
+  const [reviewNote, setReviewNote] = useState("");
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [reviewError, setReviewError] = useState<unknown>(null);
+  const [reviewNotice, setReviewNotice] = useState("");
   const [policyNumber, setPolicyNumber] = useState("");
   const [insurer, setInsurer] = useState("");
   const [coverageType, setCoverageType] = useState<Schemas["InsurancePolicyInput"]["coverage_type"]>("FLEET");
@@ -42,6 +48,7 @@ export function LegalRegistriesPage() {
   const [page, setPage] = useState(1);
   const canReadContracts = can(me.grants, "legal.contract.read", siteId);
   const canCreateContract = Boolean(siteId) && can(me.grants, "legal.contract.create", siteId);
+  const canReviewContract = can(me.grants, "legal.contract.review", siteId);
   const canReadPolicies = can(me.grants, "legal.insurance.read", siteId);
   const canCreatePolicy = Boolean(siteId) && can(me.grants, "legal.insurance.create", siteId);
   const activeTab = authorizedLegalTab(tab, canReadContracts, canReadPolicies);
@@ -173,13 +180,52 @@ export function LegalRegistriesPage() {
           {policyNotice && <p role="status">{policyNotice}</p>}
         </form>
       )}
+      {activeTab === "contracts" && reviewId && canReviewContract && (
+        <form onSubmit={async (event) => {
+          event.preventDefault();
+          if (reviewSaving || !reviewNote.trim()) return;
+          setReviewSaving(true);
+          setReviewError(null);
+          setReviewNotice("");
+          try {
+            await call("post", "/legal-contracts/{contract_id}/decision", {
+              path: { contract_id: reviewId },
+              body: { action: reviewAction, note: reviewNote.trim() },
+            });
+            setReviewId(null);
+            setReviewNote("");
+            await queryClient.invalidateQueries({ queryKey: ["legal-contracts"] });
+            setReviewNotice("Décision enregistrée. Elle ne constitue pas une signature électronique.");
+          } catch (error) {
+            setReviewError(error);
+          } finally {
+            setReviewSaving(false);
+          }
+        }}>
+          <h2>Décision sur le contrat</h2>
+          <p>Contrat sélectionné : {contracts.data?.items.find((item: Contract) => item.contract_id === reviewId)?.reference ?? reviewId}</p>
+          <label>Décision
+            <select value={reviewAction} onChange={(event) => setReviewAction(event.target.value as "APPROVE" | "REJECT")}>
+              <option value="APPROVE">Approuver</option>
+              <option value="REJECT">Rejeter</option>
+            </select>
+          </label>
+          <label>Motif de la décision
+            <textarea required maxLength={500} value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} />
+          </label>
+          <button type="submit" disabled={reviewSaving || !reviewNote.trim()}>{reviewSaving ? "Enregistrement…" : "Confirmer la décision"}</button>
+          <button type="button" disabled={reviewSaving} onClick={() => { setReviewId(null); setReviewError(null); }}>Annuler</button>
+          {reviewError !== null && <ErrorMessage error={reviewError} />}
+        </form>
+      )}
+      {activeTab === "contracts" && reviewNotice && <p role="status">{reviewNotice}</p>}
       {!allowed ? <p className="error" role="alert">Accès non autorisé pour ce registre.</p> : (
         <DataState loading={current.isLoading} error={current.error} empty={!current.data?.items.length}>
           {activeTab === "contracts" ? (
             <table>
-              <thead><tr><th>Référence</th><th>Intitulé</th><th>Type</th><th>Contrepartie</th><th>Statut</th></tr></thead>
+              <thead><tr><th>Référence</th><th>Intitulé</th><th>Type</th><th>Contrepartie</th><th>Statut</th>{canReviewContract && <th>Décision</th>}</tr></thead>
               <tbody>{(contracts.data?.items ?? []).map((item: Contract) => (
-                <tr key={item.contract_id}><td>{item.reference}</td><td>{item.title}</td><td>{item.contract_type}</td><td>{item.counterparty_name}</td><td>{item.status}</td></tr>
+                <tr key={item.contract_id}><td>{item.reference}</td><td>{item.title}</td><td>{item.contract_type}</td><td>{item.counterparty_name}</td><td>{item.status}</td>{canReviewContract && <td>{item.status === "PENDING_REVIEW" && <button type="button" onClick={() => { setReviewId(item.contract_id); setReviewAction("APPROVE"); setReviewNote(""); setReviewError(null); setReviewNotice(""); }}>Examiner</button>}</td>}</tr>
               ))}</tbody>
             </table>
           ) : (
