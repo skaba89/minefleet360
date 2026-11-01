@@ -21,7 +21,6 @@ class PrivateObjectStore(Protocol):
 
     def get(self, *, key: str) -> bytes: ...
 
-    def delete(self, *, key: str) -> None: ...
 
 
 def persist_contract_pdf(store: PrivateObjectStore, *, key: str, payload: bytes) -> StoredObject:
