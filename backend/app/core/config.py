@@ -110,6 +110,10 @@ class Settings(BaseSettings):
     mfa_challenge_ttl: timedelta = timedelta(minutes=5)
     mfa_issuer: str = "MINEFLEET 360"
     # Private contract PDFs: disabled until a secured S3-compatible backend is provisioned.
+    legal_malware_scan_enabled: bool = False
+    legal_malware_scan_host: str = ""
+    legal_malware_scan_port: int = Field(default=3310, ge=1, le=65535)
+    legal_malware_scan_timeout: float = Field(default=10.0, gt=0, le=60)
     legal_object_storage_enabled: bool = False
     legal_object_storage_endpoint: str = ""
     legal_object_storage_bucket: str = ""
@@ -140,6 +144,8 @@ class Settings(BaseSettings):
                 raise ValueError("MF_MFA_ENCRYPTION_KEY n'est pas du base64url valide") from exc
             if len(key) != 32:
                 raise ValueError("MF_MFA_ENCRYPTION_KEY doit contenir 32 octets (AES-256)")
+        if self.legal_malware_scan_enabled and not self.legal_malware_scan_host.strip():
+            raise ValueError("Un hôte ClamAV privé est requis")
         if self.legal_object_storage_enabled:
             if not self.legal_object_storage_endpoint.startswith("https://"):
                 raise ValueError("Le stockage documentaire exige un endpoint HTTPS")
