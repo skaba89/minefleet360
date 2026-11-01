@@ -1,4 +1,6 @@
 /** File IndexedDB de commandes terrain, inactive tant qu'aucun parcours métier n'est autorisé. */
+import { assertOfflinePayloadSafe } from "./offline-payload-guard";
+
 export type OutboxStatus = "pending" | "syncing" | "rejected";
 
 export interface OutboxEntry {
@@ -74,6 +76,7 @@ export function assertAllowedEntry(entry: OutboxEntry): void {
   if (!ENABLED_ENDPOINTS.has(entry.endpoint)) {
     throw new Error("Synchronisation hors ligne indisponible pour cette opération");
   }
+  assertOfflinePayloadSafe(entry.payload);
   if (
     !entry.operationId ||
     !entry.tenantId ||
