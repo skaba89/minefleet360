@@ -6,6 +6,7 @@ import { useMe } from "../auth/AuthContext";
 import { DataState, ErrorMessage, Pager } from "../components/common";
 import { can } from "../lib/permissions";
 import { useSites } from "../site/SiteContext";
+import { StorageReconciliationPanel } from "./StorageReconciliationPanel";
 
 const PAGE_SIZE = 25;
 type Contract = Schemas["ContractOut"];
@@ -70,6 +71,7 @@ export function LegalRegistriesPage() {
   return (
     <section>
       <h1>Contrats et assurances</h1>
+      {canReadContracts && <StorageReconciliationPanel />}
       <p className="muted">Registres de consultation. Les signatures et les attestations doivent être vérifiées séparément.</p>
       <div role="group" aria-label="Choisir un registre">
         {canReadContracts && <button type="button" aria-pressed={activeTab === "contracts"} onClick={() => { setTab("contracts"); setPage(1); }}>Contrats</button>}
