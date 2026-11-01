@@ -18,6 +18,7 @@ from app.authz.routing import SecuredRoute
 from app.core.db import Base
 from app.core.errors import AppError
 from app.core.http import Page, Pagination
+from app.legal.document_upload_policy import DocumentUploadContext, contract_document_upload_allowed
 from app.legal.schemas import ContractDraftInput, InsurancePolicyInput
 
 router = APIRouter(tags=["juridique"], route_class=SecuredRoute)
@@ -196,6 +197,30 @@ def create_insurance_policy(body: InsurancePolicyInput, auth: InsuranceCreate) -
     result = InsuranceOut.model_validate(policy, from_attributes=True)
     auth.db.commit()
     return result
+
+
+@router.post("/legal-contracts/{contract_id}/documents/preflight")
+def preflight_contract_document(contract_id: uuid.UUID, auth: ContractCreate) -> dict[str, bool]:
+    """Authorize a future upload without accepting, scanning or storing bytes."""
+    contract = auth.db.scalar(
+        select(LegalContract).where(
+            LegalContract.tenant_id == auth.tenant_id,
+            LegalContract.contract_id == contract_id,
+        )
+    )
+    if contract is None or not auth.scope.covers_site(contract.site_id):
+        raise AppError("NOT_FOUND")
+    context = DocumentUploadContext(
+        authenticated_tenant_id=auth.tenant_id,
+        contract_tenant_id=contract.tenant_id,
+        contract_site_id=contract.site_id,
+        accessible_site_ids=frozenset(auth.scope.site_ids),
+        tenant_wide=auth.scope.tenant_wide,
+        contract_status=contract.status,
+    )
+    if not contract_document_upload_allowed(context):
+        raise AppError("CONFLICT")
+    return {"allowed": True}
 
 
 @router.post("/legal-contracts/{contract_id}/submit", response_model=ContractOut)
