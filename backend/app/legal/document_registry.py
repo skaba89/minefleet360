@@ -13,6 +13,14 @@ from sqlalchemy import text
 from app.legal.document_ingestion import IngestedPDF
 
 
+def validate_contract_document_filename(original_filename: str) -> str:
+    """Reject unsafe names before writing the object into private storage."""
+    name = original_filename.strip()
+    if not name or len(name) > 255 or "/" in name or "\\" in name:
+        raise ValueError("invalid document filename")
+    return name
+
+
 def record_pending_contract_document(
     db: Any,
     *,
@@ -23,9 +31,7 @@ def record_pending_contract_document(
     document: IngestedPDF,
 ) -> uuid.UUID:
     """Record a scanned and stored PDF, without granting review eligibility."""
-    name = original_filename.strip()
-    if not name or len(name) > 255 or "/" in name or "\\" in name:
-        raise ValueError("invalid document filename")
+    name = validate_contract_document_filename(original_filename)
     if tenant_id.int == 0 or contract_id.int == 0 or actor_id.int == 0:
         raise ValueError("missing document ownership")
     prefix = f"legal/{tenant_id}/contracts/{contract_id}/"

@@ -6,7 +6,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.legal.document_ingestion import IngestedPDF
-from app.legal.document_registry import record_pending_contract_document
+from app.legal.document_registry import (
+    record_pending_contract_document,
+    validate_contract_document_filename,
+)
 
 
 def test_registry_insert_is_pending_only() -> None:
@@ -75,3 +78,15 @@ def test_registry_rejects_untrusted_evidence_before_sql(failure: str) -> None:
             document=IngestedPDF(object_key=key, sha256=sha, byte_size=size),
         )
     db.execute.assert_not_called()
+
+
+def test_filename_validator_normalizes_safe_name() -> None:
+    assert validate_contract_document_filename("  contrat.pdf  ") == "contrat.pdf"
+
+
+@pytest.mark.parametrize(
+    "filename", ["", "../contrat.pdf", "folder/file.pdf", "folder\\\\file.pdf", "a" * 256]
+)
+def test_filename_validator_rejects_unsafe_names(filename: str) -> None:
+    with pytest.raises(ValueError, match="filename"):
+        validate_contract_document_filename(filename)
