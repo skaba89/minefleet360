@@ -10,8 +10,8 @@ L'oracle vient du YAML et de la table de décision D-05, jamais des décorateurs
 import re
 import uuid
 from dataclasses import dataclass
-from types import SimpleNamespace
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
