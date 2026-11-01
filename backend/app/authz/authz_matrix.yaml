@@ -1069,7 +1069,9 @@ permissions:
     tranche: 1c
     kind: update
     site_bound: true
-    routes: [{ method: POST, path: "/legal-contracts/{contract_id}/decision", shape: item, success: 200 }]
+    routes:
+      - { method: POST, path: "/legal-contracts/{contract_id}/decision", shape: item, success: 200 }
+      - { method: GET, path: /legal-contracts/storage-reconciliation, shape: collection, success: 200 }
     audit: { action: legal.contract.review }
     grants:
       TENANT_ADMIN: [TENANT]
