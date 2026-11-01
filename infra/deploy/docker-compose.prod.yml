@@ -73,6 +73,24 @@ services:
       db:
         condition: service_healthy
 
+  # Antivirus documentaire, opt-in : accessible uniquement sur le réseau Docker privé.
+  # Démarrer avec --profile documents ; aucun port hôte publié.
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: ["documents"]
+    restart: unless-stopped
+    mem_limit: 1g
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    volumes:
+      - clamav-signatures:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 12
+      start_period: 180s
+
   # Interface web : fichiers statiques servis par Caddy (non root, aucun secret, aucun volume).
   web:
     build:
@@ -129,3 +147,4 @@ volumes:
   mail-capture:
   caddy-data:
   caddy-config:
+  clamav-signatures:
