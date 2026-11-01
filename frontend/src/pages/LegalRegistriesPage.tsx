@@ -29,12 +29,21 @@ export function LegalRegistriesPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
+  const [policyNumber, setPolicyNumber] = useState("");
+  const [insurer, setInsurer] = useState("");
+  const [coverageType, setCoverageType] = useState<Schemas["InsurancePolicyInput"]["coverage_type"]>("FLEET");
+  const [coverageStart, setCoverageStart] = useState("");
+  const [coverageEnd, setCoverageEnd] = useState("");
+  const [policySaving, setPolicySaving] = useState(false);
+  const [policyError, setPolicyError] = useState<unknown>(null);
+  const [policyNotice, setPolicyNotice] = useState("");
   const { siteId } = useSites();
   const [tab, setTab] = useState<LegalTab>("contracts");
   const [page, setPage] = useState(1);
   const canReadContracts = can(me.grants, "legal.contract.read", siteId);
   const canCreateContract = Boolean(siteId) && can(me.grants, "legal.contract.create", siteId);
   const canReadPolicies = can(me.grants, "legal.insurance.read", siteId);
+  const canCreatePolicy = Boolean(siteId) && can(me.grants, "legal.insurance.create", siteId);
   const activeTab = authorizedLegalTab(tab, canReadContracts, canReadPolicies);
   const contracts = useQuery({
     queryKey: ["legal-contracts", siteId, page],
@@ -107,6 +116,61 @@ export function LegalRegistriesPage() {
           </button>
           {saveError !== null && <ErrorMessage error={saveError} />}
           {notice && <p role="status">{notice}</p>}
+        </form>
+      )}
+      {activeTab === "insurance" && canCreatePolicy && siteId && (
+        <form onSubmit={async (event) => {
+          event.preventDefault();
+          if (policySaving || coverageEnd < coverageStart) return;
+          setPolicySaving(true);
+          setPolicyError(null);
+          setPolicyNotice("");
+          try {
+            await call("post", "/insurance-policies", {
+              body: {
+                site_id: siteId,
+                policy_number: policyNumber.trim(),
+                insurer_name: insurer.trim(),
+                coverage_type: coverageType,
+                coverage_start: coverageStart,
+                coverage_end: coverageEnd,
+                currency: "GNF",
+              },
+            });
+            setPolicyNumber("");
+            setInsurer("");
+            setCoverageStart("");
+            setCoverageEnd("");
+            setPage(1);
+            await queryClient.invalidateQueries({ queryKey: ["insurance-policies"] });
+            setPolicyNotice("Police enregistrée. Vérifiez les documents auprès de votre assureur.");
+          } catch (error) {
+            setPolicyError(error);
+          } finally {
+            setPolicySaving(false);
+          }
+        }}>
+          <h2>Nouvelle police d'assurance</h2>
+          <label>Numéro de police <input required maxLength={120} value={policyNumber} onChange={(e) => setPolicyNumber(e.target.value)} /></label>
+          <label>Assureur <input required maxLength={240} value={insurer} onChange={(e) => setInsurer(e.target.value)} /></label>
+          <label>Type de couverture
+            <select value={coverageType} onChange={(e) => setCoverageType(e.target.value as Schemas["InsurancePolicyInput"]["coverage_type"])}>
+              <option value="FLEET">Flotte</option>
+              <option value="VEHICLE">Véhicule</option>
+              <option value="CARGO">Marchandises</option>
+              <option value="LIABILITY">Responsabilité civile</option>
+              <option value="EMPLOYEE">Salariés</option>
+              <option value="EQUIPMENT">Équipements</option>
+              <option value="OTHER">Autre</option>
+            </select>
+          </label>
+          <label>Début de couverture <input type="date" required value={coverageStart} onChange={(e) => setCoverageStart(e.target.value)} /></label>
+          <label>Fin de couverture <input type="date" required min={coverageStart || undefined} value={coverageEnd} onChange={(e) => setCoverageEnd(e.target.value)} /></label>
+          <button type="submit" disabled={policySaving || !policyNumber.trim() || !insurer.trim() || !coverageStart || !coverageEnd || coverageEnd < coverageStart}>
+            {policySaving ? "Enregistrement…" : "Enregistrer la police"}
+          </button>
+          {policyError !== null && <ErrorMessage error={policyError} />}
+          {policyNotice && <p role="status">{policyNotice}</p>}
         </form>
       )}
       {!allowed ? <p className="error" role="alert">Accès non autorisé pour ce registre.</p> : (
