@@ -22,7 +22,6 @@ class PrivateObjectStore(Protocol):
     def get(self, *, key: str) -> bytes: ...
 
 
-
 def persist_contract_pdf(store: PrivateObjectStore, *, key: str, payload: bytes) -> StoredObject:
     """Persist validated PDF bytes, then verify the object read back matches."""
     from app.legal.document_validation import inspect_contract_pdf
