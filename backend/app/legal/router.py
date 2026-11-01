@@ -21,7 +21,10 @@ from app.core.errors import AppError
 from app.core.http import Page, Pagination
 from app.legal.authorized_ingestion import ingest_authorized_contract_pdf
 from app.legal.clamav_factory import build_contract_malware_scanner
-from app.legal.document_registry import record_pending_contract_document
+from app.legal.document_registry import (
+    record_pending_contract_document,
+    validate_contract_document_filename,
+)
 from app.legal.document_upload_policy import DocumentUploadContext, contract_document_upload_allowed
 from app.legal.document_validation import MAX_PDF_BYTES
 from app.legal.s3_factory import build_private_contract_store
@@ -259,9 +262,10 @@ async def upload_contract_document(
         raise AppError("CONFLICT")
     if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/pdf":
         raise AppError("VALIDATION_ERROR")
-    name = (filename or "").strip()
-    if not name or len(name) > 255 or "/" in name or "\\" in name:
-        raise AppError("VALIDATION_ERROR")
+    try:
+        name = validate_contract_document_filename(filename or "")
+    except ValueError:
+        raise AppError("VALIDATION_ERROR") from None
     chunks = bytearray()
     async for part in request.stream():
         if len(chunks) + len(part) > MAX_PDF_BYTES:
