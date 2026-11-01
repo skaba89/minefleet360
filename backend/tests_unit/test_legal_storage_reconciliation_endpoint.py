@@ -28,10 +28,13 @@ def test_storage_reconciliation_returns_counts_only(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(legal_router, "build_private_contract_store", lambda _settings: storage)
     monkeypatch.setattr(legal_router, "get_settings", lambda: object())
     service = MagicMock(return_value=SimpleNamespace(orphan_count=2, missing_count=1, consistent=False))
+    audit_record = MagicMock()
+    monkeypatch.setattr(legal_router, "record", audit_record)
     monkeypatch.setattr(legal_router, "summarize_tenant_contract_storage", service)
     tenant_id = uuid.uuid4()
     auth = SimpleNamespace(
         tenant_id=tenant_id,
+        user_id=uuid.uuid4(),
         scope=SimpleNamespace(tenant_wide=True),
         db=MagicMock(),
     )
@@ -42,3 +45,10 @@ def test_storage_reconciliation_returns_counts_only(monkeypatch: pytest.MonkeyPa
         "consistent": False,
     }
     assert service.call_args.kwargs["authenticated_tenant_id"] == tenant_id
+    assert audit_record.call_args.kwargs["tenant_id"] == tenant_id
+    assert audit_record.call_args.kwargs["after"] == {
+        "orphan_count": 2,
+        "missing_count": 1,
+        "consistent": False,
+    }
+    auth.db.commit.assert_called_once()
