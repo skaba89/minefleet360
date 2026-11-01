@@ -1062,6 +1062,15 @@ permissions:
     grants:
       TENANT_ADMIN: [TENANT]
       OPS_MANAGER: [TENANT, SITE]
+  legal.contract.review:
+    tranche: 1c
+    kind: update
+    site_bound: true
+    routes: [{ method: POST, path: "/legal-contracts/{contract_id}/decision", shape: item, success: 200 }]
+    audit: { action: legal.contract.review }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
   legal.insurance.create:
     tranche: 1c
     kind: create
