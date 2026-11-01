@@ -8949,7 +8949,7 @@ export interface operations {
     upload_contract_document_api_v1_legal_contracts__contract_id__documents_post: {
         parameters: {
             query?: never;
-            header: {
+            header?: {
                 "X-Filename"?: string | null;
                 authorization?: string | null;
             };
