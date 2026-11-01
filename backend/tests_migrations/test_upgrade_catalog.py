@@ -195,7 +195,6 @@ def _assert_legal_insurance_tenant_isolation(app_engine: Engine) -> None:
         connection.rollback()
 
 
-
 def _assert_legal_review_guards(app_engine: Engine, owner_engine: Engine) -> None:
     """Review status must be coherent even if future API code is defective."""
     actor = uuid.uuid4()
@@ -245,10 +244,7 @@ def _assert_legal_review_guards(app_engine: Engine, owner_engine: Engine) -> Non
     # PostgreSQL RLS policies remain read/insert only; no transition endpoint yet.
     with owner_engine.connect() as connection:
         count = connection.execute(
-            text(
-                "SELECT count(*) FROM pg_policies WHERE tablename = 'legal_contract' "
-                "AND cmd = 'UPDATE'"
-            )
+            text("SELECT count(*) FROM pg_policies WHERE tablename = 'legal_contract' AND cmd = 'UPDATE'")
         ).scalar_one()
         assert count == 0
 
