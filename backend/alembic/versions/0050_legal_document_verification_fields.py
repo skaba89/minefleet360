@@ -19,14 +19,12 @@ ALTER TABLE legal_contract_document
   ADD COLUMN malware_scan_passed boolean NOT NULL DEFAULT false,
   ADD COLUMN verified_at timestamptz,
   ADD CONSTRAINT ck_legal_contract_document_status CHECK (
-    status IN ('PENDING', 'VERIFIED', 'REJECTED')
+    status = 'PENDING'
   ),
   ADD CONSTRAINT ck_legal_contract_document_verified CHECK (
     (status = 'PENDING' AND verified_at IS NULL
       AND NOT stored_object_verified AND NOT malware_scan_passed)
-    OR (status = 'VERIFIED' AND verified_at IS NOT NULL
-      AND stored_object_verified AND malware_scan_passed)
-    OR (status = 'REJECTED' AND verified_at IS NULL)
+
   );
 -- The app role retains SELECT, INSERT only. No verification endpoint exists.
 """
