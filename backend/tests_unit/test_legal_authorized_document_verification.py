@@ -46,9 +46,7 @@ def test_authorized_reviewer_runs_transactional_workflow(monkeypatch: pytest.Mon
 
 
 @pytest.mark.parametrize("failure", ["other_tenant", "self_review", "no_grant", "other_site", "not_draft"])
-def test_denied_reviewer_has_zero_side_effects(
-    monkeypatch: pytest.MonkeyPatch, failure: str
-) -> None:
+def test_denied_reviewer_has_zero_side_effects(monkeypatch: pytest.MonkeyPatch, failure: str) -> None:
     service = MagicMock()
     monkeypatch.setattr(bridge, "verify_pending_contract_document", service)
     ctx = context()
@@ -65,8 +63,12 @@ def test_denied_reviewer_has_zero_side_effects(
     db, scanner, store = MagicMock(), MagicMock(), MagicMock()
     with pytest.raises(PermissionError):
         bridge.verify_authorized_contract_document(
-            db, context=ctx, contract_id=uuid.uuid4(), document_id=uuid.uuid4(),
-            scanner=scanner, store=store,
+            db,
+            context=ctx,
+            contract_id=uuid.uuid4(),
+            document_id=uuid.uuid4(),
+            scanner=scanner,
+            store=store,
         )
     service.assert_not_called()
     db.execute.assert_not_called()
