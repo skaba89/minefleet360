@@ -3,8 +3,8 @@
 No automatic object removal: discrepancies require audited manual review.
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 
 @dataclass(frozen=True)
