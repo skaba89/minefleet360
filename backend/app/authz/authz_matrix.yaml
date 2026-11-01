@@ -1038,7 +1038,9 @@ permissions:
     tranche: 1c
     kind: create
     site_bound: true
-    routes: [{ method: POST, path: /legal-contracts, shape: collection, success: 201 }]
+    routes:
+      - { method: POST, path: /legal-contracts, shape: collection, success: 201 }
+      - { method: POST, path: "/legal-contracts/{contract_id}/documents/preflight", shape: item, success: 200 }
     audit: { action: legal.contract.create }
     grants:
       TENANT_ADMIN: [TENANT]
