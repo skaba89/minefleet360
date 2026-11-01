@@ -829,6 +829,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/legal-contracts/{contract_id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Contract Document
+         * @description Store scanned PDF metadata as PENDING; never certify a document automatically.
+         */
+        post: operations["upload_contract_document_api_v1_legal_contracts__contract_id__documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/legal-contracts/{contract_id}/documents/preflight": {
         parameters: {
             query?: never;
@@ -8913,6 +8933,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContractOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_contract_document_api_v1_legal_contracts__contract_id__documents_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Filename"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                contract_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
             /** @description Validation Error */
