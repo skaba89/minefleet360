@@ -10,12 +10,14 @@ L'oracle vient du YAML et de la table de décision D-05, jamais des décorateurs
 import re
 import uuid
 from dataclasses import dataclass
+from types import SimpleNamespace
 from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.authz.matrix import load_matrix
+from app.legal import router as legal_router
 from tests.conftest import API, Api, TenantFixture
 
 MATRIX = load_matrix()
@@ -510,9 +512,22 @@ def _allowed_reads() -> list[tuple[str, str, str, str]]:
 
 @pytest.mark.parametrize(("path", "permission", "role", "scope"), _allowed_reads())
 def test_st02_granted_reads_succeed_within_scope(
-    client: TestClient, world: World, path: str, permission: str, role: str, scope: str
+    client: TestClient, world: World, path: str, permission: str, role: str, scope: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     persona = next(p for p in world.personas if p.role == role and p.scope == scope)
+    if path == "/legal-contracts/storage-reconciliation":
+        # S3 is intentionally disabled in the CI test environment; preserve the real RBAC gate.
+        monkeypatch.setattr(
+            legal_router,
+            "build_private_contract_store",
+            lambda _settings: SimpleNamespace(client=object(), bucket="test-private"),
+        )
+        monkeypatch.setattr(
+            legal_router,
+            "summarize_tenant_contract_storage",
+            lambda **_kwargs: SimpleNamespace(orphan_count=0, missing_count=0, consistent=True),
+        )
     resp = _call(client, "GET", path, persona.headers, world.a_objects)
     assert resp.status_code == 200, (persona.label, permission, resp.text)
 
