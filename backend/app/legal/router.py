@@ -26,8 +26,8 @@ from app.legal.document_registry import (
     validate_contract_document_filename,
 )
 from app.legal.document_upload_policy import DocumentUploadContext, contract_document_upload_allowed
-from app.legal.document_verification_usecase import verify_contract_pdf_usecase
 from app.legal.document_validation import MAX_PDF_BYTES
+from app.legal.document_verification_usecase import verify_contract_pdf_usecase
 from app.legal.reconciliation_service import summarize_tenant_contract_storage
 from app.legal.s3_factory import build_private_contract_store
 from app.legal.schemas import ContractDraftInput, InsurancePolicyInput
