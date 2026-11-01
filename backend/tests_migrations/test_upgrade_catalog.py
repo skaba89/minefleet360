@@ -249,6 +249,31 @@ def _assert_legal_review_guards(app_engine: Engine, owner_engine: Engine) -> Non
         assert count == 0
 
 
+def _assert_document_verification_not_forgeable(app_engine: Engine) -> None:
+    """No client can claim a document has passed security verification."""
+    with app_engine.connect() as connection:
+        _context(connection, TENANT_A)
+        with pytest.raises(IntegrityError):
+            connection.execute(
+                text(
+                    "INSERT INTO legal_contract_document "
+                    "(tenant_id, contract_id, sha256, object_key, original_filename, "
+                    "content_type, byte_size, uploaded_by, status, "
+                    "stored_object_verified, malware_scan_passed, verified_at) "
+                    "VALUES (:tenant, :contract, :sha, :key, 'test.pdf', "
+                    "'application/pdf', 10, :actor, 'VERIFIED', true, true, now())"
+                ),
+                {
+                    "tenant": TENANT_A,
+                    "contract": uuid.uuid4(),
+                    "sha": "a" * 64,
+                    "key": str(uuid.uuid4()),
+                    "actor": uuid.uuid4(),
+                },
+            )
+        connection.rollback()
+
+
 def test_01_upgrade_repairs_existing_tenants_and_is_idempotent() -> None:
     settings = get_settings()
     config = _alembic_config()
@@ -311,6 +336,7 @@ def test_01_upgrade_repairs_existing_tenants_and_is_idempotent() -> None:
 
         _assert_legal_insurance_tenant_isolation(app_engine)
         _assert_legal_review_guards(app_engine, owner_engine)
+        _assert_document_verification_not_forgeable(app_engine)
 
         _assert_database_protections(owner_engine)
 
