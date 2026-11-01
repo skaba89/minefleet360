@@ -1,4 +1,5 @@
 """Tests unitaires des garde-fous d'idempotence, sans accès base."""
+
 import pytest
 
 from app.core.errors import AppError
