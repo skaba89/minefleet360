@@ -109,6 +109,12 @@ class Settings(BaseSettings):
     )
     mfa_challenge_ttl: timedelta = timedelta(minutes=5)
     mfa_issuer: str = "MINEFLEET 360"
+    # Private contract PDFs: disabled until a secured S3-compatible backend is provisioned.
+    legal_object_storage_enabled: bool = False
+    legal_object_storage_endpoint: str = ""
+    legal_object_storage_bucket: str = ""
+    legal_object_storage_access_key: SecretStr | None = None
+    legal_object_storage_secret_key: SecretStr | None = None
     platform_tenant_code: str = "mf-platform"
     # Codes d'espace refusés à la création d'un tenant client (MATRICE_RBAC §1.3).
     reserved_tenant_codes: tuple[str, ...] = ("mf-platform", "admin", "api", "platform", "support", "www")
@@ -134,6 +140,13 @@ class Settings(BaseSettings):
                 raise ValueError("MF_MFA_ENCRYPTION_KEY n'est pas du base64url valide") from exc
             if len(key) != 32:
                 raise ValueError("MF_MFA_ENCRYPTION_KEY doit contenir 32 octets (AES-256)")
+        if self.legal_object_storage_enabled:
+            if not self.legal_object_storage_endpoint.startswith("https://"):
+                raise ValueError("Le stockage documentaire exige un endpoint HTTPS")
+            if not self.legal_object_storage_bucket or "/" in self.legal_object_storage_bucket:
+                raise ValueError("Un bucket documentaire privé valide est requis")
+            if not self.legal_object_storage_access_key or not self.legal_object_storage_secret_key:
+                raise ValueError("Les identifiants du stockage documentaire sont requis")
         return self
 
     @property
