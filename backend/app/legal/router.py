@@ -247,10 +247,10 @@ class ContractDecisionIn(BaseModel):
 
 
 @router.post("/legal-contracts/{contract_id}/decision", response_model=ContractOut)
-def decide_contract(contract_id: uuid.UUID, body: ContractDecisionIn, auth: ContractReview) -> ContractOut:
+def decide_contract(
+    contract_id: uuid.UUID, auth: ContractReview, body: ContractDecisionIn | None = None
+) -> ContractOut:
     """Approve or reject a submitted contract; never act as an electronic signature."""
-    if body.action not in {"APPROVE", "REJECT"} or not body.note.strip():
-        raise AppError("VALIDATION_ERROR")
     contract = auth.db.scalar(
         select(LegalContract).where(
             LegalContract.tenant_id == auth.tenant_id,
@@ -259,6 +259,8 @@ def decide_contract(contract_id: uuid.UUID, body: ContractDecisionIn, auth: Cont
     )
     if contract is None or not auth.scope.covers_site(contract.site_id):
         raise AppError("NOT_FOUND")
+    if body is None or body.action not in {"APPROVE", "REJECT"} or not body.note.strip():
+        raise AppError("VALIDATION_ERROR")
     if contract.created_by == auth.user_id or contract.status != "PENDING_REVIEW":
         raise AppError("CONFLICT")
     target = "APPROVED" if body.action == "APPROVE" else "REJECTED"
