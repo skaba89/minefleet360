@@ -19,9 +19,6 @@ class MemoryStore:
         value = self.items[key]
         return value + b"modified" if self.corrupt else value
 
-    def delete(self, *, key: str) -> None:
-        self.items.pop(key, None)
-
 
 def test_private_write_readback_success() -> None:
     store = MemoryStore()
