@@ -512,7 +512,12 @@ def _allowed_reads() -> list[tuple[str, str, str, str]]:
 
 @pytest.mark.parametrize(("path", "permission", "role", "scope"), _allowed_reads())
 def test_st02_granted_reads_succeed_within_scope(
-    client: TestClient, world: World, path: str, permission: str, role: str, scope: str,
+    client: TestClient,
+    world: World,
+    path: str,
+    permission: str,
+    role: str,
+    scope: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     persona = next(p for p in world.personas if p.role == role and p.scope == scope)
