@@ -18,6 +18,6 @@ $env:MF_UI_GALLERY = "1"
 npm run e2e -- ui-gallery.spec.ts
 ```
 
-Les images sont créées localement dans `frontend/artifacts/ui-gallery/` (ignoré par Git). Elles couvrent accueil, véhicules, conducteurs, affectations, missions, GPS, atelier, maintenance, carburant, pièces, juridique, pesées et indicateurs. La capture ne démontre pas à elle seule qu'un parcours métier fonctionne entièrement. Vérifier les pages selon les rôles et tester les actions par Playwright.
+Les images et la galerie HTML `index.html` sont créées localement dans `frontend/artifacts/ui-gallery/` (ignoré par Git). Elles couvrent accueil, véhicules, conducteurs, affectations, missions, GPS, atelier, maintenance, carburant, pièces, juridique, pesées et indicateurs. La capture ne démontre pas à elle seule qu'un parcours métier fonctionne entièrement. Vérifier les pages selon les rôles et tester les actions par Playwright.
 
 **Sécurité :** la configuration Playwright interdit les URL d'API non locales ; le test refuse les espaces autres que `fictif-*`. Aucune capture n'est produite par la CI normale, car `MF_UI_GALLERY` doit être activé explicitement. Ne jamais commiter les captures, les comptes ou les jetons.
