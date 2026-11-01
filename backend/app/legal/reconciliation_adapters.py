@@ -40,10 +40,14 @@ def reconcile_tenant_contract_objects(
         if not isinstance(token, str) or not token or token == continuation:
             raise ValueError("invalid S3 continuation token")
         continuation = token
-    registered = db.execute(
-        text("SELECT object_key FROM legal_contract_document WHERE tenant_id = :tenant"),
-        {"tenant": tenant_id},
-    ).scalars().all()
+    registered = (
+        db.execute(
+            text("SELECT object_key FROM legal_contract_document WHERE tenant_id = :tenant"),
+            {"tenant": tenant_id},
+        )
+        .scalars()
+        .all()
+    )
     return reconcile_document_keys(
         tenant_prefix=prefix,
         stored_keys=stored,
