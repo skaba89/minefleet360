@@ -5,7 +5,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Header, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import Date, Numeric, String, func, select, text
 from sqlalchemy.dialects.postgresql import UUID
@@ -18,7 +18,13 @@ from app.authz.routing import SecuredRoute
 from app.core.db import Base
 from app.core.errors import AppError
 from app.core.http import Page, Pagination
+from app.legal.authorized_ingestion import ingest_authorized_contract_pdf
+from app.legal.clamav_factory import build_contract_malware_scanner
+from app.legal.document_registry import record_pending_contract_document
 from app.legal.document_upload_policy import DocumentUploadContext, contract_document_upload_allowed
+from app.legal.document_validation import MAX_PDF_BYTES
+from app.legal.s3_factory import build_private_contract_store
+from app.core.config import get_settings
 from app.legal.schemas import ContractDraftInput, InsurancePolicyInput
 
 router = APIRouter(tags=["juridique"], route_class=SecuredRoute)
@@ -221,6 +227,81 @@ def preflight_contract_document(contract_id: uuid.UUID, auth: ContractCreate) ->
     if not contract_document_upload_allowed(context):
         raise AppError("CONFLICT")
     return {"allowed": True}
+
+
+@router.post("/legal-contracts/{contract_id}/documents", status_code=201)
+async def upload_contract_document(
+    contract_id: uuid.UUID,
+    request: Request,
+    auth: ContractCreate,
+    filename: Annotated[str, Header(alias="X-Filename")],
+) -> dict[str, str]:
+    """Store scanned PDF metadata as PENDING; never certify a document automatically."""
+    contract = auth.db.scalar(
+        select(LegalContract).where(
+            LegalContract.tenant_id == auth.tenant_id,
+            LegalContract.contract_id == contract_id,
+        ).with_for_update()
+    )
+    if contract is None or not auth.scope.covers_site(contract.site_id):
+        raise AppError("NOT_FOUND")
+    context = DocumentUploadContext(
+        authenticated_tenant_id=auth.tenant_id,
+        contract_tenant_id=contract.tenant_id,
+        contract_site_id=contract.site_id,
+        accessible_site_ids=frozenset(auth.scope.site_ids),
+        tenant_wide=auth.scope.tenant_wide,
+        contract_status=contract.status,
+    )
+    if not contract_document_upload_allowed(context):
+        raise AppError("CONFLICT")
+    if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/pdf":
+        raise AppError("VALIDATION_ERROR")
+    name = filename.strip()
+    if not name or len(name) > 255 or "/" in name or "\\\\" in name:
+        raise AppError("VALIDATION_ERROR")
+    chunks = bytearray()
+    async for part in request.stream():
+        if len(chunks) + len(part) > MAX_PDF_BYTES:
+            raise AppError("VALIDATION_ERROR")
+        chunks.extend(part)
+    settings = get_settings()
+    if not settings.legal_malware_scan_enabled or not settings.legal_object_storage_enabled:
+        raise AppError("SERVICE_BUSY")
+    try:
+        document = ingest_authorized_contract_pdf(
+            context=context,
+            contract_id=contract_id,
+            payload=bytes(chunks),
+            scanner=build_contract_malware_scanner(settings),
+            store=build_private_contract_store(settings),
+        )
+    except ValueError:
+        raise AppError("VALIDATION_ERROR") from None
+    except (OSError, RuntimeError):
+        raise AppError("SERVICE_BUSY") from None
+    document_id = record_pending_contract_document(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        contract_id=contract_id,
+        actor_id=auth.user_id,
+        original_filename=name,
+        document=document,
+    )
+    record(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        site_id=contract.site_id,
+        action="legal.contract.document.upload",
+        entity_type="legal_contract_document",
+        entity_id=document_id,
+        actor_user_id=auth.user_id,
+        before=None,
+        after={"status": "PENDING"},
+        changed_fields=["status"],
+    )
+    auth.db.commit()
+    return {"document_id": str(document_id), "status": "PENDING"}
 
 
 @router.post("/legal-contracts/{contract_id}/submit", response_model=ContractOut)
