@@ -110,6 +110,17 @@ def verify_contract_document(
     contract_id: uuid.UUID, document_id: uuid.UUID, auth: ContractReview
 ) -> dict[str, str]:
     """Reverify private bytes before recording a document as VERIFIED."""
+    # Hide foreign/missing documents before checking unavailable external services.
+    exists = auth.db.scalar(
+        text(
+            "SELECT EXISTS (SELECT 1 FROM legal_contract_document "
+            "WHERE tenant_id = :tenant AND contract_id = :contract "
+            "AND document_id = :document AND status = 'PENDING')"
+        ),
+        {"tenant": auth.tenant_id, "contract": contract_id, "document": document_id},
+    )
+    if not exists:
+        raise AppError("NOT_FOUND")
     settings = get_settings()
     if not settings.legal_malware_scan_enabled or not settings.legal_object_storage_enabled:
         raise AppError("SERVICE_BUSY")
