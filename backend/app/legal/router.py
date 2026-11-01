@@ -119,6 +119,19 @@ def get_contract_storage_reconciliation(auth: ContractReview) -> ReconciliationS
         )
     except (OSError, RuntimeError, ValueError):
         raise AppError("SERVICE_BUSY") from None
+    record(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        actor_user_id=auth.user_id,
+        action="legal.contract.storage_reconciliation.read",
+        entity_type="legal_contract_document",
+        after={
+            "orphan_count": summary.orphan_count,
+            "missing_count": summary.missing_count,
+            "consistent": summary.consistent,
+        },
+    )
+    auth.db.commit()
     return ReconciliationSummaryOut(
         orphan_count=summary.orphan_count,
         missing_count=summary.missing_count,
