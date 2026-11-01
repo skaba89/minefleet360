@@ -8950,7 +8950,7 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                "X-Filename": string;
+                "X-Filename"?: string | null;
                 authorization?: string | null;
             };
             path: {
