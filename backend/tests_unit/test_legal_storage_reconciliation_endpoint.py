@@ -27,9 +27,7 @@ def test_storage_reconciliation_returns_counts_only(monkeypatch: pytest.MonkeyPa
     storage = SimpleNamespace(client=MagicMock(), bucket="private")
     monkeypatch.setattr(legal_router, "build_private_contract_store", lambda _settings: storage)
     monkeypatch.setattr(legal_router, "get_settings", lambda: object())
-    service = MagicMock(
-        return_value=SimpleNamespace(orphan_count=2, missing_count=1, consistent=False)
-    )
+    service = MagicMock(return_value=SimpleNamespace(orphan_count=2, missing_count=1, consistent=False))
     monkeypatch.setattr(legal_router, "summarize_tenant_contract_storage", service)
     tenant_id = uuid.uuid4()
     auth = SimpleNamespace(
