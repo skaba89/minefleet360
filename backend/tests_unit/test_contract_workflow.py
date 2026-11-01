@@ -5,7 +5,9 @@ import pytest
 from app.legal.contract_workflow import ContractAction, ContractState, next_contract_state
 
 
-def transition(state: ContractState, action: ContractAction, *, creator: bool = False, document: bool = True) -> ContractState:
+def transition(
+    state: ContractState, action: ContractAction, *, creator: bool = False, document: bool = True
+) -> ContractState:
     return next_contract_state(state, action, actor_is_creator=creator, document_attached=document)
 
 
