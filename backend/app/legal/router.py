@@ -12,6 +12,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.audit.contracts import record
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.db import Base
@@ -22,6 +23,7 @@ from app.legal.schemas import ContractDraftInput, InsurancePolicyInput
 router = APIRouter(tags=["juridique"], route_class=SecuredRoute)
 ContractRead = Annotated[Authorized, Depends(Require("legal.contract.read"))]
 ContractCreate = Annotated[Authorized, Depends(Require("legal.contract.create"))]
+ContractSubmit = Annotated[Authorized, Depends(Require("legal.contract.submit"))]
 InsuranceRead = Annotated[Authorized, Depends(Require("legal.insurance.read"))]
 InsuranceCreate = Annotated[Authorized, Depends(Require("legal.insurance.create"))]
 
@@ -191,5 +193,48 @@ def create_insurance_policy(body: InsurancePolicyInput, auth: InsuranceCreate) -
         auth.db.rollback()
         raise AppError("CONFLICT") from None
     result = InsuranceOut.model_validate(policy, from_attributes=True)
+    auth.db.commit()
+    return result
+
+
+@router.post("/legal-contracts/{contract_id}/submit", response_model=ContractOut)
+def submit_contract(contract_id: uuid.UUID, auth: ContractSubmit) -> ContractOut:
+    """Atomically submit a document-backed draft without approving or signing."""
+    contract = auth.db.scalar(
+        select(LegalContract).where(
+            LegalContract.tenant_id == auth.tenant_id,
+            LegalContract.contract_id == contract_id,
+        )
+    )
+    if contract is None or not auth.scope.covers_site(contract.site_id):
+        raise AppError("NOT_FOUND")
+    if contract.status != "DRAFT" or contract.document_sha256 is None:
+        raise AppError("CONFLICT")
+    updated = auth.db.execute(
+        text(
+            "UPDATE legal_contract SET status = 'PENDING_REVIEW', submitted_at = now() "
+            "WHERE tenant_id = :tenant AND contract_id = :contract_id "
+            "AND status = 'DRAFT' AND document_sha256 IS NOT NULL "
+            "RETURNING contract_id"
+        ),
+        {"tenant": auth.tenant_id, "contract_id": contract_id},
+    ).first()
+    if updated is None:
+        auth.db.rollback()
+        raise AppError("CONFLICT")
+    record(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        site_id=contract.site_id,
+        action="legal.contract.submit",
+        entity_type="legal_contract",
+        entity_id=contract_id,
+        actor_user_id=auth.user_id,
+        before={"status": "DRAFT"},
+        after={"status": "PENDING_REVIEW"},
+        changed_fields=["status", "submitted_at"],
+    )
+    auth.db.refresh(contract)
+    result = ContractOut.model_validate(contract, from_attributes=True)
     auth.db.commit()
     return result
