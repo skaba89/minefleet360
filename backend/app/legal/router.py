@@ -27,6 +27,7 @@ from app.legal.document_registry import (
 )
 from app.legal.document_upload_policy import DocumentUploadContext, contract_document_upload_allowed
 from app.legal.document_validation import MAX_PDF_BYTES
+from app.legal.reconciliation_service import summarize_tenant_contract_storage
 from app.legal.s3_factory import build_private_contract_store
 from app.legal.schemas import ContractDraftInput, InsurancePolicyInput
 
@@ -95,6 +96,34 @@ class InsuranceOut(BaseModel):
     premium_amount: Decimal | None
     currency: str
     contract_id: uuid.UUID | None
+
+
+class ReconciliationSummaryOut(BaseModel):
+    orphan_count: int
+    missing_count: int
+    consistent: bool
+
+
+@router.get("/legal-contracts/storage-reconciliation", response_model=ReconciliationSummaryOut)
+def get_contract_storage_reconciliation(auth: ContractReview) -> ReconciliationSummaryOut:
+    """Tenant-wide reviewers only; expose counts, not private object keys."""
+    if not auth.scope.tenant_wide:
+        raise AppError("NOT_FOUND")
+    try:
+        store = build_private_contract_store(get_settings())
+        summary = summarize_tenant_contract_storage(
+            authenticated_tenant_id=auth.tenant_id,
+            s3_client=store.client,
+            bucket=store.bucket,
+            db=auth.db,
+        )
+    except (OSError, RuntimeError, ValueError):
+        raise AppError("SERVICE_BUSY") from None
+    return ReconciliationSummaryOut(
+        orphan_count=summary.orphan_count,
+        missing_count=summary.missing_count,
+        consistent=summary.consistent,
+    )
 
 
 @router.get("/legal-contracts", response_model=Page[ContractOut])
