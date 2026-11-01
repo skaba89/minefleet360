@@ -26,7 +26,8 @@ def mark_reverified_contract_document(
     row = db.execute(
         text(
             "UPDATE legal_contract_document "
-            "SET status = 'VERIFIED', stored_object_verified = true, malware_scan_passed = true "
+            "SET status = 'VERIFIED', verified_at = now(), "
+            "stored_object_verified = true, malware_scan_passed = true "
             "WHERE tenant_id = :tenant AND contract_id = :contract AND document_id = :document "
             "AND status = 'PENDING' "
             "RETURNING document_id"
