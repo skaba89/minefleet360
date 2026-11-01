@@ -30,6 +30,10 @@ def test_contract_document_upload_fail_closed(client: TestClient, api: Api) -> N
     assert forbidden.status_code == 403
     hidden = client.post(path, headers={**outsider.headers, **headers}, content=pdf)
     assert hidden.status_code == 404
+    hidden_without_filename = client.post(path, headers=outsider.headers, content=pdf)
+    assert hidden_without_filename.status_code == 404
+    missing_filename = client.post(path, headers={**owner.headers, "Content-Type": "application/pdf"}, content=pdf)
+    assert missing_filename.status_code == 422
     unavailable = client.post(path, headers={**owner.headers, **headers}, content=pdf)
     assert unavailable.status_code == 503
     wrong_type = client.post(
