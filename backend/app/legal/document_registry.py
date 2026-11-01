@@ -4,6 +4,7 @@ Call only after authenticated tenant/site checks and secure PDF ingestion.
 The database transaction and audit belong to the API orchestration layer.
 """
 
+import re
 import uuid
 from typing import Any
 
@@ -27,6 +28,13 @@ def record_pending_contract_document(
         raise ValueError("invalid document filename")
     if tenant_id.int == 0 or contract_id.int == 0 or actor_id.int == 0:
         raise ValueError("missing document ownership")
+    prefix = f"legal/{tenant_id}/contracts/{contract_id}/"
+    if not document.object_key.startswith(prefix) or not document.object_key.endswith(".pdf"):
+        raise ValueError("document key does not match contract ownership")
+    if not re.fullmatch(r"[0-9a-f]{64}", document.sha256):
+        raise ValueError("invalid document digest")
+    if not 1 <= document.byte_size <= 25 * 1024 * 1024:
+        raise ValueError("invalid document size")
     row = db.execute(
         text(
             "INSERT INTO legal_contract_document "
