@@ -21,6 +21,7 @@ def test_verified_transition_is_scoped_and_requires_pending() -> None:
     )
     sql = str(db.execute.call_args.args[0])
     assert "status = 'PENDING'" in sql
+    assert "verified_at = now()" in sql
     assert "tenant_id = :tenant" in sql
     assert "contract_id = :contract" in sql
     assert "document_id = :document" in sql
