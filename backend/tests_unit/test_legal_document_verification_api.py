@@ -13,7 +13,9 @@ from app.legal import router as legal_router
 def test_document_verification_commits_only_after_verified(monkeypatch: pytest.MonkeyPatch) -> None:
     db = MagicMock()
     auth = SimpleNamespace(
-        db=db, tenant_id=uuid.uuid4(), user_id=uuid.uuid4(),
+        db=db,
+        tenant_id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
         scope=SimpleNamespace(tenant_wide=True, site_ids=set()),
     )
     monkeypatch.setattr(
@@ -27,7 +29,8 @@ def test_document_verification_commits_only_after_verified(monkeypatch: pytest.M
     monkeypatch.setattr(legal_router, "verify_contract_pdf_usecase", service)
     doc_id = uuid.uuid4()
     assert legal_router.verify_contract_document(uuid.uuid4(), doc_id, auth) == {
-        "document_id": str(doc_id), "status": "VERIFIED",
+        "document_id": str(doc_id),
+        "status": "VERIFIED",
     }
     assert service.call_args.kwargs["tenant_id"] == auth.tenant_id
     db.commit.assert_called_once()
@@ -36,7 +39,9 @@ def test_document_verification_commits_only_after_verified(monkeypatch: pytest.M
 def test_document_verification_denied_does_not_commit(monkeypatch: pytest.MonkeyPatch) -> None:
     db = MagicMock()
     auth = SimpleNamespace(
-        db=db, tenant_id=uuid.uuid4(), user_id=uuid.uuid4(),
+        db=db,
+        tenant_id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
         scope=SimpleNamespace(tenant_wide=True, site_ids=set()),
     )
     monkeypatch.setattr(
