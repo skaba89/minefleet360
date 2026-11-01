@@ -4,8 +4,8 @@ This gate never marks records VERIFIED. The API must enforce tenant/site
 authorization and commit verified metadata only after trusted checks.
 """
 
-from dataclasses import dataclass
 import uuid
+from dataclasses import dataclass
 
 from app.legal.document_validation import inspect_contract_pdf
 from app.legal.malware_scan import MalwareScanner, require_clean_pdf
