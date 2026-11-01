@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import Date, Numeric, String, func, select, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.exc import IntegrityError
@@ -24,6 +24,7 @@ router = APIRouter(tags=["juridique"], route_class=SecuredRoute)
 ContractRead = Annotated[Authorized, Depends(Require("legal.contract.read"))]
 ContractCreate = Annotated[Authorized, Depends(Require("legal.contract.create"))]
 ContractSubmit = Annotated[Authorized, Depends(Require("legal.contract.submit"))]
+ContractReview = Annotated[Authorized, Depends(Require("legal.contract.review"))]
 InsuranceRead = Annotated[Authorized, Depends(Require("legal.insurance.read"))]
 InsuranceCreate = Annotated[Authorized, Depends(Require("legal.insurance.create"))]
 
@@ -233,6 +234,64 @@ def submit_contract(contract_id: uuid.UUID, auth: ContractSubmit) -> ContractOut
         before={"status": "DRAFT"},
         after={"status": "PENDING_REVIEW"},
         changed_fields=["status", "submitted_at"],
+    )
+    auth.db.refresh(contract)
+    result = ContractOut.model_validate(contract, from_attributes=True)
+    auth.db.commit()
+    return result
+
+
+class ContractDecisionIn(BaseModel):
+    action: str
+    note: str = Field(min_length=1, max_length=500)
+
+
+@router.post("/legal-contracts/{contract_id}/decision", response_model=ContractOut)
+def decide_contract(contract_id: uuid.UUID, body: ContractDecisionIn, auth: ContractReview) -> ContractOut:
+    """Approve or reject a submitted contract; never act as an electronic signature."""
+    if body.action not in {"APPROVE", "REJECT"} or not body.note.strip():
+        raise AppError("VALIDATION_ERROR")
+    contract = auth.db.scalar(
+        select(LegalContract).where(
+            LegalContract.tenant_id == auth.tenant_id,
+            LegalContract.contract_id == contract_id,
+        )
+    )
+    if contract is None or not auth.scope.covers_site(contract.site_id):
+        raise AppError("NOT_FOUND")
+    if contract.created_by == auth.user_id or contract.status != "PENDING_REVIEW":
+        raise AppError("CONFLICT")
+    target = "APPROVED" if body.action == "APPROVE" else "REJECTED"
+    changed = auth.db.execute(
+        text(
+            "UPDATE legal_contract SET status = :target, reviewed_by = :actor, "
+            "reviewed_at = now(), review_note = :note "
+            "WHERE tenant_id = :tenant AND contract_id = :contract_id "
+            "AND status = 'PENDING_REVIEW' AND created_by <> :actor "
+            "AND document_sha256 IS NOT NULL RETURNING contract_id"
+        ),
+        {
+            "target": target,
+            "actor": auth.user_id,
+            "note": body.note.strip(),
+            "tenant": auth.tenant_id,
+            "contract_id": contract_id,
+        },
+    ).first()
+    if changed is None:
+        auth.db.rollback()
+        raise AppError("CONFLICT")
+    record(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        site_id=contract.site_id,
+        action="legal.contract.review",
+        entity_type="legal_contract",
+        entity_id=contract_id,
+        actor_user_id=auth.user_id,
+        before={"status": "PENDING_REVIEW"},
+        after={"status": target},
+        changed_fields=["status", "reviewed_by", "reviewed_at", "review_note"],
     )
     auth.db.refresh(contract)
     result = ContractOut.model_validate(contract, from_attributes=True)
