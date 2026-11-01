@@ -208,7 +208,8 @@ def test_disable_only_for_optional_roles(client: TestClient, api: Api) -> None:
     )
     assert (refused.status_code, refused.json()["code"]) == (422, "MFA_REQUIRED_FOR_ROLE")
     dispatcher: Account = api.user(t, "DISPATCHER", "SITE", "S1")
-    d_secret, _ = _enroll(client, dispatcher.headers)
+    enrollment_codes: list[str] = []
+    d_secret, _ = _enroll(client, dispatcher.headers, used_code=enrollment_codes)
     bad_password = client.post(
         f"{API}/me/mfa/disable", headers=dispatcher.headers, json={"password": "faux", "code": "000000"}
     )
@@ -222,7 +223,7 @@ def test_disable_only_for_optional_roles(client: TestClient, api: Api) -> None:
     replay = client.post(
         f"{API}/me/mfa/disable",
         headers=dispatcher.headers,
-        json={"password": PASSWORD, "code": _code(d_secret)},
+        json={"password": PASSWORD, "code": enrollment_codes[0]},
     )
     assert replay.status_code == 401
     del d_secret
