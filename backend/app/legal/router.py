@@ -26,6 +26,7 @@ from app.legal.document_registry import (
     validate_contract_document_filename,
 )
 from app.legal.document_upload_policy import DocumentUploadContext, contract_document_upload_allowed
+from app.legal.document_verification_usecase import verify_contract_pdf_usecase
 from app.legal.document_validation import MAX_PDF_BYTES
 from app.legal.reconciliation_service import summarize_tenant_contract_storage
 from app.legal.s3_factory import build_private_contract_store
@@ -102,6 +103,37 @@ class ReconciliationSummaryOut(BaseModel):
     orphan_count: int
     missing_count: int
     consistent: bool
+
+
+@router.post("/legal-contracts/{contract_id}/documents/{document_id}/verify", status_code=200)
+def verify_contract_document(
+    contract_id: uuid.UUID, document_id: uuid.UUID, auth: ContractReview
+) -> dict[str, str]:
+    """Reverify private bytes before recording a document as VERIFIED."""
+    settings = get_settings()
+    if not settings.legal_malware_scan_enabled or not settings.legal_object_storage_enabled:
+        raise AppError("SERVICE_BUSY")
+    try:
+        verified = verify_contract_pdf_usecase(
+            auth.db,
+            tenant_id=auth.tenant_id,
+            contract_id=contract_id,
+            document_id=document_id,
+            actor_user_id=auth.user_id,
+            review_permission_granted=True,
+            tenant_wide=auth.scope.tenant_wide,
+            accessible_site_ids=frozenset(auth.scope.site_ids),
+            scanner=build_contract_malware_scanner(settings),
+            store=build_private_contract_store(settings),
+        )
+        if not verified:
+            auth.db.rollback()
+            raise AppError("NOT_FOUND")
+        auth.db.commit()
+    except (OSError, RuntimeError, ValueError):
+        auth.db.rollback()
+        raise AppError("SERVICE_BUSY") from None
+    return {"document_id": str(document_id), "status": "VERIFIED"}
 
 
 @router.get("/legal-contracts/storage-reconciliation", response_model=ReconciliationSummaryOut)
