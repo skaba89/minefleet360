@@ -21,9 +21,7 @@ def test_paginated_s3_reconciliation_is_tenant_scoped() -> None:
     ]
     db = MagicMock()
     db.execute.return_value.scalars.return_value.all.return_value = [common, missing]
-    result = reconcile_tenant_contract_objects(
-        tenant_id=tenant, s3_client=s3, bucket="private-legal", db=db
-    )
+    result = reconcile_tenant_contract_objects(tenant_id=tenant, s3_client=s3, bucket="private-legal", db=db)
     assert result.orphan_object_keys == (orphan,)
     assert result.missing_object_keys == (missing,)
     assert s3.list_objects_v2.call_count == 2
@@ -40,9 +38,7 @@ def test_cross_tenant_s3_result_fails_before_sql() -> None:
         "IsTruncated": False,
     }
     with pytest.raises(ValueError, match="out-of-scope"):
-        reconcile_tenant_contract_objects(
-            tenant_id=uuid.uuid4(), s3_client=s3, bucket="private-legal", db=db
-        )
+        reconcile_tenant_contract_objects(tenant_id=uuid.uuid4(), s3_client=s3, bucket="private-legal", db=db)
     db.execute.assert_not_called()
 
 
