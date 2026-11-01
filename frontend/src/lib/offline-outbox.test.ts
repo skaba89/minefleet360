@@ -24,7 +24,7 @@ describe("outbox désactivée par défaut", () => {
   });
 
   it("refuse de lire la file sans identité vérifiée", async () => {
-    await expect(listPending("", "user-a")).rejects.toThrow("Compte requis");
-    await expect(listPending("tenant-a", "")).rejects.toThrow("Compte requis");
+    await expect(listPending({ tenantId: "", userId: "user-a", siteId: "site-a" })).rejects.toThrow("incomplète");
+    await expect(listPending({ tenantId: "tenant-a", userId: "", siteId: "site-a" })).rejects.toThrow("incomplète");
   });
 });
