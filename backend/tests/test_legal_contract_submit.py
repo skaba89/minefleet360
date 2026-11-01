@@ -32,7 +32,7 @@ def test_submit_contract_requires_document_and_role(client: TestClient, api: Api
     assert document.status_code == 201, document.text
     ready_id = document.json()["contract_id"]
     submitted = client.post(f"{API}/legal-contracts/{ready_id}/submit", headers=manager.headers)
-    assert submitted.status_code == 200, submitted.text
-    assert submitted.json()["status"] == "PENDING_REVIEW"
+    # A declared SHA-256 is not verified evidence; submissions must fail closed.
+    assert submitted.status_code == 409, submitted.text
     repeated = client.post(f"{API}/legal-contracts/{ready_id}/submit", headers=manager.headers)
     assert repeated.status_code == 409

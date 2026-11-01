@@ -211,6 +211,19 @@ def submit_contract(contract_id: uuid.UUID, auth: ContractSubmit) -> ContractOut
         raise AppError("NOT_FOUND")
     if contract.status != "DRAFT" or contract.document_sha256 is None:
         raise AppError("CONFLICT")
+    # Fail closed until the private upload, scan and verification workflow exists.
+    # A caller-supplied digest alone is never evidence of stored, safe bytes.
+    evidence = auth.db.scalar(
+        text(
+            "SELECT EXISTS (SELECT 1 FROM legal_contract_document "
+            "WHERE tenant_id = :tenant AND contract_id = :contract_id "
+            "AND sha256 = :sha AND status = 'VERIFIED' "
+            "AND stored_object_verified = true AND malware_scan_passed = true)"
+        ),
+        {"tenant": auth.tenant_id, "contract_id": contract_id, "sha": contract.document_sha256},
+    )
+    if not evidence:
+        raise AppError("CONFLICT")
     updated = auth.db.execute(
         text(
             "UPDATE legal_contract SET status = 'PENDING_REVIEW', submitted_at = now() "
