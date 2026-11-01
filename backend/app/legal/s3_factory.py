@@ -20,7 +20,7 @@ def build_private_contract_store(settings: Settings) -> S3PrivateObjectStore:
         or not settings.legal_object_storage_bucket
     ):
         raise RuntimeError("private contract storage configuration is incomplete")
-    import boto3
+    import boto3  # type: ignore[import-untyped]
 
     client: Any = boto3.client(
         "s3",
