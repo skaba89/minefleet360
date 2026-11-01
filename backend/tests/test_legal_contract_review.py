@@ -25,7 +25,8 @@ def test_contract_review_separation_and_replay(client: TestClient, api: Api) -> 
     premature = client.post(endpoint, headers=reviewer.headers, json={"action": "APPROVE", "note": "OK"})
     assert premature.status_code == 409
     submitted = client.post(f"{API}/legal-contracts/{contract_id}/submit", headers=creator.headers)
-    assert submitted.status_code == 200, submitted.text
+    # Until private storage and antivirus verification exist, no review can start.
+    assert submitted.status_code == 409, submitted.text
 
     forbidden = client.post(endpoint, headers=operator.headers, json={"action": "APPROVE", "note": "OK"})
     assert forbidden.status_code == 403
@@ -33,8 +34,5 @@ def test_contract_review_separation_and_replay(client: TestClient, api: Api) -> 
     assert self_review.status_code == 409
     empty = client.post(endpoint, headers=reviewer.headers, json={"action": "APPROVE", "note": " "})
     assert empty.status_code == 422
-    decided = client.post(endpoint, headers=reviewer.headers, json={"action": "APPROVE", "note": "Validé"})
-    assert decided.status_code == 200, decided.text
-    assert decided.json()["status"] == "APPROVED"
-    repeat = client.post(endpoint, headers=reviewer.headers, json={"action": "REJECT", "note": "Non"})
-    assert repeat.status_code == 409
+    blocked = client.post(endpoint, headers=reviewer.headers, json={"action": "APPROVE", "note": "Validé"})
+    assert blocked.status_code == 409
