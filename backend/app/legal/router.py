@@ -234,7 +234,7 @@ async def upload_contract_document(
     contract_id: uuid.UUID,
     request: Request,
     auth: ContractCreate,
-    filename: Annotated[str, Header(alias="X-Filename")],
+    filename: Annotated[str | None, Header(alias="X-Filename")] = None,
 ) -> dict[str, str]:
     """Store scanned PDF metadata as PENDING; never certify a document automatically."""
     contract = auth.db.scalar(
@@ -259,7 +259,7 @@ async def upload_contract_document(
         raise AppError("CONFLICT")
     if request.headers.get("content-type", "").split(";")[0].strip().lower() != "application/pdf":
         raise AppError("VALIDATION_ERROR")
-    name = filename.strip()
+    name = (filename or "").strip()
     if not name or len(name) > 255 or "/" in name or "\\" in name:
         raise AppError("VALIDATION_ERROR")
     chunks = bytearray()
