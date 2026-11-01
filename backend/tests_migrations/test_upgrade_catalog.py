@@ -195,6 +195,60 @@ def _assert_legal_insurance_tenant_isolation(app_engine: Engine) -> None:
         connection.rollback()
 
 
+def _assert_legal_review_guards(app_engine: Engine, owner_engine: Engine) -> None:
+    """Review status must be coherent even if future API code is defective."""
+    actor = uuid.uuid4()
+    reference = "LEGAL-REVIEW-GUARD"
+    # A draft still inserts normally; the review workflow is not yet exposed.
+    with app_engine.begin() as connection:
+        _context(connection, TENANT_A)
+        connection.execute(
+            text(
+                "INSERT INTO legal_contract (tenant_id, site_id, reference, title, "
+                "contract_type, counterparty_name, created_by) "
+                "VALUES (:tenant, :site, :reference, 'Draft', 'OTHER', 'Partner', :actor)"
+            ),
+            {"tenant": TENANT_A, "site": SITE_A, "reference": reference, "actor": actor},
+        )
+
+    for state, submitted, document, reviewer in (
+        ("PENDING_REVIEW", None, "a" * 64, None),
+        ("PENDING_REVIEW", "2026-01-01", None, None),
+        ("APPROVED", "2026-01-01", "a" * 64, actor),
+    ):
+        with app_engine.connect() as connection:
+            _context(connection, TENANT_A)
+            with pytest.raises(IntegrityError):
+                connection.execute(
+                    text(
+                        "INSERT INTO legal_contract (tenant_id, site_id, reference, title, "
+                        "contract_type, counterparty_name, created_by, status, submitted_at, "
+                        "document_sha256, reviewed_by, reviewed_at) "
+                        "VALUES (:tenant, :site, :reference, 'Review', 'OTHER', 'Partner', "
+                        ":actor, :status, :submitted, :document, :reviewer, :reviewed_at)"
+                    ),
+                    {
+                        "tenant": TENANT_A,
+                        "site": SITE_A,
+                        "reference": str(uuid.uuid4()),
+                        "actor": actor,
+                        "status": state,
+                        "submitted": submitted,
+                        "document": document,
+                        "reviewer": reviewer,
+                        "reviewed_at": "2026-01-02" if reviewer is not None else None,
+                    },
+                )
+            connection.rollback()
+
+    # PostgreSQL RLS policies remain read/insert only; no transition endpoint yet.
+    with owner_engine.connect() as connection:
+        count = connection.execute(
+            text("SELECT count(*) FROM pg_policies WHERE tablename = 'legal_contract' AND cmd = 'UPDATE'")
+        ).scalar_one()
+        assert count == 0
+
+
 def test_01_upgrade_repairs_existing_tenants_and_is_idempotent() -> None:
     settings = get_settings()
     config = _alembic_config()
@@ -256,6 +310,7 @@ def test_01_upgrade_repairs_existing_tenants_and_is_idempotent() -> None:
             connection.rollback()
 
         _assert_legal_insurance_tenant_isolation(app_engine)
+        _assert_legal_review_guards(app_engine, owner_engine)
 
         _assert_database_protections(owner_engine)
 
