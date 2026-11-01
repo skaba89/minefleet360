@@ -1,5 +1,6 @@
 /** File IndexedDB de commandes terrain, inactive tant qu'aucun parcours métier n'est autorisé. */
 import { assertOfflinePayloadSafe } from "./offline-payload-guard";
+import { identityKey, type OfflineIdentity } from "./offline-scope";
 
 export type OutboxStatus = "pending" | "syncing" | "rejected";
 
@@ -101,15 +102,15 @@ export async function enqueue(entry: OutboxEntry): Promise<void> {
 }
 
 /** Le périmètre est toujours imposé par le compte courant, jamais depuis l'entrée stockée. */
-export async function listPending(tenantId: string, userId: string): Promise<OutboxEntry[]> {
-  if (!tenantId || !userId) throw new Error("Compte requis");
+export async function listPending(identity: OfflineIdentity): Promise<OutboxEntry[]> {
+  const currentScope = identityKey(identity);
   const entries = await runTransaction<OutboxEntry[]>("readonly", (store, resolve, reject) => {
     const request = store.getAll();
     request.onsuccess = () => resolve(request.result as OutboxEntry[]);
     request.onerror = () => reject(request.error ?? new Error("Lecture impossible"));
   });
   return entries
-    .filter((e) => e.tenantId === tenantId && e.userId === userId && e.status === "pending")
+    .filter((e) => identityKey(e) === currentScope && e.status === "pending")
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.operationId.localeCompare(b.operationId));
 }
 
