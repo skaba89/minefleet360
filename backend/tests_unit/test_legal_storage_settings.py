@@ -10,11 +10,11 @@ def configured(**overrides: object) -> Settings:
     values = {
         "MF_APP_PASSWORD": "test-db-password",
         "MF_JWT_SECRET": "a" * 40,
-        "MF_LEGAL_OBJECT_STORAGE_ENABLED": True,
-        "MF_LEGAL_OBJECT_STORAGE_ENDPOINT": "https://storage.example.test",
-        "MF_LEGAL_OBJECT_STORAGE_BUCKET": "minefleet-private",
-        "MF_LEGAL_OBJECT_STORAGE_ACCESS_KEY": "test-access",
-        "MF_LEGAL_OBJECT_STORAGE_SECRET_KEY": "test-secret",
+        "legal_object_storage_enabled": True,
+        "legal_object_storage_endpoint": "https://storage.example.test",
+        "legal_object_storage_bucket": "minefleet-private",
+        "legal_object_storage_access_key": "test-access",
+        "legal_object_storage_secret_key": "test-secret",
     }
     values.update(overrides)
     return Settings(**values)
@@ -27,10 +27,10 @@ def test_secure_object_storage_config() -> None:
 @pytest.mark.parametrize(
     "invalid",
     [
-        {"MF_LEGAL_OBJECT_STORAGE_ENDPOINT": "http://storage.example.test"},
-        {"MF_LEGAL_OBJECT_STORAGE_BUCKET": ""},
-        {"MF_LEGAL_OBJECT_STORAGE_BUCKET": "folder/bucket"},
-        {"MF_LEGAL_OBJECT_STORAGE_SECRET_KEY": None},
+        {"legal_object_storage_endpoint": "http://storage.example.test"},
+        {"legal_object_storage_bucket": ""},
+        {"legal_object_storage_bucket": "folder/bucket"},
+        {"legal_object_storage_secret_key": None},
     ],
 )
 def test_insecure_storage_config_rejected(invalid: dict[str, object]) -> None:
