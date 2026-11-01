@@ -226,8 +226,7 @@ def _assert_legal_review_guards(app_engine: Engine, owner_engine: Engine) -> Non
                         "contract_type, counterparty_name, created_by, status, submitted_at, "
                         "document_sha256, reviewed_by, reviewed_at) "
                         "VALUES (:tenant, :site, :reference, 'Review', 'OTHER', 'Partner', "
-                        ":actor, :status, :submitted, :document, :reviewer, "
-                        "CASE WHEN :reviewer IS NULL THEN NULL ELSE now() END)"
+                        ":actor, :status, :submitted, :document, :reviewer, :reviewed_at)"
                     ),
                     {
                         "tenant": TENANT_A,
@@ -238,6 +237,7 @@ def _assert_legal_review_guards(app_engine: Engine, owner_engine: Engine) -> Non
                         "submitted": submitted,
                         "document": document,
                         "reviewer": reviewer,
+                        "reviewed_at": "2026-01-02" if reviewer is not None else None,
                     },
                 )
             connection.rollback()
