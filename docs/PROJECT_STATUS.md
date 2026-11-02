@@ -1,6 +1,6 @@
 # État réel du projet
 
-État actualisé au 2 novembre 2026. `main` au commit `67f65b1` (#306) ; branches en revue décrites ci-dessous.
+État actualisé au 2 novembre 2026. `main` au commit `cc81f14` (#308) ; seule la PR GPS (#309) reste en revue.
 Les constats proviennent du code, des migrations, des tests et des workflows exécutés ; une mention dans une roadmap
 n'est pas une preuve de fonctionnement. Les photographies antérieures restent dans l'historique Git.
 
@@ -11,10 +11,9 @@ n'est pas une preuve de fonctionnement. Les photographies antérieures restent d
 | #300, #301, #302 | HSE-1, connexion plateforme, fiabilité/coûts maintenance | fusionnées dans `main` |
 | #303 | déclaration HSE hors ligne de bout en bout | fusionnée dans `main` |
 | #304 | pneumatiques (0053) | fusionnée dans `main` |
-| #305 | HSE-2 inspections (0054) | **fusionnée dans `feature/tyre-management` après la fusion de #304 : absente de `main`** |
+| #305, #307, #308 | HSE-2 inspections (0054) et coût complet (0055), arrivés dans `main` par #308 | fusionnées |
 | #306 | correctif 404 des achats de carburant | fusionnée dans `main` |
-| #307 | HSE-2 + coût complet (0055), `main` intégrée | ouverte ; **sa base doit être changée vers `main`** |
-| GPS avancé | zones, trajets, rétention (0056), empilé sur #307 | branche `feature/gps-geofencing` |
+| #309 | GPS avancé : zones, trajets audités, rétention (0056) | ouverte ; base à changer vers `main` |
 
 Production (VPS) : commit `70aeb74`, migration 0051 ; aucune livraison postérieure n'est déployée.
 
@@ -29,10 +28,10 @@ Production (VPS) : commit `70aeb74`, migration 0051 ; aucune livraison postérie
 | Pièces et magasins | Avancé | catalogue, stocks, mouvements, réservations, CMP, réappro, BC brouillon |
 | Pneumatiques | Opérationnel | #304, E2E |
 | Carburant et achats | Avancé | correctif #306 : création/décision d'achat répondaient 404 |
-| HSE | Incidents + hors ligne en `main` ; inspections/checklists/photos en #307 | tests API, UI, E2E |
+| HSE | Incidents, hors ligne, inspections, checklists, photos | tests API, UI, E2E |
 | Hors ligne | Premier parcours métier réel (déclaration HSE) | E2E Chromium + émulation Android en CI |
-| Coût complet par engin | En #307 | statuts complet/estimé/partiel/insuffisant |
-| GPS | Temps réel en `main` ; zones, trajets audités, rétention sur branche dédiée | tests API, charge bornée |
+| Coût complet par engin | Opérationnel | statuts complet/estimé/partiel/insuffisant |
+| GPS | Temps réel en `main` ; zones, trajets audités, rétention en #309 | tests API, charge bornée |
 | Contrats et assurances | Socle | registre, documents privés, antivirus |
 | Sous-traitants, rentabilité | Absents | — |
 
