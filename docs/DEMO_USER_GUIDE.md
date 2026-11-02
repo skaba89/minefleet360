@@ -36,7 +36,7 @@ minefleet demo reset-credentials --tenant demo-bauxite --credentials-out /srv/de
 | WORKSHOP_CHIEF / MECHANIC | `workshop-chief@…`, `mechanic.boke-mine@…` | ordres de travail |
 | FUEL_MANAGER | `fuel-manager.boke-mine@…` | cuves, distributions |
 | HSE | `hse@…` | incidents, actions correctives |
-| FINANCE / AUDITOR | `finance@…`, `auditor@…` | coûts, consultation |
-| HR / STOREKEEPER | `hr@…`, `storekeeper@…` | conducteurs ; magasin (pas encore peuplé) |
+| FINANCE / AUDITOR | `finance@…`, `auditor@…` | coût complet, taux horaire, approbation des achats de carburant ; consultation |
+| HR / STOREKEEPER | `hr@…`, `storekeeper@…` | conducteurs ; magasin de pièces et stock de pneus |
 
 Les scénarios guidés sont dans DEMO_SCENARIOS.md. Toutes les personnes, sociétés et opérations sont fictives.

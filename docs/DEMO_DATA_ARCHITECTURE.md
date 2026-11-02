@@ -1,6 +1,6 @@
 # Architecture des données de démonstration (DEMO)
 
-État au 2 novembre 2026 — premier lot : profil `small`. Les profils `standard` et `large` sont déclarés mais
+État au 2 novembre 2026 — lots 1 (socle) et 2 (coûts valorisés, atelier, pneus, inspections) : profil `small`. Les profils `standard` et `large` sont déclarés mais
 leur volume et leurs performances n'ont pas encore été mesurés (lot suivant).
 
 ## 1. Objectif et principes
@@ -62,9 +62,12 @@ elle demande une décision explicite (droit destructif, journalisation, double c
 | Affectations | 15 | une par engin de transport, poste `JOUR` |
 | Missions / rotations / pesées | ≈205 / ≈560 / ≈560 | 14 jours, 2 à 4 rotations par mission, pesées pont-bascule |
 | Activité du jour J | 6 en cours, 3 planifiées | missions en chargement, route chargée, déchargement, démarrées 2 h 30 avant l'exécution (ou 08:00 pour un ancrage passé) — seule partie qui dépend de l'heure d'exécution |
-| Carburant | 5 cuves, ≈100 distributions | réceptions bornées par la capacité ; demande par le responsable carburant, approbation par le responsable des opérations (quatre yeux) |
-| Atelier | 6 OT | une panne clôturée (approbation, assignation, temps passé, contrôle qualité) et une panne ouverte par société |
-| HSE | 6 incidents | un presque-accident enquêté, action corrective réalisée puis vérifiée, incident clos ; un incident critique ouvert |
+| Carburant | 5 cuves, 10 achats, ≈100 distributions | bons de commande chiffrés en GNF (responsable carburant) approuvés par la finance puis livrés, bornés par la capacité ; distributions demandées par le responsable carburant, approuvées par le responsable des opérations (quatre yeux) |
+| Compteurs | ≈420 relevés | km et heures moteur en fin de poste, progression plausible (RM-103) |
+| Atelier | 6 OT, taux horaire | une panne clôturée (approbation, assignation, pièces réservées puis consommées, 3 h de main-d'œuvre, contrôle qualité) et une panne ouverte par société ; taux société 85 000 GNF/h |
+| Pièces | 6 références, 1 magasin par site | réceptions valorisées (GNF) ; sorties valorisées au CMP sur l'OT |
+| Pneus | ≈95 pneus, ≈180 inspections | 6 pneus par engin de transport, 2 tournées d'inspection (usure, pression, compteurs) ; un pneu usé déposé, réformé et remplacé par un pneu neuf |
+| HSE | 6 incidents, 65 inspections | un presque-accident enquêté, action corrective réalisée puis vérifiée, incident clos ; un incident critique ouvert ; checklist « avant poste » quotidienne, dont une non conforme (freins, point critique) |
 
 Volumes indicatifs : ils dépendent de la graine et de la date d'ancrage ; la sortie de `seed` donne les valeurs exactes.
 Contrôle de déterminisme effectué : deux bases vierges chargées avec la graine 42 et le même ancrage donnent les mêmes
@@ -79,7 +82,13 @@ Pour chaque société, sous le contexte RLS de la société :
 - chaque rotation terminée porte une pesée non annulée ;
 - tonnage mesuré des 7 derniers jours : somme directe des pesées = indicateur servi par `dispatch.weighing.indicators` ;
 - solde de chaque cuve = réceptions − distributions approuvées, compris entre 0 et la capacité ;
-- OT bloquant ouvert ⇔ engin immobilisé ; OT clôturé ⇒ engin remis en service.
+- OT bloquant ouvert ⇔ engin immobilisé ; OT clôturé ⇒ engin remis en service ;
+- coût complet servi par `costs.vehicle_costs` : carburant des engins de transport valorisé (statut « Estimé ») ;
+  main-d'œuvre = minutes saisies × taux horaire (recalcul indépendant) ; pièces consommées valorisées ;
+- pneus : une seule position par pneu monté, aucun pneu réformé resté sur un engin.
+
+Les sorties de magasin sont horodatées par la base à l'exécution réelle (non simulable) : avec un ancrage passé,
+elles apparaissent à la date d'exécution. Le contrôle des coûts couvre donc de « ancrage − 30 j » à aujourd'hui.
 
 ## 6. Instance de démonstration
 
@@ -93,8 +102,29 @@ coût, domaine, sauvegardes). Points à arbitrer :
   uniquement est envisageable — à décider, jamais en production ;
 - le fichier d'identifiants est à transmettre par canal sûr puis supprimer.
 
-## 7. Hors périmètre de ce lot (prochains lots)
+## 7. Hypothèses de valorisation (fictives)
 
-Positions GPS et franchissements de zones, pièces et sorties de magasin, pneumatiques, inspections HSE et
-checklists, achats de carburant, contrats et documents, parcours hors ligne, profils `standard`/`large` mesurés,
-mode « démonstration commerciale » guidé, E2E Playwright sur les données DEMO.
+| Élément | Valeur de démonstration | Remarque |
+|---|---|---|
+| Gazole | 12 400 à 13 200 GNF/L selon la livraison | prix tiré par bon de commande |
+| Main-d'œuvre | 85 000 GNF/h (taux société) | saisi par la finance |
+| Pièces | 290 000 à 1 980 000 GNF l'unité | 6 références |
+| Pneus neufs | 5,2 M (315/80R22.5) à 168 M GNF (24.00R35) | seuls les pneus achetés pendant la période sont valorisés |
+
+Ordres de grandeur plausibles, **à remplacer par les valeurs d'un client** ; aucun n'est présenté comme un prix
+de marché. Les pneus montés au départ sont une reprise d'inventaire sans prix d'achat connu : leur composante
+reste « Données insuffisantes » plutôt qu'un coût inventé.
+
+### Constat sur la méthode d'estimation des pneus (décision produit à prendre)
+
+Le coût pneu d'une période vaut km de la période × (prix d'achat ÷ km mesurés depuis le premier événement du
+pneu). Un pneu neuf monté pendant la période voit donc **tout son prix imputé** sur les premiers kilomètres :
+sur la démo, DEMO-CAM-001 porte 168 M GNF de pneu pour 664 km (≈ 290 000 GNF/km contre ≈ 40 000 pour les autres
+camions). Les données sont exactes ; c'est la méthode qui surpondère le début de vie. Piste : amortir à l'usure
+de bande (prix × usure mesurée ÷ usure utile), ou sur une durée de vie attendue paramétrée. Non modifié ici.
+
+## 8. Hors périmètre (prochains lots)
+
+Positions GPS et franchissements de zones, contrats et documents, parcours hors ligne, préventif, bons de
+commande de pièces, profils `standard`/`large` mesurés, mode « démonstration commerciale » guidé, E2E Playwright
+sur les données DEMO.
