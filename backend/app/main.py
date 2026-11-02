@@ -21,11 +21,13 @@ from app.core.email import EmailSender, build_email_sender
 from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
 from app.core.request_context import RequestMeta, set_request_meta
+from app.costs.router import router as costs_router
 from app.dispatch.router import router as dispatch_router
 from app.fleet.gps_live_router import router as gps_live_router
 from app.fleet.router import router as fleet_router
 from app.fuel.anomalies import router as fuel_anomalies_router
 from app.fuel.router import router as fuel_router
+from app.hse.inspections import router as hse_inspections_router
 from app.hse.router import router as hse_router
 from app.identity.auth_service import AuthLimiters
 from app.identity.router import auth_router, me_router, role_router, user_router
@@ -155,6 +157,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         maintenance_router,
         reliability_router,
         tyre_router,
+        costs_router,
         legal_router,
         parts_router,
         purchase_order_router,
@@ -162,6 +165,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         fuel_router,
         fuel_anomalies_router,
         hse_router,
+        hse_inspections_router,
     ):
         app.include_router(router, prefix=API_PREFIX)
     return app

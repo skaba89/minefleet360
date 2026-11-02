@@ -1194,6 +1194,8 @@ permissions:
       - { method: GET, path: "/hse/incidents/{hse_incident_id}/action-owners", shape: item, success: 200 }
       - { method: POST, path: "/hse/incidents/{hse_incident_id}/actions", shape: item, success: 201 }
       - { method: POST, path: "/hse/corrective-actions/{hse_corrective_action_id}/decision", shape: item, success: 200 }
+      - { method: GET, path: "/hse/inspections/{hse_inspection_id}/action-owners", shape: item, success: 200 }
+      - { method: POST, path: "/hse/inspections/{hse_inspection_id}/actions", shape: item, success: 201 }
     # Actions écrites : hse.incident.start_investigation, .note, .close, .cancel ; hse.action.create,
     # .verify, .reopen, .cancel.
     audit: { action: hse.incident.close }
@@ -1211,6 +1213,71 @@ permissions:
       DISPATCHER: [SITE]
       WORKSHOP_CHIEF: [TENANT, SITE]
       HSE: [TENANT, SITE]
+  # --- HSE-2 : inspections et checklists (docs/LIVRAISON_HSE2.md) ----------------------------------------
+  hse.inspection.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /hse/inspections, shape: collection, success: 200 }
+      - { method: GET, path: "/hse/inspections/{hse_inspection_id}", shape: item, success: 200 }
+      - { method: GET, path: "/hse/evidence/{hse_evidence_id}/content", shape: item, success: 200 }
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  hse.inspection.perform:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes:
+      - { method: GET, path: /hse/checklist-templates, shape: collection, success: 200 }
+      - { method: POST, path: /hse/inspections, shape: collection, success: 201 }
+      - { method: POST, path: "/hse/inspections/{hse_inspection_id}/evidence", shape: item, success: 201 }
+    # Actions écrites : hse.inspection.create, hse.evidence.upload.
+    audit: { action: hse.inspection.create }
+    grants:
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      MECHANIC: [TENANT, SITE]
+      FUEL_MANAGER: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+  hse.checklist.manage:
+    tranche: 1c
+    kind: action
+    site_bound: false
+    routes:
+      - { method: POST, path: /hse/checklist-templates, shape: collection, success: 201 }
+      - { method: POST, path: "/hse/checklist-templates/{template_id}/deactivate", shape: item, success: 200 }
+    audit: { action: hse.checklist.create }
+    grants: { HSE: [TENANT] }
+  # --- Coût complet par engin (chantier D, docs/LIVRAISON_COUT_COMPLET.md) ------------------------------
+  cost.vehicle.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /costs/vehicles, shape: collection, success: 200 }
+      - { method: GET, path: "/costs/vehicles/{vehicle_id}/history", shape: item, success: 200 }
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  cost.labour_rate.manage:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: GET, path: /costs/labour-rates, shape: collection, success: 200 }
+      - { method: POST, path: /costs/labour-rates, shape: collection, success: 201 }
+    audit: { action: cost.labour_rate.create }
+    grants: { DIRECTION: [TENANT], FINANCE: [TENANT, SITE] }
 
 public_routes:
   # Authentification machine obligatoire dans la route ; aucun accès anonyme aux données.

@@ -65,6 +65,35 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "cost.labour_rate.manage": {
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "cost.vehicle.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "dispatch.indicators.read": {
     "AUDITOR": [
       "TENANT"
@@ -776,6 +805,11 @@ export const GRANTS = {
       "SITE"
     ]
   },
+  "hse.checklist.manage": {
+    "HSE": [
+      "TENANT"
+    ]
+  },
   "hse.incident.manage": {
     "HSE": [
       "TENANT",
@@ -818,6 +852,54 @@ export const GRANTS = {
       "SITE"
     ],
     "MECHANIC": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "hse.inspection.perform": {
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "FUEL_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "MECHANIC": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "hse.inspection.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "HSE": [
       "TENANT",
       "SITE"
     ],

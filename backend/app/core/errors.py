@@ -142,6 +142,9 @@ CATALOG: dict[str, ErrorDef] = {
     "HSE_CORRECTIVE_ACTION_REQUIRED": ErrorDef(
         422, "Un incident grave ne peut être clôturé sans au moins une action corrective vérifiée."
     ),
+    "HSE_NO_NONCONFORMITY": ErrorDef(
+        422, "Cette inspection ne comporte aucune non-conformité : aucune action corrective à créer."
+    ),
     "HSE_OWNER_NOT_ELIGIBLE": ErrorDef(
         422, "Cette personne ne peut pas porter d'action corrective sur le site de l'incident."
     ),
@@ -174,6 +177,7 @@ CATALOG: dict[str, ErrorDef] = {
 
 # Contraintes de base → code métier (MODELE_PHYSIQUE_LOT1 §7). Messages sans révéler d'autre tenant.
 CONSTRAINT_CODES: dict[str, str] = {
+    "uq_mlr_scope_date": "CONFLICT",
     "uq_tyre_serial": "DUPLICATE_TYRE_SERIAL",
     "uq_tyre_mounted_position": "TYRE_POSITION_OCCUPIED",
     "uq_tenant_code": "DUPLICATE_WORKSPACE_CODE",

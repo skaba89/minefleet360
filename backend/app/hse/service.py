@@ -24,7 +24,7 @@ from app.core.http import PageParams, check_version
 from app.core.idempotency import IdempotencyClaim, complete
 from app.core.logging import security_logger
 from app.fleet.contracts import vehicle_facts
-from app.hse.models import HseCorrectiveAction, HseIncident, HseIncidentEvent
+from app.hse.models import HseCorrectiveAction, HseIncident, HseIncidentEvent, HseInspection
 from app.hse.schemas import (
     ActionComplete,
     ActionCreate,
@@ -74,27 +74,39 @@ def _overdue(action: HseCorrectiveAction, today: _Today) -> bool:
     return action.status == "OPEN" and action.due_date < today(action.site_id)
 
 
-def actions_out(
-    auth: Authorized, actions: list[HseCorrectiveAction], numbers: dict[uuid.UUID, int] | None = None
-) -> list[ActionOut]:
+def inspection_reference(number: int) -> str:
+    return f"INS-{number:06d}"
+
+
+def actions_out(auth: Authorized, actions: list[HseCorrectiveAction]) -> list[ActionOut]:
     if not actions:
         return []
     db = auth.db
-    if numbers is None:
-        numbers = dict(
-            db.execute(
-                select(HseIncident.hse_incident_id, HseIncident.number).where(
-                    HseIncident.hse_incident_id.in_({a.hse_incident_id for a in actions})
-                )
-            ).all()
-        )
+    incident_ids = {a.hse_incident_id for a in actions if a.hse_incident_id}
+    inspection_ids = {a.hse_inspection_id for a in actions if a.hse_inspection_id}
+    parents: dict[uuid.UUID, str] = {}
+    if incident_ids:
+        for incident_id, number in db.execute(
+            select(HseIncident.hse_incident_id, HseIncident.number).where(
+                HseIncident.hse_incident_id.in_(incident_ids)
+            )
+        ).all():
+            parents[incident_id] = reference(number)
+    if inspection_ids:
+        for inspection_id, number in db.execute(
+            select(HseInspection.hse_inspection_id, HseInspection.number).where(
+                HseInspection.hse_inspection_id.in_(inspection_ids)
+            )
+        ).all():
+            parents[inspection_id] = inspection_reference(number)
     names = display_names(db, {a.owner_user_id for a in actions})
     today = _Today(auth)
     return [
         ActionOut(
             hse_corrective_action_id=a.hse_corrective_action_id,
             hse_incident_id=a.hse_incident_id,
-            incident_reference=reference(numbers[a.hse_incident_id]),
+            hse_inspection_id=a.hse_inspection_id,
+            parent_reference=parents[a.hse_incident_id or a.hse_inspection_id],  # type: ignore[index]
             site_id=a.site_id,
             title=a.title,
             description=a.description,
@@ -129,7 +141,8 @@ def incidents_out(
         .where(HseCorrectiveAction.hse_incident_id.in_(ids))
         .order_by(HseCorrectiveAction.due_date, HseCorrectiveAction.created_at)
     ).scalars():
-        actions[action.hse_incident_id].append(action)
+        if action.hse_incident_id is not None:
+            actions[action.hse_incident_id].append(action)
     events: dict[uuid.UUID, list[HseIncidentEvent]] = defaultdict(list)
     people = {i.reported_by for i in incidents}
     if detail:
@@ -142,7 +155,6 @@ def incidents_out(
             people.add(e.actor_user_id)
     names = display_names(db, people)
     today = _Today(auth)
-    numbers = {i.hse_incident_id: i.number for i in incidents}
     out = []
     for i in incidents:
         own = actions[i.hse_incident_id]
@@ -190,7 +202,7 @@ def incidents_out(
                 )
                 for e in events[i.hse_incident_id]
             ]
-            data["actions"] = actions_out(auth, own, numbers)
+            data["actions"] = actions_out(auth, own)
         out.append(IncidentOut(**data))
     return out
 
@@ -334,6 +346,14 @@ def summary(auth: Authorized, *, site_id: uuid.UUID | None, days: int) -> HseSum
         .scalars()
         .all()
     )
+    inspection_scope = _scoped(auth, HseInspection.site_id, site_id)
+    inspection_counts = dict(
+        db.execute(
+            select(HseInspection.result, func.count())
+            .where(*inspection_scope, HseInspection.performed_at >= since)
+            .group_by(HseInspection.result)
+        ).all()
+    )
     today = _Today(auth)
     return HseSummaryOut(
         since=since.date(),
@@ -345,6 +365,8 @@ def summary(auth: Authorized, *, site_id: uuid.UUID | None, days: int) -> HseSum
         open_incidents=int(open_incidents),
         open_actions=len(pending),
         overdue_actions=sum(1 for a in pending if _overdue(a, today)),
+        inspections=int(sum(inspection_counts.values())),
+        failed_inspections=int(inspection_counts.get("FAIL", 0)),
     )
 
 
@@ -601,15 +623,25 @@ def add_action(auth: Authorized, incident_id: uuid.UUID, body: ActionCreate) -> 
             "due_date": action.due_date.isoformat(),
         },
     )
-    out = actions_out(auth, [action], {incident.hse_incident_id: incident.number})[0]
+    out = actions_out(auth, [action])[0]
     db.commit()
     return out
 
 
-def _locked_action(auth: Authorized, action_id: uuid.UUID) -> tuple[HseIncident, HseCorrectiveAction]:
-    """Verrouille l'incident puis l'action (ordre fixe, cf. clôture)."""
+def _locked_action(auth: Authorized, action_id: uuid.UUID) -> tuple[HseIncident | None, HseCorrectiveAction]:
+    """Verrouille le parent puis l'action (ordre fixe, cf. clôture d'incident).
+
+    Une inspection est en ajout seul (pas de FOR UPDATE possible) : verrou consultatif sur son identifiant.
+    """
     action = action_in_scope(auth, action_id)
-    incident = incident_in_scope(auth, action.hse_incident_id, for_update=True)
+    incident = None
+    if action.hse_incident_id is not None:
+        incident = incident_in_scope(auth, action.hse_incident_id, for_update=True)
+    else:
+        auth.db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))"),
+            {"k": str(action.hse_inspection_id)},
+        )
     locked = auth.db.execute(
         select(HseCorrectiveAction)
         .where(HseCorrectiveAction.hse_corrective_action_id == action_id)
@@ -634,7 +666,8 @@ def complete_action(auth: Authorized, action_id: uuid.UUID, body: ActionComplete
     action.completed_by = auth.user_id
     action.updated_by = auth.user_id
     db.flush()
-    _event(auth, incident, "ACTION_COMPLETED", incident.status, None)
+    if incident is not None:
+        _event(auth, incident, "ACTION_COMPLETED", incident.status, None)
     _audit(
         auth,
         "hse.action.complete",
@@ -643,7 +676,7 @@ def complete_action(auth: Authorized, action_id: uuid.UUID, body: ActionComplete
         action.site_id,
         changed_fields=["status", "completion_note"],
     )
-    out = actions_out(auth, [action], {incident.hse_incident_id: incident.number})[0]
+    out = actions_out(auth, [action])[0]
     db.commit()
     return out
 
@@ -682,7 +715,8 @@ def decide_action(auth: Authorized, action_id: uuid.UUID, body: ActionDecisionIn
         event_type = "ACTION_CANCELLED"
     action.updated_by = auth.user_id
     db.flush()
-    _event(auth, incident, event_type, incident.status, body.reason_code)
+    if incident is not None:
+        _event(auth, incident, event_type, incident.status, body.reason_code)
     _audit(
         auth,
         f"hse.action.{body.action.lower()}",
@@ -693,6 +727,6 @@ def decide_action(auth: Authorized, action_id: uuid.UUID, body: ActionDecisionIn
         before={"status": source},
         after={"status": action.status},
     )
-    out = actions_out(auth, [action], {incident.hse_incident_id: incident.number})[0]
+    out = actions_out(auth, [action])[0]
     db.commit()
     return out

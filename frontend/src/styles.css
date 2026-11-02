@@ -103,3 +103,9 @@ pre { white-space:pre-wrap; word-break:break-word; background:var(--bg); border-
 @media (max-width:420px) { .dashboard-metrics { grid-template-columns:1fr; }.status-distribution { gap:.5rem; }.status-legend { font-size:.7rem; }.live-fleet-metrics .card { padding:.8rem; }.user { font-size:.72rem; gap:.6rem; }.login-brand h1 { font-size:1.4rem; } }
 @media (prefers-reduced-motion:reduce) { button { transition:none; } }
 @media print { .topbar,.mainnav,.toolbar,button { display:none !important; }.shell { display:block; }.content { max-width:none; padding:0; } }
+
+/* HSE-2 : checklists et galerie de preuves */
+.checklist { border:1px solid var(--line, #d9dee5); border-radius:7px; padding:.75rem; display:grid; gap:.6rem; grid-column:1 / -1; }
+.checklist-item { display:grid; gap:.35rem; }
+.gallery { display:flex; flex-wrap:wrap; gap:.75rem; }
+.gallery figure { margin:0; max-width:min(100%, 320px); }

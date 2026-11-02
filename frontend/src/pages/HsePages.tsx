@@ -66,6 +66,9 @@ export function HsePage() {
     <section>
       <div className="page-head">
         <h1>Sécurité (HSE)</h1>
+        {(can(me.grants, "hse.inspection.read", siteId) || can(me.grants, "hse.inspection.perform", siteId)) && (
+          <Link to="/hse/inspections">Inspections et checklists</Link>
+        )}
         {can(me.grants, "hse.incident.report", siteId) && !reporting && (
           <button type="button" className="primary" onClick={() => setReporting(true)}>
             Déclarer un incident
@@ -104,6 +107,7 @@ export function HsePage() {
           <Fact label="Avec arrêt de travail">{s.lost_time_incidents}</Fact>
           <Fact label="Incidents ouverts">{s.open_incidents}</Fact>
           <Fact label="Actions en cours">{s.open_actions}</Fact>
+          <Fact label="Inspections (90 j)">{`${s.inspections} dont ${s.failed_inspections} non conforme(s)`}</Fact>
           <Fact label="Actions en retard">
             {s.overdue_actions > 0 ? <Badge tone="bad">{s.overdue_actions}</Badge> : 0}
           </Fact>
@@ -196,7 +200,7 @@ function MyActions() {
       <ul>
         {items.map((a) => (
           <li key={a.hse_corrective_action_id}>
-            <Link to={`/hse/${a.hse_incident_id}`}>{a.incident_reference}</Link> — {a.title} — échéance {formatDate(a.due_date)}{" "}
+            <Link to={a.hse_incident_id ? `/hse/${a.hse_incident_id}` : `/hse/inspections/${a.hse_inspection_id}`}>{a.parent_reference}</Link> — {a.title} — échéance {formatDate(a.due_date)}{" "}
             {a.overdue && <Badge tone="bad">En retard</Badge>}
           </li>
         ))}
@@ -355,7 +359,9 @@ export function HseIncidentPage() {
             {panel === "note" && <InvestigationForm incident={i} closing={false} onCancel={() => setPanel(null)} onSubmit={transition} />}
             {panel === "close" && <InvestigationForm incident={i} closing onCancel={() => setPanel(null)} onSubmit={transition} />}
             {panel === "cancel" && <CancelIncidentForm onCancel={() => setPanel(null)} onSubmit={(r) => transition({ action: "CANCEL", reason_code: r })} />}
-            {panel === "action" && <AddActionForm incident={i} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
+            {panel === "action" && (
+              <AddActionForm parent={{ kind: "incident", id: i.hse_incident_id }} onCancel={() => setPanel(null)} onDone={() => void refresh()} />
+            )}
             <dl className="facts">
               <Fact label="Nature">{label(HSE_CATEGORY, i.category)}</Fact>
               <Fact label="Gravité">
@@ -378,7 +384,7 @@ export function HseIncidentPage() {
               <Fact label="Clôturé le">{i.closed_at ? formatDateTime(i.closed_at, tz) : null}</Fact>
             </dl>
             <h2>Actions correctives</h2>
-            <ActionsTable incident={i} canManage={canManage} onChanged={() => void refresh()} />
+            <ActionsTable siteId={i.site_id} actions={i.actions ?? []} canManage={canManage} onChanged={() => void refresh()} />
             <h2>Chronologie</h2>
             <ol className="timeline">
               {(i.events ?? []).map((e, n) => (
@@ -475,12 +481,28 @@ function CancelIncidentForm({ onCancel, onSubmit }: { onCancel: () => void; onSu
   );
 }
 
-function AddActionForm({ incident, onCancel, onDone }: { incident: Incident; onCancel: () => void; onDone: () => void }) {
-  const owners = useQuery({
-    queryKey: ["hse-action-owners", incident.hse_incident_id],
-    queryFn: () =>
-      call("get", "/hse/incidents/{hse_incident_id}/action-owners", { path: { hse_incident_id: incident.hse_incident_id } }),
-  });
+/** Parent d'une action corrective : incident (HSE-1) ou inspection (HSE-2). */
+export type ActionParent = { kind: "incident"; id: string } | { kind: "inspection"; id: string };
+
+function parentPaths(parent: ActionParent) {
+  return parent.kind === "incident"
+    ? {
+        owners: () =>
+          call("get", "/hse/incidents/{hse_incident_id}/action-owners", { path: { hse_incident_id: parent.id } }),
+        create: (body: Schemas["ActionCreate"]) =>
+          call("post", "/hse/incidents/{hse_incident_id}/actions", { path: { hse_incident_id: parent.id }, body }),
+      }
+    : {
+        owners: () =>
+          call("get", "/hse/inspections/{hse_inspection_id}/action-owners", { path: { hse_inspection_id: parent.id } }),
+        create: (body: Schemas["ActionCreate"]) =>
+          call("post", "/hse/inspections/{hse_inspection_id}/actions", { path: { hse_inspection_id: parent.id }, body }),
+      };
+}
+
+export function AddActionForm({ parent, onCancel, onDone }: { parent: ActionParent; onCancel: () => void; onDone: () => void }) {
+  const paths = parentPaths(parent);
+  const owners = useQuery({ queryKey: ["hse-action-owners", parent.kind, parent.id], queryFn: paths.owners });
   const [form, setForm] = useState({ title: "", description: "", owner_user_id: "", due_date: "" });
   return (
     <ActionForm
@@ -489,14 +511,11 @@ function AddActionForm({ incident, onCancel, onDone }: { incident: Incident; onC
       onCancel={onCancel}
       onDone={onDone}
       onSubmit={() =>
-        call("post", "/hse/incidents/{hse_incident_id}/actions", {
-          path: { hse_incident_id: incident.hse_incident_id },
-          body: {
-            title: form.title.trim(),
-            description: orNull(form.description),
-            owner_user_id: form.owner_user_id,
-            due_date: form.due_date,
-          },
+        paths.create({
+          title: form.title.trim(),
+          description: orNull(form.description),
+          owner_user_id: form.owner_user_id,
+          due_date: form.due_date,
         })
       }
     >
@@ -527,13 +546,22 @@ function AddActionForm({ incident, onCancel, onDone }: { incident: Incident; onC
   );
 }
 
-function ActionsTable({ incident, canManage, onChanged }: { incident: Incident; canManage: boolean; onChanged: () => void }) {
+export function ActionsTable({
+  siteId,
+  actions,
+  canManage,
+  onChanged,
+}: {
+  siteId: string;
+  actions: CorrectiveAction[];
+  canManage: boolean;
+  onChanged: () => void;
+}) {
   const me = useMe();
   const [completing, setCompleting] = useState<CorrectiveAction | null>(null);
   const [deciding, setDeciding] = useState<{ action: CorrectiveAction; kind: "REOPEN" | "CANCEL" } | null>(null);
   const [error, setError] = useState<unknown>(null);
-  const actions = incident.actions ?? [];
-  const canComplete = can(me.grants, "hse.action.complete", incident.site_id);
+  const canComplete = can(me.grants, "hse.action.complete", siteId);
   async function decide(a: CorrectiveAction, body: Schemas["ActionDecisionIn"]) {
     await call("post", "/hse/corrective-actions/{hse_corrective_action_id}/decision", {
       path: { hse_corrective_action_id: a.hse_corrective_action_id },

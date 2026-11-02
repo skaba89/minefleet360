@@ -9,6 +9,7 @@ L'oracle vient du YAML et de la table de décision D-05, jamais des décorateurs
 
 import re
 import uuid
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -17,7 +18,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.authz.matrix import load_matrix
+from app.hse import inspections as hse_inspections
 from app.legal import router as legal_router
+from app.legal.malware_scan import ScanVerdict
 from tests.conftest import API, Api, TenantFixture
 
 MATRIX = load_matrix()
@@ -139,6 +142,11 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
         "completion_note": "Réalisation fictive vérifiable",
     },
     ("POST", "/hse/corrective-actions/{hse_corrective_action_id}/decision"): {"action": "VERIFY"},
+    ("POST", "/hse/inspections/{hse_inspection_id}/actions"): {
+        "title": "Action fictive",
+        "owner_user_id": "00000000-0000-0000-0000-000000000001",
+        "due_date": "2099-01-01",
+    },
     ("POST", "/tyres/{tyre_id}/inspections"): {"tread_mm": "50.0"},
     ("POST", "/tyres/{tyre_id}/scrap"): {"reason_code": "AGE"},
     ("POST", "/tyres/{tyre_id}/repair"): {"action": "SEND"},
@@ -176,7 +184,7 @@ class World:
 
 
 @pytest.fixture(scope="module")
-def world(api: Api, client: TestClient) -> World:
+def world(api: Api, client: TestClient) -> Iterator[World]:
     a, b = api.tenant(), api.tenant()
     personas = [Persona("PLATFORM_ADMIN", "PLATFORM", api.platform())]
     for code, role in MATRIX.roles.items():
@@ -357,7 +365,54 @@ def world(api: Api, client: TestClient) -> World:
         },
     )
     assert tyre.status_code == 201, tyre.text
+    # Preuve photo HSE-2 : stockage privé et antivirus simulés pour toute la durée du module.
+    evidence_store: dict[str, bytes] = {}
+    patcher = pytest.MonkeyPatch()
+    patcher.setattr(
+        hse_inspections,
+        "build_evidence_store",
+        lambda _settings: SimpleNamespace(
+            put=lambda *, key, content, content_type="": evidence_store.__setitem__(key, content),
+            get=lambda *, key: evidence_store[key],
+        ),
+    )
+    patcher.setattr(
+        hse_inspections,
+        "build_evidence_scanner",
+        lambda _settings: SimpleNamespace(scan=lambda _c: ScanVerdict.CLEAN),
+    )
+    template = client.post(
+        f"{API}/hse/checklist-templates",
+        headers=hse.headers,
+        json={
+            "code": "RBAC-PRE",
+            "name": "Prise de poste fictive",
+            "target_type": "PRE_SHIFT",
+            "items": [{"key": "epi", "label": "EPI portés", "critical": True}],
+        },
+    )
+    assert template.status_code == 201, template.text
+    inspection = client.post(
+        f"{API}/hse/inspections",
+        headers=hse.headers,
+        json={
+            "site_id": str(a.sites["S1"]),
+            "hse_checklist_template_id": template.json()["hse_checklist_template_id"],
+            "performed_at": (datetime.now(UTC) - timedelta(minutes=5)).isoformat(),
+            "answers": [{"item_key": "epi", "result": "NON_COMPLIANT", "comment": "Casque absent"}],
+        },
+    )
+    assert inspection.status_code == 201, inspection.text
+    evidence = client.post(
+        f"{API}/hse/inspections/{inspection.json()['hse_inspection_id']}/evidence",
+        headers={**hse.headers, "Content-Type": "image/png"},
+        content=b"\x89PNG\r\n\x1a\n" + b"\x00" * 16,
+    )
+    assert evidence.status_code == 201, evidence.text
     objects = {
+        "template_id": uuid.UUID(template.json()["hse_checklist_template_id"]),
+        "hse_inspection_id": uuid.UUID(inspection.json()["hse_inspection_id"]),
+        "hse_evidence_id": uuid.UUID(evidence.json()["hse_evidence_id"]),
         "tyre_id": uuid.UUID(tyre.json()["tyre_id"]),
         "hse_incident_id": uuid.UUID(incident_id),
         "hse_corrective_action_id": uuid.UUID(corrective.json()["hse_corrective_action_id"]),
@@ -382,7 +437,8 @@ def world(api: Api, client: TestClient) -> World:
         "fuel_pump_id": uuid.UUID(fuel_pump.json()["fuel_pump_id"]),
         "fuel_pump_anomaly_case_id": uuid.UUID(anomaly.json()["fuel_pump_anomaly_case_id"]),
     }
-    return World(a, b, personas, b_personas, objects)
+    yield World(a, b, personas, b_personas, objects)
+    patcher.undo()
 
 
 def _weighed_rotation(  # type: ignore[no-untyped-def]

@@ -14,12 +14,12 @@ class S3PrivateObjectStore:
         self.client = client
         self.bucket = bucket
 
-    def put(self, *, key: str, content: bytes) -> None:
+    def put(self, *, key: str, content: bytes, content_type: str = "application/pdf") -> None:
         self.client.put_object(
             Bucket=self.bucket,
             Key=key,
             Body=content,
-            ContentType="application/pdf",
+            ContentType=content_type,
             ServerSideEncryption="AES256",
         )
 

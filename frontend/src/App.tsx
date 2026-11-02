@@ -12,6 +12,7 @@ import { ReferentialsPage } from "./pages/ReferentialsPage";
 import { DriverDetailPage } from "./pages/DriverDetailPage";
 import { DriversPage } from "./pages/DriversPage";
 import { HomePage } from "./pages/HomePage";
+import { ChecklistTemplatesPage, HseInspectionPage, HseInspectionsPage } from "./pages/HseInspectionsPages";
 import { OfflineFieldPage } from "./pages/HseOffline";
 import { HseIncidentPage, HsePage } from "./pages/HsePages";
 import { LoginPage } from "./pages/LoginPage";
@@ -27,6 +28,7 @@ import { VehiclesPage } from "./pages/VehiclesPage";
 import { IndicatorsPage, WeighingsPage } from "./pages/WeighingPages";
 import { WorkOrderPage, WorkshopPage } from "./pages/WorkshopPages";
 import { FuelPage } from "./pages/FuelPage";
+import { CostsPage } from "./pages/CostsPage";
 import { PartsPage } from "./pages/PartsPage";
 import { TyrePage, TyresPage } from "./pages/TyresPages";
 import { SiteProvider } from "./site/SiteContext";
@@ -72,9 +74,13 @@ export function App() {
           <Route path="atelier/fiabilite" element={<ReliabilityPage />} />
           <Route path="atelier/:workOrderId" element={<WorkOrderPage />} />
           <Route path="hse" element={<HsePage />} />
+          <Route path="hse/inspections" element={<HseInspectionsPage />} />
+          <Route path="hse/inspections/:inspectionId" element={<HseInspectionPage />} />
+          <Route path="hse/checklists" element={<ChecklistTemplatesPage />} />
           <Route path="hse/:incidentId" element={<HseIncidentPage />} />
           <Route path="pneus" element={<TyresPage />} />
           <Route path="pneus/:tyreId" element={<TyrePage />} />
+          <Route path="couts" element={<CostsPage />} />
           <Route path="pesees" element={<WeighingsPage />} />
           <Route path="indicateurs" element={<IndicatorsPage />} />
           <Route path="mon-compte/securite" element={<SecurityPage />} />

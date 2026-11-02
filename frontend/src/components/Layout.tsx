@@ -52,10 +52,14 @@ export function Layout() {
     {
       to: "/hse",
       text: "Sécurité (HSE)",
-      show: can(me.grants, "hse.incident.read") || can(me.grants, "hse.incident.report"),
+      show:
+        can(me.grants, "hse.incident.read") ||
+        can(me.grants, "hse.incident.report") ||
+        can(me.grants, "hse.inspection.perform"),
     },
     { to: "/pesees", text: "Pesées", show: can(me.grants, "dispatch.weighing.read") },
     { to: "/juridique", text: "Contrats & assurances", show: can(me.grants, "legal.contract.read", siteId) || can(me.grants, "legal.insurance.read", siteId) },
+    { to: "/couts", text: "Coût complet", show: can(me.grants, "cost.vehicle.read") },
     { to: "/indicateurs", text: "Indicateurs", show: can(me.grants, "dispatch.indicators.read") },
     { to: "/administration", text: "Administration", show: canAdminister(me.grants) },
   ];

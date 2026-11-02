@@ -140,6 +140,42 @@ export async function request<T>(path: string, options: RequestOptions = {}, ret
   return { data, etag: response.headers.get("ETag") };
 }
 
+/**
+ * Échange binaire authentifié (preuves photo) : envoi d'un fichier brut ou lecture d'un contenu protégé.
+ * Le jeton reste en mémoire ; aucune URL publique ni signée n'est exposée.
+ */
+export async function binaryRequest(
+  path: string,
+  options: { method?: "GET" | "POST"; body?: Blob; contentType?: string } = {},
+  retried = false,
+): Promise<Response> {
+  const headers: Record<string, string> = {};
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  if (options.contentType) headers["Content-Type"] = options.contentType;
+  let response: Response;
+  try {
+    response = await fetch(`${API_PREFIX}${path}`, {
+      method: options.method ?? "GET",
+      headers,
+      body: options.body,
+      credentials: "same-origin",
+    });
+  } catch {
+    throw new ApiError(0, {
+      code: "NETWORK_ERROR",
+      message_fr: "Connexion au serveur impossible. Vérifiez le réseau puis réessayez.",
+      details: null,
+      request_id: null,
+    });
+  }
+  if (response.status === 401 && !retried) {
+    if (await refreshSession()) return binaryRequest(path, options, true);
+    onSessionLost();
+  }
+  if (!response.ok) throw await parseError(response);
+  return response;
+}
+
 export async function get<T>(path: string, query?: RequestOptions["query"]): Promise<T> {
   return (await request<T>(path, { query })).data;
 }

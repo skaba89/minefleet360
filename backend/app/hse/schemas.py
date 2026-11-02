@@ -80,8 +80,10 @@ class EventOut(BaseModel):
 
 class ActionOut(BaseModel):
     hse_corrective_action_id: uuid.UUID
-    hse_incident_id: uuid.UUID
-    incident_reference: str
+    # Exactement un parent : l'incident ou l'inspection d'origine (référence HSE-… ou INS-…).
+    hse_incident_id: uuid.UUID | None
+    hse_inspection_id: uuid.UUID | None
+    parent_reference: str
     site_id: uuid.UUID
     title: str
     description: str | None
@@ -148,3 +150,5 @@ class HseSummaryOut(BaseModel):
     open_incidents: int
     open_actions: int
     overdue_actions: int
+    inspections: int
+    failed_inspections: int

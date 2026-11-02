@@ -534,3 +534,19 @@ export const TYRE_EVENTS: Record<string, string> = {
   RETREADED: "Rechapage",
   SCRAPPED: "Mise au rebut",
 };
+
+// --- HSE-2 : inspections -----------------------------------------------------------------------------
+
+export const HSE_TARGET: Record<string, string> = {
+  PRE_SHIFT: "Prise de poste",
+  VEHICLE: "Engin",
+  WORK_AREA: "Zone de travail",
+};
+
+export const HSE_ANSWER: Record<string, string> = {
+  COMPLIANT: "Conforme",
+  NON_COMPLIANT: "Non conforme",
+  NOT_APPLICABLE: "Sans objet",
+};
+
+export const HSE_RESULT: Record<string, string> = { PASS: "Conforme", FAIL: "Non conforme (critique)" };
