@@ -392,3 +392,87 @@ export const WORK_ORDER_EVENTS: Record<string, string> = {
   CLOSED: "Remise en service",
   CANCELLED: "Annulation",
 };
+
+// --- HSE (lot HSE-1) ---------------------------------------------------------------------------------
+
+export const HSE_CATEGORY: Record<string, string> = {
+  INJURY: "Blessure",
+  NEAR_MISS: "Presque-accident",
+  VEHICLE_COLLISION: "Collision / accrochage d'engin",
+  PROPERTY_DAMAGE: "Dommage matériel",
+  ENVIRONMENT: "Atteinte à l'environnement",
+  SPILL: "Déversement (carburant, huile…)",
+  FIRE: "Incendie / départ de feu",
+  UNSAFE_CONDITION: "Situation dangereuse",
+  OTHER: "Autre",
+};
+
+export const HSE_SEVERITY: Record<string, string> = {
+  LOW: "Faible",
+  MEDIUM: "Moyenne",
+  HIGH: "Élevée",
+  CRITICAL: "Critique",
+};
+
+export const HSE_SEVERITY_TONE: Record<string, "ok" | "warn" | "bad" | "neutral"> = {
+  LOW: "neutral",
+  MEDIUM: "warn",
+  HIGH: "bad",
+  CRITICAL: "bad",
+};
+
+export const HSE_STATUS: Record<string, string> = {
+  REPORTED: "Déclaré",
+  INVESTIGATING: "En enquête",
+  CLOSED: "Clôturé",
+  CANCELLED: "Annulé",
+};
+
+export const HSE_TONE: Record<string, "ok" | "warn" | "bad" | "neutral"> = {
+  REPORTED: "warn",
+  INVESTIGATING: "warn",
+  CLOSED: "ok",
+  CANCELLED: "neutral",
+};
+
+export const HSE_CANCEL_REASONS: Record<string, string> = {
+  DUPLICATE: "Doublon",
+  NOT_AN_INCIDENT: "Pas un incident",
+  ENTRY_ERROR: "Erreur de saisie",
+  OTHER: "Autre",
+};
+
+export const HSE_ACTION_STATUS: Record<string, string> = {
+  OPEN: "À réaliser",
+  DONE: "Réalisée, à vérifier",
+  VERIFIED: "Vérifiée",
+  CANCELLED: "Annulée",
+};
+
+export const HSE_ACTION_TONE: Record<string, "ok" | "warn" | "bad" | "neutral"> = {
+  OPEN: "warn",
+  DONE: "warn",
+  VERIFIED: "ok",
+  CANCELLED: "neutral",
+};
+
+export const HSE_ACTION_REASONS: Record<string, string> = {
+  INEFFECTIVE: "Inefficace",
+  INCOMPLETE: "Incomplète",
+  NO_LONGER_RELEVANT: "Plus pertinente",
+  DUPLICATE: "Doublon",
+  OTHER: "Autre",
+};
+
+export const HSE_EVENTS: Record<string, string> = {
+  REPORTED: "Déclaration",
+  INVESTIGATION_STARTED: "Enquête ouverte",
+  NOTED: "Enquête mise à jour",
+  CLOSED: "Clôture",
+  CANCELLED: "Annulation",
+  ACTION_ADDED: "Action corrective ajoutée",
+  ACTION_COMPLETED: "Action déclarée réalisée",
+  ACTION_VERIFIED: "Action vérifiée",
+  ACTION_REOPENED: "Action rouverte",
+  ACTION_CANCELLED: "Action annulée",
+};

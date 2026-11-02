@@ -770,6 +770,160 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/hse/corrective-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Actions */
+        get: operations["list_actions_api_v1_hse_corrective_actions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/corrective-actions/{hse_corrective_action_id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Action */
+        post: operations["complete_action_api_v1_hse_corrective_actions__hse_corrective_action_id__complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/corrective-actions/{hse_corrective_action_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Action */
+        post: operations["decide_action_api_v1_hse_corrective_actions__hse_corrective_action_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Incidents */
+        get: operations["list_incidents_api_v1_hse_incidents_get"];
+        put?: never;
+        /** Report Incident */
+        post: operations["report_incident_api_v1_hse_incidents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/incidents/{hse_incident_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Incident */
+        get: operations["get_incident_api_v1_hse_incidents__hse_incident_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/incidents/{hse_incident_id}/action-owners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Action Owners */
+        get: operations["list_action_owners_api_v1_hse_incidents__hse_incident_id__action_owners_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/incidents/{hse_incident_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Action */
+        post: operations["add_action_api_v1_hse_incidents__hse_incident_id__actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/incidents/{hse_incident_id}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transition Incident */
+        post: operations["transition_incident_api_v1_hse_incidents__hse_incident_id__transition_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hse Summary */
+        get: operations["hse_summary_api_v1_hse_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/insurance-policies": {
         parameters: {
             query?: never;
@@ -2601,6 +2755,105 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActionComplete */
+        ActionComplete: {
+            /** Completion Note */
+            completion_note: string;
+        };
+        /** ActionCreate */
+        ActionCreate: {
+            /** Description */
+            description?: string | null;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Owner User Id
+             * Format: uuid
+             */
+            owner_user_id: string;
+            /** Title */
+            title: string;
+        };
+        /** ActionDecisionIn */
+        ActionDecisionIn: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "VERIFY" | "REOPEN" | "CANCEL";
+            /** Reason Code */
+            reason_code?: ("INEFFECTIVE" | "INCOMPLETE" | "NO_LONGER_RELEVANT" | "DUPLICATE" | "OTHER") | null;
+        };
+        /** ActionOut */
+        ActionOut: {
+            /** Completed At */
+            completed_at: string | null;
+            /** Completed By */
+            completed_by: string | null;
+            /** Completion Note */
+            completion_note: string | null;
+            /** Description */
+            description: string | null;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Hse Corrective Action Id
+             * Format: uuid
+             */
+            hse_corrective_action_id: string;
+            /**
+             * Hse Incident Id
+             * Format: uuid
+             */
+            hse_incident_id: string;
+            /** Incident Reference */
+            incident_reference: string;
+            /** Overdue */
+            overdue: boolean;
+            /** Owner Name */
+            owner_name: string | null;
+            /**
+             * Owner User Id
+             * Format: uuid
+             */
+            owner_user_id: string;
+            /** Row Version */
+            row_version: number;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "OPEN" | "DONE" | "VERIFIED" | "CANCELLED";
+            /** Status Reason */
+            status_reason: string | null;
+            /** Title */
+            title: string;
+            /** Verified At */
+            verified_at: string | null;
+            /** Verified By */
+            verified_by: string | null;
+        };
+        /** ActionOwnerOut */
+        ActionOwnerOut: {
+            /** Display Name */
+            display_name: string;
+            /**
+             * User Account Id
+             * Format: uuid
+             */
+            user_account_id: string;
+        };
         /** AnomalyCaseOut */
         AnomalyCaseOut: {
             /** Approved Issue Liters */
@@ -3944,6 +4197,183 @@ export interface components {
             detail?: components["schemas"]["ValidationError"][];
         };
         /**
+         * HseSummaryOut
+         * @description Indicateurs HSE de la portée lue (période glissante bornée par `since`).
+         */
+        HseSummaryOut: {
+            /** By Category */
+            by_category: {
+                [key: string]: number;
+            };
+            /** By Severity */
+            by_severity: {
+                [key: string]: number;
+            };
+            /** Incidents */
+            incidents: number;
+            /** Injured */
+            injured: number;
+            /** Lost Time Incidents */
+            lost_time_incidents: number;
+            /** Open Actions */
+            open_actions: number;
+            /** Open Incidents */
+            open_incidents: number;
+            /** Overdue Actions */
+            overdue_actions: number;
+            /**
+             * Since
+             * Format: date
+             */
+            since: string;
+        };
+        /** IncidentCreate */
+        IncidentCreate: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "INJURY" | "NEAR_MISS" | "VEHICLE_COLLISION" | "PROPERTY_DAMAGE" | "ENVIRONMENT" | "SPILL" | "FIRE" | "UNSAFE_CONDITION" | "OTHER";
+            /** Description */
+            description: string;
+            /** Immediate Actions */
+            immediate_actions?: string | null;
+            /**
+             * Injured Count
+             * @default 0
+             */
+            injured_count: number;
+            /** Location Note */
+            location_note?: string | null;
+            /**
+             * Lost Time
+             * @default false
+             */
+            lost_time: boolean;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Title */
+            title: string;
+            /** Vehicle Id */
+            vehicle_id?: string | null;
+        };
+        /** IncidentOut */
+        IncidentOut: {
+            /** Actions */
+            actions?: components["schemas"]["ActionOut"][] | null;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "INJURY" | "NEAR_MISS" | "VEHICLE_COLLISION" | "PROPERTY_DAMAGE" | "ENVIRONMENT" | "SPILL" | "FIRE" | "UNSAFE_CONDITION" | "OTHER";
+            /** Closed At */
+            closed_at: string | null;
+            /** Closed By */
+            closed_by: string | null;
+            /** Description */
+            description: string;
+            /** Events */
+            events?: components["schemas"]["app__hse__schemas__EventOut"][] | null;
+            /**
+             * Hse Incident Id
+             * Format: uuid
+             */
+            hse_incident_id: string;
+            /** Immediate Actions */
+            immediate_actions: string | null;
+            /** Injured Count */
+            injured_count: number;
+            /** Investigation Summary */
+            investigation_summary: string | null;
+            /** Location Note */
+            location_note: string | null;
+            /** Lost Time */
+            lost_time: boolean;
+            /** Number */
+            number: number;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Open Actions */
+            open_actions: number;
+            /** Overdue Actions */
+            overdue_actions: number;
+            /** Reference */
+            reference: string;
+            /**
+             * Reported At
+             * Format: date-time
+             */
+            reported_at: string;
+            /**
+             * Reported By
+             * Format: uuid
+             */
+            reported_by: string;
+            /** Reported By Name */
+            reported_by_name: string | null;
+            /** Root Cause */
+            root_cause: string | null;
+            /** Row Version */
+            row_version: number;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "REPORTED" | "INVESTIGATING" | "CLOSED" | "CANCELLED";
+            /** Status Reason */
+            status_reason: string | null;
+            /** Title */
+            title: string;
+            /** Vehicle Fleet Number */
+            vehicle_fleet_number: string | null;
+            /** Vehicle Id */
+            vehicle_id: string | null;
+        };
+        /** IncidentTransition */
+        IncidentTransition: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "START_INVESTIGATION" | "NOTE" | "CLOSE" | "CANCEL";
+            /** Category */
+            category?: ("INJURY" | "NEAR_MISS" | "VEHICLE_COLLISION" | "PROPERTY_DAMAGE" | "ENVIRONMENT" | "SPILL" | "FIRE" | "UNSAFE_CONDITION" | "OTHER") | null;
+            /** Investigation Summary */
+            investigation_summary?: string | null;
+            /** Reason Code */
+            reason_code?: ("DUPLICATE" | "NOT_AN_INCIDENT" | "ENTRY_ERROR" | "OTHER") | null;
+            /** Root Cause */
+            root_cause?: string | null;
+            /** Severity */
+            severity?: ("LOW" | "MEDIUM" | "HIGH" | "CRITICAL") | null;
+        };
+        /**
          * IndicatorRow
          * @description Activité d'un site pour une matière sur la période : mesuré, en attente et estimé SÉPARÉS (RM-072).
          */
@@ -4636,6 +5066,17 @@ export interface components {
              */
             vehicle_id: string;
         };
+        /** Page[ActionOut] */
+        Page_ActionOut_: {
+            /** Items */
+            items: components["schemas"]["ActionOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[AnomalyCaseOut] */
         Page_AnomalyCaseOut_: {
             /** Items */
@@ -4827,6 +5268,17 @@ export interface components {
         Page_GpsVehicleOut_: {
             /** Items */
             items: components["schemas"]["GpsVehicleOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[IncidentOut] */
+        Page_IncidentOut_: {
+            /** Items */
+            items: components["schemas"]["IncidentOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -6819,6 +7271,29 @@ export interface components {
              * Format: uuid
              */
             vehicle_assignment_id: string;
+        };
+        /** EventOut */
+        app__hse__schemas__EventOut: {
+            /** Actor Name */
+            actor_name: string | null;
+            /**
+             * Actor User Id
+             * Format: uuid
+             */
+            actor_user_id: string;
+            /** Event Type */
+            event_type: string;
+            /** From Status */
+            from_status: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Reason */
+            reason: string | null;
+            /** To Status */
+            to_status: string;
         };
         /** EventOut */
         app__maintenance__schemas__EventOut: {
@@ -8814,6 +9289,369 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    list_actions_api_v1_hse_corrective_actions_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                status?: ("OPEN" | "DONE" | "VERIFIED" | "CANCELLED") | null;
+                mine?: boolean;
+                open_only?: boolean;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ActionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    complete_action_api_v1_hse_corrective_actions__hse_corrective_action_id__complete_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                hse_corrective_action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionComplete"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_action_api_v1_hse_corrective_actions__hse_corrective_action_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                hse_corrective_action_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_incidents_api_v1_hse_incidents_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                status?: ("REPORTED" | "INVESTIGATING" | "CLOSED" | "CANCELLED") | null;
+                severity?: ("LOW" | "MEDIUM" | "HIGH" | "CRITICAL") | null;
+                category?: ("INJURY" | "NEAR_MISS" | "VEHICLE_COLLISION" | "PROPERTY_DAMAGE" | "ENVIRONMENT" | "SPILL" | "FIRE" | "UNSAFE_CONDITION" | "OTHER") | null;
+                open_only?: boolean;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_IncidentOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_incident_api_v1_hse_incidents_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_incident_api_v1_hse_incidents__hse_incident_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                hse_incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_action_owners_api_v1_hse_incidents__hse_incident_id__action_owners_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                hse_incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionOwnerOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_action_api_v1_hse_incidents__hse_incident_id__actions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                hse_incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transition_incident_api_v1_hse_incidents__hse_incident_id__transition_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                hse_incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidentTransition"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hse_summary_api_v1_hse_summary_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                days?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HseSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

@@ -11,6 +11,7 @@ import { ReferentialsPage } from "./pages/ReferentialsPage";
 import { DriverDetailPage } from "./pages/DriverDetailPage";
 import { DriversPage } from "./pages/DriversPage";
 import { HomePage } from "./pages/HomePage";
+import { HseIncidentPage, HsePage } from "./pages/HsePages";
 import { LoginPage } from "./pages/LoginPage";
 import { LegalRegistriesPage } from "./pages/LegalRegistriesPage";
 import { LiveFleetPage } from "./pages/LiveFleetPage";
@@ -65,6 +66,8 @@ export function App() {
           <Route path="pieces" element={<PartsPage />} />
           <Route path="juridique" element={<LegalRegistriesPage />} />
           <Route path="atelier/:workOrderId" element={<WorkOrderPage />} />
+          <Route path="hse" element={<HsePage />} />
+          <Route path="hse/:incidentId" element={<HseIncidentPage />} />
           <Route path="pesees" element={<WeighingsPage />} />
           <Route path="indicateurs" element={<IndicatorsPage />} />
           <Route path="mon-compte/securite" element={<SecurityPage />} />

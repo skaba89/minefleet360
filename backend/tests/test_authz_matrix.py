@@ -129,6 +129,16 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
         "delivery_reference": "BL-ACHAT-FICTIF-1",
         "occurred_at": "2026-10-29T10:00:00+00:00",
     },
+    ("POST", "/hse/incidents/{hse_incident_id}/transition"): {"action": "START_INVESTIGATION"},
+    ("POST", "/hse/incidents/{hse_incident_id}/actions"): {
+        "title": "Action fictive",
+        "owner_user_id": "00000000-0000-0000-0000-000000000001",
+        "due_date": "2099-01-01",
+    },
+    ("POST", "/hse/corrective-actions/{hse_corrective_action_id}/complete"): {
+        "completion_note": "Réalisation fictive vérifiable",
+    },
+    ("POST", "/hse/corrective-actions/{hse_corrective_action_id}/decision"): {"action": "VERIFY"},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/approve"): {},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/void"): {"reason_code": "ENTRY_ERROR"},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/correct"): {
@@ -303,7 +313,35 @@ def world(api: Api, client: TestClient) -> World:
         json={"start_reading_id": readings[0], "end_reading_id": readings[1]},
     )
     assert anomaly.status_code == 201, anomaly.text
+    hse = next(p for p in personas if p.role == "HSE" and p.scope == "TENANT")
+    incident = client.post(
+        f"{API}/hse/incidents",
+        headers=ops.headers,
+        json={
+            "site_id": str(a.sites["S1"]),
+            "category": "NEAR_MISS",
+            "severity": "LOW",
+            "title": "Presque-accident fictif",
+            "description": "Description fictive de l'événement observé.",
+            "occurred_at": (datetime.now(UTC) - timedelta(hours=1)).isoformat(),
+        },
+    )
+    assert incident.status_code == 201, incident.text
+    incident_id = incident.json()["hse_incident_id"]
+    owners = client.get(f"{API}/hse/incidents/{incident_id}/action-owners", headers=hse.headers).json()
+    corrective = client.post(
+        f"{API}/hse/incidents/{incident_id}/actions",
+        headers=hse.headers,
+        json={
+            "title": "Action fictive",
+            "owner_user_id": owners[0]["user_account_id"],
+            "due_date": "2099-01-01",
+        },
+    )
+    assert corrective.status_code == 201, corrective.text
     objects = {
+        "hse_incident_id": uuid.UUID(incident_id),
+        "hse_corrective_action_id": uuid.UUID(corrective.json()["hse_corrective_action_id"]),
         "work_order_id": uuid.UUID(work_order.json()["work_order_id"]),
         "vehicle_document_id": uuid.UUID(document.json()["vehicle_document_id"]),
         "weighing_ticket_id": weighing_ticket,
