@@ -54,7 +54,6 @@ def test_small_profile_covers_every_role_and_module(demo: generator.DemoReport) 
         "rotations",
         "weighings",
         "fuel_issues",
-        "fuel_receipts",
         "work_orders_closed",
         "work_orders_open",
         "hse_incidents",
@@ -64,6 +63,21 @@ def test_small_profile_covers_every_role_and_module(demo: generator.DemoReport) 
     # Scénarios négatifs présents : panne ouverte, mission bloquée, pesée en attente, incident critique.
     assert c["work_orders_open"] == c["missions_suspended"] == c["weighings_pending"] == 3
     assert c["hse_incidents_open"] == 3
+    # Lot 2 : coûts valorisés, compteurs, pièces sur OT, pneus, inspections HSE (dont une non conforme).
+    for key in (
+        "fuel_purchases",
+        "labour_rates",
+        "meter_readings",
+        "part_receipts",
+        "part_issues",
+        "tyres",
+        "tyre_inspections",
+        "tyres_scrapped",
+        "hse_checklists",
+        "hse_inspections",
+    ):
+        assert c.get(key, 0) > 0, key
+    assert c["hse_inspections_non_compliant"] == 3 and "fuel_receipts" not in c
     # Jour J : des missions en cours et planifiées (la liste « en cours » n'est pas vide à l'ouverture).
     assert c["missions_live"] > 0 and c["missions_planned"] == 3
     # Les mots de passe ne dérivent pas de la graine (jamais reproductibles) et sont tous distincts.
@@ -77,6 +91,7 @@ def test_verify_recomputes_every_indicator(demo: generator.DemoReport) -> None:
     assert not failed, failed
     names = {c.name for c in checks}
     assert any("isolation" in n for n in names) and any("tonnage" in n for n in names)
+    assert any("main-d'œuvre" in n for n in names) and any("pneus" in n for n in names)
     assert len({c.tenant for c in checks}) == 3
 
 

@@ -20,15 +20,18 @@ Les scénarios marqués « à venir » dépendent de données non générées da
 | S9 | Incident HSE et action corrective | hse | incident critique ouvert | Ouvrir l'enquête, ajouter une action, la réaliser (ops-manager), la vérifier, clore | Clôture impossible tant que l'action n'est pas vérifiée (`HSE_ACTIONS_PENDING`) |
 | S10 | Rôles et permissions | driver.boke-mine | — | Tenter d'ouvrir le parc | Accès refusé (403) |
 | S11 | Isolation entre sociétés | ops-manager de demo-bauxite | — | Se connecter sur l'espace `demo-tlm` | Connexion refusée |
-| S12 | Coût complet par engin | finance | carburant, main-d'œuvre | Coûts → engin `DEMO-CAM-001` | Statut « partiel/estimé » tant que pièces et taux ne sont pas renseignés — jamais présenté comme complet |
+| S12 | Coût complet par engin | finance | carburant acheté sur commande, pièces, main-d'œuvre, pneus | Coût complet, 30 jours | Carburant « Estimé » sur chaque camion ; pièces et main-d'œuvre sur l'engin réparé ; pneus « Données insuffisantes » (reprise d'inventaire sans prix), sauf l'engin au pneu neuf acheté (voir le constat de méthode, DEMO_DATA_ARCHITECTURE §7) ; coûts par km, heure, tonne |
+| S15 | Achat de carburant | fuel-manager.boke-mine puis finance | fournisseur fictif | Créer un bon de commande, l'approuver (finance), réceptionner | Stock de cuve augmenté ; le prix alimente le coût carburant estimé |
+| S16 | Pneus | workshop-chief, mechanic.boke-mine | 6 pneus par camion, un pneu réformé | Pneus → filtrer « Mis au rebut » ; inspecter un pneu monté | Historique de pose/dépose ; usure et pression enregistrées |
+| S17 | Inspection avant poste non conforme | dispatcher.boke-mine | checklist « avant poste » ; inspection freins non conforme (jour 5) | HSE → Inspections → filtrer « Non conforme » | Point critique en défaut, engin désigné |
 | S13 | Géolocalisation et zones | — | à venir | — | — |
-| S14 | Pièces, pneus, inspections, hors ligne | — | à venir | — | — |
+| S14 | Hors ligne, préventif | — | à venir | — | — |
 
 État de vérification de ce lot :
 
 - S10 et S11 : vérifiés automatiquement sur les données DEMO (`backend/tests/test_demo_seed.py`) ;
 - S7 (quatre yeux) et S9 (`HSE_ACTIONS_PENDING`) : règles rencontrées et respectées par le générateur ;
 - S2, S4, S5, S8 : règles couvertes par les tests de modules existants, pas encore rejouées sur les données DEMO ;
-- S0, S6 et le tableau de bord : vérifiés à l'écran (captures locales, navigateur automatisé) ;
-- S1, S3, S12 : résultat attendu **non encore vérifié à l'écran** — un E2E Playwright sur la base DEMO
+- S0, S6, S12, S16 (stock), S17 (liste) et le tableau de bord : vérifiés à l'écran (captures locales, navigateur automatisé) ;
+- S1, S3, S15 : résultat attendu **non encore vérifié à l'écran** — un E2E Playwright sur la base DEMO
   est prévu au lot suivant.

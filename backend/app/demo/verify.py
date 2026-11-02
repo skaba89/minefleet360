@@ -14,6 +14,8 @@ from sqlalchemy import and_, exists, func, select
 from app.core.clock import SystemClock
 from app.core.db import new_session
 from app.core.tenancy import PLATFORM_TENANT_ID, set_login_tenant_code, set_tenant_context
+from app.costs import service as costs
+from app.costs.models import LabourRate
 from app.demo.catalog import TENANTS
 from app.dispatch import weighing
 from app.dispatch.models import Rotation, WeighingTicket, WeighingTicketDecision
@@ -21,7 +23,8 @@ from app.fleet.models import Vehicle
 from app.fuel.models import FuelIssue, FuelStockMovement, FuelTank
 from app.fuel.models import FuelIssueDecision as FuelDecision
 from app.fuel.service import _balance
-from app.maintenance.models import WorkOrder
+from app.maintenance.models import WorkOrder, WorkOrderLabour
+from app.maintenance.tyre_models import Tyre
 from app.organization.models import Tenant
 from app.seed import _Actor, _user_id
 
@@ -74,6 +77,8 @@ def verify_demo(anchor: date | None = None) -> list[Check]:
         checks.extend(_tonnage_matches_indicators(spec.code, tenant.tenant_id, anchor))
         checks.extend(_fuel_balances(spec.code, tenant.tenant_id))
         checks.extend(_breakdowns_immobilize(spec.code, tenant.tenant_id))
+        checks.extend(_costs_recomputed(spec.code, tenant.tenant_id, anchor))
+        checks.extend(_tyres_consistent(spec.code, tenant.tenant_id))
     return checks
 
 
@@ -182,7 +187,7 @@ def _fuel_balances(code: str, tenant_id: uuid.UUID) -> list[Check]:
             receipts = db.scalar(
                 select(func.coalesce(func.sum(FuelStockMovement.liters), 0)).where(
                     FuelStockMovement.fuel_tank_id == tank.fuel_tank_id,
-                    FuelStockMovement.movement_type == "RECEIPT",
+                    FuelStockMovement.movement_type.in_(("RECEIPT", "STOCKTAKE_IN", "PURCHASE_RECEIPT")),
                 )
             )
             issued = db.scalar(
@@ -228,5 +233,92 @@ def _breakdowns_immobilize(code: str, tenant_id: uuid.UUID) -> list[Check]:
             "panne ouverte ⇔ engin immobilisé ; panne clôturée ⇒ engin remis en service",
             not wrong and len(rows) > 0,
             f"OT bloquants={len(rows)}, incohérences={wrong}",
+        )
+    ]
+
+
+def _costs_recomputed(code: str, tenant_id: uuid.UUID, anchor: date | None) -> list[Check]:
+    """Coût complet servi par le service vs recalcul indépendant de la main-d'œuvre ; carburant valorisé."""
+    # Les sorties de magasin sont horodatées par la base à l'exécution réelle (non simulable) : la fenêtre
+    # va de 30 jours avant l'ancrage jusqu'à maintenant, pour couvrir un ancrage passé.
+    today = SystemClock().now().date()
+    start = datetime.combine((anchor or today) - timedelta(days=30), time(0, 0), UTC)
+    end = datetime.combine(max(anchor or today, today), time(0, 0), UTC) + timedelta(days=1)
+    finance = _Actor(tenant_id, _user_id(tenant_id, f"finance@{code}.example.com"), "CUSTOMER", SystemClock())
+    auth = finance.auth("cost.vehicle.read")
+    try:
+        rows = costs.vehicle_costs(auth, start=start, end=end, site_ids=None)
+    finally:
+        auth.db.close()
+    db = new_session()
+    try:
+        set_tenant_context(db, tenant_id)
+        rate = db.scalar(select(LabourRate.hourly_rate).where(LabourRate.site_id.is_(None)))
+        minutes = dict(
+            db.execute(
+                select(WorkOrder.vehicle_id, func.sum(WorkOrderLabour.minutes))
+                .join(WorkOrderLabour, WorkOrderLabour.work_order_id == WorkOrder.work_order_id)
+                .group_by(WorkOrder.vehicle_id)
+            )
+            .tuples()
+            .all()
+        )
+    finally:
+        db.close()
+    haulers = [r for r in rows if r.tonnes > 0]
+    unpriced_fuel = [r.fleet_number for r in haulers if r.fuel.status != "ESTIMATED" or not r.fuel.amount]
+    labour_gaps = [
+        (r.fleet_number, r.labour.amount, Decimal(minutes[r.vehicle_id]) / 60 * Decimal(rate or 0))
+        for r in rows
+        if r.vehicle_id in minutes
+        and (
+            r.labour.amount is None
+            or r.labour.amount != Decimal(minutes[r.vehicle_id]) / 60 * Decimal(rate or 0)
+        )
+    ]
+    with_parts = [r for r in rows if r.parts.amount]
+    return [
+        Check(
+            code,
+            "carburant des engins de transport valorisé (prix des livraisons sur commande)",
+            bool(haulers) and not unpriced_fuel,
+            f"engins={len(haulers)}, sans prix={unpriced_fuel}",
+        ),
+        Check(
+            code,
+            "main-d'œuvre servie = minutes saisies × taux horaire",
+            bool(minutes) and not labour_gaps,
+            f"OT avec temps={len(minutes)}, écarts={labour_gaps}",
+        ),
+        Check(
+            code,
+            "pièces consommées valorisées sur l'engin réparé",
+            bool(with_parts) and all(r.parts.status == "COMPLETE" for r in with_parts),
+            f"engins avec pièces={len(with_parts)}",
+        ),
+    ]
+
+
+def _tyres_consistent(code: str, tenant_id: uuid.UUID) -> list[Check]:
+    db = new_session()
+    try:
+        set_tenant_context(db, tenant_id)
+        mounted = db.execute(
+            select(Tyre.vehicle_id, Tyre.position_code).where(Tyre.status == "MOUNTED")
+        ).all()
+        scrapped_on_vehicle = db.scalar(
+            select(func.count())
+            .select_from(Tyre)
+            .where(Tyre.status == "SCRAPPED", Tyre.vehicle_id.is_not(None))
+        )
+    finally:
+        db.close()
+    duplicates = len(mounted) - len(set(mounted))
+    return [
+        Check(
+            code,
+            "pneus : une position par pneu monté, aucun pneu réformé sur un engin",
+            bool(mounted) and duplicates == 0 and scrapped_on_vehicle == 0,
+            f"montés={len(mounted)}, doublons={duplicates}, réformés montés={scrapped_on_vehicle}",
         )
     ]

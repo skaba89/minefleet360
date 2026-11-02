@@ -12,8 +12,6 @@ Principes (docs/DEMO_DATA_ARCHITECTURE.md) :
 import random
 import secrets
 import uuid
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
@@ -30,6 +28,8 @@ from app.core.tenancy import set_tenant_context
 from app.demo.catalog import FIRST_NAMES, LAST_NAMES, PROFILES, SITE_ROLES, TENANT_ROLES, Profile, TenantSpec
 from app.demo.catalog import TENANTS as CATALOG
 from app.demo.guards import ensure_demo_database
+from app.demo.runtime import as_actor, call
+from app.demo.valuation import ValuationMixin
 from app.dispatch import service as dispatch
 from app.dispatch import weighing
 from app.dispatch.schemas import (
@@ -42,7 +42,7 @@ from app.dispatch.schemas import (
 from app.fleet import service as fleet
 from app.fleet.schemas import VehicleCreate
 from app.fuel import service as fuel
-from app.fuel.schemas import DecisionCreate, IssueCreate, ReceiptCreate, TankCreate
+from app.fuel.schemas import DecisionCreate, IssueCreate, TankCreate
 from app.hse import service as hse
 from app.hse.schemas import ActionComplete, ActionCreate, ActionDecisionIn, IncidentCreate, IncidentTransition
 from app.identity import service as identity
@@ -126,21 +126,11 @@ def _password() -> str:
     return "Demo-" + secrets.token_urlsafe(14)
 
 
-@contextmanager
-def _as(actor: _Actor, permission: str) -> Iterator[Authorized]:
-    auth = actor.auth(permission)
-    try:
-        yield auth
-    finally:
-        auth.db.close()
+_as = as_actor
+_call = call
 
 
-def _call[T](actor: _Actor, permission: str, fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
-    with _as(actor, permission) as auth:
-        return fn(auth, *args, **kwargs)
-
-
-class _TenantBuilder:
+class _TenantBuilder(ValuationMixin):
     """Construit UNE société DEMO et son historique simulé."""
 
     def __init__(
@@ -225,6 +215,9 @@ class _TenantBuilder:
         self._fleet()
         self._workforce_and_assignments()
         self._fuel_setup()
+        self.valuation_setup()
+        for site in self.spec.sites:
+            self.purchase_fuel(site.code, self.start + timedelta(hours=22), Decimal("90000"))
 
     def _invite(self, admin: _Actor, role: str, site: str | None) -> None:
         code = self.spec.code
@@ -429,26 +422,6 @@ class _TenantBuilder:
             self.tanks[site.code] = tank.fuel_tank_id
             self.fuel_level[site.code] = Decimal(0)
             self.report.add("fuel_tanks")
-            self._receive(site.code, self.start + timedelta(hours=2), Decimal("90000"))
-
-    def _receive(self, site: str, moment: datetime, liters: Decimal) -> None:
-        """Livraison bornée par la place disponible dans la cuve (règle : pas de débordement)."""
-        liters = min(liters, (self.capacity - self.fuel_level[site]) // 1000 * 1000)
-        if liters < 5000:
-            return
-        self.at(moment)
-        manager = self.actor("FUEL_MANAGER", site)
-        _call(
-            manager,
-            "fuel.stock.receive",
-            fuel.receive,
-            self.tanks[site],
-            ReceiptCreate(
-                liters=liters, reference=f"BL-DEMO-{self.rng.randint(10000, 99999)}", occurred_at=moment
-            ),
-        )
-        self.fuel_level[site] += liters
-        self.report.add("fuel_receipts")
 
     # --- historique simulé ---------------------------------------------------------------------------
     def simulate(self) -> None:
@@ -456,23 +429,40 @@ class _TenantBuilder:
         breakdown_day = days // 2
         for d in range(1, days):
             day = (self.start + timedelta(days=d)).date()
+            self._pre_shift_round(d, day)
             for index, hauler in enumerate(self.haulers):
                 if hauler.get("down_until") and hauler["down_until"] > day:
                     continue
                 for m in range(self.profile.missions_per_hauler_day):
                     self._mission(hauler, day, m, suspend=(d == days - 1 and index == 1 and m == 0))
+                self.daily_meters(hauler, day)
                 if (d + index) % 2 == 0:
                     self._refuel(hauler, day)
+            if d in (2, days - 2):
+                self.inspect_tyres(day)
+            if d == breakdown_day + 2:
+                self.replace_worn_tyre(day)
             if d == 3:
                 self._hse_closed_incident(day)
             if d == breakdown_day:
                 self._closed_breakdown(self.haulers[0], day)
             if d % 7 == 0:
                 for site in self.spec.sites:
-                    self._receive(site.code, datetime.combine(day, time(5, 0), UTC), Decimal("40000"))
+                    self.purchase_fuel(site.code, datetime.combine(day, time(5, 0), UTC), Decimal("40000"))
         last = (self.start + timedelta(days=days - 1)).date()
         self._open_breakdown(self.haulers[-1], last)
         self._hse_open_incident(last)
+
+    def _pre_shift_round(self, d: int, day: date) -> None:
+        """Contrôle avant poste d'un engin par site et par jour ; le jour 5, freins non conformes."""
+        for k, site in enumerate(self.spec.sites):
+            on_site = [h for h in self.haulers if h["site"] == site.code]
+            if not on_site:
+                continue
+            hauler = on_site[d % len(on_site)]
+            if hauler.get("down_until") and hauler["down_until"] > day:
+                continue
+            self.pre_shift_inspection(hauler, day, failing="freins" if (d == 5 and k == 0) else None)
 
     # --- jour J : activité en cours à l'ouverture de la démo -----------------------------------------
     LIVE_STEPS = (
@@ -575,7 +565,9 @@ class _TenantBuilder:
             event("UNLOADED", self.rng.randint(4, 10))
             self.report.add("rotations")
             self._weigh(state.id, dispatcher, state.t, degraded=(suspend and r == 0))
+            hauler["km"] += Decimal(self.rng.randint(12, 24))
             if suspend:
+                hauler["meter"] += Decimal(3)
                 event("SUSPENDED", 10, reason_code="ROAD_BLOCKED")
                 self.report.add("missions_suspended")
                 return
@@ -690,6 +682,8 @@ class _TenantBuilder:
         decide(WorkOrderDecision(action="APPROVE"), 15)
         decide(WorkOrderDecision(action="ASSIGN", assigned_to=mechanic_id), 5)
         progress(WorkOrderProgress(action="START", diagnosis="Fuite sur flexible hydraulique de levage."), 40)
+        self.at(self.clock.now() + timedelta(minutes=15))
+        self.consume_parts(wo_id, site, (("FLEX-HYD-01", "1"), ("HUILE-HYD-20L", "2")))
         self.at(self.clock.now() + timedelta(minutes=10))
         version = _call(
             mechanic,
