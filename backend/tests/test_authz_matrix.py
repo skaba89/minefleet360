@@ -163,6 +163,13 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
 }
 
 
+# Paramètres de requête obligatoires ({nom} remplacé par l'identifiant de l'objet du monde de test).
+SAMPLE_QUERIES: dict[tuple[str, str], dict[str, str]] = {
+    ("GET", "/vehicles/{vehicle_id}/gps/track"): {"purpose": "SECURITY"},
+    ("GET", "/gps/geofence-events"): {"purpose": "SECURITY", "site_id": "{site_id}"},
+}
+
+
 @dataclass(frozen=True)
 class Persona:
     role: str
@@ -537,7 +544,13 @@ def _routes() -> list[tuple[str, str, str]]:
 def _call(client: TestClient, method: str, path: str, headers: dict[str, str], ids: dict[str, uuid.UUID]):  # type: ignore[no-untyped-def]
     url = API + PARAM.sub(lambda m: str(ids.get(m.group(1), uuid.uuid4())), path)
     body = SAMPLE_BODIES.get((method, path))
-    return client.request(method, url, headers={**headers, "If-Match": '"1"'}, json=body)
+    query = {
+        k: PARAM.sub(lambda m: str(ids.get(m.group(1), uuid.uuid4())), v)
+        for k, v in SAMPLE_QUERIES.get((method, path), {}).items()
+    }
+    return client.request(
+        method, url, headers={**headers, "If-Match": '"1"'}, json=body, params=query or None
+    )
 
 
 # --- ST-01 --------------------------------------------------------------------------------------------

@@ -1278,6 +1278,39 @@ permissions:
       - { method: POST, path: /costs/labour-rates, shape: collection, success: 201 }
     audit: { action: cost.labour_rate.create }
     grants: { DIRECTION: [TENANT], FINANCE: [TENANT, SITE] }
+  # --- GPS avancé (chantier E, docs/LIVRAISON_GPS_AVANCE.md) -------------------------------------------
+  fleet.geofence.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes: [{ method: GET, path: /geofences, shape: collection, success: 200 }]
+    grants:
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      HSE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  fleet.geofence.manage:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: /geofences, shape: collection, success: 201 }
+      - { method: POST, path: "/geofences/{site_geofence_id}/deactivate", shape: item, success: 200 }
+    audit: { action: fleet.geofence.create }
+    grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT, SITE], HSE: [TENANT, SITE] }
+  # Historique de positions : donnée sensible (T-31) — finalité obligatoire, chaque lecture est auditée.
+  # Pas de DISPATCHER (temps réel seulement) ni de DIRECTION (indicateurs agrégés).
+  fleet.gps.history:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: "/vehicles/{vehicle_id}/gps/track", shape: item, success: 200 }
+      - { method: GET, path: /gps/geofence-events, shape: collection, success: 200 }
+    audit: { action: fleet.gps.track.read }
+    grants: { OPS_MANAGER: [TENANT, SITE], HSE: [TENANT, SITE], AUDITOR: [TENANT] }
 
 public_routes:
   # Authentification machine obligatoire dans la route ; aucun accès anonyme aux données.

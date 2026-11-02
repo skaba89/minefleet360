@@ -788,6 +788,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/geofences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Geofences */
+        get: operations["list_geofences_api_v1_geofences_get"];
+        put?: never;
+        /** Create Geofence */
+        post: operations["create_geofence_api_v1_geofences_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/geofences/{site_geofence_id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deactivate Geofence */
+        post: operations["deactivate_geofence_api_v1_geofences__site_geofence_id__deactivate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gps/geofence-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Geofence Events
+         * @description Entrées et sorties de zones de tous les engins d'un site sur la fenêtre (24 h max).
+         */
+        get: operations["geofence_events_api_v1_gps_geofence_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gps/telemetry": {
         parameters: {
             query?: never;
@@ -2700,6 +2755,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/vehicles/{vehicle_id}/gps/track": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Vehicle Track */
+        get: operations["vehicle_track_api_v1_vehicles__vehicle_id__gps_track_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/vehicles/{vehicle_id}/gps/tracker": {
         parameters: {
             query?: never;
@@ -4524,6 +4596,106 @@ export interface components {
             fuel_supplier_id: string;
             /** Name */
             name: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+        };
+        /** Gap */
+        Gap: {
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Minutes */
+            minutes: number;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+        };
+        /** GeofenceCreate */
+        GeofenceCreate: {
+            /** Code */
+            code: string;
+            /** Coordinates */
+            coordinates: [
+                number,
+                number
+            ][];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "SITE_BOUNDARY" | "LOADING_AREA" | "DUMP_AREA" | "WORKSHOP" | "FUEL_STATION" | "RESTRICTED" | "OTHER";
+            /** Name */
+            name: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+        };
+        /** GeofenceEvent */
+        GeofenceEvent: {
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "ENTER" | "EXIT";
+            /**
+             * Geofence Kind
+             * @enum {string}
+             */
+            geofence_kind: "SITE_BOUNDARY" | "LOADING_AREA" | "DUMP_AREA" | "WORKSHOP" | "FUEL_STATION" | "RESTRICTED" | "OTHER";
+            /** Geofence Name */
+            geofence_name: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Site Geofence Id
+             * Format: uuid
+             */
+            site_geofence_id: string;
+            /** Vehicle Fleet Number */
+            vehicle_fleet_number: string | null;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+        };
+        /** GeofenceOut */
+        GeofenceOut: {
+            /** Active */
+            active: boolean;
+            /** Area M2 */
+            area_m2: number;
+            /** Code */
+            code: string;
+            /** Coordinates */
+            coordinates: [
+                number,
+                number
+            ][];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "SITE_BOUNDARY" | "LOADING_AREA" | "DUMP_AREA" | "WORKSHOP" | "FUEL_STATION" | "RESTRICTED" | "OTHER";
+            /** Name */
+            name: string;
+            /**
+             * Site Geofence Id
+             * Format: uuid
+             */
+            site_geofence_id: string;
             /**
              * Site Id
              * Format: uuid
@@ -6991,6 +7163,25 @@ export interface components {
             /** Reference */
             reference: string;
         };
+        /** Stop */
+        Stop: {
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+            /** Minutes */
+            minutes: number;
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+        };
         /** StoreCreate */
         StoreCreate: {
             /** Code */
@@ -7233,6 +7424,72 @@ export interface components {
              */
             token_type: "bearer";
             user: components["schemas"]["SessionUser"];
+        };
+        /** TrackOut */
+        TrackOut: {
+            /** Distance Km */
+            distance_km: number;
+            /** Gaps */
+            gaps: components["schemas"]["Gap"][];
+            /** Geofence Events */
+            geofence_events: components["schemas"]["GeofenceEvent"][];
+            /** Ignored Points */
+            ignored_points: number;
+            /** Last Recorded At */
+            last_recorded_at: string | null;
+            /** Late Points */
+            late_points: number;
+            /**
+             * Period End
+             * Format: date-time
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date-time
+             */
+            period_start: string;
+            /** Points */
+            points: components["schemas"]["TrackPoint"][];
+            /**
+             * Signal
+             * @enum {string}
+             */
+            signal: "FRESH" | "STALE" | "LOST" | "NONE";
+            /** Stops */
+            stops: components["schemas"]["Stop"][];
+            /** Truncated */
+            truncated: boolean;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+        };
+        /** TrackPoint */
+        TrackPoint: {
+            /** Accuracy M */
+            accuracy_m: number | null;
+            /** Late */
+            late: boolean;
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+            /**
+             * Received At
+             * Format: date-time
+             */
+            received_at: string;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /** Source */
+            source: string;
+            /** Speed Kmh */
+            speed_kmh: number | null;
         };
         /** TrackerCreateIn */
         TrackerCreateIn: {
@@ -10370,6 +10627,144 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_FuelConsumptionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_geofences_api_v1_geofences_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                include_inactive?: boolean;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeofenceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_geofence_api_v1_geofences_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GeofenceCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeofenceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deactivate_geofence_api_v1_geofences__site_geofence_id__deactivate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                site_geofence_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeofenceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    geofence_events_api_v1_gps_geofence_events_get: {
+        parameters: {
+            query: {
+                site_id: string;
+                purpose: "OPERATIONS_REVIEW" | "INCIDENT_INVESTIGATION" | "MAINTENANCE_DIAGNOSIS" | "SECURITY" | "CLIENT_DISPUTE";
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeofenceEvent"][];
                 };
             };
             /** @description Validation Error */
@@ -15094,6 +15489,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vehicle_track_api_v1_vehicles__vehicle_id__gps_track_get: {
+        parameters: {
+            query: {
+                purpose: "OPERATIONS_REVIEW" | "INCIDENT_INVESTIGATION" | "MAINTENANCE_DIAGNOSIS" | "SECURITY" | "CLIENT_DISPUTE";
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrackOut"];
                 };
             };
             /** @description Validation Error */

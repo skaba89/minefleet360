@@ -28,6 +28,7 @@ export function Layout() {
   const links = [
     { to: "/vehicules", text: "Véhicules", show: can(me.grants, "fleet.vehicle.read") },
     { to: "/flotte-gps", text: "Flotte GPS", show: can(me.grants, "fleet.vehicle.read") },
+    { to: "/flotte-gps/zones", text: "Zones GPS", show: can(me.grants, "fleet.geofence.read") },
     { to: "/mon-suivi", text: "Mon partage GPS", show: can(me.grants, "fleet.gps.share") },
     { to: "/conducteurs", text: "Conducteurs", show: can(me.grants, "workforce.driver.read") },
     { to: "/affectations", text: "Affectations", show: can(me.grants, "assignment.vehicle_assignment.read") },

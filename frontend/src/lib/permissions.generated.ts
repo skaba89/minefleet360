@@ -336,6 +336,54 @@ export const GRANTS = {
       "SITE"
     ]
   },
+  "fleet.geofence.manage": {
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "fleet.geofence.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "fleet.gps.history": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "fleet.gps.manage": {
     "OPS_MANAGER": [
       "TENANT",

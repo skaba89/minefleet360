@@ -4,6 +4,10 @@ minefleet create-platform-admin --email <e-mail> --name "<nom>"
     US-1.32 : premier PLATFORM_ADMIN ; mot de passe lu dans MF_BOOTSTRAP_PASSWORD (jamais en argument).
 minefleet seed-fictif
     US-1.30 : jeu de données FICTIF de recette (refusé en production et en cas de réexécution).
+minefleet purge-gps [--days N] [--apply]
+    Rétention GPS : compte (par défaut) ou supprime (--apply) les positions plus anciennes que N jours
+    (MF_GPS_RETENTION_DAYS, 180 par défaut, 7 minimum). Seule commande exécutée avec le propriétaire du schéma
+    (MF_OWNER_PASSWORD), comme les migrations : la fonction de purge n'est pas accessible au rôle applicatif.
 minefleet reset-platform-mfa --email <e-mail>
     C-03 : retire le second facteur d'un PLATFORM_ADMIN qui a perdu téléphone ET codes de récupération
     (aucun compte au-dessus de lui ne peut le faire par l'API). Sessions fermées, action auditée.
@@ -127,6 +131,30 @@ def reset_platform_mfa(email: str) -> int:
         db.close()
 
 
+def purge_gps(days: int | None, apply: bool) -> int:
+    from datetime import timedelta
+
+    from sqlalchemy import create_engine, text
+
+    settings = get_settings()
+    retention = days if days is not None else settings.gps_retention_days
+    if retention < 7:
+        print("Refusé : 7 jours d'historique minimum.", file=sys.stderr)
+        return 2
+    cutoff = SystemClock().now() - timedelta(days=retention)
+    engine = create_engine(settings.database_url(owner=True), pool_size=1, max_overflow=0)
+    try:
+        with engine.begin() as conn:
+            count = conn.execute(
+                text("SELECT app.purge_gps_positions(:cutoff, :dry)"), {"cutoff": cutoff, "dry": not apply}
+            ).scalar_one()
+    finally:
+        engine.dispose()
+    verb = "supprimées" if apply else "à supprimer (simulation, ajouter --apply)"
+    print(f"Positions GPS antérieures au {cutoff:%Y-%m-%d %H:%M} UTC {verb} : {count}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="minefleet")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -134,6 +162,9 @@ def main(argv: list[str] | None = None) -> int:
     admin.add_argument("--email", required=True)
     admin.add_argument("--name", required=True)
     sub.add_parser("seed-fictif")
+    purge = sub.add_parser("purge-gps")
+    purge.add_argument("--days", type=int, default=None)
+    purge.add_argument("--apply", action="store_true")
     reset = sub.add_parser("reset-platform-mfa")
     reset.add_argument("--email", required=True)
     args = parser.parse_args(argv)
@@ -145,6 +176,8 @@ def main(argv: list[str] | None = None) -> int:
         return create_platform_admin(args.email, args.name, password)
     if args.command == "seed-fictif":
         return seed_fictitious()
+    if args.command == "purge-gps":
+        return purge_gps(args.days, args.apply)
     if args.command == "reset-platform-mfa":
         return reset_platform_mfa(args.email)
     return 1

@@ -1,40 +1,45 @@
 # État réel du projet
 
-État actualisé au 31 octobre 2026 sur `main` au commit `5782791edb897e43499fe03ec78eb4474ab45aef`.
-Les constats proviennent du code, des migrations, des tests et des workflows exécutés ; une mention dans une roadmap n'est pas une preuve de fonctionnement.
+État actualisé au 2 novembre 2026. `main` au commit `67f65b1` (#306) ; branches en revue décrites ci-dessous.
+Les constats proviennent du code, des migrations, des tests et des workflows exécutés ; une mention dans une roadmap
+n'est pas une preuve de fonctionnement. Les photographies antérieures restent dans l'historique Git.
 
 ## État GitHub
 
-- PR #157 fusionnée (`be9fc8c`) : tableau de bord carburant React, tests unitaires et parcours E2E enrichi.
-- PR #158 fusionnée (`5782791`) : shell PWA, cache statique strictement hors API, indicateur réseau et smoke de rechargement hors ligne.
-- Aucune PR ouverte au démarrage du socle d'idempotence serveur.
-- CI de la PR #158 réussie : backend, frontend, audit des dépendances, build, smoke navigateur et E2E d'isolation.
-- La protection de branche n'a pas pu être vérifiée : l'intégration GitHub répond `403 Resource not accessible by integration` sur cette ressource.
+| PR | Contenu | État |
+|---|---|---|
+| #300, #301, #302 | HSE-1, connexion plateforme, fiabilité/coûts maintenance | fusionnées dans `main` |
+| #303 | déclaration HSE hors ligne de bout en bout | fusionnée dans `main` |
+| #304 | pneumatiques (0053) | fusionnée dans `main` |
+| #305 | HSE-2 inspections (0054) | **fusionnée dans `feature/tyre-management` après la fusion de #304 : absente de `main`** |
+| #306 | correctif 404 des achats de carburant | fusionnée dans `main` |
+| #307 | HSE-2 + coût complet (0055), `main` intégrée | ouverte ; **sa base doit être changée vers `main`** |
+| GPS avancé | zones, trajets, rétention (0056), empilé sur #307 | branche `feature/gps-geofencing` |
+
+Production (VPS) : commit `70aeb74`, migration 0051 ; aucune livraison postérieure n'est déployée.
 
 ## Périmètre confirmé par le code
 
 | Domaine | État | Preuves principales |
 |---|---|---|
-| Multi-tenant, sites, utilisateurs, RBAC, MFA, audit | Opérationnel et fortement testé | RLS PostgreSQL forcée, matrice d'autorisations générée, TOTP, révocation de sessions, journal immuable |
-| Véhicules, conducteurs, habilitations, affectations | Opérationnel | modèles, API, migrations, UI et tests d'isolation |
-| Missions, rotations, pesées | Opérationnel | transitions métier, événements append-only, contraintes et E2E |
-| Atelier et maintenance préventive | Opérationnel avec compléments métier | ordres, mécaniciens, main-d'œuvre, échéances, compteurs ; coûts pièces/MTBF/MTTR incomplets |
-| Carburant et achats | Avancé côté backend et UI principale | cuves, réservations, double validation, inventaires, fournisseurs, commandes, livraisons partielles, alertes, pompes et rapprochements |
-| GPS temps réel | Socle opérationnel | téléphone, traceur authentifié, position courante et carte ; fournisseur réel, géofencing et historique avancé absents |
-| Mode réseau dégradé | En cours | shell PWA livré ; socle d'idempotence transactionnelle développé dans `feature/offline-idempotency-core` ; cache métier et synchronisation d'un parcours restent absents |
-| Pièces, magasins et pneus | Non complet | pas de véritable stock/mouvement/traçabilité ; notes libres seulement dans l'atelier |
-| HSE | Non complet | rôles et quelques motifs, sans inspections/incidents/actions correctives structurés |
-| Rentabilité et coût par équipement | Partiel | données opérationnelles disponibles, agrégation comptable insuffisante |
+| Multi-tenant, sites, utilisateurs, RBAC, MFA, audit | Opérationnel et fortement testé | RLS forcée, matrice générée, tests 403/isolation générés |
+| Véhicules, conducteurs, habilitations, affectations | Opérationnel | API, UI, E2E |
+| Missions, rotations, pesées | Opérationnel | transitions, événements, E2E |
+| Atelier, préventif, fiabilité (MTBF/MTTR) | Opérationnel | #302 |
+| Pièces et magasins | Avancé | catalogue, stocks, mouvements, réservations, CMP, réappro, BC brouillon |
+| Pneumatiques | Opérationnel | #304, E2E |
+| Carburant et achats | Avancé | correctif #306 : création/décision d'achat répondaient 404 |
+| HSE | Incidents + hors ligne en `main` ; inspections/checklists/photos en #307 | tests API, UI, E2E |
+| Hors ligne | Premier parcours métier réel (déclaration HSE) | E2E Chromium + émulation Android en CI |
+| Coût complet par engin | En #307 | statuts complet/estimé/partiel/insuffisant |
+| GPS | Temps réel en `main` ; zones, trajets audités, rétention sur branche dédiée | tests API, charge bornée |
+| Contrats et assurances | Socle | registre, documents privés, antivirus |
+| Sous-traitants, rentabilité | Absents | — |
 
-## Situation de livraison
+## Points d'attention
 
-Le noyau MVP est robuste, mais le dépôt ne prouve pas qu'un environnement pilote exécute le commit courant et la migration Alembic `0038`. La documentation de déploiement disponible décrit un état historique. Aucun exercice de restauration récent, SLO ni tableau de supervision n'est attesté dans le dépôt.
-
-## Chantier actif
-
-`feature/offline-idempotency-core` : fondation serveur pour les rejeux après coupure — clé limitée au tenant et à
-l'utilisateur, empreinte de la requête sans conservation du corps, réservation concurrente et référence de rejeu
-dans la même transaction que la mutation. Cette tranche ne rend encore aucune route métier synchronisable : le
-premier parcours append-only et son outbox IndexedDB feront l'objet d'une PR distincte.
-
-Les présents documents d'audit constituent la référence au commit audité ; les audits antérieurs éventuels restent des photographies historiques.
+- Descente de la migration 0031 non sûre lorsque des achats de carburant existent (sans effet en CI/production ;
+  gênant pour les bases de développement réutilisées).
+- FUEL_MANAGER de portée société ne peut pas lister les sites.
+- Essais terrain réels (téléphone Android, réseau mobile, traceurs) non réalisés.
+- Durées de conservation (GPS, HSE) et bases légales à valider avec un juriste local avant production.
