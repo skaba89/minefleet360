@@ -12,6 +12,7 @@ import { ReferentialsPage } from "./pages/ReferentialsPage";
 import { DriverDetailPage } from "./pages/DriverDetailPage";
 import { DriversPage } from "./pages/DriversPage";
 import { HomePage } from "./pages/HomePage";
+import { ChecklistTemplatesPage, HseInspectionPage, HseInspectionsPage } from "./pages/HseInspectionsPages";
 import { HseIncidentPage, HsePage } from "./pages/HsePages";
 import { LoginPage } from "./pages/LoginPage";
 import { LegalRegistriesPage } from "./pages/LegalRegistriesPage";
@@ -70,6 +71,9 @@ export function App() {
           <Route path="atelier/fiabilite" element={<ReliabilityPage />} />
           <Route path="atelier/:workOrderId" element={<WorkOrderPage />} />
           <Route path="hse" element={<HsePage />} />
+          <Route path="hse/inspections" element={<HseInspectionsPage />} />
+          <Route path="hse/inspections/:inspectionId" element={<HseInspectionPage />} />
+          <Route path="hse/checklists" element={<ChecklistTemplatesPage />} />
           <Route path="hse/:incidentId" element={<HseIncidentPage />} />
           <Route path="pneus" element={<TyresPage />} />
           <Route path="pneus/:tyreId" element={<TyrePage />} />

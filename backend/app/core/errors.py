@@ -142,6 +142,9 @@ CATALOG: dict[str, ErrorDef] = {
     "HSE_CORRECTIVE_ACTION_REQUIRED": ErrorDef(
         422, "Un incident grave ne peut être clôturé sans au moins une action corrective vérifiée."
     ),
+    "HSE_NO_NONCONFORMITY": ErrorDef(
+        422, "Cette inspection ne comporte aucune non-conformité : aucune action corrective à créer."
+    ),
     "HSE_OWNER_NOT_ELIGIBLE": ErrorDef(
         422, "Cette personne ne peut pas porter d'action corrective sur le site de l'incident."
     ),

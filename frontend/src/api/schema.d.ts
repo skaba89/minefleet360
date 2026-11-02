@@ -770,6 +770,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/hse/checklist-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Templates */
+        get: operations["list_templates_api_v1_hse_checklist_templates_get"];
+        put?: never;
+        /** Create Template */
+        post: operations["create_template_api_v1_hse_checklist_templates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/checklist-templates/{template_id}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deactivate Template */
+        post: operations["deactivate_template_api_v1_hse_checklist_templates__template_id__deactivate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/hse/corrective-actions": {
         parameters: {
             query?: never;
@@ -815,6 +850,23 @@ export interface paths {
         put?: never;
         /** Decide Action */
         post: operations["decide_action_api_v1_hse_corrective_actions__hse_corrective_action_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/evidence/{hse_evidence_id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Evidence Content */
+        get: operations["evidence_content_api_v1_hse_evidence__hse_evidence_id__content_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -901,6 +953,92 @@ export interface paths {
         put?: never;
         /** Transition Incident */
         post: operations["transition_incident_api_v1_hse_incidents__hse_incident_id__transition_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/inspections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Inspections */
+        get: operations["list_inspections_api_v1_hse_inspections_get"];
+        put?: never;
+        /** Create Inspection */
+        post: operations["create_inspection_api_v1_hse_inspections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/inspections/{hse_inspection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Inspection */
+        get: operations["get_inspection_api_v1_hse_inspections__hse_inspection_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/inspections/{hse_inspection_id}/action-owners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inspection Action Owners */
+        get: operations["inspection_action_owners_api_v1_hse_inspections__hse_inspection_id__action_owners_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/inspections/{hse_inspection_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Inspection Action */
+        post: operations["add_inspection_action_api_v1_hse_inspections__hse_inspection_id__actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hse/inspections/{hse_inspection_id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Evidence */
+        post: operations["upload_evidence_api_v1_hse_inspections__hse_inspection_id__evidence_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2944,13 +3082,10 @@ export interface components {
              * Format: uuid
              */
             hse_corrective_action_id: string;
-            /**
-             * Hse Incident Id
-             * Format: uuid
-             */
-            hse_incident_id: string;
-            /** Incident Reference */
-            incident_reference: string;
+            /** Hse Incident Id */
+            hse_incident_id: string | null;
+            /** Hse Inspection Id */
+            hse_inspection_id: string | null;
             /** Overdue */
             overdue: boolean;
             /** Owner Name */
@@ -2960,6 +3095,8 @@ export interface components {
              * Format: uuid
              */
             owner_user_id: string;
+            /** Parent Reference */
+            parent_reference: string;
             /** Row Version */
             row_version: number;
             /**
@@ -3093,6 +3230,34 @@ export interface components {
              * Format: uuid
              */
             start_reading_id: string;
+        };
+        /** AnswerIn */
+        AnswerIn: {
+            /** Comment */
+            comment?: string | null;
+            /** Item Key */
+            item_key: string;
+            /**
+             * Result
+             * @enum {string}
+             */
+            result: "COMPLIANT" | "NON_COMPLIANT" | "NOT_APPLICABLE";
+        };
+        /** AnswerOut */
+        AnswerOut: {
+            /** Comment */
+            comment: string | null;
+            /** Critical */
+            critical: boolean;
+            /** Item Key */
+            item_key: string;
+            /** Label */
+            label: string;
+            /**
+             * Result
+             * @enum {string}
+             */
+            result: "COMPLIANT" | "NON_COMPLIANT" | "NOT_APPLICABLE";
         };
         /** AssignmentCancel */
         AssignmentCancel: {
@@ -3300,6 +3465,18 @@ export interface components {
             current_password: string;
             /** New Password */
             new_password: string;
+        };
+        /** ChecklistItem */
+        ChecklistItem: {
+            /**
+             * Critical
+             * @default false
+             */
+            critical: boolean;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
         };
         /** ComplianceOut */
         ComplianceOut: {
@@ -3633,6 +3810,30 @@ export interface components {
             phone?: string | null;
             /** Site Id */
             site_id?: string | null;
+        };
+        /** EvidenceOut */
+        EvidenceOut: {
+            /** Content Type */
+            content_type: string;
+            /**
+             * Hse Evidence Id
+             * Format: uuid
+             */
+            hse_evidence_id: string;
+            /** Sha256 */
+            sha256: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /**
+             * Uploaded At
+             * Format: date-time
+             */
+            uploaded_at: string;
+            /**
+             * Uploaded By
+             * Format: uuid
+             */
+            uploaded_by: string;
         };
         /** ExpirationItem */
         ExpirationItem: {
@@ -4346,10 +4547,14 @@ export interface components {
             by_severity: {
                 [key: string]: number;
             };
+            /** Failed Inspections */
+            failed_inspections: number;
             /** Incidents */
             incidents: number;
             /** Injured */
             injured: number;
+            /** Inspections */
+            inspections: number;
             /** Lost Time Incidents */
             lost_time_incidents: number;
             /** Open Actions */
@@ -4566,6 +4771,107 @@ export interface components {
             period_start: string;
             /** Rows */
             rows: components["schemas"]["IndicatorRow"][];
+        };
+        /** InspectionCreate */
+        InspectionCreate: {
+            /** Answers */
+            answers: components["schemas"]["AnswerIn"][];
+            /** Area Note */
+            area_note?: string | null;
+            /**
+             * Hse Checklist Template Id
+             * Format: uuid
+             */
+            hse_checklist_template_id: string;
+            /** Note */
+            note?: string | null;
+            /**
+             * Performed At
+             * Format: date-time
+             */
+            performed_at: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Vehicle Id */
+            vehicle_id?: string | null;
+        };
+        /** InspectionOut */
+        InspectionOut: {
+            /** Actions */
+            actions?: components["schemas"]["ActionOut"][] | null;
+            /** Answers */
+            answers?: components["schemas"]["AnswerOut"][] | null;
+            /** Area Note */
+            area_note: string | null;
+            /** Critical Nonconformities */
+            critical_nonconformities: number;
+            /** Evidence */
+            evidence?: components["schemas"]["EvidenceOut"][] | null;
+            /**
+             * Hse Checklist Template Id
+             * Format: uuid
+             */
+            hse_checklist_template_id: string;
+            /**
+             * Hse Inspection Id
+             * Format: uuid
+             */
+            hse_inspection_id: string;
+            /** Nonconformities */
+            nonconformities: number;
+            /** Note */
+            note: string | null;
+            /** Number */
+            number: number;
+            /** Open Actions */
+            open_actions: number;
+            /**
+             * Performed At
+             * Format: date-time
+             */
+            performed_at: string;
+            /**
+             * Performed By
+             * Format: uuid
+             */
+            performed_by: string;
+            /** Performed By Name */
+            performed_by_name: string | null;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Result
+             * @enum {string}
+             */
+            result: "PASS" | "FAIL";
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Target Type
+             * @enum {string}
+             */
+            target_type: "PRE_SHIFT" | "VEHICLE" | "WORK_AREA";
+            /** Template Code */
+            template_code: string;
+            /** Template Name */
+            template_name: string;
+            /** Template Version */
+            template_version: number;
+            /** Vehicle Fleet Number */
+            vehicle_fleet_number: string | null;
+            /** Vehicle Id */
+            vehicle_id: string | null;
         };
         /** InsuranceOut */
         InsuranceOut: {
@@ -5416,6 +5722,17 @@ export interface components {
         Page_IncidentOut_: {
             /** Items */
             items: components["schemas"]["IncidentOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[InspectionOut] */
+        Page_InspectionOut_: {
+            /** Items */
+            items: components["schemas"]["InspectionOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -6635,6 +6952,48 @@ export interface components {
              * Format: uuid
              */
             site_id: string;
+        };
+        /** TemplateCreate */
+        TemplateCreate: {
+            /** Code */
+            code: string;
+            /** Items */
+            items: components["schemas"]["ChecklistItem"][];
+            /** Name */
+            name: string;
+            /**
+             * Target Type
+             * @enum {string}
+             */
+            target_type: "PRE_SHIFT" | "VEHICLE" | "WORK_AREA";
+        };
+        /** TemplateOut */
+        TemplateOut: {
+            /** Active */
+            active: boolean;
+            /** Code */
+            code: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Hse Checklist Template Id
+             * Format: uuid
+             */
+            hse_checklist_template_id: string;
+            /** Items */
+            items: components["schemas"]["ChecklistItem"][];
+            /** Name */
+            name: string;
+            /**
+             * Target Type
+             * @enum {string}
+             */
+            target_type: "PRE_SHIFT" | "VEHICLE" | "WORK_AREA";
+            /** Version */
+            version: number;
         };
         /** TenantCreate */
         TenantCreate: {
@@ -9736,6 +10095,108 @@ export interface operations {
             };
         };
     };
+    list_templates_api_v1_hse_checklist_templates_get: {
+        parameters: {
+            query?: {
+                target_type?: ("PRE_SHIFT" | "VEHICLE" | "WORK_AREA") | null;
+                include_inactive?: boolean;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_template_api_v1_hse_checklist_templates_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TemplateCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deactivate_template_api_v1_hse_checklist_templates__template_id__deactivate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_actions_api_v1_hse_corrective_actions_get: {
         parameters: {
             query?: {
@@ -9838,6 +10299,37 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ActionOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    evidence_content_api_v1_hse_evidence__hse_evidence_id__content_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                hse_evidence_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -10052,6 +10544,215 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IncidentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_inspections_api_v1_hse_inspections_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                result?: ("PASS" | "FAIL") | null;
+                target_type?: ("PRE_SHIFT" | "VEHICLE" | "WORK_AREA") | null;
+                vehicle_id?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_InspectionOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_inspection_api_v1_hse_inspections_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InspectionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_inspection_api_v1_hse_inspections__hse_inspection_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                hse_inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inspection_action_owners_api_v1_hse_inspections__hse_inspection_id__action_owners_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                hse_inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionOwnerOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_inspection_action_api_v1_hse_inspections__hse_inspection_id__actions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                hse_inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_evidence_api_v1_hse_inspections__hse_inspection_id__evidence_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                hse_inspection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceOut"];
                 };
             };
             /** @description Validation Error */
