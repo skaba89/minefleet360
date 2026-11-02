@@ -1100,6 +1100,65 @@ permissions:
       FINANCE: [TENANT, SITE]
       AUDITOR: [TENANT]
 
+  # --- HSE (lot HSE-1, docs/LIVRAISON_HSE1.md) ---------------------------------------------------------
+  # Lecture : pas de TENANT_ADMIN (administration technique) ni de rôles sans besoin d'en connaître.
+  # Les déclarants sans lecture (mécanicien, carburant) ne voient que l'incident qu'ils viennent de créer.
+  hse.incident.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /hse/incidents, shape: collection, success: 200 }
+      - { method: GET, path: "/hse/incidents/{hse_incident_id}", shape: item, success: 200 }
+      - { method: GET, path: /hse/corrective-actions, shape: collection, success: 200 }
+      - { method: GET, path: /hse/summary, shape: collection, success: 200 }
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  hse.incident.report:
+    tranche: 1c
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /hse/incidents, shape: collection, success: 201 }]
+    audit: { action: hse.incident.report }
+    grants:
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      MECHANIC: [TENANT, SITE]
+      FUEL_MANAGER: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+  hse.incident.manage:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: "/hse/incidents/{hse_incident_id}/transition", shape: item, success: 200 }
+      - { method: GET, path: "/hse/incidents/{hse_incident_id}/action-owners", shape: item, success: 200 }
+      - { method: POST, path: "/hse/incidents/{hse_incident_id}/actions", shape: item, success: 201 }
+      - { method: POST, path: "/hse/corrective-actions/{hse_corrective_action_id}/decision", shape: item, success: 200 }
+    # Actions écrites : hse.incident.start_investigation, .note, .close, .cancel ; hse.action.create,
+    # .verify, .reopen, .cancel.
+    audit: { action: hse.incident.close }
+    grants: { HSE: [TENANT, SITE] }
+  hse.action.complete:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: "/hse/corrective-actions/{hse_corrective_action_id}/complete", shape: item, success: 200 }
+    # Le service exige en plus d'être le responsable de l'action (HSE_NOT_ACTION_OWNER).
+    audit: { action: hse.action.complete }
+    grants:
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+
 public_routes:
   # Authentification machine obligatoire dans la route ; aucun accès anonyme aux données.
   - { method: POST, path: /gps/telemetry }

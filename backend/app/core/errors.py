@@ -33,6 +33,7 @@ CATALOG: dict[str, ErrorDef] = {
     "WORK_ORDER_NOT_ASSIGNEE": ErrorDef(
         403, "Seul le mécanicien assigné ou le chef d'atelier peut agir sur cette intervention."
     ),
+    "HSE_NOT_ACTION_OWNER": ErrorDef(403, "Seul le responsable de l'action peut la déclarer réalisée."),
     "PERMISSION_DENIED": ErrorDef(403, "Vous n'avez pas l'autorisation d'effectuer cette action."),
     "MFA_ENROLLMENT_REQUIRED": ErrorDef(
         403, "Configurez la double authentification de votre compte avant de continuer."
@@ -84,6 +85,15 @@ CATALOG: dict[str, ErrorDef] = {
     "WORK_ORDER_STATE_INVALID": ErrorDef(
         409, "Cette action n'est pas possible dans l'état actuel de l'ordre de travail."
     ),
+    "HSE_INCIDENT_STATE_INVALID": ErrorDef(
+        409, "Cette action n'est pas possible dans l'état actuel de l'incident."
+    ),
+    "HSE_ACTION_STATE_INVALID": ErrorDef(
+        409, "Cette action n'est pas possible dans l'état actuel de l'action corrective."
+    ),
+    "HSE_ACTIONS_PENDING": ErrorDef(
+        409, "Des actions correctives restent à réaliser ou à vérifier (ou à annuler) avant cette étape."
+    ),
     "FUEL_INTERVAL_NOT_ANOMALOUS": ErrorDef(
         409, "Cet intervalle de pompe est dans les tolérances configurées et ne peut pas ouvrir de dossier."
     ),
@@ -117,6 +127,18 @@ CATALOG: dict[str, ErrorDef] = {
     ),
     "SELF_APPROVAL_FORBIDDEN": ErrorDef(
         422, "Une saisie dégradée doit être approuvée par une autre personne que celle qui l'a saisie."
+    ),
+    "HSE_SELF_CLOSURE_FORBIDDEN": ErrorDef(
+        422, "L'incident doit être clôturé par une autre personne que celle qui l'a déclaré."
+    ),
+    "HSE_SELF_VERIFICATION_FORBIDDEN": ErrorDef(
+        422, "L'efficacité d'une action doit être vérifiée par une autre personne que celle qui l'a réalisée."
+    ),
+    "HSE_CORRECTIVE_ACTION_REQUIRED": ErrorDef(
+        422, "Un incident grave ne peut être clôturé sans au moins une action corrective vérifiée."
+    ),
+    "HSE_OWNER_NOT_ELIGIBLE": ErrorDef(
+        422, "Cette personne ne peut pas porter d'action corrective sur le site de l'incident."
     ),
     "IDEMPOTENCY_KEY_REUSED": ErrorDef(
         422, "Cette clé de synchronisation a déjà été utilisée pour une autre opération."

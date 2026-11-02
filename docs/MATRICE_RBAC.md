@@ -211,10 +211,12 @@ Aucune de ces permissions n'est déclarée dans `authz_matrix.yaml` au lot 1, au
 | `inventory` (pièces, pneus) | — | L | L | — | — | — | L É (demande) | É (demande) | É A | L | — | L (valorisation) | L |
 | `fuel` (cuves, bons, dotations) | — | L | L | L | — | L (propre) | — | — | — | É A | L | L | L |
 | `telematics` (positions GPS) | — | L (agrégé) | L (agrégé) | L (temps réel, site, horaires de service) | — | L (propre) | — | — | — | — | L (événements sécurité) | — | L (accès tracé) |
-| `hse` (incidents, contrôles) | — | L | L | L | L | É (signalement) | L | L | — | — | É A | — | L |
+| `hse` (incidents, actions) — **implémenté HSE-1** | — | L | L É | L É | — | — (lot 4) | L É | É (signalement seul) | — | É (signalement seul) | L É A | — | L |
 | `contracts` (sous-traitants) | — | L | L | — | — | — | — | — | — | — | L | É A | L |
 | `finance` (coûts, rentabilité) | — | L | L (son périmètre) | — | — | — | — | — | — | — | — | É A | L |
 | `reporting` | — | L | L | L (site) | L (RH) | — | L | — | — | L | L | L | L |
+
+Écarts HSE-1 assumés vs l'indicatif initial (voir `LIVRAISON_HSE1.md`) : HR sans accès au registre (aucune donnée RH n'y figure) ; DRIVER différé au lot 4 (D-25) ; MEC/FUEL déclarent sans relire le registre (besoin d'en connaître) ; réalisation d'action réservée à son responsable (OPS, DISP, WSC, HSE).
 
 Points de vigilance transverses (détaillés dans `MENACES_ET_CONTROLES.md`) :
 - **`telematics`** : historique de positions nominatif = donnée sensible de salarié ; accès au temps réel limité au site et aux horaires de service ; l'historique nominatif exige une finalité et est tracé (T-31). Aucune donnée GPS réelle en développement (C-08).

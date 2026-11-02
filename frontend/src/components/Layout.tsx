@@ -46,6 +46,11 @@ export function Layout() {
         can(me.grants, "fuel.purchase.create"),
     },
     { to: "/pieces", text: "Pièces", show: can(me.grants, "maintenance.parts.read", siteId) },
+    {
+      to: "/hse",
+      text: "Sécurité (HSE)",
+      show: can(me.grants, "hse.incident.read") || can(me.grants, "hse.incident.report"),
+    },
     { to: "/pesees", text: "Pesées", show: can(me.grants, "dispatch.weighing.read") },
     { to: "/juridique", text: "Contrats & assurances", show: can(me.grants, "legal.contract.read", siteId) || can(me.grants, "legal.insurance.read", siteId) },
     { to: "/indicateurs", text: "Indicateurs", show: can(me.grants, "dispatch.indicators.read") },

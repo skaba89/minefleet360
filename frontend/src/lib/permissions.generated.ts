@@ -753,6 +753,77 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "hse.action.complete": {
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "hse.incident.manage": {
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "hse.incident.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "hse.incident.report": {
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "FUEL_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "MECHANIC": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "identity.role.read": {
     "AUDITOR": [
       "TENANT"
