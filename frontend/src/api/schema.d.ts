@@ -1966,6 +1966,126 @@ export interface paths {
         patch: operations["update_own_tenant_api_v1_tenant_patch"];
         trace?: never;
     };
+    "/api/v1/tyres": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tyres */
+        get: operations["list_tyres_api_v1_tyres_get"];
+        put?: never;
+        /** Create Tyre */
+        post: operations["create_tyre_api_v1_tyres_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tyres/{tyre_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Tyre */
+        get: operations["get_tyre_api_v1_tyres__tyre_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tyres/{tyre_id}/dismount": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Dismount Tyre */
+        post: operations["dismount_tyre_api_v1_tyres__tyre_id__dismount_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tyres/{tyre_id}/inspections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Inspect Tyre */
+        post: operations["inspect_tyre_api_v1_tyres__tyre_id__inspections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tyres/{tyre_id}/mount": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mount Tyre */
+        post: operations["mount_tyre_api_v1_tyres__tyre_id__mount_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tyres/{tyre_id}/repair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Repair Tyre */
+        post: operations["repair_tyre_api_v1_tyres__tyre_id__repair_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tyres/{tyre_id}/scrap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Scrap Tyre */
+        post: operations["scrap_tyre_api_v1_tyres__tyre_id__scrap_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -5435,6 +5555,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[TyreOut] */
+        Page_TyreOut_: {
+            /** Items */
+            items: components["schemas"]["TyreOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[UserOut] */
         Page_UserOut_: {
             /** Items */
@@ -6654,6 +6785,223 @@ export interface components {
             revoked_at: string | null;
             /** Token */
             token: string;
+        };
+        /** TyreCreate */
+        TyreCreate: {
+            /** Brand */
+            brand: string;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "STEER" | "DRIVE" | "TRAILER" | "ALL_POSITION";
+            /** Currency */
+            currency?: string | null;
+            /** Initial Tread Mm */
+            initial_tread_mm: number | string;
+            /** Model */
+            model: string;
+            /** Nominal Pressure Kpa */
+            nominal_pressure_kpa?: number | null;
+            /** Purchase Cost */
+            purchase_cost?: number | string | null;
+            /** Scrap Tread Mm */
+            scrap_tread_mm: number | string;
+            /** Serial Number */
+            serial_number: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Size */
+            size: string;
+            /** Spare Part Id */
+            spare_part_id?: string | null;
+        };
+        /** TyreDismount */
+        TyreDismount: {
+            /** Hour Meter */
+            hour_meter?: number | string | null;
+            /** Odometer Km */
+            odometer_km?: number | string | null;
+            /**
+             * Reason Code
+             * @enum {string}
+             */
+            reason_code: "ROTATION" | "WEAR" | "DAMAGE" | "PUNCTURE" | "REPAIR" | "VEHICLE_MAINTENANCE" | "OTHER";
+            /** Tread Mm */
+            tread_mm?: number | string | null;
+            /** Work Order Id */
+            work_order_id?: string | null;
+        };
+        /** TyreEventOut */
+        TyreEventOut: {
+            /** Cost */
+            cost: string | null;
+            /** Currency */
+            currency: string | null;
+            /** Event Type */
+            event_type: string;
+            /** Hour Meter */
+            hour_meter: string | null;
+            /** Note */
+            note: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Odometer Km */
+            odometer_km: string | null;
+            /** Position Code */
+            position_code: string | null;
+            /** Pressure Kpa */
+            pressure_kpa: number | null;
+            /** Reason Code */
+            reason_code: string | null;
+            /** Tread Mm */
+            tread_mm: string | null;
+            /** Vehicle Id */
+            vehicle_id: string | null;
+            /** Work Order Id */
+            work_order_id: string | null;
+        };
+        /** TyreInspection */
+        TyreInspection: {
+            /** Hour Meter */
+            hour_meter?: number | string | null;
+            /** Note */
+            note?: string | null;
+            /** Odometer Km */
+            odometer_km?: number | string | null;
+            /** Pressure Kpa */
+            pressure_kpa?: number | null;
+            /** Tread Mm */
+            tread_mm: number | string;
+        };
+        /** TyreMount */
+        TyreMount: {
+            /** Hour Meter */
+            hour_meter?: number | string | null;
+            /** Odometer Km */
+            odometer_km?: number | string | null;
+            /** Position Code */
+            position_code: string;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /** Work Order Id */
+            work_order_id?: string | null;
+        };
+        /** TyreOut */
+        TyreOut: {
+            /** Alerts */
+            alerts: ("TREAD_AT_LIMIT" | "TREAD_LOW" | "PRESSURE_DEVIATION" | "INSPECTION_OVERDUE")[];
+            /** Brand */
+            brand: string;
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "STEER" | "DRIVE" | "TRAILER" | "ALL_POSITION";
+            /** Cost Complete */
+            cost_complete: boolean;
+            /** Cost Per Hour */
+            cost_per_hour: string | null;
+            /** Cost Per Km */
+            cost_per_km: string | null;
+            /** Currency */
+            currency: string | null;
+            /** Events */
+            events?: components["schemas"]["TyreEventOut"][] | null;
+            /** Hours Run */
+            hours_run: string;
+            /** Initial Tread Mm */
+            initial_tread_mm: string;
+            /** Km Run */
+            km_run: string;
+            /** Last Inspected At */
+            last_inspected_at: string | null;
+            /** Last Pressure Kpa */
+            last_pressure_kpa: number | null;
+            /** Last Tread Mm */
+            last_tread_mm: string | null;
+            /** Model */
+            model: string;
+            /** Mounted At */
+            mounted_at: string | null;
+            /** Nominal Pressure Kpa */
+            nominal_pressure_kpa: number | null;
+            /** Position Code */
+            position_code: string | null;
+            /** Purchase Cost */
+            purchase_cost: string | null;
+            /** Retread Count */
+            retread_count: number;
+            /** Row Version */
+            row_version: number;
+            /** Scrap Reason */
+            scrap_reason: string | null;
+            /** Scrap Tread Mm */
+            scrap_tread_mm: string;
+            /** Serial Number */
+            serial_number: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Size */
+            size: string;
+            /** Spare Part Id */
+            spare_part_id: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "IN_STOCK" | "MOUNTED" | "IN_REPAIR" | "SCRAPPED";
+            /** Total Cost */
+            total_cost: string | null;
+            /**
+             * Tyre Id
+             * Format: uuid
+             */
+            tyre_id: string;
+            /** Vehicle Fleet Number */
+            vehicle_fleet_number: string | null;
+            /** Vehicle Id */
+            vehicle_id: string | null;
+        };
+        /** TyreRepair */
+        TyreRepair: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "SEND" | "REPAIRED" | "RETREADED";
+            /** Cost */
+            cost?: number | string | null;
+            /** Currency */
+            currency?: string | null;
+            /** New Tread Mm */
+            new_tread_mm?: number | string | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** TyreScrap */
+        TyreScrap: {
+            /** Note */
+            note?: string | null;
+            /**
+             * Reason Code
+             * @enum {string}
+             */
+            reason_code: "WORN_OUT" | "IRREPARABLE_DAMAGE" | "AGE" | "OTHER";
+            /** Tread Mm */
+            tread_mm?: number | string | null;
         };
         /** UserInvite */
         UserInvite: {
@@ -12316,6 +12664,302 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenantOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tyres_api_v1_tyres_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                status?: ("IN_STOCK" | "MOUNTED" | "IN_REPAIR" | "SCRAPPED") | null;
+                vehicle_id?: string | null;
+                alert_only?: boolean;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_TyreOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_tyre_api_v1_tyres_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TyreCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_tyre_api_v1_tyres__tyre_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                tyre_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dismount_tyre_api_v1_tyres__tyre_id__dismount_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                tyre_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TyreDismount"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    inspect_tyre_api_v1_tyres__tyre_id__inspections_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                tyre_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TyreInspection"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mount_tyre_api_v1_tyres__tyre_id__mount_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                tyre_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TyreMount"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    repair_tyre_api_v1_tyres__tyre_id__repair_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                tyre_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TyreRepair"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scrap_tyre_api_v1_tyres__tyre_id__scrap_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                tyre_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TyreScrap"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreOut"];
                 };
             };
             /** @description Validation Error */

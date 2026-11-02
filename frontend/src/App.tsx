@@ -28,6 +28,7 @@ import { IndicatorsPage, WeighingsPage } from "./pages/WeighingPages";
 import { WorkOrderPage, WorkshopPage } from "./pages/WorkshopPages";
 import { FuelPage } from "./pages/FuelPage";
 import { PartsPage } from "./pages/PartsPage";
+import { TyrePage, TyresPage } from "./pages/TyresPages";
 import { SiteProvider } from "./site/SiteContext";
 
 function Protected() {
@@ -72,6 +73,8 @@ export function App() {
           <Route path="atelier/:workOrderId" element={<WorkOrderPage />} />
           <Route path="hse" element={<HsePage />} />
           <Route path="hse/:incidentId" element={<HseIncidentPage />} />
+          <Route path="pneus" element={<TyresPage />} />
+          <Route path="pneus/:tyreId" element={<TyrePage />} />
           <Route path="pesees" element={<WeighingsPage />} />
           <Route path="indicateurs" element={<IndicatorsPage />} />
           <Route path="mon-compte/securite" element={<SecurityPage />} />

@@ -139,6 +139,9 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
         "completion_note": "Réalisation fictive vérifiable",
     },
     ("POST", "/hse/corrective-actions/{hse_corrective_action_id}/decision"): {"action": "VERIFY"},
+    ("POST", "/tyres/{tyre_id}/inspections"): {"tread_mm": "50.0"},
+    ("POST", "/tyres/{tyre_id}/scrap"): {"reason_code": "AGE"},
+    ("POST", "/tyres/{tyre_id}/repair"): {"action": "SEND"},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/approve"): {},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/void"): {"reason_code": "ENTRY_ERROR"},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/correct"): {
@@ -339,7 +342,23 @@ def world(api: Api, client: TestClient) -> World:
         },
     )
     assert corrective.status_code == 201, corrective.text
+    tyre = client.post(
+        f"{API}/tyres",
+        headers=next(p for p in personas if p.role == "WORKSHOP_CHIEF" and p.scope == "TENANT").headers,
+        json={
+            "site_id": str(a.sites["S1"]),
+            "serial_number": "SN-RBAC-1",
+            "brand": "MarqueFictive",
+            "model": "Minier",
+            "size": "27.00R49",
+            "category": "DRIVE",
+            "initial_tread_mm": "80.0",
+            "scrap_tread_mm": "10.0",
+        },
+    )
+    assert tyre.status_code == 201, tyre.text
     objects = {
+        "tyre_id": uuid.UUID(tyre.json()["tyre_id"]),
         "hse_incident_id": uuid.UUID(incident_id),
         "hse_corrective_action_id": uuid.UUID(corrective.json()["hse_corrective_action_id"]),
         "work_order_id": uuid.UUID(work_order.json()["work_order_id"]),

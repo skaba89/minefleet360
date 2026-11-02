@@ -86,15 +86,16 @@ permissions:
     routes:
       - { method: GET, path: /sites, shape: collection, success: 200 }
       - { method: GET, path: "/sites/{site_id}", shape: item, success: 200 }
+    # Rôles atelier/magasin de portée société : choisir le site d'un pneu, d'un stock ou d'une intervention.
     grants:
       TENANT_ADMIN: [TENANT]
       DIRECTION: [TENANT]
       OPS_MANAGER: [TENANT, SITE]
       DISPATCHER: [SITE]
       HR: [TENANT, SITE]
-      WORKSHOP_CHIEF: [SITE]
-      MECHANIC: [SITE]
-      STOREKEEPER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      MECHANIC: [TENANT, SITE]
+      STOREKEEPER: [TENANT, SITE]
       FUEL_MANAGER: [SITE]
       HSE: [TENANT, SITE]
       FINANCE: [TENANT, SITE]
@@ -281,13 +282,15 @@ permissions:
       - { method: GET, path: "/vehicles/gps/latest", shape: collection, success: 200 }
       - { method: GET, path: "/vehicles/{vehicle_id}", shape: item, success: 200 }
       - { method: GET, path: "/vehicles/{vehicle_id}/status-history", shape: item, success: 200 }
+    # Atelier de portée société : lecture des engins nécessaire au montage des pneus et au signalement de
+    # panne (il lit déjà tous les OT de la société). Revue sécurité demandée dans la PR pneumatiques.
     grants: &vehicle_readers
       TENANT_ADMIN: [TENANT]
       DIRECTION: [TENANT]
       OPS_MANAGER: [TENANT, SITE]
       DISPATCHER: [SITE]
-      WORKSHOP_CHIEF: [SITE]
-      MECHANIC: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      MECHANIC: [TENANT, SITE]
       STOREKEEPER: [SITE]
       FUEL_MANAGER: [SITE]
       HSE: [TENANT, SITE]
@@ -697,6 +700,44 @@ permissions:
       WORKSHOP_CHIEF: [TENANT, SITE]
       FINANCE: [TENANT, SITE]
       AUDITOR: [TENANT]
+  # --- pneumatiques (chantier B, docs/LIVRAISON_PNEUS.md) ----------------------------------------------
+  maintenance.tyre.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /tyres, shape: collection, success: 200 }
+      - { method: GET, path: "/tyres/{tyre_id}", shape: item, success: 200 }
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      MECHANIC: [TENANT, SITE]
+      STOREKEEPER: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  maintenance.tyre.manage:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: /tyres, shape: collection, success: 201 }
+      - { method: POST, path: "/tyres/{tyre_id}/repair", shape: item, success: 200 }
+      - { method: POST, path: "/tyres/{tyre_id}/scrap", shape: item, success: 200 }
+    # Actions écrites : maintenance.tyre.create, .send, .repaired, .retreaded, .scrap.
+    audit: { action: maintenance.tyre.create }
+    grants: { WORKSHOP_CHIEF: [TENANT, SITE], STOREKEEPER: [TENANT, SITE] }
+  maintenance.tyre.fit:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: "/tyres/{tyre_id}/mount", shape: item, success: 200 }
+      - { method: POST, path: "/tyres/{tyre_id}/dismount", shape: item, success: 200 }
+      - { method: POST, path: "/tyres/{tyre_id}/inspections", shape: item, success: 200 }
+    # Actions écrites : maintenance.tyre.mount, .dismount, .inspect.
+    audit: { action: maintenance.tyre.mount }
+    grants: { WORKSHOP_CHIEF: [TENANT, SITE], MECHANIC: [TENANT, SITE] }
 
   # --- dispatch (lot 2a, docs/PLAN_LOT2.md §5) ---------------------------------------------------------
   dispatch.location.read:

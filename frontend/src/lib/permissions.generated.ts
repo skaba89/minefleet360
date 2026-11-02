@@ -289,6 +289,7 @@ export const GRANTS = {
       "SITE"
     ],
     "MECHANIC": [
+      "TENANT",
       "SITE"
     ],
     "OPS_MANAGER": [
@@ -302,6 +303,7 @@ export const GRANTS = {
       "TENANT"
     ],
     "WORKSHOP_CHIEF": [
+      "TENANT",
       "SITE"
     ]
   },
@@ -351,6 +353,7 @@ export const GRANTS = {
       "SITE"
     ],
     "MECHANIC": [
+      "TENANT",
       "SITE"
     ],
     "OPS_MANAGER": [
@@ -364,6 +367,7 @@ export const GRANTS = {
       "TENANT"
     ],
     "WORKSHOP_CHIEF": [
+      "TENANT",
       "SITE"
     ]
   },
@@ -431,6 +435,7 @@ export const GRANTS = {
       "SITE"
     ],
     "MECHANIC": [
+      "TENANT",
       "SITE"
     ],
     "OPS_MANAGER": [
@@ -444,6 +449,7 @@ export const GRANTS = {
       "TENANT"
     ],
     "WORKSHOP_CHIEF": [
+      "TENANT",
       "SITE"
     ]
   },
@@ -1185,6 +1191,54 @@ export const GRANTS = {
       "SITE"
     ]
   },
+  "maintenance.tyre.fit": {
+    "MECHANIC": [
+      "TENANT",
+      "SITE"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "maintenance.tyre.manage": {
+    "STOREKEEPER": [
+      "TENANT",
+      "SITE"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "maintenance.tyre.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "MECHANIC": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "STOREKEEPER": [
+      "TENANT",
+      "SITE"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "maintenance.work_order.execute": {
     "MECHANIC": [
       "SITE"
@@ -1286,6 +1340,7 @@ export const GRANTS = {
       "SITE"
     ],
     "MECHANIC": [
+      "TENANT",
       "SITE"
     ],
     "OPS_MANAGER": [
@@ -1293,12 +1348,14 @@ export const GRANTS = {
       "SITE"
     ],
     "STOREKEEPER": [
+      "TENANT",
       "SITE"
     ],
     "TENANT_ADMIN": [
       "TENANT"
     ],
     "WORKSHOP_CHIEF": [
+      "TENANT",
       "SITE"
     ]
   },

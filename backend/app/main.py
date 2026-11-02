@@ -35,6 +35,7 @@ from app.maintenance.purchase_order_router import router as purchase_order_route
 from app.maintenance.reliability import router as reliability_router
 from app.maintenance.replenishment_router import router as replenishment_router
 from app.maintenance.router import router as maintenance_router
+from app.maintenance.tyre_router import router as tyre_router
 from app.organization.router import platform_router, site_router, tenant_router
 from app.workforce.router import router as workforce_router
 
@@ -153,6 +154,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         dispatch_router,
         maintenance_router,
         reliability_router,
+        tyre_router,
         legal_router,
         parts_router,
         purchase_order_router,
