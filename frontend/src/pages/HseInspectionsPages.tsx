@@ -145,7 +145,9 @@ function InspectionForm({ onClose }: { onClose: () => void }) {
   const allowed = sites.filter((s) => can(me.grants, "hse.inspection.perform", s.site_id));
   const templates = useQuery({ queryKey: ["hse-templates"], queryFn: () => read("/hse/checklist-templates") });
   const [templateId, setTemplateId] = useState("");
-  const [site, setSite] = useState(siteId ?? allowed[0]?.site_id ?? "");
+  // Site calculé à chaque affichage : la liste des sites peut arriver après l'ouverture du formulaire.
+  const [siteChoice, setSite] = useState("");
+  const site = siteChoice || siteId || allowed[0]?.site_id || "";
   const [vehicle, setVehicle] = useState("");
   const [area, setArea] = useState("");
   const [note, setNote] = useState("");

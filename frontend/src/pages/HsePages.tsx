@@ -264,7 +264,9 @@ function ReportIncidentForm({
   const online = useConnectivity();
   const { siteId, sites, timezoneOf } = useSites();
   const declarable = sites.filter((s) => can(me.grants, "hse.incident.report", s.site_id));
-  const [form, setForm] = useState(() => emptyIncidentForm(siteId ?? declarable[0]?.site_id ?? "", timezoneOf(siteId)));
+  const [draft, setForm] = useState(() => emptyIncidentForm("", timezoneOf(siteId)));
+  // Site calculé à chaque affichage : la liste des sites peut arriver après l'ouverture du formulaire.
+  const form = { ...draft, site_id: draft.site_id || siteId || declarable[0]?.site_id || "" };
   const vehicles = useQuery({
     queryKey: ["vehicles", "hse", form.site_id],
     enabled: online && !!form.site_id && can(me.grants, "fleet.vehicle.read", form.site_id),

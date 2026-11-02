@@ -124,8 +124,8 @@ function CreateDriver({ onClose }: { onClose: () => void }) {
   const allowedSites = sites.filter(
     (s) => s.status === "ACTIVE" && can(me.grants, "workforce.driver.create", s.site_id),
   );
-  const [form, setForm] = useState({
-    site_id: siteId ?? allowedSites[0]?.site_id ?? "",
+  const [draft, setForm] = useState({
+    site_id: "",
     employee_number: "",
     last_name: "",
     first_name: "",
@@ -134,6 +134,8 @@ function CreateDriver({ onClose }: { onClose: () => void }) {
     external_company_name: "",
     hire_date: "",
   });
+  // Site calculé à chaque affichage : la liste des sites peut arriver après l'ouverture du formulaire.
+  const form = { ...draft, site_id: draft.site_id || siteId || allowedSites[0]?.site_id || "" };
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm({ ...form, [key]: e.target.value });
 
