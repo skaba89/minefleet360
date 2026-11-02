@@ -40,11 +40,13 @@ Un mécanicien réalise une inspection et y ajoute des photos mais ne relit ni l
 
 ## Limites et suites
 
-- **Saisie hors ligne des inspections** non incluse (prévue après validation terrain du parcours hors ligne #303).
+- **Saisie hors ligne des inspections** reportée (décision D-DEL-04) jusqu'à l'essai terrain du parcours hors ligne #303.
 - Photos d'incident : **livrées** (`POST /hse/incidents/{id}/evidence`, même chaîne de contrôle que les inspections),
   par le déclarant de l'incident ou un responsable HSE du site, tant que l'incident est ouvert ; un déclarant sans
   accès au registre (mécanicien, carburant) peut joindre ses photos juste après sa déclaration. Hors ligne, la
   déclaration est mise en file mais pas les photos.
-- Pas d'immobilisation automatique d'un engin après une inspection d'engin non conforme (décision métier à prendre).
+- Inspection d'engin non conforme sur un point critique : **pas d'immobilisation automatique** (D-DEL-05) ; l'écran
+  avertit et propose un signalement de panne bloquante pré-rempli (points critiques, sans constat libre), confirmé
+  par l'utilisateur qui en a le droit, puis traité par le circuit atelier.
 - Rapports exportables (PDF/CSV) des inspections non livrés.
 - Le déploiement des photos exige la configuration du stockage privé et de ClamAV (`docs/legal-clamav-deployment.md`).
