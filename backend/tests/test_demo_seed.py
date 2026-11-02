@@ -80,6 +80,8 @@ def test_qa_profile_covers_every_role_and_module(demo: generator.DemoReport) -> 
     # Lot 3 : traceurs, zones et positions GPS calées sur les rotations.
     assert c["gps_trackers"] == c["assignments"] and c["geofences"] == 5 * c["sites"]
     assert c["gps_positions"] > 1000
+    # Lot 5 : un plan préventif par engin de transport, aucune échéance fabriquée (moteur non activé).
+    assert c["preventive_plans"] == c["assignments"] and "preventive_dues" not in c
     assert c["hse_inspections_non_compliant"] == 3 and "fuel_receipts" not in c
     # Jour J : des missions en cours et planifiées (la liste « en cours » n'est pas vide à l'ouverture).
     assert c["missions_live"] > 0 and c["missions_planned"] == 3
