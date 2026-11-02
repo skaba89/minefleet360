@@ -5528,6 +5528,8 @@ export interface components {
             email: string;
             /** Grants */
             grants: components["schemas"]["GrantOut"][];
+            /** Is Demo */
+            is_demo: boolean;
             /** Mfa Enabled */
             mfa_enabled: boolean;
             /** Mfa Enrollment Required */

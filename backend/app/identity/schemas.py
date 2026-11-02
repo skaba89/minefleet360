@@ -146,6 +146,8 @@ class MeOut(BaseModel):
     mfa_enabled: bool
     # Enrôlement doux (C-03) : tant que vrai, seules les routes du compte sont accessibles.
     mfa_enrollment_required: bool
+    # Espace de démonstration (données fictives, positions GPS éventuellement simulées) : bandeau permanent.
+    is_demo: bool
 
 
 # --- Rôles --------------------------------------------------------------------------------------------

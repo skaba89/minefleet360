@@ -17,6 +17,13 @@ Le transmettre par un canal sûr, puis le supprimer. Mot de passe perdu :
 minefleet demo reset-credentials --tenant demo-bauxite --credentials-out /srv/demo/comptes-bauxite.tsv
 ```
 
+Pendant une présentation, pour voir des camions « En mouvement » sur la flotte GPS (à lancer à côté de l'API,
+par exemple dans son conteneur ; Ctrl+C pour arrêter) :
+
+```
+minefleet demo live-feed --api-url http://127.0.0.1:8000 --interval 15 --duration 60
+```
+
 ## Pour le testeur (se connecter)
 
 1. Ouvrir l'URL de l'instance de démonstration.

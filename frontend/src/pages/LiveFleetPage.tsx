@@ -106,8 +106,10 @@ export function LiveFleetPage() {
         </div>
       </DataState>
       <p className="muted small">
-        Une position ancienne ne signifie pas que le camion est actuellement à cet endroit.
-        Les positions sont fournies par les équipements autorisés ; aucune simulation n'est affichée ici.
+        Une position ancienne ne signifie pas que le camion est actuellement à cet endroit.{" "}
+        {me.is_demo
+          ? "Espace de démonstration : les positions des traceurs peuvent provenir d'un émetteur simulé."
+          : "Les positions sont fournies par les équipements autorisés ; aucune simulation n'est affichée ici."}
       </p>
     </section>
   );

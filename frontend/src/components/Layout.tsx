@@ -142,6 +142,11 @@ export function Layout() {
             <div className="sidebar-footer"><span className="connection-dot" /> Exploitation minière<small>{me.workspace_code}</small></div>
           </nav>
           <main className="content">
+            {me.is_demo && (
+              <p className="demo-banner" role="note">
+                Espace de démonstration : sociétés, personnes et opérations fictives ; les positions GPS peuvent être simulées.
+              </p>
+            )}
             <Outlet />
           </main>
         </>
