@@ -1,0 +1,11 @@
+[Unit]
+Description=Send the MineFleet 360 HSE digest once a day (06:30 server time)
+
+[Timer]
+OnCalendar=*-*-* 06:30:00
+Persistent=true
+RandomizedDelaySec=120
+Unit=minefleet-hse-digest.service
+
+[Install]
+WantedBy=timers.target

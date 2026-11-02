@@ -25,7 +25,7 @@ class EmailMessage:
     to: str
     subject: str
     body: str
-    kind: str  # INVITATION | PASSWORD_RESET
+    kind: str  # INVITATION | PASSWORD_RESET | HSE_DIGEST
 
 
 class EmailSender(Protocol):
