@@ -15,6 +15,7 @@ import { VehiclePreventiveDues } from "./VehiclePreventiveDues";
 import { VehiclePreventivePlans } from "./VehiclePreventivePlans";
 import { useCategories, VEHICLE_TONE } from "./VehiclesPage";
 import { VehicleTyres } from "./TyresPages";
+import { VehicleTrackPanel } from "./GpsHistory";
 import { VehicleGpsPanel } from "./VehicleGpsPanel";
 
 type Vehicle = Schemas["VehicleOut"];
@@ -91,6 +92,7 @@ export function VehicleDetailPage() {
             )}
             {panel === "retire" && <Retire vehicle={v} etag={etag} onDone={done} onCancel={() => setPanel(null)} />}
             {v.status !== "RETIRED" && <VehicleGpsPanel vehicleId={v.vehicle_id} siteId={v.site_id} />}
+            <VehicleTrackPanel vehicleId={v.vehicle_id} siteId={v.site_id} />
             <dl className="facts">
               <Fact label="Site">{sites.find((s) => s.site_id === v.site_id)?.name}</Fact>
               <Fact label="Catégorie">

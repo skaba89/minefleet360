@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     invitation_ttl: timedelta = timedelta(days=7)
     reset_token_ttl: timedelta = timedelta(hours=1)
     # Fenêtre pendant laquelle un rejeu hors ligne est garanti sans double effet (D-14, à valider au pilote).
+    # Rétention des positions GPS (jours) appliquée par `minefleet purge-gps` ; 7 jours minimum en base.
+    gps_retention_days: int = Field(default=180, ge=7, le=3650)
     idempotency_ttl: timedelta = Field(
         default=timedelta(days=7), ge=timedelta(hours=1), le=timedelta(days=30)
     )

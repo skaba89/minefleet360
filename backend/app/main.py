@@ -23,6 +23,7 @@ from app.core.logging import configure_logging
 from app.core.request_context import RequestMeta, set_request_meta
 from app.costs.router import router as costs_router
 from app.dispatch.router import router as dispatch_router
+from app.fleet.gps_history import router as gps_history_router
 from app.fleet.gps_live_router import router as gps_live_router
 from app.fleet.router import router as fleet_router
 from app.fuel.anomalies import router as fuel_anomalies_router
@@ -151,6 +152,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         audit_router,
         fleet_router,
         gps_live_router,
+        gps_history_router,
         workforce_router,
         assignment_router,
         dispatch_router,

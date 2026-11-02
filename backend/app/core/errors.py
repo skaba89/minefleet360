@@ -94,6 +94,7 @@ CATALOG: dict[str, ErrorDef] = {
     "HSE_ACTIONS_PENDING": ErrorDef(
         409, "Des actions correctives restent à réaliser ou à vérifier (ou à annuler) avant cette étape."
     ),
+    "DUPLICATE_GEOFENCE_CODE": ErrorDef(409, "Une zone de ce site porte déjà ce code."),
     "TYRE_STATE_INVALID": ErrorDef(409, "Cette action n'est pas possible dans l'état actuel du pneu."),
     "TYRE_POSITION_OCCUPIED": ErrorDef(
         409, "Cette position de l'engin porte déjà un pneu : démontez-le d'abord."
@@ -148,6 +149,9 @@ CATALOG: dict[str, ErrorDef] = {
     "HSE_OWNER_NOT_ELIGIBLE": ErrorDef(
         422, "Cette personne ne peut pas porter d'action corrective sur le site de l'incident."
     ),
+    "GEOFENCE_INVALID": ErrorDef(
+        422, "Le polygone de la zone est invalide (auto-intersection) ou de surface invraisemblable."
+    ),
     "TYRE_METER_DECREASED": ErrorDef(
         422, "Le relevé de compteur est inférieur à celui du montage du pneu sur cet engin."
     ),
@@ -177,6 +181,9 @@ CATALOG: dict[str, ErrorDef] = {
 
 # Contraintes de base → code métier (MODELE_PHYSIQUE_LOT1 §7). Messages sans révéler d'autre tenant.
 CONSTRAINT_CODES: dict[str, str] = {
+    "ck_sgf_valid": "GEOFENCE_INVALID",
+    "ck_sgf_area": "GEOFENCE_INVALID",
+    "uq_sgf_site_code": "DUPLICATE_GEOFENCE_CODE",
     "uq_mlr_scope_date": "CONFLICT",
     "uq_tyre_serial": "DUPLICATE_TYRE_SERIAL",
     "uq_tyre_mounted_position": "TYRE_POSITION_OCCUPIED",
