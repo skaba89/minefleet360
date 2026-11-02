@@ -151,6 +151,7 @@ class TyreOut(BaseModel):
     status: TyreStatus
     vehicle_id: uuid.UUID | None
     vehicle_fleet_number: str | None
+    spare_part_code: str | None
     position_code: str | None
     mounted_at: datetime | None
     retread_count: int
@@ -261,6 +262,16 @@ def tyres_out(auth: Authorized, tyres: list[Tyre], *, detail: bool = False) -> l
     ).scalars():
         events[e.tyre_id].append(e)
     fleet = vehicle_facts(db, {t.vehicle_id for t in tyres if t.vehicle_id})
+    part_ids = {t.spare_part_id for t in tyres if t.spare_part_id}
+    parts = (
+        dict(
+            db.execute(
+                select(SparePart.spare_part_id, SparePart.code).where(SparePart.spare_part_id.in_(part_ids))
+            ).all()
+        )
+        if part_ids
+        else {}
+    )
     now = auth.clock.now()
     out = []
     for t in tyres:
@@ -299,6 +310,7 @@ def tyres_out(auth: Authorized, tyres: list[Tyre], *, detail: bool = False) -> l
                 )
             },
             "vehicle_fleet_number": fleet[t.vehicle_id].fleet_number if t.vehicle_id in fleet else None,
+            "spare_part_code": parts.get(t.spare_part_id) if t.spare_part_id else None,
             "alerts": alerts_for(t, now),
             "total_cost": total,
             "cost_complete": total is not None,
@@ -421,8 +433,13 @@ def create_tyre(auth: Authorized, body: TyreCreate) -> TyreOut:
     db = auth.db
     if active_site_in_scope(db, auth.scope, body.site_id) is None:
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
-    if body.spare_part_id is not None and db.get(SparePart, body.spare_part_id) is None:
-        raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "spare_part_id"}])
+    if body.spare_part_id is not None:
+        part = db.get(SparePart, body.spare_part_id)
+        if part is None:
+            raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "spare_part_id"}])
+        # Article de référence d'un pneu suivi individuellement : compté à l'unité (D-DEL-03).
+        if part.unit != "EACH":
+            raise AppError("VALIDATION_ERROR", details=[{"field": "spare_part_id", "type": "unit_not_each"}])
     tyre = Tyre(
         tenant_id=auth.tenant_id,
         **body.model_dump(),
@@ -616,3 +633,50 @@ def scrap(auth: Authorized, tyre_id: uuid.UUID, body: TyreScrap, version: int) -
     )
     _audit(auth, "maintenance.tyre.scrap", tyre, reason=body.reason_code)
     return _done(auth, tyre)
+
+
+class TyreStockRow(BaseModel):
+    site_id: uuid.UUID
+    size: str
+    brand: str
+    model: str
+    spare_part_code: str | None
+    in_stock: int
+    mounted: int
+    in_repair: int
+    alerts_in_stock: int
+
+
+def stock_summary(auth: Authorized, site_id: uuid.UUID | None) -> list[TyreStockRow]:
+    """Stock de pneus (D-DEL-03) : le registre individuel fait foi ; les pneus au rebut sont exclus."""
+    if site_id is not None and not auth.scope.covers_site(site_id):
+        raise AppError("NOT_FOUND")
+    conditions: list[Any] = [Tyre.status != "SCRAPPED"]
+    if not auth.scope.tenant_wide:
+        conditions.append(Tyre.site_id.in_(auth.scope.site_ids))
+    if site_id is not None:
+        conditions.append(Tyre.site_id == site_id)
+    tyres = db_scalars(auth, conditions, (Tyre.size, Tyre.brand, Tyre.model))
+    codes = {
+        pid: code
+        for pid, code in auth.db.execute(
+            select(SparePart.spare_part_id, SparePart.code).where(
+                SparePart.spare_part_id.in_({t.spare_part_id for t in tyres if t.spare_part_id})
+            )
+        ).all()
+    }
+    now = auth.clock.now()
+    rows: dict[tuple[uuid.UUID, str, str, str, str | None], dict[str, int]] = {}
+    for t in tyres:
+        key = (t.site_id, t.size, t.brand, t.model, codes.get(t.spare_part_id) if t.spare_part_id else None)
+        row = rows.setdefault(key, {"in_stock": 0, "mounted": 0, "in_repair": 0, "alerts_in_stock": 0})
+        column = {"IN_STOCK": "in_stock", "MOUNTED": "mounted", "IN_REPAIR": "in_repair"}[t.status]
+        row[column] += 1
+        if t.status == "IN_STOCK" and alerts_for(t, now):
+            row["alerts_in_stock"] += 1
+    return [
+        TyreStockRow(site_id=k[0], size=k[1], brand=k[2], model=k[3], spare_part_code=k[4], **v)
+        for k, v in sorted(
+            rows.items(), key=lambda item: (str(item[0][0]), item[0][1], item[0][2], item[0][3])
+        )
+    ]

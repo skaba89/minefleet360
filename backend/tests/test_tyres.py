@@ -315,3 +315,67 @@ def test_alerts_pure_rules() -> None:
     assert alerts_for(tyre, now) == []  # type: ignore[arg-type]
     tyre.last_inspected_at = now - timedelta(days=31)
     assert alerts_for(tyre, now) == ["INSPECTION_OVERDUE"]  # type: ignore[arg-type]
+
+
+def test_catalogue_link_and_stock_summary(client: TestClient, w: World, api: Api) -> None:  # noqa: F811
+    chief = api.user(w.t, "WORKSHOP_CHIEF")
+    keeper = api.user(w.t, "STOREKEEPER")
+    each = client.post(
+        f"{API}/parts",
+        headers=keeper.headers,
+        json={"code": f"PN-{uuid.uuid4().hex[:6]}", "name": "Pneu 27.00R49"},
+    ).json()
+    liquid = client.post(
+        f"{API}/parts",
+        headers=keeper.headers,
+        json={"code": f"HUI-{uuid.uuid4().hex[:6]}", "name": "Huile", "unit": "LITER"},
+    ).json()
+    refused = _tyre(client, chief.headers, w.t.sites["S1"], spare_part_id=liquid["spare_part_id"])
+    assert refused.status_code == 422 and refused.json()["details"][0]["type"] == "unit_not_each"
+    size = f"T-{uuid.uuid4().hex[:4]}"
+    linked = _tyre(
+        client, chief.headers, w.t.sites["S1"], spare_part_id=each["spare_part_id"], size=size
+    ).json()
+    assert linked["spare_part_code"] == each["code"]
+    second = _tyre(
+        client, chief.headers, w.t.sites["S1"], spare_part_id=each["spare_part_id"], size=size
+    ).json()
+    worn = _tyre(
+        client, chief.headers, w.t.sites["S1"], spare_part_id=each["spare_part_id"], size=size
+    ).json()
+    vehicle = _vehicle(client, w)
+    assert (
+        _act(
+            client, second, "mount", chief.headers, vehicle_id=vehicle, position_code="AV-G", odometer_km="1"
+        ).status_code
+        == 200
+    )
+    assert _act(client, worn, "inspections", chief.headers, tread_mm="9.0").status_code == 200
+    scrapped = _tyre(
+        client, chief.headers, w.t.sites["S1"], spare_part_id=each["spare_part_id"], size=size
+    ).json()
+    assert _act(client, scrapped, "scrap", chief.headers, reason_code="AGE").status_code == 200
+
+    stock = client.get(f"{API}/tyres/stock", headers=chief.headers).json()
+    row = next(r for r in stock if r["size"] == size)
+    assert row == {
+        "site_id": str(w.t.sites["S1"]),
+        "size": size,
+        "brand": "MarqueFictive",
+        "model": "Minier X",
+        "spare_part_code": each["code"],
+        "in_stock": 2,
+        "mounted": 1,
+        "in_repair": 0,
+        "alerts_in_stock": 1,
+    }
+    s2 = api.user(w.t, "MECHANIC", "SITE", "S2")
+    assert all(r["size"] != size for r in client.get(f"{API}/tyres/stock", headers=s2.headers).json())
+    assert (
+        client.get(
+            f"{API}/tyres/stock", headers=s2.headers, params={"site_id": str(w.t.sites["S1"])}
+        ).status_code
+        == 404
+    )
+    other = api.user(api.tenant(), "WORKSHOP_CHIEF")
+    assert all(r["size"] != size for r in client.get(f"{API}/tyres/stock", headers=other.headers).json())

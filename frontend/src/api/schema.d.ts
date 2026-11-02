@@ -2252,6 +2252,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tyres/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tyre Stock */
+        get: operations["tyre_stock_api_v1_tyres_stock_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tyres/{tyre_id}": {
         parameters: {
             query?: never;
@@ -7724,6 +7741,8 @@ export interface components {
             site_id: string;
             /** Size */
             size: string;
+            /** Spare Part Code */
+            spare_part_code: string | null;
             /** Spare Part Id */
             spare_part_id: string | null;
             /**
@@ -7770,6 +7789,30 @@ export interface components {
             reason_code: "WORN_OUT" | "IRREPARABLE_DAMAGE" | "AGE" | "OTHER";
             /** Tread Mm */
             tread_mm?: number | string | null;
+        };
+        /** TyreStockRow */
+        TyreStockRow: {
+            /** Alerts In Stock */
+            alerts_in_stock: number;
+            /** Brand */
+            brand: string;
+            /** In Repair */
+            in_repair: number;
+            /** In Stock */
+            in_stock: number;
+            /** Model */
+            model: string;
+            /** Mounted */
+            mounted: number;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Size */
+            size: string;
+            /** Spare Part Code */
+            spare_part_code: string | null;
         };
         /** UserInvite */
         UserInvite: {
@@ -14227,6 +14270,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TyreOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tyre_stock_api_v1_tyres_stock_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreStockRow"][];
                 };
             };
             /** @description Validation Error */

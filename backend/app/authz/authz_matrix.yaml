@@ -707,6 +707,7 @@ permissions:
     site_bound: true
     routes:
       - { method: GET, path: /tyres, shape: collection, success: 200 }
+      - { method: GET, path: /tyres/stock, shape: collection, success: 200 }
       - { method: GET, path: "/tyres/{tyre_id}", shape: item, success: 200 }
     grants:
       DIRECTION: [TENANT]

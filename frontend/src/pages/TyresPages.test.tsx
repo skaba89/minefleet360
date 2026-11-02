@@ -41,7 +41,10 @@ function show(path: string) {
 }
 
 beforeEach(() => {
-  vi.mocked(read).mockResolvedValue({ items: [tyre], total: 1, page: 1, page_size: 50 } as never);
+  vi.mocked(read).mockImplementation((async (path: string) =>
+    path === "/tyres/stock"
+      ? [{ site_id: "s1", size: "27.00R49", brand: "MarqueFictive", model: "Minier", spare_part_code: "PN-01", in_stock: 2, mounted: 1, in_repair: 0, alerts_in_stock: 1 }]
+      : { items: [tyre], total: 1, page: 1, page_size: 50 }) as never);
   vi.mocked(call).mockResolvedValue({ data: tyre, etag: '"3"' } as never);
 });
 afterEach(() => {
@@ -57,6 +60,8 @@ it("liste les pneus avec position, alertes et coût insuffisant explicite", asyn
   expect(screen.getByText("Pression hors tolérance (±10 %)")).toBeTruthy();
   expect(screen.getByText("Données insuffisantes")).toBeTruthy();
   expect(screen.getByRole("button", { name: "Enregistrer un pneu" })).toBeTruthy();
+  expect(await screen.findByText("1 avec alerte")).toBeTruthy();
+  expect(screen.getByText("PN-01")).toBeTruthy();
   client.clear();
 });
 
