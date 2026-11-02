@@ -186,3 +186,32 @@ def test_cli_verify_and_refusal(
     out = str(tmp_path / "c.tsv")
     assert main(["demo", "seed", "--profile", "qa", "--credentials-out", out]) == 3
     assert not os.path.exists(out)
+
+
+def test_me_flags_demo_workspace(demo: generator.DemoReport, client: TestClient, api: Api) -> None:
+    hse = next(c for c in demo.credentials if c.tenant == "demo-or-hg" and c.role == "HSE")
+    me = client.get(f"{API}/me", headers=api.login("demo-or-hg", hse.email, hse.password))
+    assert me.status_code == 200 and me.json()["is_demo"] is True
+    t = api.tenant(sites=("S1",))  # société normale : aucun bandeau de démonstration
+    assert client.get(f"{API}/me", headers=t.admin.headers).json()["is_demo"] is False
+
+
+def test_live_feed_sends_positions_through_the_tracker_api(
+    demo: generator.DemoReport, client: TestClient
+) -> None:
+    from app.demo import live
+
+    def send(token: str, payload: bytes) -> int:
+        resp = client.post(
+            f"{API}/gps/telemetry",
+            content=payload,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        )
+        return resp.status_code
+
+    with dedicated_database():
+        report = live.live_feed(send=send, interval_s=0, duration_min=0, sleep=lambda _: None)
+    assert report.trackers > 0
+    assert report.sent == report.trackers and report.accepted == report.sent, report.refused
+    with pytest.raises(DemoRefused):
+        live.http_sender("https://minefleet.example.com")

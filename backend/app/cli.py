@@ -14,6 +14,7 @@ minefleet send-hse-digest [--dry-run]
 minefleet demo seed --profile small|standard|large [--seed 42] [--anchor AAAA-MM-JJ] --credentials-out <f>
 minefleet demo verify [--anchor AAAA-MM-JJ]
 minefleet demo reset-credentials --tenant <code DEMO> --credentials-out <fichier>
+minefleet demo live-feed [--api-url http://127.0.0.1:8000] [--interval 15] [--duration 60]
     Environnement de DÉMONSTRATION (docs/DEMO_DATA_ARCHITECTURE.md) : refusé en production et sur toute base
     contenant un tenant client non DEMO ; identifiants écrits dans un nouveau fichier 600, jamais affichés.
 minefleet reset-platform-mfa --email <e-mail>

@@ -25,6 +25,7 @@ Les scénarios marqués « à venir » dépendent de données non générées da
 | S16 | Pneus | workshop-chief, mechanic.boke-mine | 6 pneus par camion, un pneu réformé | Pneus → filtrer « Mis au rebut » ; inspecter un pneu monté | Historique de pose/dépose ; usure et pression enregistrées |
 | S17 | Inspection avant poste non conforme | dispatcher.boke-mine | checklist « avant poste » ; inspection freins non conforme (jour 5) | HSE → Inspections → filtrer « Non conforme » | Point critique en défaut, engin désigné |
 | S13 | Géolocalisation et zones | auditor (ou ops-manager) | traceurs, zones, positions des rotations | Véhicules → DEMO-CAM-002 → Historique de trajet, finalité « Analyse d'exploitation », veille | Tracé, distance, entrée/sortie de l'aire de chargement puis entrée en aire de déchargement et arrêt du signal (mission bloquée) ; consultation journalisée |
+| S18 | Flotte en mouvement | auditor | `demo live-feed` lancé | Flotte GPS | Camions « En mouvement » (≈ 20 km/h) ou « À l'arrêt » sur les aires ; engin immobilisé sans signal ; mention « émetteur simulé » |
 | S14 | Hors ligne, préventif | — | à venir | — | — |
 
 État de vérification :

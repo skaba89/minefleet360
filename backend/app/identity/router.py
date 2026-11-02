@@ -262,6 +262,7 @@ def read_me(auth: Annotated[Authorized, Depends(Require("identity.user.update_se
         grants=[GrantOut(role_code=g.role_code, scope_type=g.scope_type, site_id=g.site_id) for g in grants],
         mfa_enabled=user.mfa_enabled,
         mfa_enrollment_required=auth.principal.mfa_enrollment_pending,
+        is_demo=tenant.is_demo,
     )
 
 

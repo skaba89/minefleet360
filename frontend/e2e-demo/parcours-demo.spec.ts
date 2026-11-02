@@ -8,6 +8,7 @@ import { demo, login, open } from "./demo";
 test("direction : tableau de bord et point critique à traiter", async ({ page }) => {
   await login(page, demo("AUDITOR"));
   await expect(page.getByText("DEMO — Bauxite Guinée Operations")).toBeVisible();
+  await expect(page.getByRole("note").filter({ hasText: "Espace de démonstration" })).toBeVisible();
   await expect(page.getByText(/incident\(s\) critique\(s\) non clôturé\(s\)/)).toBeVisible();
   await expect(page.getByText("Véhicules disponibles")).toBeVisible();
 });

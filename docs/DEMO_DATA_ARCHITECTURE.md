@@ -138,8 +138,17 @@ de bande (prix × usure mesurée ÷ usure utile), ou sur une durée de vie atten
   secret du traceur, association, anti-rejeu par séquence, bornes temporelles. Le limiteur anti-saturation de
   l'API traceur (60 points par minute réelle et par traceur) est propre aux appareils isolés : il n'est ni
   désactivé ni contourné, mais il rendrait impossible le rejeu d'un historique.
-- **Pas de flux en direct** : après le chargement, les positions vieillissent ; la flotte GPS affiche
-  « signal ancien ». Un émetteur de démonstration (`demo live-feed`) est une piste, à arbitrer.
+- **Flux en direct pendant une présentation** : `minefleet demo live-feed [--api-url http://127.0.0.1:8000]
+  [--interval 15] [--duration 60]`. Refusé hors base DEMO et vers une API non locale. Renouvelle le traceur de
+  chaque engin de transport DEMO disponible (révocation + provisionnement audités : les secrets ne sont jamais
+  stockés), puis envoie une position par engin et par intervalle par la **vraie API traceur**
+  (`POST /api/v1/gps/telemetry`), comme un boîtier. Il ne produit **que des positions** (aller-retour aire de
+  chargement ↔ aire de déchargement) : aucune mission, pesée ni événement n'est inventé. Un engin immobilisé
+  n'émet pas. Vérifié : 204 positions envoyées en 3 minutes, toutes acceptées ; flotte GPS « En mouvement ».
+- **Bandeau** : `/me` expose `is_demo` ; l'interface affiche en permanence « Espace de démonstration : sociétés,
+  personnes et opérations fictives ; les positions GPS peuvent être simulées », et la flotte GPS ne prétend plus
+  qu'« aucune simulation n'est affichée » sur un espace DEMO. Les sociétés du jeu `seed-fictif`, marquées
+  `is_demo`, affichent aussi ce bandeau.
 - **Durée** : le profil `small` prend environ 8 minutes (≈22 000 positions) ; le profil `qa` (9 jours, une
   position toutes les 5 minutes) environ 3 minutes, utilisé par les tests automatisés.
 
@@ -172,5 +181,5 @@ tâche planifiée, transaction atomique, compte technique) est une évolution pr
 
 ## 11. Hors périmètre (prochains lots)
 
-Contrats et documents, émetteur GPS en direct, parcours hors ligne, échéances préventives (§10), bons de
+Contrats et documents, parcours hors ligne, échéances préventives (§10), bons de
 commande de pièces, profils `standard`/`large` mesurés, mode « démonstration commerciale » guidé, parcours navigateur en écriture (actions) sur les données DEMO.
