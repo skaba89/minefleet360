@@ -46,6 +46,7 @@ export function Layout() {
         can(me.grants, "fuel.purchase.read") ||
         can(me.grants, "fuel.purchase.create"),
     },
+    { to: "/pneus", text: "Pneus", show: can(me.grants, "maintenance.tyre.read") },
     { to: "/pieces", text: "Pièces", show: can(me.grants, "maintenance.parts.read", siteId) },
     {
       to: "/hse",

@@ -94,6 +94,11 @@ CATALOG: dict[str, ErrorDef] = {
     "HSE_ACTIONS_PENDING": ErrorDef(
         409, "Des actions correctives restent à réaliser ou à vérifier (ou à annuler) avant cette étape."
     ),
+    "TYRE_STATE_INVALID": ErrorDef(409, "Cette action n'est pas possible dans l'état actuel du pneu."),
+    "TYRE_POSITION_OCCUPIED": ErrorDef(
+        409, "Cette position de l'engin porte déjà un pneu : démontez-le d'abord."
+    ),
+    "DUPLICATE_TYRE_SERIAL": ErrorDef(409, "Un pneu de cette marque porte déjà ce numéro de série."),
     "FUEL_INTERVAL_NOT_ANOMALOUS": ErrorDef(
         409, "Cet intervalle de pompe est dans les tolérances configurées et ne peut pas ouvrir de dossier."
     ),
@@ -140,6 +145,12 @@ CATALOG: dict[str, ErrorDef] = {
     "HSE_OWNER_NOT_ELIGIBLE": ErrorDef(
         422, "Cette personne ne peut pas porter d'action corrective sur le site de l'incident."
     ),
+    "TYRE_METER_DECREASED": ErrorDef(
+        422, "Le relevé de compteur est inférieur à celui du montage du pneu sur cet engin."
+    ),
+    "TYRE_CURRENCY_MISMATCH": ErrorDef(
+        422, "La devise doit être celle du coût d'achat du pneu (pas d'agrégat multidevise sans conversion)."
+    ),
     "IDEMPOTENCY_KEY_REUSED": ErrorDef(
         422, "Cette clé de synchronisation a déjà été utilisée pour une autre opération."
     ),
@@ -163,6 +174,8 @@ CATALOG: dict[str, ErrorDef] = {
 
 # Contraintes de base → code métier (MODELE_PHYSIQUE_LOT1 §7). Messages sans révéler d'autre tenant.
 CONSTRAINT_CODES: dict[str, str] = {
+    "uq_tyre_serial": "DUPLICATE_TYRE_SERIAL",
+    "uq_tyre_mounted_position": "TYRE_POSITION_OCCUPIED",
     "uq_tenant_code": "DUPLICATE_WORKSPACE_CODE",
     "uq_tenant_legal_name_norm": "DUPLICATE_TENANT_NAME",
     "uq_site_tenant_code": "DUPLICATE_SITE_CODE",

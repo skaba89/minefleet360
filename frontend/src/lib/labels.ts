@@ -476,3 +476,61 @@ export const HSE_EVENTS: Record<string, string> = {
   ACTION_REOPENED: "Action rouverte",
   ACTION_CANCELLED: "Action annulée",
 };
+
+// --- Pneumatiques ------------------------------------------------------------------------------------
+
+export const TYRE_STATUS: Record<string, string> = {
+  IN_STOCK: "En stock",
+  MOUNTED: "Monté",
+  IN_REPAIR: "En réparation",
+  SCRAPPED: "Mis au rebut",
+};
+
+export const TYRE_TONE: Record<string, "ok" | "warn" | "bad" | "neutral"> = {
+  IN_STOCK: "neutral",
+  MOUNTED: "ok",
+  IN_REPAIR: "warn",
+  SCRAPPED: "neutral",
+};
+
+export const TYRE_CATEGORY: Record<string, string> = {
+  STEER: "Directeur",
+  DRIVE: "Moteur",
+  TRAILER: "Remorque",
+  ALL_POSITION: "Toutes positions",
+};
+
+export const TYRE_ALERTS: Record<string, string> = {
+  TREAD_AT_LIMIT: "Sculpture à la limite de rebut",
+  TREAD_LOW: "Sculpture proche de la limite",
+  PRESSURE_DEVIATION: "Pression hors tolérance (±10 %)",
+  INSPECTION_OVERDUE: "Contrôle en retard (> 30 jours)",
+};
+
+export const TYRE_DISMOUNT_REASONS: Record<string, string> = {
+  ROTATION: "Permutation",
+  WEAR: "Usure",
+  DAMAGE: "Dommage",
+  PUNCTURE: "Crevaison",
+  REPAIR: "Pour réparation",
+  VEHICLE_MAINTENANCE: "Maintenance de l'engin",
+  OTHER: "Autre",
+};
+
+export const TYRE_SCRAP_REASONS: Record<string, string> = {
+  WORN_OUT: "Usé",
+  IRREPARABLE_DAMAGE: "Dommage irréparable",
+  AGE: "Vieillissement",
+  OTHER: "Autre",
+};
+
+export const TYRE_EVENTS: Record<string, string> = {
+  REGISTERED: "Enregistrement",
+  MOUNTED: "Montage",
+  DISMOUNTED: "Démontage",
+  INSPECTED: "Contrôle",
+  SENT_TO_REPAIR: "Envoi en réparation",
+  REPAIRED: "Retour de réparation",
+  RETREADED: "Rechapage",
+  SCRAPPED: "Mise au rebut",
+};
