@@ -35,10 +35,10 @@ def dedicated_database() -> Iterator[None]:
 @pytest.fixture(scope="module")
 def demo(database: None) -> generator.DemoReport:
     with dedicated_database():
-        return generator.seed_demo(profile="small", seed=42, anchor=ANCHOR)
+        return generator.seed_demo(profile="qa", seed=42, anchor=ANCHOR)
 
 
-def test_small_profile_covers_every_role_and_module(demo: generator.DemoReport) -> None:
+def test_qa_profile_covers_every_role_and_module(demo: generator.DemoReport) -> None:
     c = demo.counts
     assert c["tenants"] == 3 and c["sites"] == 5
     per_tenant_users = {t.code: 1 + len(TENANT_ROLES) + len(t.sites) * len(SITE_ROLES) for t in TENANTS}
@@ -77,6 +77,9 @@ def test_small_profile_covers_every_role_and_module(demo: generator.DemoReport) 
         "hse_inspections",
     ):
         assert c.get(key, 0) > 0, key
+    # Lot 3 : traceurs, zones et positions GPS calées sur les rotations.
+    assert c["gps_trackers"] == c["assignments"] and c["geofences"] == 5 * c["sites"]
+    assert c["gps_positions"] > 1000
     assert c["hse_inspections_non_compliant"] == 3 and "fuel_receipts" not in c
     # Jour J : des missions en cours et planifiées (la liste « en cours » n'est pas vide à l'ouverture).
     assert c["missions_live"] > 0 and c["missions_planned"] == 3
@@ -92,12 +95,13 @@ def test_verify_recomputes_every_indicator(demo: generator.DemoReport) -> None:
     names = {c.name for c in checks}
     assert any("isolation" in n for n in names) and any("tonnage" in n for n in names)
     assert any("main-d'œuvre" in n for n in names) and any("pneus" in n for n in names)
+    assert any(n.startswith("GPS") for n in names)
     assert len({c.tenant for c in checks}) == 3
 
 
 def test_reseed_is_idempotent(demo: generator.DemoReport) -> None:
     with dedicated_database():
-        again = generator.seed_demo(profile="small", seed=42, anchor=ANCHOR)
+        again = generator.seed_demo(profile="qa", seed=42, anchor=ANCHOR)
     assert sorted(again.skipped) == sorted(t.code for t in TENANTS)
     assert again.counts == {} and again.credentials == []
 
@@ -178,5 +182,5 @@ def test_cli_verify_and_refusal(
     assert "contrôles réussis" in capsys.readouterr().out
     api.tenant(sites=("S1",))
     out = str(tmp_path / "c.tsv")
-    assert main(["demo", "seed", "--profile", "small", "--credentials-out", out]) == 3
+    assert main(["demo", "seed", "--profile", "qa", "--credentials-out", out]) == 3
     assert not os.path.exists(out)

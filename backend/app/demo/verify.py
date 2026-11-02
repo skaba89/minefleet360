@@ -19,6 +19,8 @@ from app.costs.models import LabourRate
 from app.demo.catalog import TENANTS
 from app.dispatch import weighing
 from app.dispatch.models import Rotation, WeighingTicket, WeighingTicketDecision
+from app.fleet import gps_history
+from app.fleet.gps_models import FleetGpsPosition
 from app.fleet.models import Vehicle
 from app.fuel.models import FuelIssue, FuelStockMovement, FuelTank
 from app.fuel.models import FuelIssueDecision as FuelDecision
@@ -79,6 +81,7 @@ def verify_demo(anchor: date | None = None) -> list[Check]:
         checks.extend(_breakdowns_immobilize(spec.code, tenant.tenant_id))
         checks.extend(_costs_recomputed(spec.code, tenant.tenant_id, anchor))
         checks.extend(_tyres_consistent(spec.code, tenant.tenant_id))
+        checks.extend(_gps_matches_rotations(spec.code, tenant.tenant_id, anchor))
     return checks
 
 
@@ -320,5 +323,55 @@ def _tyres_consistent(code: str, tenant_id: uuid.UUID) -> list[Check]:
             "pneus : une position par pneu monté, aucun pneu réformé sur un engin",
             bool(mounted) and duplicates == 0 and scrapped_on_vehicle == 0,
             f"montés={len(mounted)}, doublons={duplicates}, réformés montés={scrapped_on_vehicle}",
+        )
+    ]
+
+
+def _gps_matches_rotations(code: str, tenant_id: uuid.UUID, anchor: date | None) -> list[Check]:
+    """Trajet servi par l'application sur une journée : une entrée en zone de chargement par rotation.
+
+    Lecture réelle du trajet (journalisée dans l'audit comme toute consultation d'historique GPS)."""
+    day_start = datetime.combine((anchor or SystemClock().now().date()) - timedelta(days=2), time(0, 0), UTC)
+    day_end = day_start + timedelta(days=1)
+    db = new_session()
+    try:
+        set_tenant_context(db, tenant_id)
+        positions = db.scalar(select(func.count()).select_from(FleetGpsPosition))
+        busiest = db.execute(
+            select(Rotation.vehicle_id, func.count())
+            .where(
+                Rotation.status == "COMPLETED",
+                Rotation.loading_started_at >= day_start,
+                Rotation.loading_started_at < day_end,
+            )
+            .group_by(Rotation.vehicle_id)
+            .order_by(func.count().desc(), Rotation.vehicle_id)
+            .limit(1)
+        ).first()
+    finally:
+        db.close()
+    if busiest is None:
+        return [
+            Check(
+                code, "GPS : entrées en zone de chargement = rotations", False, "aucune rotation ce jour-là"
+            )
+        ]
+    vehicle_id, rotations = busiest
+    auditor = _Actor(tenant_id, _user_id(tenant_id, f"auditor@{code}.example.com"), "CUSTOMER", SystemClock())
+    auth = auditor.auth("fleet.gps.history")
+    try:
+        track = gps_history.vehicle_track(vehicle_id, auth, "OPERATIONS_REVIEW", day_start, day_end)
+    finally:
+        auth.db.close()
+    entries = sum(
+        1 for e in track.geofence_events if e.geofence_kind == "LOADING_AREA" and e.event_type == "ENTER"
+    )
+    return [
+        Check(
+            code,
+            "GPS : entrées en zone de chargement = rotations terminées (trajet servi par l'application)",
+            bool(positions) and entries == rotations and track.distance_km > 0,
+            f"positions={positions}, rotations={rotations}, entrées={entries}, "
+            f"distance={track.distance_km:.1f} km",
         )
     ]

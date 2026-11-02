@@ -113,9 +113,20 @@ class Profile:
     drivers_per_hauler: int  # conducteurs créés par engin de transport (+ cas négatifs)
     missions_per_hauler_day: int
     rotations_per_mission: tuple[int, int]
+    gps_step_minutes: int = 2  # intervalle entre deux positions GPS
 
 
 PROFILES: dict[str, Profile] = {
+    # Mode 3 « QA et simulation » : jeu court et rapide pour les tests automatisés (mêmes scénarios).
+    "qa": Profile(
+        "qa",
+        days=9,
+        fleet_factor=1,
+        drivers_per_hauler=1,
+        missions_per_hauler_day=1,
+        rotations_per_mission=(2, 3),
+        gps_step_minutes=5,
+    ),
     "small": Profile(
         "small",
         days=14,
