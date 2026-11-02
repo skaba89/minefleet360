@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 
 import { useMe } from "../auth/AuthContext";
+import { TodoPanel } from "../components/TodoPanel";
 import { can } from "../lib/permissions";
 import { FleetDashboard } from "./FleetDashboard";
 
@@ -22,10 +23,18 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function HomePage() {
   const me = useMe();
-  if (can(me.grants, "fleet.vehicle.read")) return <FleetDashboard />;
+  if (can(me.grants, "fleet.vehicle.read")) {
+    return (
+      <>
+        <TodoPanel />
+        <FleetDashboard />
+      </>
+    );
+  }
   return (
     <section>
       <h1>Bonjour {me.display_name}</h1>
+      <TodoPanel />
       <p className="muted">
         Espace {me.workspace_code} — fuseau d'affichage par défaut : {me.timezone}
       </p>

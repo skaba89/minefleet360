@@ -26,7 +26,7 @@ button.link { border:0; background:none; text-decoration:underline; padding:0; m
 label { display:flex; flex-direction:column; gap:.35rem; font-size:.86rem; font-weight:500; }
 .checkbox { flex-direction:row; align-items:flex-start; gap:.6rem; }
 .checkbox input { min-height:0; margin-top:.28rem; flex-shrink:0; }
-.muted { color:var(--muted); }.small { font-size:.8rem; }.center { text-align:center; margin-top:3rem; }.warn-text { color:var(--warn); }
+.muted { color:var(--muted); }.small { font-size:.8rem; }.center { text-align:center; margin-top:3rem; }.warn-text { color:var(--warn); }.error-text { color:var(--bad); }
 .icon { flex-shrink:0; vertical-align:middle; }
 
 /* Shared frame based on the supplied French MINEFLEET reference. */
