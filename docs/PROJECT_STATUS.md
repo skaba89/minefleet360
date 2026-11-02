@@ -34,6 +34,7 @@ Production (VPS) : commit `70aeb74`, migration 0051 ; aucune livraison postérie
 | GPS | Temps réel en `main` ; zones, trajets audités, rétention en #309 | tests API, charge bornée |
 | Contrats et assurances | Socle | registre, documents privés, antivirus |
 | Sous-traitants, rentabilité | Absents | — |
+| Données de démonstration | Profil `small` (3 sociétés DEMO, 13 rôles, missions, pesées, carburant, atelier, HSE) | `minefleet demo seed/verify`, `tests/test_demo_seed.py`, docs/DEMO_DATA_ARCHITECTURE.md |
 
 ## Points d'attention
 

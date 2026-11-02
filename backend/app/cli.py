@@ -11,6 +11,11 @@ minefleet purge-gps [--days N] [--apply]
 minefleet send-hse-digest [--dry-run]
     Récapitulatif HSE quotidien par e-mail (actions en retard ou proches, incidents graves ouverts), par
     société, audité ; --dry-run compte les messages sans rien envoyer. À planifier une fois par jour.
+minefleet demo seed --profile small|standard|large [--seed 42] [--anchor AAAA-MM-JJ] --credentials-out <f>
+minefleet demo verify [--anchor AAAA-MM-JJ]
+minefleet demo reset-credentials --tenant <code DEMO> --credentials-out <fichier>
+    Environnement de DÉMONSTRATION (docs/DEMO_DATA_ARCHITECTURE.md) : refusé en production et sur toute base
+    contenant un tenant client non DEMO ; identifiants écrits dans un nouveau fichier 600, jamais affichés.
 minefleet reset-platform-mfa --email <e-mail>
     C-03 : retire le second facteur d'un PLATFORM_ADMIN qui a perdu téléphone ET codes de récupération
     (aucun compte au-dessus de lui ne peut le faire par l'API). Sessions fermées, action auditée.
@@ -210,7 +215,12 @@ def main(argv: list[str] | None = None) -> int:
     digest.add_argument("--dry-run", action="store_true")
     reset = sub.add_parser("reset-platform-mfa")
     reset.add_argument("--email", required=True)
+    from app.demo import cli as demo_cli
+
+    demo_cli.register(sub)
     args = parser.parse_args(argv)
+    if args.command == "demo":
+        return demo_cli.run(args)
     if args.command == "create-platform-admin":
         password = os.environ.get("MF_BOOTSTRAP_PASSWORD")
         if not password:
