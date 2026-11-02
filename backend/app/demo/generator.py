@@ -27,6 +27,7 @@ from app.core.db import new_session
 from app.core.tenancy import set_tenant_context
 from app.demo.catalog import FIRST_NAMES, LAST_NAMES, PROFILES, SITE_ROLES, TENANT_ROLES, Profile, TenantSpec
 from app.demo.catalog import TENANTS as CATALOG
+from app.demo.gps import GpsMixin
 from app.demo.guards import ensure_demo_database
 from app.demo.runtime import as_actor, call
 from app.demo.valuation import ValuationMixin
@@ -130,7 +131,7 @@ _as = as_actor
 _call = call
 
 
-class _TenantBuilder(ValuationMixin):
+class _TenantBuilder(ValuationMixin, GpsMixin):
     """Construit UNE société DEMO et son historique simulé."""
 
     def __init__(
@@ -216,6 +217,7 @@ class _TenantBuilder(ValuationMixin):
         self._workforce_and_assignments()
         self._fuel_setup()
         self.valuation_setup()
+        self.gps_setup()
         for site in self.spec.sites:
             self.purchase_fuel(site.code, self.start + timedelta(hours=22), Decimal("90000"))
 
@@ -507,8 +509,10 @@ class _TenantBuilder(ValuationMixin):
         )
         self.report.add("missions")
         t, version = begin, mission.row_version
+        timeline: list[tuple[str, datetime]] = []
         for kind in steps:
             t += timedelta(minutes=self.rng.randint(8, 20))
+            timeline.append((kind, t))
             self.at(t + timedelta(seconds=5))
             version = _call(
                 dispatcher,
@@ -518,6 +522,9 @@ class _TenantBuilder(ValuationMixin):
                 MissionEventCreate(event_type=kind, occurred_at=t),
                 version,
             ).row_version
+        if timeline:  # tronçon en cours jusqu'à quelques minutes après le dernier événement
+            timeline.append(("NOW", t + timedelta(minutes=6)))
+            self.gps_mission(hauler, timeline, returns=False)
 
     def _mission(self, hauler: dict[str, Any], day: date, slot: int, *, suspend: bool) -> None:
         site = hauler["site"]
@@ -543,9 +550,11 @@ class _TenantBuilder(ValuationMixin):
         )
         self.report.add("missions")
         state = _MissionState(mission.mission_id, mission.row_version, begin)
+        timeline: list[tuple[str, datetime]] = []
 
         def event(kind: str, minutes: int, **extra: Any) -> None:
             state.t += timedelta(minutes=minutes)
+            timeline.append((kind, state.t))
             self.at(state.t + timedelta(seconds=5))
             out = _call(
                 dispatcher,
@@ -565,13 +574,14 @@ class _TenantBuilder(ValuationMixin):
             event("UNLOADED", self.rng.randint(4, 10))
             self.report.add("rotations")
             self._weigh(state.id, dispatcher, state.t, degraded=(suspend and r == 0))
-            hauler["km"] += Decimal(self.rng.randint(12, 24))
             if suspend:
                 hauler["meter"] += Decimal(3)
                 event("SUSPENDED", 10, reason_code="ROAD_BLOCKED")
                 self.report.add("missions_suspended")
+                self.gps_mission(hauler, timeline, returns=False)
                 return
         event("COMPLETED", self.rng.randint(10, 30))
+        self.gps_mission(hauler, timeline, returns=True)
         hauler["meter"] += Decimal(self.rng.randint(6, 11))
 
     def _weigh(self, mission_id: uuid.UUID, dispatcher: _Actor, moment: datetime, *, degraded: bool) -> None:
