@@ -13,6 +13,7 @@ import { DriverDetailPage } from "./pages/DriverDetailPage";
 import { DriversPage } from "./pages/DriversPage";
 import { HomePage } from "./pages/HomePage";
 import { ChecklistTemplatesPage, HseInspectionPage, HseInspectionsPage } from "./pages/HseInspectionsPages";
+import { OfflineFieldPage } from "./pages/HseOffline";
 import { HseIncidentPage, HsePage } from "./pages/HsePages";
 import { LoginPage } from "./pages/LoginPage";
 import { LegalRegistriesPage } from "./pages/LegalRegistriesPage";
@@ -27,6 +28,7 @@ import { VehiclesPage } from "./pages/VehiclesPage";
 import { IndicatorsPage, WeighingsPage } from "./pages/WeighingPages";
 import { WorkOrderPage, WorkshopPage } from "./pages/WorkshopPages";
 import { FuelPage } from "./pages/FuelPage";
+import { CostsPage } from "./pages/CostsPage";
 import { PartsPage } from "./pages/PartsPage";
 import { TyrePage, TyresPage } from "./pages/TyresPages";
 import { SiteProvider } from "./site/SiteContext";
@@ -35,6 +37,7 @@ function Protected() {
   const { status } = useAuth();
   if (status === "loading") return <p className="muted center" role="status">Chargement…</p>;
   if (status === "anonymous") return <Navigate to="/connexion" replace />;
+  if (status === "offline") return <OfflineFieldPage />;
   return (
     <SiteProvider>
       <Layout />
@@ -77,6 +80,7 @@ export function App() {
           <Route path="hse/:incidentId" element={<HseIncidentPage />} />
           <Route path="pneus" element={<TyresPage />} />
           <Route path="pneus/:tyreId" element={<TyrePage />} />
+          <Route path="couts" element={<CostsPage />} />
           <Route path="pesees" element={<WeighingsPage />} />
           <Route path="indicateurs" element={<IndicatorsPage />} />
           <Route path="mon-compte/securite" element={<SecurityPage />} />

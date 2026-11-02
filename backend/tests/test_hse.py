@@ -345,3 +345,83 @@ def test_events_are_append_only_and_rls_enforced(client: TestClient, w: World) -
             conn.rollback()
     finally:
         engine.dispose()
+
+
+# --- Rejeu hors ligne (outbox terrain, Idempotency-Key) -------------------------------------------------
+
+
+def _offline_body(w: World, **extra: object) -> dict[str, object]:
+    return {
+        "site_id": str(w.t.sites["S1"]),
+        "category": "SPILL",
+        "severity": "LOW",
+        "title": "Fuite saisie hors ligne",
+        "description": "Flaque d'huile constatée sans réseau sur la piste.",
+        "occurred_at": (datetime.now(UTC) - timedelta(hours=5)).isoformat(),
+        **extra,
+    }
+
+
+def _replay(client: TestClient, headers: dict[str, str], key: str, body: dict[str, object]):  # type: ignore[no-untyped-def]
+    return client.post(f"{API}/hse/incidents", headers={**headers, "Idempotency-Key": key}, json=body)
+
+
+def test_offline_replay_creates_the_incident_once(client: TestClient, w: World) -> None:
+    key = str(uuid.uuid4())
+    body = _offline_body(w)
+    first = _replay(client, w.dispatcher.headers, key, body)
+    assert first.status_code == 201, first.text
+    assert "Idempotency-Replayed" not in first.headers
+    again = _replay(client, w.dispatcher.headers, key, body)
+    assert again.status_code == 201 and again.headers["Idempotency-Replayed"] == "true"
+    assert again.json()["hse_incident_id"] == first.json()["hse_incident_id"]
+    assert again.json()["reference"] == first.json()["reference"]
+    listed = client.get(f"{API}/hse/incidents", headers=w.hse.headers, params={"page_size": 200}).json()
+    assert sum(1 for i in listed["items"] if i["title"] == "Fuite saisie hors ligne") == 1
+    altered = _replay(client, w.dispatcher.headers, key, {**body, "severity": "HIGH"})
+    assert altered.status_code == 422 and altered.json()["code"] == "IDEMPOTENCY_KEY_REUSED"
+    events = client.get(
+        f"{API}/hse/incidents/{first.json()['hse_incident_id']}", headers=w.hse.headers
+    ).json()
+    assert [e["event_type"] for e in events["events"]] == ["REPORTED"]
+
+
+def test_offline_key_is_bound_to_the_account(client: TestClient, w: World) -> None:
+    key = str(uuid.uuid4())
+    body = _offline_body(w, title="Clé partagée entre comptes")
+    mine = _replay(client, w.dispatcher.headers, key, body).json()
+    # Le même identifiant d'opération sous un autre compte ne rejoue pas l'incident d'autrui.
+    theirs = _replay(client, w.ops.headers, key, body)
+    assert theirs.status_code == 201 and "Idempotency-Replayed" not in theirs.headers
+    assert theirs.json()["hse_incident_id"] != mine["hse_incident_id"]
+    assert theirs.json()["reported_by"] == str(w.ops.user_id)
+    foreign = _replay(client, w.other_hse.headers, key, body)
+    assert foreign.status_code == 422 and foreign.json()["code"] == "REFERENCE_NOT_FOUND"
+
+
+def test_offline_replay_rechecks_authorization_and_rolls_back(client: TestClient, w: World, api: Api) -> None:
+    reporter = api.user(w.t, "DISPATCHER", "SITE", "S1")
+    # Un échec métier annule aussi la réservation de clé : pas de clé bloquée « en cours ».
+    key = str(uuid.uuid4())
+    invalid = _offline_body(w, vehicle_id=w.vehicle_s2)
+    assert _replay(client, reporter.headers, key, invalid).status_code == 422
+    assert _replay(client, reporter.headers, key, invalid).json()["code"] == "REFERENCE_NOT_FOUND"
+    # Rôle retiré entre la saisie hors ligne et la synchronisation : refus, rien n'est créé.
+    pending_key = str(uuid.uuid4())
+    assignment = client.get(
+        f"{API}/role-assignments", headers=w.t.admin.headers, params={"user_id": str(reporter.user_id)}
+    ).json()["items"][0]
+    revoked = client.post(
+        f"{API}/role-assignments/{assignment['user_role_assignment_id']}/revoke",
+        headers={**w.t.admin.headers, "If-Match": f'"{assignment["row_version"]}"'},
+    )
+    assert revoked.status_code == 200, revoked.text
+    late = _replay(client, reporter.headers, pending_key, _offline_body(w, title="Saisie après retrait"))
+    assert late.status_code in (401, 403)
+    listed = client.get(f"{API}/hse/incidents", headers=w.hse.headers, params={"page_size": 200}).json()
+    assert all(i["title"] != "Saisie après retrait" for i in listed["items"])
+
+
+def test_offline_replay_rejects_malformed_key(client: TestClient, w: World) -> None:
+    bad = _replay(client, w.dispatcher.headers, "cle invalide!", _offline_body(w))
+    assert bad.status_code == 422

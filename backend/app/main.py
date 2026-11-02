@@ -21,6 +21,7 @@ from app.core.email import EmailSender, build_email_sender
 from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
 from app.core.request_context import RequestMeta, set_request_meta
+from app.costs.router import router as costs_router
 from app.dispatch.router import router as dispatch_router
 from app.fleet.gps_live_router import router as gps_live_router
 from app.fleet.router import router as fleet_router
@@ -156,6 +157,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         maintenance_router,
         reliability_router,
         tyre_router,
+        costs_router,
         legal_router,
         parts_router,
         purchase_order_router,

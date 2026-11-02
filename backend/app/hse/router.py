@@ -1,3 +1,4 @@
+import json
 import uuid
 from typing import Annotated
 
@@ -5,7 +6,9 @@ from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
+from app.core.errors import AppError
 from app.core.http import IfMatch, Page, Pagination, etag
+from app.core.idempotency import claim, optional_idempotency_key
 from app.hse import service
 from app.hse.schemas import (
     ActionComplete,
@@ -83,8 +86,30 @@ def report_incident(
     body: IncidentCreate,
     auth: Annotated[Authorized, Depends(Require("hse.incident.report"))],
     response: Response,
+    idempotency_key: Annotated[str | None, Depends(optional_idempotency_key)],
 ) -> IncidentOut:
-    return _tagged(service.report_incident(auth, body), response)
+    if idempotency_key is None:
+        return _tagged(service.report_incident(auth, body), response)
+    # Déclaration rejouée depuis l'outbox terrain : la clé est liée au tenant ET au compte authentifié,
+    # l'autorisation et le site sont revérifiés à chaque envoi (Require + service), le corps est empreinté.
+    payload = json.dumps(body.model_dump(mode="json"), sort_keys=True, separators=(",", ":")).encode("utf-8")
+    owned = claim(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        user_account_id=auth.user_id,
+        key=idempotency_key,
+        method="POST",
+        path="/hse/incidents",
+        body=payload,
+        now=auth.clock.now(),
+    )
+    if owned.replay is not None:
+        if owned.replay.resource_type != "hse_incident":
+            raise AppError("IDEMPOTENCY_KEY_REUSED")
+        incident = service.incident_in_scope(auth, owned.replay.resource_id)
+        response.headers["Idempotency-Replayed"] = "true"
+        return _tagged(service.incidents_out(auth, [incident], detail=True)[0], response)
+    return _tagged(service.report_incident(auth, body, idempotency_claim=owned), response)
 
 
 @router.post(

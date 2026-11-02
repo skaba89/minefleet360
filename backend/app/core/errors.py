@@ -177,6 +177,7 @@ CATALOG: dict[str, ErrorDef] = {
 
 # Contraintes de base → code métier (MODELE_PHYSIQUE_LOT1 §7). Messages sans révéler d'autre tenant.
 CONSTRAINT_CODES: dict[str, str] = {
+    "uq_mlr_scope_date": "CONFLICT",
     "uq_tyre_serial": "DUPLICATE_TYRE_SERIAL",
     "uq_tyre_mounted_position": "TYRE_POSITION_OCCUPIED",
     "uq_tenant_code": "DUPLICATE_WORKSPACE_CODE",

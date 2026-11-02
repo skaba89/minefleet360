@@ -1255,6 +1255,29 @@ permissions:
       - { method: POST, path: "/hse/checklist-templates/{template_id}/deactivate", shape: item, success: 200 }
     audit: { action: hse.checklist.create }
     grants: { HSE: [TENANT] }
+  # --- Coût complet par engin (chantier D, docs/LIVRAISON_COUT_COMPLET.md) ------------------------------
+  cost.vehicle.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /costs/vehicles, shape: collection, success: 200 }
+      - { method: GET, path: "/costs/vehicles/{vehicle_id}/history", shape: item, success: 200 }
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  cost.labour_rate.manage:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: GET, path: /costs/labour-rates, shape: collection, success: 200 }
+      - { method: POST, path: /costs/labour-rates, shape: collection, success: 201 }
+    audit: { action: cost.labour_rate.create }
+    grants: { DIRECTION: [TENANT], FINANCE: [TENANT, SITE] }
 
 public_routes:
   # Authentification machine obligatoire dans la route ; aucun accès anonyme aux données.

@@ -4,6 +4,7 @@ import { Link, NavLink, Outlet } from "react-router";
 
 import { read } from "../api/client";
 import { useAuth, useMe } from "../auth/AuthContext";
+import { accountOf, countUnsynchronized } from "../lib/hseOfflineSync";
 import { can } from "../lib/permissions";
 import { canAdminister } from "../pages/AdminPages";
 import { SecurityPage } from "../pages/SecurityPage";
@@ -58,6 +59,7 @@ export function Layout() {
     },
     { to: "/pesees", text: "Pesées", show: can(me.grants, "dispatch.weighing.read") },
     { to: "/juridique", text: "Contrats & assurances", show: can(me.grants, "legal.contract.read", siteId) || can(me.grants, "legal.insurance.read", siteId) },
+    { to: "/couts", text: "Coût complet", show: can(me.grants, "cost.vehicle.read") },
     { to: "/indicateurs", text: "Indicateurs", show: can(me.grants, "dispatch.indicators.read") },
     { to: "/administration", text: "Administration", show: canAdminister(me.grants) },
   ];
@@ -91,7 +93,20 @@ export function Layout() {
             className="link"
             onClick={() => {
               setLogoutFailed(false);
-              logout().catch(() => setLogoutFailed(true));
+              void (async () => {
+                // La déconnexion volontaire efface la file locale : prévenir si des déclarations n'ont pas
+                // encore été acquittées par le serveur.
+                const unsent = await countUnsynchronized(accountOf(me)).catch(() => 0);
+                if (
+                  unsent > 0 &&
+                  !window.confirm(
+                    `${unsent} déclaration(s) saisie(s) sur cet appareil ne sont pas encore synchronisées et seront supprimées. Se déconnecter quand même ?`,
+                  )
+                ) {
+                  return;
+                }
+                await logout();
+              })().catch(() => setLogoutFailed(true));
             }}
           >
             Se déconnecter

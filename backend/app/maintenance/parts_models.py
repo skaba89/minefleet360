@@ -1,9 +1,10 @@
 """Modèles de fondation du catalogue et des stocks de pièces détachées."""
 
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Numeric, String, text
+from sqlalchemy import DateTime, Numeric, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -76,6 +77,9 @@ class SparePartMovement(Base):
     quantity: Mapped[Decimal] = mapped_column(Numeric(16, 3), nullable=False)
     reference: Mapped[str] = mapped_column(String, nullable=False)
     recorded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
 
 
 class SparePartReservation(Base):

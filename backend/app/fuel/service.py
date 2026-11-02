@@ -832,7 +832,7 @@ def create_supplier(auth: Authorized, body: SupplierCreate) -> Supplier:
     return supplier
 
 
-def create_purchase(auth: Authorized, body: PurchaseCreate) -> PurchaseOrder:
+def create_purchase(auth: Authorized, body: PurchaseCreate) -> dict[str, object]:
     tank = _tank(auth, body.fuel_tank_id)
     supplier = auth.db.scalar(
         select(Supplier).where(
@@ -861,11 +861,16 @@ def create_purchase(auth: Authorized, body: PurchaseCreate) -> PurchaseOrder:
     auth.db.add(purchase)
     auth.db.flush()
     _audit(auth, "fuel.purchase.create", purchase.fuel_purchase_order_id, purchase.site_id)
+    # Réponse construite AVANT le commit : le contexte tenant est local à la transaction ; relue après,
+    # la cuve serait masquée par la RLS (404 alors que la commande est créée, risque de doublon au rejeu).
+    output = purchase_output(auth, purchase)
     auth.db.commit()
-    return purchase
+    return output
 
 
-def decide_purchase(auth: Authorized, purchase_id: uuid.UUID, body: PurchaseDecisionCreate) -> PurchaseOrder:
+def decide_purchase(
+    auth: Authorized, purchase_id: uuid.UUID, body: PurchaseDecisionCreate
+) -> dict[str, object]:
     purchase = auth.db.scalar(
         select(PurchaseOrder)
         .where(
@@ -895,8 +900,9 @@ def decide_purchase(auth: Authorized, purchase_id: uuid.UUID, body: PurchaseDeci
     auth.db.add(decision)
     auth.db.flush()
     _audit(auth, "fuel.purchase.decide", purchase.fuel_purchase_order_id, purchase.site_id)
+    output = purchase_output(auth, purchase)
     auth.db.commit()
-    return purchase
+    return output
 
 
 def receive_purchase(
