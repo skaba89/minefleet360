@@ -90,9 +90,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (workspaceCode: string, email: string, password: string): Promise<MfaChallenge | null> => {
-      const { data } = await call("post", "/auth/login", {
-        body: { workspace_code: workspaceCode.trim(), email: email.trim(), password },
-      });
+      const workspace = workspaceCode.trim().toLowerCase();
+      const { data } =
+        workspace === "mf-platform"
+          ? await call("post", "/auth/platform/login", {
+              body: { email: email.trim(), password },
+            })
+          : await call("post", "/auth/login", {
+              body: { workspace_code: workspace, email: email.trim(), password },
+            });
       if ("mfa_required" in data) return { mfaToken: data.mfa_token };
       await enter(data.access_token);
       return null;
