@@ -308,7 +308,7 @@ Règles de masquage (côté serveur) :
 Tranchés et retirés de la liste : rôle `AUDITOR`, exclusion de `TENANT_ADMIN` des données RH, habilitations (`HR` écrit, `HSE` lit), dérogation d'éligibilité (reportée), affichage partiel du permis (masquage total), source de vérité YAML (retenu).
 1. **MFA** (C-03) : TOTP pour `PLATFORM_ADMIN`, `TENANT_ADMIN`, `HR`, `FINANCE` livré après le lot 1 ; avant tout pilote.
 2. **Connexion** (C-02) : code d'espace + e-mail acceptable pour les utilisateurs ? SSO/OIDC plus tard.
-3. **Double validation** pour l'attribution de `TENANT_ADMIN`/`HR` et **alertes** de notification : reportées, à arbitrer.
+3. **Double validation** pour l'attribution de `TENANT_ADMIN`/`HR` : reportée, à arbitrer. **Alertes** : récapitulatif HSE quotidien par e-mail retenu (`DECISIONS_DELEGUEES.md`, D-DEL-01).
 4. **Portée imposée `SITE`** pour `HSE` et `FUEL_MANAGER` : la matrice actuelle autorise `HSE` en `TENANT` et `FUEL` en `SITE` seule ; à confirmer.
 5. **Lecture réduite du journal d'audit pour `DIRECTION`** (événements de sécurité seulement) : ❌ par défaut.
 6. **Accès support** (C-10) et **bris de glace** : avant pilote.

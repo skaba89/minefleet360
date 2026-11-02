@@ -8,6 +8,9 @@ minefleet purge-gps [--days N] [--apply]
     Rétention GPS : compte (par défaut) ou supprime (--apply) les positions plus anciennes que N jours
     (MF_GPS_RETENTION_DAYS, 180 par défaut, 7 minimum). Seule commande exécutée avec le propriétaire du schéma
     (MF_OWNER_PASSWORD), comme les migrations : la fonction de purge n'est pas accessible au rôle applicatif.
+minefleet send-hse-digest [--dry-run]
+    Récapitulatif HSE quotidien par e-mail (actions en retard ou proches, incidents graves ouverts), par
+    société, audité ; --dry-run compte les messages sans rien envoyer. À planifier une fois par jour.
 minefleet reset-platform-mfa --email <e-mail>
     C-03 : retire le second facteur d'un PLATFORM_ADMIN qui a perdu téléphone ET codes de récupération
     (aucun compte au-dessus de lui ne peut le faire par l'API). Sessions fermées, action auditée.
@@ -19,6 +22,7 @@ import os
 import sys
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.audit.contracts import record
 from app.core.clock import SystemClock
@@ -155,6 +159,43 @@ def purge_gps(days: int | None, apply: bool) -> int:
     return 0
 
 
+def send_hse_digest(dry_run: bool) -> int:
+    from app.core.email import build_email_sender
+    from app.hse.digest import send_digests
+    from app.organization.models import Tenant
+
+    settings = get_settings()
+    sender = build_email_sender(settings)
+    now = SystemClock().now()
+    db = new_session()
+    total = failures = 0
+    try:
+        set_tenant_context(db, PLATFORM_TENANT_ID)
+        tenants = list(
+            db.execute(
+                select(Tenant.tenant_id).where(Tenant.kind == "CUSTOMER", Tenant.status == "ACTIVE")
+            ).scalars()
+        )
+        db.commit()
+        for tenant_id in tenants:
+            # Une société en échec n'empêche pas les suivantes ; son audit est annulé avec la transaction.
+            try:
+                set_tenant_context(db, tenant_id)
+                total += send_digests(
+                    db, tenant_id=tenant_id, now=now, settings=settings, sender=sender, dry_run=dry_run
+                )
+                db.commit()
+            except (SQLAlchemyError, OSError):  # base indisponible ou échec SMTP (smtplib lève des OSError)
+                db.rollback()
+                failures += 1
+                print(f"Échec du récapitulatif pour une société ({tenant_id}).", file=sys.stderr)
+    finally:
+        db.close()
+    verb = "à envoyer (simulation)" if dry_run else "envoyés"
+    print(f"Récapitulatifs HSE {verb} : {total} ; sociétés en échec : {failures}")
+    return 1 if failures else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="minefleet")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -165,6 +206,8 @@ def main(argv: list[str] | None = None) -> int:
     purge = sub.add_parser("purge-gps")
     purge.add_argument("--days", type=int, default=None)
     purge.add_argument("--apply", action="store_true")
+    digest = sub.add_parser("send-hse-digest")
+    digest.add_argument("--dry-run", action="store_true")
     reset = sub.add_parser("reset-platform-mfa")
     reset.add_argument("--email", required=True)
     args = parser.parse_args(argv)
@@ -178,6 +221,8 @@ def main(argv: list[str] | None = None) -> int:
         return seed_fictitious()
     if args.command == "purge-gps":
         return purge_gps(args.days, args.apply)
+    if args.command == "send-hse-digest":
+        return send_hse_digest(args.dry_run)
     if args.command == "reset-platform-mfa":
         return reset_platform_mfa(args.email)
     return 1
