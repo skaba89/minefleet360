@@ -7,6 +7,7 @@ import { AdminIndex, AdminLayout, AuditAdminPage, SitesAdminPage, UsersAdminPage
 import { AssignmentsPage } from "./pages/AssignmentsPage";
 import { MissionDetailPage } from "./pages/MissionDetailPage";
 import { MissionsPage } from "./pages/MissionsPage";
+import { ReliabilityPage } from "./pages/ReliabilityPage";
 import { ReferentialsPage } from "./pages/ReferentialsPage";
 import { DriverDetailPage } from "./pages/DriverDetailPage";
 import { DriversPage } from "./pages/DriversPage";
@@ -65,6 +66,7 @@ export function App() {
           <Route path="carburant" element={<FuelPage />} />
           <Route path="pieces" element={<PartsPage />} />
           <Route path="juridique" element={<LegalRegistriesPage />} />
+          <Route path="atelier/fiabilite" element={<ReliabilityPage />} />
           <Route path="atelier/:workOrderId" element={<WorkOrderPage />} />
           <Route path="hse" element={<HsePage />} />
           <Route path="hse/:incidentId" element={<HseIncidentPage />} />

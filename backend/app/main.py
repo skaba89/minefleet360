@@ -32,6 +32,7 @@ from app.identity.router import auth_router, me_router, role_router, user_router
 from app.legal.router import router as legal_router
 from app.maintenance.parts_router import router as parts_router
 from app.maintenance.purchase_order_router import router as purchase_order_router
+from app.maintenance.reliability import router as reliability_router
 from app.maintenance.replenishment_router import router as replenishment_router
 from app.maintenance.router import router as maintenance_router
 from app.organization.router import platform_router, site_router, tenant_router
@@ -151,6 +152,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         assignment_router,
         dispatch_router,
         maintenance_router,
+        reliability_router,
         legal_router,
         parts_router,
         purchase_order_router,

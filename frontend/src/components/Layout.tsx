@@ -32,6 +32,7 @@ export function Layout() {
     { to: "/affectations", text: "Affectations", show: can(me.grants, "assignment.vehicle_assignment.read") },
     { to: "/missions", text: "Missions", show: can(me.grants, "dispatch.mission.read") },
     { to: "/atelier", text: "Atelier", show: can(me.grants, "maintenance.work_order.read") },
+    { to: "/atelier/fiabilite", text: "Fiabilité parc", show: can(me.grants, "maintenance.reliability.read") },
     { to: "/maintenance", text: "Maintenance", show: can(me.grants, "maintenance.preventive.read") },
     {
       to: "/carburant",

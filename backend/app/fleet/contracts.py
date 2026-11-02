@@ -52,6 +52,32 @@ class VehicleFacts:
     document_warning_days: int = 45
 
 
+@dataclass(frozen=True)
+class VehicleRef:
+    vehicle_id: uuid.UUID
+    site_id: uuid.UUID
+    fleet_number: str
+    status: str
+
+
+def vehicles_in_scope(
+    db: Session,
+    site_ids: frozenset[uuid.UUID] | None,
+    *,
+    vehicle_ids: Iterable[uuid.UUID] | None = None,
+    include_retired: bool = False,
+) -> list[VehicleRef]:
+    """Engins du tenant courant (RLS), limités aux sites donnés (None : toute la société)."""
+    stmt = select(Vehicle.vehicle_id, Vehicle.site_id, Vehicle.fleet_number, Vehicle.status)
+    if site_ids is not None:
+        stmt = stmt.where(Vehicle.site_id.in_(site_ids))
+    if vehicle_ids is not None:
+        stmt = stmt.where(Vehicle.vehicle_id.in_(list(vehicle_ids)))
+    if not include_retired:
+        stmt = stmt.where(Vehicle.status != "RETIRED")
+    return [VehicleRef(*row) for row in db.execute(stmt.order_by(Vehicle.fleet_number)).all()]
+
+
 def vehicle_facts(
     db: Session, vehicle_ids: Iterable[uuid.UUID], *, lock: bool = False
 ) -> dict[uuid.UUID, VehicleFacts]:

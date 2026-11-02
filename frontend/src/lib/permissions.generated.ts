@@ -1165,6 +1165,26 @@ export const GRANTS = {
       "SITE"
     ]
   },
+  "maintenance.reliability.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "maintenance.work_order.execute": {
     "MECHANIC": [
       "SITE"
