@@ -574,7 +574,6 @@ export const GRANTS = {
       "SITE"
     ],
     "FUEL_MANAGER": [
-      "TENANT",
       "SITE"
     ],
     "HR": [
@@ -892,7 +891,6 @@ export const GRANTS = {
       "SITE"
     ],
     "FUEL_MANAGER": [
-      "TENANT",
       "SITE"
     ],
     "HSE": [
@@ -917,7 +915,6 @@ export const GRANTS = {
       "SITE"
     ],
     "FUEL_MANAGER": [
-      "TENANT",
       "SITE"
     ],
     "HSE": [
@@ -1048,7 +1045,6 @@ export const GRANTS = {
       "SITE"
     ],
     "FUEL_MANAGER": [
-      "TENANT",
       "SITE"
     ],
     "HR": [
@@ -1522,7 +1518,6 @@ export const GRANTS = {
       "SITE"
     ],
     "FUEL_MANAGER": [
-      "TENANT",
       "SITE"
     ],
     "HR": [

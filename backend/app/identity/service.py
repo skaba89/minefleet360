@@ -330,7 +330,13 @@ def list_roles(auth: Authorized) -> list[RoleOut]:
         RoleOut(
             role_code=r.role_code,
             label_fr=r.label_fr,
-            allowed_scopes=scopes.get(r.role_code, []),
+            # La matrice peut restreindre une portée encore présente dans le référentiel (ex. D-DEL-02) :
+            # on ne propose que les portées acceptées à l'attribution.
+            allowed_scopes=[
+                s
+                for s in scopes.get(r.role_code, [])
+                if r.role_code not in matrix.roles or s in matrix.roles[r.role_code].allowed_scopes
+            ],
             is_optional=r.is_optional,
         )
         for r in roles

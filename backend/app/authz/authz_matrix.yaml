@@ -22,7 +22,8 @@ roles:
   WORKSHOP_CHIEF: { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
   MECHANIC:       { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
   STOREKEEPER:    { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
-  FUEL_MANAGER:   { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
+  # Rôle de site uniquement (décision déléguée D-DEL-02) : toutes ses permissions carburant sont de portée SITE.
+  FUEL_MANAGER:   { allowed_scopes: [SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
   HSE:            { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
   FINANCE:        { allowed_scopes: [TENANT, SITE], tenant_kind: CUSTOMER, assignable_by_tenant: true }
   AUDITOR:        { allowed_scopes: [TENANT], tenant_kind: CUSTOMER, assignable_by_tenant: true, optional: true }
@@ -68,7 +69,7 @@ permissions:
       WORKSHOP_CHIEF: [TENANT, SITE]
       MECHANIC: [TENANT, SITE]
       STOREKEEPER: [TENANT, SITE]
-      FUEL_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
       HSE: [TENANT, SITE]
       FINANCE: [TENANT, SITE]
       AUDITOR: [TENANT]
@@ -198,7 +199,7 @@ permissions:
       WORKSHOP_CHIEF: [TENANT, SITE]
       MECHANIC: [TENANT, SITE]
       STOREKEEPER: [TENANT, SITE]
-      FUEL_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
       HSE: [TENANT, SITE]
       FINANCE: [TENANT, SITE]
       AUDITOR: [TENANT]
@@ -269,7 +270,7 @@ permissions:
       WORKSHOP_CHIEF: [TENANT, SITE]
       MECHANIC: [TENANT, SITE]
       STOREKEEPER: [TENANT, SITE]
-      FUEL_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
       HSE: [TENANT, SITE]
       FINANCE: [TENANT, SITE]
       AUDITOR: [TENANT]
@@ -1186,7 +1187,7 @@ permissions:
       DISPATCHER: [SITE]
       WORKSHOP_CHIEF: [TENANT, SITE]
       MECHANIC: [TENANT, SITE]
-      FUEL_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
       HSE: [TENANT, SITE]
   hse.incident.manage:
     tranche: 1c
@@ -1247,7 +1248,7 @@ permissions:
       DISPATCHER: [SITE]
       WORKSHOP_CHIEF: [TENANT, SITE]
       MECHANIC: [TENANT, SITE]
-      FUEL_MANAGER: [TENANT, SITE]
+      FUEL_MANAGER: [SITE]
       HSE: [TENANT, SITE]
   hse.checklist.manage:
     tranche: 1c
