@@ -6,6 +6,8 @@ import { ApiError, call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, ErrorMessage, Pager } from "../components/common";
 import { EvidenceImage, EvidenceUploader } from "../components/Evidence";
+import { ExportButton } from "../components/ExportButton";
+import { downloadCsv, fetchAllPages, stamp, toCsv } from "../lib/csv";
 import { ActionForm, Fact, Options, orNull } from "../components/forms";
 import { useConnectivity } from "../lib/connectivity";
 import { accountOf, queueIncident } from "../lib/hseOfflineSync";
@@ -157,6 +159,28 @@ export function HsePage() {
               />
               Ouverts seulement
             </label>
+            <ExportButton
+              run={async () => {
+                const { items, truncated } = await fetchAllPages((p, size) =>
+                  read("/hse/incidents", {
+                    query: { site_id: siteId, status: (status || null) as Status | null, open_only: openOnly, page: p, page_size: size },
+                  }),
+                );
+                downloadCsv(
+                  `incidents-hse-${stamp()}.csv`,
+                  toCsv(
+                    ["Référence", "Site", "Survenu le (UTC)", "Nature", "Gravité", "Titre", "Engin", "Blessés", "Arrêt de travail",
+                      "Statut", "Actions en cours", "Actions en retard", "Clôturé le (UTC)"],
+                    items.map((i) => [
+                      i.reference, siteCode.get(i.site_id) ?? i.site_id, i.occurred_at, label(HSE_CATEGORY, i.category),
+                      label(HSE_SEVERITY, i.severity), i.title, i.vehicle_fleet_number ?? "", i.injured_count, i.lost_time,
+                      label(HSE_STATUS, i.status), i.open_actions, i.overdue_actions, i.closed_at ?? "",
+                    ]),
+                  ),
+                );
+                return { truncated };
+              }}
+            />
           </div>
           <DataState loading={incidents.isLoading} error={incidents.error} empty={items.length === 0} emptyText="Aucun incident.">
             <table>

@@ -74,3 +74,20 @@ it("un mécanicien démonte avec compteur et If-Match, sans action de gestion", 
   expect(options.body).toMatchObject({ reason_code: "WEAR", odometer_km: "15000", hour_meter: null });
   client.clear();
 });
+
+it("exporte la liste filtrée au format CSV, toutes pages confondues", async () => {
+  const created: Blob[] = [];
+  globalThis.URL.createObjectURL = vi.fn((blob: Blob) => {
+    created.push(blob);
+    return "blob:export";
+  });
+  globalThis.URL.revokeObjectURL = vi.fn();
+  const client = show("/pneus");
+  fireEvent.click(await screen.findByRole("button", { name: "Exporter (CSV)" }));
+  await waitFor(() => expect(created).toHaveLength(1));
+  const text = await created[0]!.text();
+  expect(text).toContain('"MarqueFictive";"SN-FICTIF-1"');
+  expect(text).toContain("Sculpture proche de la limite ; Pression hors tolérance (±10 %)");
+  expect(read).toHaveBeenCalledWith("/tyres", expect.objectContaining({ query: expect.objectContaining({ page: 1, page_size: 200 }) }));
+  client.clear();
+});

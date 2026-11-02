@@ -6,6 +6,8 @@ import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, ErrorMessage, Pager } from "../components/common";
 import { EvidenceImage, EvidenceUploader } from "../components/Evidence";
+import { ExportButton } from "../components/ExportButton";
+import { downloadCsv, fetchAllPages, stamp, toCsv } from "../lib/csv";
 import { ActionForm, Fact, Options, orNull } from "../components/forms";
 import { HSE_ANSWER, HSE_RESULT, HSE_TARGET, label } from "../lib/labels";
 import { can } from "../lib/permissions";
@@ -68,6 +70,28 @@ export function HseInspectionsPage() {
                 <Options map={HSE_RESULT} empty="Tous" />
               </select>
             </label>
+            <ExportButton
+              run={async () => {
+                const { items, truncated } = await fetchAllPages((p, size) =>
+                  read("/hse/inspections", {
+                    query: { site_id: siteId, result: (result || null) as Inspection["result"] | null, page: p, page_size: size },
+                  }),
+                );
+                downloadCsv(
+                  `inspections-hse-${stamp()}.csv`,
+                  toCsv(
+                    ["Référence", "Site", "Réalisée le (UTC)", "Checklist", "Version", "Type", "Engin ou zone", "Inspecteur",
+                      "Résultat", "Non-conformités", "Dont critiques", "Actions en cours"],
+                    items.map((i) => [
+                      i.reference, siteCode.get(i.site_id) ?? i.site_id, i.performed_at, i.template_name, i.template_version,
+                      label(HSE_TARGET, i.target_type), i.vehicle_fleet_number ?? i.area_note ?? "", i.performed_by_name ?? "",
+                      label(HSE_RESULT, i.result), i.nonconformities, i.critical_nonconformities, i.open_actions,
+                    ]),
+                  ),
+                );
+                return { truncated };
+              }}
+            />
           </div>
           <DataState loading={inspections.isLoading} error={inspections.error} empty={items.length === 0} emptyText="Aucune inspection.">
             <table>

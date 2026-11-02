@@ -5,7 +5,9 @@ import { Link, useNavigate, useParams } from "react-router";
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, Pager } from "../components/common";
+import { ExportButton } from "../components/ExportButton";
 import { ActionForm, Fact, Options, orNull } from "../components/forms";
+import { downloadCsv, fetchAllPages, stamp, toCsv } from "../lib/csv";
 import {
   label,
   TYRE_ALERTS,
@@ -95,6 +97,30 @@ export function TyresPage() {
           />
           Avec alerte seulement
         </label>
+        <ExportButton
+          run={async () => {
+            const { items, truncated } = await fetchAllPages((p, size) =>
+              read("/tyres", {
+                query: { site_id: siteId, status: (status || null) as Status | null, alert_only: alertOnly, page: p, page_size: size },
+              }),
+            );
+            downloadCsv(
+              `pneus-${stamp()}.csv`,
+              toCsv(
+                ["Marque", "N° de série", "Modèle", "Dimension", "Catégorie", "Site", "État", "Engin", "Position",
+                  "Sculpture (mm)", "Limite de rebut (mm)", "Rechapages", "Alertes", "Km mesurés", "Heures mesurées",
+                  "Coût total", "Coût/km", "Coût/heure", "Devise"],
+                items.map((t) => [
+                  t.brand, t.serial_number, t.model, t.size, label(TYRE_CATEGORY, t.category), siteCode.get(t.site_id) ?? t.site_id,
+                  label(TYRE_STATUS, t.status), t.vehicle_fleet_number ?? "", t.position_code ?? "", t.last_tread_mm ?? "",
+                  t.scrap_tread_mm, t.retread_count, t.alerts.map((a) => label(TYRE_ALERTS, a)).join(" ; "), t.km_run,
+                  t.hours_run, t.total_cost ?? "", t.cost_per_km ?? "", t.cost_per_hour ?? "", t.currency ?? "",
+                ]),
+              ),
+            );
+            return { truncated };
+          }}
+        />
       </div>
       <DataState loading={tyres.isLoading} error={tyres.error} empty={items.length === 0} emptyText="Aucun pneu.">
         <table>

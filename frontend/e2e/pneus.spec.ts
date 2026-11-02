@@ -58,4 +58,14 @@ test("cycle d'un pneu depuis l'atelier", async ({ page, request }) => {
   await dismount.getByRole("button", { name: "Démonter" }).click();
   await expect(page.getByText("En stock", { exact: true })).toBeVisible();
   await expect(page.getByText("1 000 km / 0 h")).toBeVisible();
+
+  // Export CSV de la liste : fichier réellement téléchargé, contenant le pneu suivi.
+  await page.goto("/pneus");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Exporter (CSV)" }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^pneus-\d{12}\.csv$/);
+  const content = await (await download.createReadStream()).toArray();
+  expect(Buffer.concat(content).toString("utf-8")).toContain(serial);
 });

@@ -5,7 +5,9 @@ import { Link } from "react-router";
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState } from "../components/common";
+import { ExportButton } from "../components/ExportButton";
 import { ActionForm } from "../components/forms";
+import { downloadCsv, stamp, toCsv } from "../lib/csv";
 import { can } from "../lib/permissions";
 import { useSites } from "../site/SiteContext";
 
@@ -86,6 +88,30 @@ export function CostsPage() {
             ))}
           </select>
         </label>
+        {report.data && (
+          <ExportButton
+            run={async () => {
+              const r = report.data!;
+              const c = (x: Component) => [x.amount ?? "", STATUS_LABEL[x.status]];
+              downloadCsv(
+                `cout-complet-${stamp()}.csv`,
+                toCsv(
+                  ["Engin", "Site", "Carburant", "Statut carburant", "Pièces", "Statut pièces", "Main-d'œuvre",
+                    "Statut main-d'œuvre", "Pneus", "Statut pneus", "Total", "Statut total", "Devise", "Éléments manquants",
+                    "Km", "Heures", "Tonnes", "Missions", "Coût/km", "Coût/heure", "Coût/tonne", "Coût/mission",
+                    "Début période", "Fin période"],
+                  r.vehicles.map((v) => [
+                    v.fleet_number, siteCode.get(v.site_id) ?? v.site_id, ...c(v.fuel), ...c(v.parts), ...c(v.labour),
+                    ...c(v.tyres), v.total ?? "", STATUS_LABEL[v.total_status], v.currency ?? "", v.missing.join(" ; "),
+                    v.km, v.hours, v.tonnes, v.missions, v.cost_per_km ?? "", v.cost_per_hour ?? "", v.cost_per_tonne ?? "",
+                    v.cost_per_mission ?? "", r.period_start, r.period_end,
+                  ]),
+                ),
+              );
+              return { truncated: false };
+            }}
+          />
+        )}
       </div>
       <DataState loading={report.isLoading} error={report.error} empty={rows.length === 0} emptyText="Aucun engin dans ce périmètre.">
         <table>
