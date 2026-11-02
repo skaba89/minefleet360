@@ -685,6 +685,18 @@ permissions:
     # Actions écrites : work_order.start, .await_parts, .resume, .submit, .note, .labour.
     audit: { action: work_order.start }
     grants: { WORKSHOP_CHIEF: [TENANT, SITE], MECHANIC: [SITE] }
+  maintenance.reliability.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    # Indicateurs agrégés par engin (MTBF, MTTR, disponibilité, main-d'œuvre, coût pièces) : pas de nom.
+    routes: [{ method: GET, path: /maintenance/reliability, shape: collection, success: 200 }]
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
 
   # --- dispatch (lot 2a, docs/PLAN_LOT2.md §5) ---------------------------------------------------------
   dispatch.location.read:

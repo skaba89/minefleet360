@@ -1100,6 +1100,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/maintenance/reliability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reliability */
+        get: operations["reliability_api_v1_maintenance_reliability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/materials": {
         parameters: {
             query?: never;
@@ -6155,6 +6172,47 @@ export interface components {
             /** Orphan Count */
             orphan_count: number;
         };
+        /** ReliabilityOut */
+        ReliabilityOut: {
+            /** Currency */
+            currency: string | null;
+            /**
+             * Period End
+             * Format: date-time
+             */
+            period_end: string;
+            /** Period Hours */
+            period_hours: string;
+            /**
+             * Period Start
+             * Format: date-time
+             */
+            period_start: string;
+            totals: components["schemas"]["ReliabilityTotals"];
+            /** Vehicles */
+            vehicles: components["schemas"]["VehicleReliability"][];
+        };
+        /** ReliabilityTotals */
+        ReliabilityTotals: {
+            /** Availability Percent */
+            availability_percent: string | null;
+            /** Downtime Hours */
+            downtime_hours: string;
+            /** Failures */
+            failures: number;
+            /** Labour Hours */
+            labour_hours: string;
+            /** Mtbf Hours */
+            mtbf_hours: string | null;
+            /** Mttr Hours */
+            mttr_hours: string | null;
+            /** Parts Cost Complete */
+            parts_cost_complete: boolean;
+            /** Parts Cost Known */
+            parts_cost_known: string | null;
+            /** Vehicles */
+            vehicles: number;
+        };
         /** ResetRequest */
         ResetRequest: {
             /** Email */
@@ -6881,6 +6939,43 @@ export interface components {
              * Format: uuid
              */
             vehicle_id: string;
+        };
+        /** VehicleReliability */
+        VehicleReliability: {
+            /** Availability Percent */
+            availability_percent: string;
+            /** Closed Corrective */
+            closed_corrective: number;
+            /** Downtime Hours */
+            downtime_hours: string;
+            /** Failures */
+            failures: number;
+            /** Fleet Number */
+            fleet_number: string;
+            /** Labour Hours */
+            labour_hours: string;
+            /** Mtbf Hours */
+            mtbf_hours: string | null;
+            /** Mttr Hours */
+            mttr_hours: string | null;
+            /** Open Work Orders */
+            open_work_orders: number;
+            /** Parts Cost Complete */
+            parts_cost_complete: boolean;
+            /** Parts Cost Known */
+            parts_cost_known: string | null;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /** Vehicle Status */
+            vehicle_status: string;
         };
         /** VehicleRetire */
         VehicleRetire: {
@@ -10024,6 +10119,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MechanicOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reliability_api_v1_maintenance_reliability_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReliabilityOut"];
                 };
             };
             /** @description Validation Error */
