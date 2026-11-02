@@ -117,8 +117,8 @@ function CreateVehicle({ onClose }: { onClose: () => void }) {
   const { sites, siteId } = useSites();
   const categories = useCategories();
   const allowedSites = sites.filter((s) => s.status === "ACTIVE" && can(me.grants, "fleet.vehicle.create", s.site_id));
-  const [form, setForm] = useState({
-    site_id: siteId ?? allowedSites[0]?.site_id ?? "",
+  const [draft, setForm] = useState({
+    site_id: "",
     vehicle_category_id: "",
     fleet_number: "",
     registration_number: "",
@@ -131,6 +131,8 @@ function CreateVehicle({ onClose }: { onClose: () => void }) {
     rated_payload_kg: "",
     commissioned_on: "",
   });
+  // Site calculé à chaque affichage : la liste des sites peut arriver après l'ouverture du formulaire.
+  const form = { ...draft, site_id: draft.site_id || siteId || allowedSites[0]?.site_id || "" };
   const set = (key: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm({ ...form, [key]: e.target.value });
 

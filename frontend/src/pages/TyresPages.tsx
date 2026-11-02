@@ -173,8 +173,8 @@ function CreateTyreForm({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
   const { siteId, sites } = useSites();
   const allowed = sites.filter((s) => can(me.grants, "maintenance.tyre.manage", s.site_id));
-  const [form, setForm] = useState({
-    site_id: siteId ?? allowed[0]?.site_id ?? "",
+  const [draft, setForm] = useState({
+    site_id: "",
     serial_number: "",
     brand: "",
     model: "",
@@ -186,6 +186,8 @@ function CreateTyreForm({ onClose }: { onClose: () => void }) {
     scrap_tread_mm: "",
     nominal_pressure_kpa: "",
   });
+  // Site calculé à chaque affichage : la liste des sites peut arriver après l'ouverture du formulaire.
+  const form = { ...draft, site_id: draft.site_id || siteId || allowed[0]?.site_id || "" };
   const set = (patch: Partial<typeof form>) => setForm({ ...form, ...patch });
   return (
     <ActionForm

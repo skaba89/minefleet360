@@ -21,6 +21,11 @@ test("inspection non conforme puis action corrective", async ({ page, browser, r
   });
   expect(template.status()).toBe(201);
 
+  // Réseau lent : la liste des sites arrive après l'ouverture du formulaire (cas observé en CI).
+  await page.route("**/api/v1/sites?*", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
   await uiLogin(page, account("DISPATCHER"));
   await page.goto("/hse/inspections");
   await page.getByRole("button", { name: "Réaliser une inspection" }).click();
@@ -28,6 +33,8 @@ test("inspection non conforme puis action corrective", async ({ page, browser, r
   await form.getByLabel("Checklist").selectOption({ label: `Prise de poste ${code} (Prise de poste, v1)` });
   await form.getByLabel("Résultat : EPI portés (casque, gilet, chaussures)").selectOption("NON_COMPLIANT");
   await form.getByLabel("Constat : EPI portés (casque, gilet, chaussures)").fill("Casque absent au briefing");
+  // Le site se renseigne seul dès que la liste des sites arrive, même après l'ouverture du formulaire.
+  await expect(form.getByRole("combobox", { name: "Site", exact: true })).not.toHaveValue("");
   await form.getByRole("button", { name: "Enregistrer l'inspection" }).click();
   const saved = page.getByRole("heading", { name: /INS-\d{6} enregistrée — Non conforme \(critique\)/ });
   await expect(saved).toBeVisible();

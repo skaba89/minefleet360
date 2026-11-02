@@ -253,7 +253,9 @@ function GeofenceForm({ onCancel, onDone }: { onCancel: () => void; onDone: () =
   const me = useMe();
   const { siteId, sites } = useSites();
   const allowed = sites.filter((s) => can(me.grants, "fleet.geofence.manage", s.site_id));
-  const [form, setForm] = useState({ site_id: siteId ?? allowed[0]?.site_id ?? "", code: "", name: "", kind: "LOADING_AREA", points: "" });
+  const [draft, setForm] = useState({ site_id: "", code: "", name: "", kind: "LOADING_AREA", points: "" });
+  // Site calculé à chaque affichage : la liste des sites peut arriver après l'ouverture du formulaire.
+  const form = { ...draft, site_id: draft.site_id || siteId || allowed[0]?.site_id || "" };
   return (
     <ActionForm
       title="Nouvelle zone"
