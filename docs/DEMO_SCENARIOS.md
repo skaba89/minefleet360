@@ -24,7 +24,7 @@ Les scénarios marqués « à venir » dépendent de données non générées da
 | S15 | Achat de carburant | fuel-manager.boke-mine puis finance | fournisseur fictif | Créer un bon de commande, l'approuver (finance), réceptionner | Stock de cuve augmenté ; le prix alimente le coût carburant estimé |
 | S16 | Pneus | workshop-chief, mechanic.boke-mine | 6 pneus par camion, un pneu réformé | Pneus → filtrer « Mis au rebut » ; inspecter un pneu monté | Historique de pose/dépose ; usure et pression enregistrées |
 | S17 | Inspection avant poste non conforme | dispatcher.boke-mine | checklist « avant poste » ; inspection freins non conforme (jour 5) | HSE → Inspections → filtrer « Non conforme » | Point critique en défaut, engin désigné |
-| S13 | Géolocalisation et zones | — | à venir | — | — |
+| S13 | Géolocalisation et zones | auditor (ou ops-manager) | traceurs, zones, positions des rotations | Véhicules → DEMO-CAM-002 → Historique de trajet, finalité « Analyse d'exploitation », veille | Tracé, distance, entrée/sortie de l'aire de chargement puis entrée en aire de déchargement et arrêt du signal (mission bloquée) ; consultation journalisée |
 | S14 | Hors ligne, préventif | — | à venir | — | — |
 
 État de vérification de ce lot :
@@ -32,6 +32,6 @@ Les scénarios marqués « à venir » dépendent de données non générées da
 - S10 et S11 : vérifiés automatiquement sur les données DEMO (`backend/tests/test_demo_seed.py`) ;
 - S7 (quatre yeux) et S9 (`HSE_ACTIONS_PENDING`) : règles rencontrées et respectées par le générateur ;
 - S2, S4, S5, S8 : règles couvertes par les tests de modules existants, pas encore rejouées sur les données DEMO ;
-- S0, S6, S12, S16 (stock), S17 (liste) et le tableau de bord : vérifiés à l'écran (captures locales, navigateur automatisé) ;
+- S0, S6, S12, S13, S16 (stock), S17 (liste), la flotte GPS, les zones et le tableau de bord : vérifiés à l'écran (captures locales, navigateur automatisé) ;
 - S1, S3, S15 : résultat attendu **non encore vérifié à l'écran** — un E2E Playwright sur la base DEMO
   est prévu au lot suivant.

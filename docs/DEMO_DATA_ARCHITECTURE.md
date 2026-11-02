@@ -1,6 +1,7 @@
 # Architecture des données de démonstration (DEMO)
 
-État au 2 novembre 2026 — lots 1 (socle) et 2 (coûts valorisés, atelier, pneus, inspections) : profil `small`. Les profils `standard` et `large` sont déclarés mais
+État au 2 novembre 2026 — lots 1 (socle), 2 (coûts valorisés, atelier, pneus, inspections) et 3 (GPS, zones) :
+profils `small` (démonstration) et `qa` (tests automatisés). Les profils `standard` et `large` sont déclarés mais
 leur volume et leurs performances n'ont pas encore été mesurés (lot suivant).
 
 ## 1. Objectif et principes
@@ -60,6 +61,7 @@ elle demande une décision explicite (droit destructif, journalisation, double c
 | Engins | 28 | tombereaux, articulés, porteurs routiers, chargeuses, pelles, niveleuse, bouteur, citerne, arroseuse, bus, VL |
 | Conducteurs | 21 | permis et autorisations de conduite ; 2 cas négatifs par société (permis expiré, permis proche échéance) |
 | Affectations | 15 | une par engin de transport, poste `JOUR` |
+| Profil `qa` | 9 jours | mêmes scénarios, rotations 2 à 3, GPS toutes les 5 min — tests automatisés |
 | Missions / rotations / pesées | ≈205 / ≈560 / ≈560 | 14 jours, 2 à 4 rotations par mission, pesées pont-bascule |
 | Activité du jour J | 6 en cours, 3 planifiées | missions en chargement, route chargée, déchargement, démarrées 2 h 30 avant l'exécution (ou 08:00 pour un ancrage passé) — seule partie qui dépend de l'heure d'exécution |
 | Carburant | 5 cuves, 10 achats, ≈100 distributions | bons de commande chiffrés en GNF (responsable carburant) approuvés par la finance puis livrés, bornés par la capacité ; distributions demandées par le responsable carburant, approuvées par le responsable des opérations (quatre yeux) |
@@ -67,6 +69,7 @@ elle demande une décision explicite (droit destructif, journalisation, double c
 | Atelier | 6 OT, taux horaire | une panne clôturée (approbation, assignation, pièces réservées puis consommées, 3 h de main-d'œuvre, contrôle qualité) et une panne ouverte par société ; taux société 85 000 GNF/h |
 | Pièces | 6 références, 1 magasin par site | réceptions valorisées (GNF) ; sorties valorisées au CMP sur l'OT |
 | Pneus | ≈95 pneus, ≈180 inspections | 6 pneus par engin de transport, 2 tournées d'inspection (usure, pression, compteurs) ; un pneu usé déposé, réformé et remplacé par un pneu neuf |
+| GPS | 15 traceurs, 25 zones, ≈22 000 positions | une position toutes les 2 min calée sur les événements de chaque rotation (parc → chargement → déchargement → retour) ; compteur km = distance du tracé |
 | HSE | 6 incidents, 65 inspections | un presque-accident enquêté, action corrective réalisée puis vérifiée, incident clos ; un incident critique ouvert ; checklist « avant poste » quotidienne, dont une non conforme (freins, point critique) |
 
 Volumes indicatifs : ils dépendent de la graine et de la date d'ancrage ; la sortie de `seed` donne les valeurs exactes.
@@ -85,7 +88,10 @@ Pour chaque société, sous le contexte RLS de la société :
 - OT bloquant ouvert ⇔ engin immobilisé ; OT clôturé ⇒ engin remis en service ;
 - coût complet servi par `costs.vehicle_costs` : carburant des engins de transport valorisé (statut « Estimé ») ;
   main-d'œuvre = minutes saisies × taux horaire (recalcul indépendant) ; pièces consommées valorisées ;
-- pneus : une seule position par pneu monté, aucun pneu réformé resté sur un engin.
+- pneus : une seule position par pneu monté, aucun pneu réformé resté sur un engin ;
+- GPS : sur une journée complète, le trajet servi par l'application (`vehicle_track`) compte autant d'entrées en
+  aire de chargement que de rotations terminées de l'engin (lecture journalisée dans l'audit, finalité
+  « Analyse d'exploitation »).
 
 Les sorties de magasin sont horodatées par la base à l'exécution réelle (non simulable) : avec un ancrage passé,
 elles apparaissent à la date d'exécution. Le contrôle des coûts couvre donc de « ancrage − 30 j » à aujourd'hui.
@@ -123,8 +129,21 @@ sur la démo, DEMO-CAM-001 porte 168 M GNF de pneu pour 664 km (≈ 290 000 GNF/
 camions). Les données sont exactes ; c'est la méthode qui surpondère le début de vie. Piste : amortir à l'usure
 de bande (prix × usure mesurée ÷ usure utile), ou sur une durée de vie attendue paramétrée. Non modifié ici.
 
-## 8. Hors périmètre (prochains lots)
+## 8. GPS : choix et limites
 
-Positions GPS et franchissements de zones, contrats et documents, parcours hors ligne, préventif, bons de
+- **Coordonnées fictives** : centres de sites placés dans la région annoncée (Boké, Boffa, Siguiri, Kamsar,
+  Conakry) mais décalés de plusieurs kilomètres ; ils ne représentent aucune installation réelle.
+- **Chaîne d'ingestion** : « passerelle authentifiée » (GPS-23, `accept_gps_telemetry_payload`) — JSON strict,
+  secret du traceur, association, anti-rejeu par séquence, bornes temporelles. Le limiteur anti-saturation de
+  l'API traceur (60 points par minute réelle et par traceur) est propre aux appareils isolés : il n'est ni
+  désactivé ni contourné, mais il rendrait impossible le rejeu d'un historique.
+- **Pas de flux en direct** : après le chargement, les positions vieillissent ; la flotte GPS affiche
+  « signal ancien ». Un émetteur de démonstration (`demo live-feed`) est une piste, à arbitrer.
+- **Durée** : le profil `small` prend environ 8 minutes (≈22 000 positions) ; le profil `qa` (9 jours, une
+  position toutes les 5 minutes) environ 3 minutes, utilisé par les tests automatisés.
+
+## 9. Hors périmètre (prochains lots)
+
+Contrats et documents, émetteur GPS en direct, parcours hors ligne, préventif, bons de
 commande de pièces, profils `standard`/`large` mesurés, mode « démonstration commerciale » guidé, E2E Playwright
 sur les données DEMO.
