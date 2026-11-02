@@ -33,6 +33,9 @@ CATALOG: dict[str, ErrorDef] = {
     "WORK_ORDER_NOT_ASSIGNEE": ErrorDef(
         403, "Seul le mécanicien assigné ou le chef d'atelier peut agir sur cette intervention."
     ),
+    "HSE_NOT_REPORTER": ErrorDef(
+        403, "Seul le déclarant de l'incident ou un responsable HSE du site peut y joindre des photos."
+    ),
     "HSE_NOT_ACTION_OWNER": ErrorDef(403, "Seul le responsable de l'action peut la déclarer réalisée."),
     "PERMISSION_DENIED": ErrorDef(403, "Vous n'avez pas l'autorisation d'effectuer cette action."),
     "MFA_ENROLLMENT_REQUIRED": ErrorDef(

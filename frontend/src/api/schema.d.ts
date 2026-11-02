@@ -1052,6 +1052,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/hse/incidents/{hse_incident_id}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Incident Evidence
+         * @description Photo d'un incident ouvert : par son déclarant, ou par un responsable HSE du site.
+         */
+        post: operations["upload_incident_evidence_api_v1_hse_incidents__hse_incident_id__evidence_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/hse/incidents/{hse_incident_id}/transition": {
         parameters: {
             query?: never;
@@ -4870,6 +4890,8 @@ export interface components {
             description: string;
             /** Events */
             events?: components["schemas"]["app__hse__schemas__EventOut"][] | null;
+            /** Evidence */
+            evidence?: components["schemas"]["EvidenceOut"][] | null;
             /**
              * Hse Incident Id
              * Format: uuid
@@ -11241,6 +11263,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_incident_evidence_api_v1_hse_incidents__hse_incident_id__evidence_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                hse_incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceOut"];
                 };
             };
             /** @description Validation Error */

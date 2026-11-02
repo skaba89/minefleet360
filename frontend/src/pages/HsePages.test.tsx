@@ -116,5 +116,8 @@ it("un mécanicien peut déclarer mais ne charge pas le registre", async () => {
     body: { site_id: "site-1", category: "SPILL", title: "Fuite d'huile", injured_count: 0, vehicle_id: null },
   });
   await waitFor(() => expect(screen.queryByRole("form", { name: "Déclarer un incident" })).toBeNull());
+  // Sans accès au registre, le déclarant peut encore joindre ses photos à l'incident qu'il vient de créer.
+  expect(await screen.findByText("Incident HSE-000001 enregistré")).toBeTruthy();
+  expect(screen.getByLabelText(/Ajouter une photo/)).toBeTruthy();
   client.clear();
 });

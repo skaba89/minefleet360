@@ -24,7 +24,7 @@ from app.core.http import PageParams, check_version
 from app.core.idempotency import IdempotencyClaim, complete
 from app.core.logging import security_logger
 from app.fleet.contracts import vehicle_facts
-from app.hse.models import HseCorrectiveAction, HseIncident, HseIncidentEvent, HseInspection
+from app.hse.models import HseCorrectiveAction, HseEvidence, HseIncident, HseIncidentEvent, HseInspection
 from app.hse.schemas import (
     ActionComplete,
     ActionCreate,
@@ -32,6 +32,7 @@ from app.hse.schemas import (
     ActionOut,
     ActionOwnerOut,
     EventOut,
+    EvidenceOut,
     HseSummaryOut,
     IncidentCreate,
     IncidentOut,
@@ -144,8 +145,14 @@ def incidents_out(
         if action.hse_incident_id is not None:
             actions[action.hse_incident_id].append(action)
     events: dict[uuid.UUID, list[HseIncidentEvent]] = defaultdict(list)
+    evidence: dict[uuid.UUID, list[HseEvidence]] = defaultdict(list)
     people = {i.reported_by for i in incidents}
     if detail:
+        for ev in db.execute(
+            select(HseEvidence).where(HseEvidence.hse_incident_id.in_(ids)).order_by(HseEvidence.uploaded_at)
+        ).scalars():
+            if ev.hse_incident_id is not None:
+                evidence[ev.hse_incident_id].append(ev)
         for e in db.execute(
             select(HseIncidentEvent)
             .where(HseIncidentEvent.hse_incident_id.in_(ids))
@@ -203,6 +210,9 @@ def incidents_out(
                 for e in events[i.hse_incident_id]
             ]
             data["actions"] = actions_out(auth, own)
+            data["evidence"] = [
+                EvidenceOut.model_validate(e, from_attributes=True) for e in evidence[i.hse_incident_id]
+            ]
         out.append(IncidentOut(**data))
     return out
 

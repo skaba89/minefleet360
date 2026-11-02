@@ -1176,7 +1176,10 @@ permissions:
     tranche: 1c
     kind: create
     site_bound: true
-    routes: [{ method: POST, path: /hse/incidents, shape: collection, success: 201 }]
+    routes:
+      - { method: POST, path: /hse/incidents, shape: collection, success: 201 }
+      # Photos : déclarant de l'incident ou responsable HSE du site (contrôle dans le service).
+      - { method: POST, path: "/hse/incidents/{hse_incident_id}/evidence", shape: item, success: 201 }
     audit: { action: hse.incident.report }
     grants:
       OPS_MANAGER: [TENANT, SITE]
