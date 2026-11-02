@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
+import { saveFieldProfile } from "../lib/offlineFieldProfile";
 import { can } from "../lib/permissions";
 
 type Site = Schemas["SiteOut"];
@@ -26,6 +27,19 @@ export function SiteProvider({ children }: { children: ReactNode }) {
     enabled: can(me.grants, "organization.site.read"),
     queryFn: () => read("/sites", { query: { page_size: 200 } }),
   });
+  // Profil terrain pour une ouverture sans réseau : seulement les sites où le compte peut déclarer.
+  useEffect(() => {
+    if (!data) return;
+    saveFieldProfile({
+      workspace_code: me.workspace_code,
+      user_account_id: me.user_account_id,
+      display_name: me.display_name,
+      timezone: me.timezone,
+      sites: data.items
+        .filter((s) => can(me.grants, "hse.incident.report", s.site_id))
+        .map((s) => ({ site_id: s.site_id, code: s.code, name: s.name, timezone: s.timezone ?? null })),
+    });
+  }, [data, me]);
   const value = useMemo<SiteState>(() => {
     const sites = data?.items ?? [];
     const byId = new Map(sites.map((s) => [s.site_id, s]));

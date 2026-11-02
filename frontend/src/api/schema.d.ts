@@ -10725,6 +10725,7 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "Idempotency-Key"?: string | null;
             };
             path?: never;
             cookie?: never;

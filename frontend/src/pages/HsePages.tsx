@@ -2,10 +2,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
-import { call, read, type Schemas } from "../api/client";
+import { ApiError, call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, ErrorMessage, Pager } from "../components/common";
 import { ActionForm, Fact, Options, orNull } from "../components/forms";
+import { useConnectivity } from "../lib/connectivity";
+import { accountOf, queueIncident } from "../lib/hseOfflineSync";
 import {
   HSE_ACTION_REASONS,
   HSE_ACTION_STATUS,
@@ -20,8 +22,9 @@ import {
   label,
 } from "../lib/labels";
 import { can } from "../lib/permissions";
-import { formatDate, formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
+import { formatDate, formatDateTime } from "../lib/time";
 import { useSites } from "../site/SiteContext";
+import { emptyIncidentForm, IncidentFields, incidentBody, OfflineIncidentQueue, type IncidentForm } from "./HseOffline";
 
 type Incident = Schemas["IncidentOut"];
 type CorrectiveAction = Schemas["ActionOut"];
@@ -40,6 +43,8 @@ export function HsePage() {
   const [openOnly, setOpenOnly] = useState(true);
   const [page, setPage] = useState(1);
   const [reporting, setReporting] = useState(false);
+  const [queued, setQueued] = useState(0);
+  const queryClient = useQueryClient();
   const canRead = can(me.grants, "hse.incident.read", siteId);
   const incidents = useQuery({
     queryKey: ["hse-incidents", siteId, status, openOnly, page],
@@ -70,7 +75,26 @@ export function HsePage() {
           </button>
         )}
       </div>
-      {reporting && <ReportIncidentForm onClose={() => setReporting(false)} />}
+      {reporting && (
+        <ReportIncidentForm
+          onClose={() => setReporting(false)}
+          onQueued={() => {
+            setReporting(false);
+            setQueued((n) => n + 1);
+          }}
+        />
+      )}
+      <OfflineIncidentQueue
+        account={accountOf(me)}
+        canSync
+        canOpen={canRead}
+        timeZone={me.timezone}
+        refreshKey={queued}
+        onSynchronized={() => {
+          void queryClient.invalidateQueries({ queryKey: ["hse-incidents"] });
+          void queryClient.invalidateQueries({ queryKey: ["hse-summary"] });
+        }}
+      />
       {!canRead && (
         <p className="muted">
           Vous pouvez déclarer un incident ; le registre est réservé aux responsables HSE et à l'encadrement.
@@ -185,96 +209,54 @@ function MyActions() {
   );
 }
 
-function ReportIncidentForm({ onClose }: { onClose: () => void }) {
+function ReportIncidentForm({ onClose, onQueued }: { onClose: () => void; onQueued: () => void }) {
   const navigate = useNavigate();
   const me = useMe();
   const queryClient = useQueryClient();
+  const online = useConnectivity();
   const { siteId, sites, timezoneOf } = useSites();
-  const [form, setForm] = useState({
-    site_id: siteId ?? sites[0]?.site_id ?? "",
-    category: "NEAR_MISS",
-    severity: "LOW",
-    title: "",
-    description: "",
-    occurred_at: utcToZonedInput(new Date(), timezoneOf(siteId)),
-    location_note: "",
-    vehicle_id: "",
-    injured_count: "0",
-    lost_time: false,
-    immediate_actions: "",
-  });
+  const declarable = sites.filter((s) => can(me.grants, "hse.incident.report", s.site_id));
+  const [form, setForm] = useState(() => emptyIncidentForm(siteId ?? declarable[0]?.site_id ?? "", timezoneOf(siteId)));
   const vehicles = useQuery({
     queryKey: ["vehicles", "hse", form.site_id],
-    enabled: !!form.site_id && can(me.grants, "fleet.vehicle.read", form.site_id),
+    enabled: online && !!form.site_id && can(me.grants, "fleet.vehicle.read", form.site_id),
     queryFn: () => read("/vehicles", { query: { site_id: form.site_id, page_size: 200 } }),
   });
-  const set = (patch: Partial<typeof form>) => setForm({ ...form, ...patch });
+  const set = (patch: Partial<IncidentForm>) => setForm({ ...form, ...patch });
   return (
     <ActionForm
       title="Déclarer un incident"
-      submitLabel="Enregistrer la déclaration"
+      submitLabel={online ? "Enregistrer la déclaration" : "Enregistrer sur l'appareil"}
       onCancel={onClose}
       onSubmit={async () => {
-        const { data } = await call("post", "/hse/incidents", {
-          body: {
-            site_id: form.site_id,
-            category: form.category as Category,
-            severity: form.severity as Severity,
-            title: form.title.trim(),
-            description: form.description.trim(),
-            occurred_at: zonedInputToUtc(form.occurred_at, timezoneOf(form.site_id)).toISOString(),
-            location_note: orNull(form.location_note),
-            vehicle_id: form.vehicle_id || null,
-            injured_count: Number(form.injured_count) || 0,
-            lost_time: form.lost_time,
-            immediate_actions: orNull(form.immediate_actions),
-          },
-        });
+        const body = incidentBody(form, timezoneOf(form.site_id));
+        const account = accountOf(me);
+        if (!online) {
+          await queueIncident(account, body);
+          onQueued();
+          return;
+        }
+        // Clé d'idempotence dès l'envoi direct : si la réponse se perd, la même opération part dans la file
+        // et son rejeu renverra l'incident déjà créé au lieu d'en créer un second.
+        const operationId = crypto.randomUUID();
+        let created: Schemas["IncidentOut"];
+        try {
+          ({ data: created } = await call("post", "/hse/incidents", { body, idempotencyKey: operationId }));
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 0) {
+            await queueIncident(account, body, new Date().toISOString(), operationId);
+            onQueued();
+            return;
+          }
+          throw error;
+        }
         void queryClient.invalidateQueries({ queryKey: ["hse-incidents"] });
         void queryClient.invalidateQueries({ queryKey: ["hse-summary"] });
-        if (can(me.grants, "hse.incident.read", data.site_id)) navigate(`/hse/${data.hse_incident_id}`);
+        if (can(me.grants, "hse.incident.read", created.site_id)) navigate(`/hse/${created.hse_incident_id}`);
         else onClose();
       }}
     >
-      <label>
-        Site
-        <select required value={form.site_id} onChange={(e) => set({ site_id: e.target.value, vehicle_id: "" })}>
-          <option value="">— Choisir —</option>
-          {sites.map((s) => (
-            <option key={s.site_id} value={s.site_id}>
-              {s.code} — {s.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Nature
-        <select value={form.category} onChange={(e) => set({ category: e.target.value })}>
-          <Options map={HSE_CATEGORY} />
-        </select>
-      </label>
-      <label>
-        Gravité estimée
-        <select value={form.severity} onChange={(e) => set({ severity: e.target.value })}>
-          <Options map={HSE_SEVERITY} />
-        </select>
-      </label>
-      <label>
-        Survenu le (heure du site)
-        <input type="datetime-local" required value={form.occurred_at} onChange={(e) => set({ occurred_at: e.target.value })} />
-      </label>
-      <label>
-        Titre
-        <input required minLength={3} maxLength={200} value={form.title} onChange={(e) => set({ title: e.target.value })} />
-      </label>
-      <label>
-        Description des faits
-        <textarea required minLength={10} maxLength={4000} value={form.description} onChange={(e) => set({ description: e.target.value })} />
-      </label>
-      <label>
-        Lieu (facultatif)
-        <input maxLength={200} value={form.location_note} onChange={(e) => set({ location_note: e.target.value })} />
-      </label>
+      <IncidentFields form={form} set={set} sites={declarable} />
       {vehicles.data && (
         <label>
           Engin impliqué (facultatif)
@@ -288,19 +270,7 @@ function ReportIncidentForm({ onClose }: { onClose: () => void }) {
           </select>
         </label>
       )}
-      <label>
-        Nombre de blessés
-        <input type="number" min={0} max={500} value={form.injured_count} onChange={(e) => set({ injured_count: e.target.value })} />
-      </label>
-      <label className="checkbox">
-        <input type="checkbox" checked={form.lost_time} onChange={(e) => set({ lost_time: e.target.checked })} />
-        Arrêt de travail
-      </label>
-      <label>
-        Mesures immédiates prises (facultatif)
-        <textarea maxLength={2000} value={form.immediate_actions} onChange={(e) => set({ immediate_actions: e.target.value })} />
-      </label>
-      <p className="muted small">Décrivez les faits sans nom de victime ni information médicale.</p>
+      {!online && <p className="warn-text small">Hors ligne : la déclaration sera envoyée automatiquement au retour du réseau.</p>}
     </ActionForm>
   );
 }
