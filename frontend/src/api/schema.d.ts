@@ -177,6 +177,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/costs/labour-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Labour Rates */
+        get: operations["list_labour_rates_api_v1_costs_labour_rates_get"];
+        put?: never;
+        /** Create Labour Rate */
+        post: operations["create_labour_rate_api_v1_costs_labour_rates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/costs/vehicles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Vehicle Costs */
+        get: operations["list_vehicle_costs_api_v1_costs_vehicles_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/costs/vehicles/{vehicle_id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Vehicle Cost History
+         * @description Évolution mensuelle (mois civils UTC) ; le mois en cours s'arrête à maintenant.
+         */
+        get: operations["vehicle_cost_history_api_v1_costs_vehicles__vehicle_id__history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dispatch-indicators": {
         parameters: {
             query?: never;
@@ -3490,6 +3545,20 @@ export interface components {
             /** Warnings */
             warnings: components["schemas"]["Issue"][];
         };
+        /** Component */
+        Component: {
+            /** Amount */
+            amount: string | null;
+            /** Currency */
+            currency: string | null;
+            /** Missing */
+            missing: string[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "COMPLETE" | "PARTIAL" | "ESTIMATED" | "INSUFFICIENT";
+        };
         /** ContractDecisionIn */
         ContractDecisionIn: {
             /** Action */
@@ -5034,6 +5103,44 @@ export interface components {
              */
             work_order_labour_id: string;
         };
+        /** LabourRateIn */
+        LabourRateIn: {
+            /** Currency */
+            currency: string;
+            /** Hourly Rate */
+            hourly_rate: number | string;
+            /** Site Id */
+            site_id?: string | null;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
+        };
+        /** LabourRateOut */
+        LabourRateOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /** Hourly Rate */
+            hourly_rate: string;
+            /**
+             * Maintenance Labour Rate Id
+             * Format: uuid
+             */
+            maintenance_labour_rate_id: string;
+            /** Site Id */
+            site_id: string | null;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
+        };
         /** LicenseCreate */
         LicenseCreate: {
             /** Category Code */
@@ -5508,6 +5615,12 @@ export interface components {
              * Format: uuid
              */
             vehicle_id: string;
+        };
+        /** MonthCost */
+        MonthCost: {
+            cost: components["schemas"]["VehicleCost"] | null;
+            /** Month */
+            month: string;
         };
         /** Page[ActionOut] */
         Page_ActionOut_: {
@@ -6775,6 +6888,23 @@ export interface components {
             /** Workspace Code */
             workspace_code: string;
         };
+        /** SiteCost */
+        SiteCost: {
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Total */
+            total: string | null;
+            /**
+             * Total Status
+             * @enum {string}
+             */
+            total_status: "COMPLETE" | "PARTIAL" | "ESTIMATED" | "INSUFFICIENT";
+            /** Vehicles */
+            vehicles: number;
+        };
         /** SiteCreate */
         SiteCreate: {
             /** Code */
@@ -7536,6 +7666,69 @@ export interface components {
              */
             vehicle_category_id: string;
         };
+        /** VehicleCost */
+        VehicleCost: {
+            /** Cost Per Hour */
+            cost_per_hour: string | null;
+            /** Cost Per Km */
+            cost_per_km: string | null;
+            /** Cost Per Mission */
+            cost_per_mission: string | null;
+            /** Cost Per Tonne */
+            cost_per_tonne: string | null;
+            /** Currency */
+            currency: string | null;
+            /** Fleet Number */
+            fleet_number: string;
+            fuel: components["schemas"]["Component"];
+            /** Hours */
+            hours: string;
+            /** Km */
+            km: string;
+            labour: components["schemas"]["Component"];
+            /** Missing */
+            missing: string[];
+            /** Missions */
+            missions: number;
+            parts: components["schemas"]["Component"];
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Tonnes */
+            tonnes: string;
+            /** Total */
+            total: string | null;
+            /**
+             * Total Status
+             * @enum {string}
+             */
+            total_status: "COMPLETE" | "PARTIAL" | "ESTIMATED" | "INSUFFICIENT";
+            tyres: components["schemas"]["Component"];
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+        };
+        /** VehicleCostsOut */
+        VehicleCostsOut: {
+            /**
+             * Period End
+             * Format: date-time
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date-time
+             */
+            period_start: string;
+            /** Sites */
+            sites: components["schemas"]["SiteCost"][];
+            /** Vehicles */
+            vehicles: components["schemas"]["VehicleCost"][];
+        };
         /** VehicleCreate */
         VehicleCreate: {
             /** Commissioned On */
@@ -7583,6 +7776,16 @@ export interface components {
             missing_types: string[];
             /** Required Types */
             required_types: string[];
+        };
+        /** VehicleHistoryOut */
+        VehicleHistoryOut: {
+            /** Months */
+            months: components["schemas"]["MonthCost"][];
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
         };
         /** VehicleOut */
         VehicleOut: {
@@ -8451,6 +8654,142 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_labour_rates_api_v1_costs_labour_rates_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabourRateOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_labour_rate_api_v1_costs_labour_rates_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LabourRateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabourRateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_vehicle_costs_api_v1_costs_vehicles_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VehicleCostsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vehicle_cost_history_api_v1_costs_vehicles__vehicle_id__history_get: {
+        parameters: {
+            query?: {
+                months?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VehicleHistoryOut"];
                 };
             };
             /** @description Validation Error */
