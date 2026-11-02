@@ -25,6 +25,7 @@ from sqlalchemy import func, select, text, update
 
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized, Require
+from app.authz.principal import evaluate
 from app.authz.routing import SecuredRoute
 from app.core.config import Settings, get_settings
 from app.core.errors import AppError
@@ -39,7 +40,7 @@ from app.hse.models import (
     HseInspection,
     HseInspectionAnswer,
 )
-from app.hse.schemas import ActionCreate, ActionOut, ActionOwnerOut
+from app.hse.schemas import ActionCreate, ActionOut, ActionOwnerOut, EvidenceOut
 from app.identity.contracts import display_names, users_with_roles
 from app.legal.clamav_factory import build_contract_malware_scanner
 from app.legal.malware_scan import MalwareScanner, ScanVerdict
@@ -52,6 +53,7 @@ InspectionRead = Annotated[Authorized, Depends(Require("hse.inspection.read"))]
 Perform = Annotated[Authorized, Depends(Require("hse.inspection.perform"))]
 ChecklistManage = Annotated[Authorized, Depends(Require("hse.checklist.manage"))]
 IncidentManage = Annotated[Authorized, Depends(Require("hse.incident.manage"))]
+Report = Annotated[Authorized, Depends(Require("hse.incident.report"))]
 
 TargetType = Literal["PRE_SHIFT", "VEHICLE", "WORK_AREA"]
 AnswerResult = Literal["COMPLIANT", "NON_COMPLIANT", "NOT_APPLICABLE"]
@@ -115,15 +117,6 @@ class AnswerOut(BaseModel):
     critical: bool
     result: AnswerResult
     comment: str | None
-
-
-class EvidenceOut(BaseModel):
-    hse_evidence_id: uuid.UUID
-    content_type: str
-    size_bytes: int
-    sha256: str
-    uploaded_by: uuid.UUID
-    uploaded_at: datetime
 
 
 class InspectionOut(BaseModel):
@@ -586,13 +579,15 @@ def add_inspection_action(
 # --- Preuves photo -------------------------------------------------------------------------------------
 
 
-@router.post(
-    "/hse/inspections/{hse_inspection_id}/evidence",
-    status_code=status.HTTP_201_CREATED,
-    response_model=EvidenceOut,
-)
-async def upload_evidence(hse_inspection_id: uuid.UUID, request: Request, auth: Perform) -> EvidenceOut:
-    inspection = inspection_in_scope(auth, hse_inspection_id)
+async def ingest_evidence(
+    auth: Authorized,
+    request: Request,
+    *,
+    site_id: uuid.UUID,
+    parent: dict[str, uuid.UUID],
+    parent_reference: str,
+) -> EvidenceOut:
+    """Contrôle, analyse antivirus, stockage privé et enregistrement d'une photo de preuve (parent unique)."""
     content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
     if content_type not in SIGNATURES:
         raise AppError("VALIDATION_ERROR", details=[{"field": "Content-Type", "type": "unsupported"}])
@@ -606,10 +601,9 @@ async def upload_evidence(hse_inspection_id: uuid.UUID, request: Request, auth: 
     if not content.startswith(signature):
         # Le type annoncé doit correspondre au contenu réel (pas de fichier déguisé en image).
         raise AppError("VALIDATION_ERROR", details=[{"field": "body", "type": "signature_mismatch"}])
+    ((column, parent_id),) = parent.items()
     count = auth.db.execute(
-        select(func.count())
-        .select_from(HseEvidence)
-        .where(HseEvidence.hse_inspection_id == hse_inspection_id)
+        select(func.count()).select_from(HseEvidence).where(getattr(HseEvidence, column) == parent_id)
     ).scalar_one()
     if count >= MAX_EVIDENCE_PER_INSPECTION:
         raise AppError("VALIDATION_ERROR", details=[{"field": "body", "type": "too_many"}])
@@ -618,8 +612,7 @@ async def upload_evidence(hse_inspection_id: uuid.UUID, request: Request, auth: 
     verdict = scanner.scan(content)
     if verdict == ScanVerdict.INFECTED:
         security_logger.warning(
-            "evidence_malware_rejected",
-            extra={"entity_type": "hse_inspection", "entity_id": str(hse_inspection_id)},
+            "evidence_malware_rejected", extra={"entity_type": column, "entity_id": str(parent_id)}
         )
         raise AppError("VALIDATION_ERROR", details=[{"field": "body", "type": "malware"}])
     if verdict != ScanVerdict.CLEAN:
@@ -636,13 +629,13 @@ async def upload_evidence(hse_inspection_id: uuid.UUID, request: Request, auth: 
     evidence = HseEvidence(
         hse_evidence_id=evidence_id,
         tenant_id=auth.tenant_id,
-        site_id=inspection.site_id,
-        hse_inspection_id=inspection.hse_inspection_id,
+        site_id=site_id,
         object_key=key,
         content_type=content_type,
         size_bytes=len(content),
         sha256=digest,
         uploaded_by=auth.user_id,
+        **parent,
     )
     auth.db.add(evidence)
     auth.db.flush()
@@ -652,13 +645,55 @@ async def upload_evidence(hse_inspection_id: uuid.UUID, request: Request, auth: 
         action="hse.evidence.upload",
         entity_type="hse_evidence",
         entity_id=evidence_id,
-        site_id=inspection.site_id,
+        site_id=site_id,
         actor_user_id=auth.user_id,
-        after={"inspection": service.inspection_reference(inspection.number), "sha256": digest},
+        after={"parent": parent_reference, "sha256": digest},
     )
     out = EvidenceOut.model_validate(evidence, from_attributes=True)
     auth.db.commit()
     return out
+
+
+@router.post(
+    "/hse/inspections/{hse_inspection_id}/evidence",
+    status_code=status.HTTP_201_CREATED,
+    response_model=EvidenceOut,
+)
+async def upload_evidence(hse_inspection_id: uuid.UUID, request: Request, auth: Perform) -> EvidenceOut:
+    inspection = inspection_in_scope(auth, hse_inspection_id)
+    return await ingest_evidence(
+        auth,
+        request,
+        site_id=inspection.site_id,
+        parent={"hse_inspection_id": inspection.hse_inspection_id},
+        parent_reference=service.inspection_reference(inspection.number),
+    )
+
+
+@router.post(
+    "/hse/incidents/{hse_incident_id}/evidence",
+    status_code=status.HTTP_201_CREATED,
+    response_model=EvidenceOut,
+)
+async def upload_incident_evidence(hse_incident_id: uuid.UUID, request: Request, auth: Report) -> EvidenceOut:
+    """Photo d'un incident ouvert : par son déclarant, ou par un responsable HSE du site."""
+    incident = service.incident_in_scope(auth, hse_incident_id)
+    manager = evaluate(auth.principal, "hse.incident.manage")
+    if incident.reported_by != auth.user_id and not (
+        manager is not None and manager.covers_site(incident.site_id)
+    ):
+        raise AppError("HSE_NOT_REPORTER")
+    if incident.status not in service.OPEN_INCIDENT:
+        raise AppError(
+            "HSE_INCIDENT_STATE_INVALID", details={"status": incident.status, "action": "ADD_EVIDENCE"}
+        )
+    return await ingest_evidence(
+        auth,
+        request,
+        site_id=incident.site_id,
+        parent={"hse_incident_id": incident.hse_incident_id},
+        parent_reference=service.reference(incident.number),
+    )
 
 
 @router.get("/hse/evidence/{hse_evidence_id}/content", response_class=Response)

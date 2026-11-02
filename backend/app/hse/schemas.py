@@ -78,6 +78,15 @@ class EventOut(BaseModel):
     occurred_at: datetime
 
 
+class EvidenceOut(BaseModel):
+    hse_evidence_id: uuid.UUID
+    content_type: str
+    size_bytes: int
+    sha256: str
+    uploaded_by: uuid.UUID
+    uploaded_at: datetime
+
+
 class ActionOut(BaseModel):
     hse_corrective_action_id: uuid.UUID
     # Exactement un parent : l'incident ou l'inspection d'origine (référence HSE-… ou INS-…).
@@ -131,6 +140,7 @@ class IncidentOut(BaseModel):
     row_version: int
     events: list[EventOut] | None = None
     actions: list[ActionOut] | None = None
+    evidence: list[EvidenceOut] | None = None
 
 
 class ActionOwnerOut(BaseModel):

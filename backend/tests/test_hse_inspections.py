@@ -339,3 +339,68 @@ def test_scope_and_isolation(client: TestClient, w: World) -> None:
             conn.rollback()
     finally:
         engine.dispose()
+
+
+# --- Photos d'incident ----------------------------------------------------------------------------------
+
+
+def _incident(client: TestClient, w: World, headers: dict[str, str]) -> dict:  # type: ignore[type-arg]
+    resp = client.post(
+        f"{API}/hse/incidents",
+        headers=headers,
+        json={
+            "site_id": str(w.t.sites["S1"]),
+            "category": "SPILL",
+            "severity": "LOW",
+            "title": "Fuite photographiée",
+            "description": "Flaque d'huile constatée sous l'engin.",
+            "occurred_at": (datetime.now(UTC) - timedelta(minutes=20)).isoformat(),
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()  # type: ignore[no-any-return]
+
+
+def _incident_upload(client: TestClient, headers: dict[str, str], incident_id: str, content: bytes = JPEG):  # type: ignore[no-untyped-def]
+    return client.post(
+        f"{API}/hse/incidents/{incident_id}/evidence",
+        headers={**headers, "Content-Type": "image/jpeg"},
+        content=content,
+    )
+
+
+def test_incident_photos_by_reporter_or_hse(client: TestClient, w: World, storage: MemoryStore) -> None:
+    incident = _incident(client, w, w.mechanic.headers)
+    iid = incident["hse_incident_id"]
+    mine = _incident_upload(client, w.mechanic.headers, iid)
+    assert mine.status_code == 201, mine.text
+    assert _incident_upload(client, w.hse.headers, iid).status_code == 201
+    stranger = _incident_upload(client, w.ops.headers, iid)  # peut déclarer, mais n'est ni déclarant ni HSE
+    assert stranger.status_code == 403 and stranger.json()["code"] == "HSE_NOT_REPORTER"
+    assert _incident_upload(client, w.mechanic.headers, iid, b"%PDF-1.7").status_code == 422
+    assert _incident_upload(client, w.mechanic_s2.headers, iid).status_code == 404
+    assert _incident_upload(client, w.other_hse.headers, iid).status_code == 404
+    detail = client.get(f"{API}/hse/incidents/{iid}", headers=w.hse.headers).json()
+    assert len(detail["evidence"]) == 2
+    photo = client.get(f"{API}/hse/evidence/{mine.json()['hse_evidence_id']}/content", headers=w.hse.headers)
+    assert photo.status_code == 200 and photo.content == JPEG
+    assert len(storage.objects) == 2
+    audit = client.get(
+        f"{API}/audit-events", headers=w.t.admin.headers, params={"action": "hse.evidence.upload"}
+    ).json()["items"]
+    assert any(e["entity_id"] == mine.json()["hse_evidence_id"] for e in audit)
+
+
+def test_incident_photos_refused_once_closed(client: TestClient, w: World, storage: MemoryStore) -> None:
+    incident = _incident(client, w, w.mechanic.headers)
+    url = f"{API}/hse/incidents/{incident['hse_incident_id']}"
+    version = client.get(url, headers=w.hse.headers).headers["ETag"]
+    cancelled = client.post(
+        f"{url}/transition",
+        headers={**w.hse.headers, "If-Match": version},
+        json={"action": "CANCEL", "reason_code": "DUPLICATE"},
+    )
+    assert cancelled.status_code == 200, cancelled.text
+    late = _incident_upload(client, w.mechanic.headers, incident["hse_incident_id"])
+    assert late.status_code == 409 and late.json()["code"] == "HSE_INCIDENT_STATE_INVALID"
+    assert storage.objects == {}

@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { ApiError, call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, ErrorMessage, Pager } from "../components/common";
+import { EvidenceImage, EvidenceUploader } from "../components/Evidence";
 import { ActionForm, Fact, Options, orNull } from "../components/forms";
 import { useConnectivity } from "../lib/connectivity";
 import { accountOf, queueIncident } from "../lib/hseOfflineSync";
@@ -44,6 +45,8 @@ export function HsePage() {
   const [page, setPage] = useState(1);
   const [reporting, setReporting] = useState(false);
   const [queued, setQueued] = useState(0);
+  // Déclarant sans accès au registre : il peut encore joindre ses photos juste après la déclaration.
+  const [declared, setDeclared] = useState<Schemas["IncidentOut"] | null>(null);
   const queryClient = useQueryClient();
   const canRead = can(me.grants, "hse.incident.read", siteId);
   const incidents = useQuery({
@@ -82,7 +85,20 @@ export function HsePage() {
             setReporting(false);
             setQueued((n) => n + 1);
           }}
+          onCreated={(incident) => {
+            setReporting(false);
+            setDeclared(incident);
+          }}
         />
+      )}
+      {declared && (
+        <div className="card" role="status">
+          <h2>Incident {declared.reference} enregistré</h2>
+          <EvidenceUploader uploadPath={`/hse/incidents/${declared.hse_incident_id}/evidence`} onUploaded={() => undefined} />
+          <button type="button" onClick={() => setDeclared(null)}>
+            Terminer
+          </button>
+        </div>
       )}
       <OfflineIncidentQueue
         account={accountOf(me)}
@@ -209,7 +225,15 @@ function MyActions() {
   );
 }
 
-function ReportIncidentForm({ onClose, onQueued }: { onClose: () => void; onQueued: () => void }) {
+function ReportIncidentForm({
+  onClose,
+  onQueued,
+  onCreated,
+}: {
+  onClose: () => void;
+  onQueued: () => void;
+  onCreated: (incident: Schemas["IncidentOut"]) => void;
+}) {
   const navigate = useNavigate();
   const me = useMe();
   const queryClient = useQueryClient();
@@ -253,7 +277,7 @@ function ReportIncidentForm({ onClose, onQueued }: { onClose: () => void; onQueu
         void queryClient.invalidateQueries({ queryKey: ["hse-incidents"] });
         void queryClient.invalidateQueries({ queryKey: ["hse-summary"] });
         if (can(me.grants, "hse.incident.read", created.site_id)) navigate(`/hse/${created.hse_incident_id}`);
-        else onClose();
+        else onCreated(created);
       }}
     >
       <IncidentFields form={form} set={set} sites={declarable} />
@@ -383,6 +407,19 @@ export function HseIncidentPage() {
               <Fact label="Motif d'annulation">{i.status_reason ? label(HSE_CANCEL_REASONS, i.status_reason) : null}</Fact>
               <Fact label="Clôturé le">{i.closed_at ? formatDateTime(i.closed_at, tz) : null}</Fact>
             </dl>
+            <h2>Photos</h2>
+            {(i.evidence ?? []).length === 0 && <p className="muted">Aucune photo.</p>}
+            <div className="gallery">
+              {(i.evidence ?? []).map((e, n) => (
+                <figure key={e.hse_evidence_id}>
+                  <EvidenceImage evidenceId={e.hse_evidence_id} alt={`Photo ${n + 1} de l'incident ${i.reference}`} />
+                  <figcaption className="small muted">{formatDateTime(e.uploaded_at, tz)}</figcaption>
+                </figure>
+              ))}
+            </div>
+            {open && (canManage || i.reported_by === me.user_account_id) && (
+              <EvidenceUploader uploadPath={`/hse/incidents/${i.hse_incident_id}/evidence`} onUploaded={() => void refresh()} />
+            )}
             <h2>Actions correctives</h2>
             <ActionsTable siteId={i.site_id} actions={i.actions ?? []} canManage={canManage} onChanged={() => void refresh()} />
             <h2>Chronologie</h2>

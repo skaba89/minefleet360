@@ -1,10 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
-import { binaryRequest, call, read, type Schemas } from "../api/client";
+import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, ErrorMessage, Pager } from "../components/common";
+import { EvidenceImage, EvidenceUploader } from "../components/Evidence";
 import { ActionForm, Fact, Options, orNull } from "../components/forms";
 import { HSE_ANSWER, HSE_RESULT, HSE_TARGET, label } from "../lib/labels";
 import { can } from "../lib/permissions";
@@ -148,7 +149,7 @@ function InspectionForm({ onClose }: { onClose: () => void }) {
         <h2>
           Inspection {created.reference} enregistrée — {label(HSE_RESULT, created.result)}
         </h2>
-        <EvidenceUploader inspectionId={created.hse_inspection_id} onUploaded={() => undefined} />
+        <EvidenceUploader uploadPath={`/hse/inspections/${created.hse_inspection_id}/evidence`} onUploaded={() => undefined} />
         <div className="row">
           {can(me.grants, "hse.inspection.read", created.site_id) && (
             <button type="button" className="primary" onClick={() => navigate(`/hse/inspections/${created.hse_inspection_id}`)}>
@@ -270,72 +271,6 @@ function InspectionForm({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Envoi de photos (JPEG ou PNG, 2 Mo maximum), analysées par antivirus avant stockage privé. */
-function EvidenceUploader({ inspectionId, onUploaded }: { inspectionId: string; onUploaded: () => void }) {
-  const [error, setError] = useState<unknown>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  return (
-    <div>
-      <label>
-        Ajouter une photo (JPEG ou PNG, 2 Mo max.)
-        <input
-          type="file"
-          accept="image/jpeg,image/png"
-          capture="environment"
-          disabled={pending}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = "";
-            if (!file) return;
-            setError(null);
-            setMessage(null);
-            if (!["image/jpeg", "image/png"].includes(file.type) || file.size > 2_000_000) {
-              setMessage("Seules les photos JPEG ou PNG de 2 Mo au plus sont acceptées.");
-              return;
-            }
-            setPending(true);
-            binaryRequest(`/hse/inspections/${inspectionId}/evidence`, { method: "POST", body: file, contentType: file.type })
-              .then(() => {
-                setMessage("Photo enregistrée après analyse antivirus.");
-                onUploaded();
-              })
-              .catch(setError)
-              .finally(() => setPending(false));
-          }}
-        />
-      </label>
-      {pending && <p className="muted" role="status">Envoi et analyse…</p>}
-      {message && <p role="status">{message}</p>}
-      {error !== null && <ErrorMessage error={error} />}
-    </div>
-  );
-}
-
-function EvidenceImage({ evidenceId, alt }: { evidenceId: string; alt: string }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-  useEffect(() => {
-    let objectUrl: string | null = null;
-    let cancelled = false;
-    binaryRequest(`/hse/evidence/${evidenceId}/content`)
-      .then((response) => response.blob())
-      .then((blob) => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
-        setUrl(objectUrl);
-      })
-      .catch(() => setFailed(true));
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [evidenceId]);
-  if (failed) return <p className="muted small">Photo indisponible.</p>;
-  if (!url) return <p className="muted small">Chargement de la photo…</p>;
-  return <img src={url} alt={alt} style={{ maxWidth: "100%", maxHeight: 320 }} />;
-}
-
 /** Fiche d'inspection : réponses figées, photos, actions correctives sur les non-conformités. */
 export function HseInspectionPage() {
   const { inspectionId = "" } = useParams();
@@ -411,7 +346,7 @@ export function HseInspectionPage() {
                 </figure>
               ))}
             </div>
-            {can(me.grants, "hse.inspection.perform", i.site_id) && <EvidenceUploader inspectionId={i.hse_inspection_id} onUploaded={refresh} />}
+            {can(me.grants, "hse.inspection.perform", i.site_id) && <EvidenceUploader uploadPath={`/hse/inspections/${i.hse_inspection_id}/evidence`} onUploaded={refresh} />}
             <h2>Actions correctives</h2>
             {canManage && i.nonconformities > 0 && !adding && (
               <button type="button" onClick={() => setAdding(true)}>
