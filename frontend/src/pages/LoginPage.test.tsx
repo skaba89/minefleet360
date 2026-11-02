@@ -25,6 +25,56 @@ function renderApp() {
 
 afterEach(cleanup);
 
+describe("connexion administrateur de plateforme", () => {
+  it("utilise la route dédiée sans transmettre workspace_code", async () => {
+    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+      if (url.endsWith("/auth/refresh"))
+        return json(401, {
+          code: "AUTH_REQUIRED",
+          message_fr: "Authentification requise.",
+          details: null,
+          request_id: null,
+        });
+      return json(401, {
+        code: "INVALID_CREDENTIALS",
+        message_fr: "Identifiants invalides.",
+        details: null,
+        request_id: null,
+      });
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+    renderApp();
+
+    await screen.findByRole("heading", { name: "MINEFLEET 360" });
+
+    fireEvent.change(screen.getByLabelText("Code de l'espace de travail"), {
+      target: { value: " MF-PLATFORM " },
+    });
+    fireEvent.change(screen.getByLabelText("Adresse e-mail"), {
+      target: { value: "plateforme@minefleet.example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Mot de passe"), {
+      target: { value: "mot-de-passe-fictif" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Se connecter" }));
+
+    await screen.findByRole("alert");
+
+    const platformCalls = fetchMock.mock.calls.filter(([url]) =>
+      String(url).endsWith("/auth/platform/login"),
+    );
+    expect(platformCalls).toHaveLength(1);
+    expect(JSON.parse(String(platformCalls[0]?.[1]?.body))).toEqual({
+      email: "plateforme@minefleet.example.com",
+      password: "mot-de-passe-fictif",
+    });
+    expect(
+      fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/auth/login")),
+    ).toHaveLength(0);
+  });
+});
+
 describe("connexion", () => {
   it("sans session, redirige vers le formulaire et affiche l'erreur française du serveur", async () => {
     const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
