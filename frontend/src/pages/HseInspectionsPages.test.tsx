@@ -61,7 +61,10 @@ beforeEach(() => {
   vi.mocked(read).mockImplementation((async (path: string) => (path === "/hse/checklist-templates" ? [template] : { items: [], total: 0, page: 1, page_size: 50 })) as never);
   vi.mocked(call).mockImplementation((async (method: string, path: string) =>
     method === "get" && path === "/hse/inspections/{hse_inspection_id}" ? { data: inspection, etag: null } : { data: inspection, etag: null }) as never);
-  vi.mocked(binaryRequest).mockResolvedValue(new Response(new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" })));
+  // Double minimal de Response : seul blob() est utilisé (jsdom ne sait pas convertir un Blob en flux).
+  vi.mocked(binaryRequest).mockResolvedValue({
+    blob: async () => new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" }),
+  } as unknown as Response);
   globalThis.URL.createObjectURL = vi.fn(() => "blob:preuve");
   globalThis.URL.revokeObjectURL = vi.fn();
 });
