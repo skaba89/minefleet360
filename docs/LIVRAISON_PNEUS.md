@@ -55,7 +55,11 @@ lacune sur les sites ; non modifié ici.
 
 ## Limites
 
-- Pas de mouvement de stock automatique dans le module pièces quand un pneu lié à un article est enregistré ou mis
-  au rebut : le lien catalogue sert de référence ; l'intégration aux mouvements de magasin reste à faire.
+- **Décision déléguée D-DEL-03 (2 novembre 2026)** : le **registre individuel des pneus fait foi pour leur stock**.
+  Aucun mouvement automatique dans le magasin de pièces (pas de double comptage ni de valorisation divergente :
+  le coût d'un pneu est porté par le pneu lui-même). L'article du catalogue sert de référence d'achat ; il doit être
+  compté à l'unité (`EACH`). Synthèse `GET /tyres/stock` (en stock / montés / en réparation, par site, dimension,
+  modèle et article ; pneus au rebut exclus) affichée dans l'écran « Pneus ». Ne pas réceptionner en parallèle les
+  mêmes pneus dans le magasin de pièces.
 - Pas de plan de positions par catégorie d'engin (positions saisies librement selon un format contrôlé).
 - Les coûts pneus ne sont pas encore agrégés dans l'écran « Fiabilité parc » : prévu dans le chantier D (coût complet).

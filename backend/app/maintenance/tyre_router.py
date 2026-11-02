@@ -45,6 +45,11 @@ def list_tyres(
     return Page(items=items, page=page.page, page_size=page.page_size, total=total)
 
 
+@router.get("/tyres/stock", response_model=list[service.TyreStockRow])
+def tyre_stock(auth: Read, site_id: uuid.UUID | None = None) -> list[service.TyreStockRow]:
+    return service.stock_summary(auth, site_id)
+
+
 @router.get("/tyres/{tyre_id}", response_model=TyreOut, response_model_exclude_unset=True)
 def get_tyre(tyre_id: uuid.UUID, auth: Read, response: Response) -> TyreOut:
     tyre = service.tyre_in_scope(auth, tyre_id)

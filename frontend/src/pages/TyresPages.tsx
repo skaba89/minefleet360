@@ -122,6 +122,8 @@ export function TyresPage() {
           }}
         />
       </div>
+      <TyreStock siteCode={siteCode} />
+      <h2>Pneus suivis</h2>
       <DataState loading={tyres.isLoading} error={tyres.error} empty={items.length === 0} emptyText="Aucun pneu.">
         <table>
           <thead>
@@ -357,6 +359,7 @@ export function TyrePage() {
             <dl className="facts">
               <Fact label="Modèle / dimension">{`${t.model} — ${t.size}`}</Fact>
               <Fact label="Catégorie">{label(TYRE_CATEGORY, t.category)}</Fact>
+              <Fact label="Article du catalogue">{t.spare_part_code}</Fact>
               <Fact label="Engin / position">
                 {t.vehicle_id ? (
                   <Link to={`/vehicules/${t.vehicle_id}`}>
@@ -589,6 +592,50 @@ export function VehicleTyres({ vehicleId, siteId }: { vehicleId: string; siteId:
           ))}
         </ul>
       </DataState>
+    </section>
+  );
+}
+
+/** Stock de pneus : le registre individuel fait foi (pas de double comptage dans le magasin de pièces). */
+function TyreStock({ siteCode }: { siteCode: Map<string, string> }) {
+  const { siteId } = useSites();
+  const stock = useQuery({ queryKey: ["tyre-stock", siteId], queryFn: () => read("/tyres/stock", { query: { site_id: siteId } }) });
+  const rows = stock.data ?? [];
+  if (rows.length === 0) return null;
+  return (
+    <section aria-label="Stock de pneus">
+      <h2>Stock de pneus</h2>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Site</th>
+            <th scope="col">Dimension</th>
+            <th scope="col">Marque / modèle</th>
+            <th scope="col">Article</th>
+            <th scope="col">En stock</th>
+            <th scope="col">Montés</th>
+            <th scope="col">En réparation</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={`${r.site_id}-${r.size}-${r.brand}-${r.model}-${r.spare_part_code ?? ""}`}>
+              <td>{siteCode.get(r.site_id) ?? r.site_id}</td>
+              <td>{r.size}</td>
+              <td>
+                {r.brand} {r.model}
+              </td>
+              <td>{r.spare_part_code ?? "—"}</td>
+              <td>
+                {r.in_stock}
+                {r.alerts_in_stock > 0 && <div className="warn-text small">{r.alerts_in_stock} avec alerte</div>}
+              </td>
+              <td>{r.mounted}</td>
+              <td>{r.in_repair}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </section>
   );
 }
