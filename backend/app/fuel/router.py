@@ -225,16 +225,14 @@ def list_purchases(
 
 @router.post("/fuel/purchases", response_model=FuelPurchaseOrderOut, status_code=status.HTTP_201_CREATED)
 def create_purchase(body: PurchaseCreate, auth: PurchaseCreateGrant) -> FuelPurchaseOrderOut:
-    purchase = service.create_purchase(auth, body)
-    return FuelPurchaseOrderOut.model_validate(service.purchase_output(auth, purchase))
+    return FuelPurchaseOrderOut.model_validate(service.create_purchase(auth, body))
 
 
 @router.post("/fuel/purchases/{fuel_purchase_order_id}/decision", response_model=FuelPurchaseOrderOut)
 def decide_purchase(
     fuel_purchase_order_id: uuid.UUID, body: PurchaseDecisionCreate, auth: PurchaseDecide
 ) -> FuelPurchaseOrderOut:
-    purchase = service.decide_purchase(auth, fuel_purchase_order_id, body)
-    return FuelPurchaseOrderOut.model_validate(service.purchase_output(auth, purchase))
+    return FuelPurchaseOrderOut.model_validate(service.decide_purchase(auth, fuel_purchase_order_id, body))
 
 
 @router.post(
