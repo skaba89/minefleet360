@@ -31,7 +31,8 @@ jobs:
       MF_DB_PORT: "5432"
       MF_DB_NAME: minefleet
       MF_COOKIE_SECURE: "false"
-      MF_ALLOWED_ORIGINS: http://localhost:5173
+      # 4173 : build de production servi par `vite preview` pour le parcours terrain hors ligne.
+      MF_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:4173
       MF_MFA_ENFORCEMENT: "off"
       MF_MAIL_BACKEND: capture
       MF_MAIL_CAPTURE_DIR: /tmp/minefleet-e2e-mail
@@ -101,6 +102,12 @@ jobs:
         env:
           MF_API_URL: http://localhost:8000
         run: npx playwright test --config=playwright.config.ts e2e/affectations.spec.ts e2e/missions.spec.ts e2e/atelier.spec.ts e2e/vehicule-documents.spec.ts e2e/carburant.spec.ts e2e/fuel-anomalies.spec.ts
+
+      - name: Test offline HSE field declaration (desktop and Android emulation)
+        working-directory: frontend
+        env:
+          MF_API_URL: http://localhost:8000
+        run: npx playwright test --config=playwright.field.config.ts
 
       - name: Remove ephemeral credentials and traces
         if: always()

@@ -55,6 +55,13 @@ async function parseError(response: Response): Promise<ApiError> {
 }
 
 /** Renouvelle le jeton d'accès via le cookie ; une seule tentative en vol à la fois. */
+let lastRefreshNetworkFailure = false;
+
+/** Vrai si le dernier rafraîchissement a échoué faute de réseau (et non parce que la session est invalide). */
+export function lastRefreshFailedOffline(): boolean {
+  return lastRefreshNetworkFailure;
+}
+
 export function refreshSession(): Promise<boolean> {
   refreshing ??= (async () => {
     try {
@@ -62,6 +69,7 @@ export function refreshSession(): Promise<boolean> {
         method: "POST",
         credentials: "same-origin",
       });
+      lastRefreshNetworkFailure = false;
       if (!response.ok) {
         accessToken = null;
         return false;
@@ -70,6 +78,7 @@ export function refreshSession(): Promise<boolean> {
       accessToken = body.access_token;
       return true;
     } catch {
+      lastRefreshNetworkFailure = true;
       return false;
     } finally {
       refreshing = null;

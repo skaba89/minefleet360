@@ -12,6 +12,7 @@ import { ReferentialsPage } from "./pages/ReferentialsPage";
 import { DriverDetailPage } from "./pages/DriverDetailPage";
 import { DriversPage } from "./pages/DriversPage";
 import { HomePage } from "./pages/HomePage";
+import { OfflineFieldPage } from "./pages/HseOffline";
 import { HseIncidentPage, HsePage } from "./pages/HsePages";
 import { LoginPage } from "./pages/LoginPage";
 import { LegalRegistriesPage } from "./pages/LegalRegistriesPage";
@@ -33,6 +34,7 @@ function Protected() {
   const { status } = useAuth();
   if (status === "loading") return <p className="muted center" role="status">Chargement…</p>;
   if (status === "anonymous") return <Navigate to="/connexion" replace />;
+  if (status === "offline") return <OfflineFieldPage />;
   return (
     <SiteProvider>
       <Layout />

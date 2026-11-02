@@ -3,7 +3,7 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { onSessionExpired, read, refreshSession, setAccessToken } from "../api/client";
-import { purgeDraftsForSignedOutUser } from "../lib/offlineLogout";
+import { purgeAfterSessionExpiry, purgeDraftsForSignedOutUser } from "../lib/offlineLogout";
 import { AuthProvider, useAuth } from "./AuthContext";
 
 vi.mock("../api/client", () => ({
@@ -15,7 +15,7 @@ vi.mock("../api/client", () => ({
   request: vi.fn(),
   setAccessToken: vi.fn(),
 }));
-vi.mock("../lib/offlineLogout", () => ({ purgeDraftsForSignedOutUser: vi.fn() }));
+vi.mock("../lib/offlineLogout", () => ({ purgeDraftsForSignedOutUser: vi.fn(), purgeAfterSessionExpiry: vi.fn() }));
 
 const profile = {
   workspace_code: "minefleet",
@@ -33,27 +33,29 @@ beforeEach(() => {
   vi.mocked(refreshSession).mockResolvedValue(true);
   vi.mocked(read).mockResolvedValue(profile as Awaited<ReturnType<typeof read>>);
   vi.mocked(purgeDraftsForSignedOutUser).mockResolvedValue(undefined);
+  vi.mocked(purgeAfterSessionExpiry).mockResolvedValue(undefined);
   vi.mocked(onSessionExpired).mockImplementation((handler) => { expire = handler; });
 });
 afterEach(() => cleanup());
 
-it("retire la session et purge uniquement les brouillons du profil expiré", async () => {
+it("retire la session, purge les brouillons et conserve les déclarations en attente du profil expiré", async () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={queryClient}><AuthProvider><Status /></AuthProvider></QueryClientProvider>);
   await screen.findByText("authenticated");
   act(() => expire());
   await screen.findByText("anonymous");
   expect(setAccessToken).toHaveBeenCalledWith(null);
-  await waitFor(() => expect(purgeDraftsForSignedOutUser).toHaveBeenCalledExactlyOnceWith(profile));
+  await waitFor(() => expect(purgeAfterSessionExpiry).toHaveBeenCalledExactlyOnceWith(profile));
+  expect(purgeDraftsForSignedOutUser).not.toHaveBeenCalled();
 });
 
 it("invalide la session même si la purge IndexedDB échoue", async () => {
-  vi.mocked(purgeDraftsForSignedOutUser).mockRejectedValue(new Error("IndexedDB indisponible"));
+  vi.mocked(purgeAfterSessionExpiry).mockRejectedValue(new Error("IndexedDB indisponible"));
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(<QueryClientProvider client={queryClient}><AuthProvider><Status /></AuthProvider></QueryClientProvider>);
   await screen.findByText("authenticated");
   act(() => expire());
   await screen.findByText("anonymous");
-  await waitFor(() => expect(purgeDraftsForSignedOutUser).toHaveBeenCalledOnce());
+  await waitFor(() => expect(purgeAfterSessionExpiry).toHaveBeenCalledOnce());
   expect(setAccessToken).toHaveBeenCalledWith(null);
 });

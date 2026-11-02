@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   ApiError,
   call,
+  lastRefreshFailedOffline,
   onSessionExpired,
   read,
   refreshSession,
@@ -12,7 +13,8 @@ import {
   type Schemas,
 } from "../api/client";
 
-import { purgeDraftsForSignedOutUser } from "../lib/offlineLogout";
+import { loadFieldProfile, type FieldProfile } from "../lib/offlineFieldProfile";
+import { purgeAfterSessionExpiry, purgeDraftsForSignedOutUser } from "../lib/offlineLogout";
 
 type Me = Schemas["MeOut"];
 
@@ -22,8 +24,12 @@ export interface MfaChallenge {
 }
 
 interface AuthState {
-  status: "loading" | "anonymous" | "authenticated";
+  /** offline : démarrage sans réseau avec un profil terrain mémorisé (déclaration HSE seulement). */
+  status: "loading" | "anonymous" | "authenticated" | "offline";
   me: Me | null;
+  fieldProfile: FieldProfile | null;
+  /** Nouvelle tentative de restauration de session (retour du réseau). */
+  retrySession: () => Promise<void>;
   login: (workspaceCode: string, email: string, password: string) => Promise<MfaChallenge | null>;
   verifyMfa: (challenge: MfaChallenge, code: string) => Promise<void>;
   refreshMe: () => Promise<void>;
@@ -36,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [me, setMe] = useState<Me | null>(null);
   const [status, setStatus] = useState<AuthState["status"]>("loading");
+  const [fieldProfile, setFieldProfile] = useState<FieldProfile | null>(null);
   const profileRef = useRef<Me | null>(null);
 
   const reset = useCallback(() => {
@@ -51,34 +58,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const profile = profileRef.current;
       // Reset immediately; purge best-effort without leaking stale session data into React.
       reset();
-      if (profile) void purgeDraftsForSignedOutUser(profile).catch(() => {
+      if (profile) void purgeAfterSessionExpiry(profile).catch(() => {
         // Storage may be unavailable: do not claim local data were erased.
       });
     });
     let cancelled = false;
-    // Restauration de session au chargement : le cookie de rafraîchissement, s'il existe, suffit.
-    void (async () => {
-      const restored = await refreshSession();
-      if (cancelled) return;
-      if (!restored) {
-        setStatus("anonymous");
-        return;
-      }
-      try {
-        const profile = await read("/me");
-        if (!cancelled) {
-          profileRef.current = profile;
-          setMe(profile);
-          setStatus("authenticated");
-        }
-      } catch {
-        if (!cancelled) reset();
-      }
-    })();
+    void restore(() => cancelled);
     return () => {
       cancelled = true;
     };
   }, [reset]);
+
+  // Restauration de session : le cookie de rafraîchissement, s'il existe, suffit. Sans réseau, un profil
+  // terrain mémorisé ouvre le mode hors ligne restreint ; il ne vaut jamais session serveur.
+  async function restore(isCancelled: () => boolean = () => false): Promise<void> {
+    const restored = await refreshSession();
+    if (isCancelled()) return;
+    if (!restored) {
+      const profile = lastRefreshFailedOffline() ? loadFieldProfile() : null;
+      setFieldProfile(profile);
+      setStatus(profile ? "offline" : "anonymous");
+      return;
+    }
+    try {
+      const profile = await read("/me");
+      if (!isCancelled()) {
+        profileRef.current = profile;
+        setMe(profile);
+        setFieldProfile(null);
+        setStatus("authenticated");
+      }
+    } catch {
+      if (!isCancelled()) reset();
+    }
+  }
+
+  const retrySession = useCallback(() => restore(), []);
+
+  useEffect(() => {
+    if (status !== "offline") return;
+    const retry = () => void restore();
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
+  }, [status]);
 
   const enter = useCallback(async (accessToken: string) => {
     setAccessToken(accessToken);
@@ -140,8 +162,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [me, reset]);
 
   const value = useMemo(
-    () => ({ status, me, login, verifyMfa, refreshMe, logout }),
-    [status, me, login, verifyMfa, refreshMe, logout],
+    () => ({ status, me, fieldProfile, retrySession, login, verifyMfa, refreshMe, logout }),
+    [status, me, fieldProfile, retrySession, login, verifyMfa, refreshMe, logout],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

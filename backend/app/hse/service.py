@@ -21,6 +21,7 @@ from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.core.errors import AppError
 from app.core.http import PageParams, check_version
+from app.core.idempotency import IdempotencyClaim, complete
 from app.core.logging import security_logger
 from app.fleet.contracts import vehicle_facts
 from app.hse.models import HseCorrectiveAction, HseIncident, HseIncidentEvent
@@ -400,7 +401,9 @@ def _detail(auth: Authorized, incident: HseIncident) -> IncidentOut:
     return incidents_out(auth, [incident], detail=True)[0]
 
 
-def report_incident(auth: Authorized, body: IncidentCreate) -> IncidentOut:
+def report_incident(
+    auth: Authorized, body: IncidentCreate, *, idempotency_claim: IdempotencyClaim | None = None
+) -> IncidentOut:
     db = auth.db
     if active_site_in_scope(db, auth.scope, body.site_id) is None:
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
@@ -450,6 +453,16 @@ def report_incident(auth: Authorized, body: IncidentCreate) -> IncidentOut:
         },
     )
     out = _detail(auth, incident)
+    if idempotency_claim is not None:
+        # Clé finalisée dans la transaction de l'incident : un échec annule les deux (pas de doublon).
+        complete(
+            db,
+            idempotency_claim,
+            response_status=201,
+            resource_type="hse_incident",
+            resource_id=incident.hse_incident_id,
+            completed_at=auth.clock.now(),
+        )
     db.commit()
     return out
 
