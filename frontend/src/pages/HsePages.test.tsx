@@ -48,11 +48,14 @@ const summary = {
   open_incidents: 2,
   open_actions: 3,
   overdue_actions: 1,
+  inspections: 5,
+  failed_inspections: 2,
 };
 const myAction = {
   hse_corrective_action_id: "act-1",
   hse_incident_id: "inc-1",
-  incident_reference: "HSE-000001",
+  hse_inspection_id: null,
+  parent_reference: "HSE-000001",
   title: "Baliser la zone",
   due_date: "2026-10-01",
   overdue: true,
