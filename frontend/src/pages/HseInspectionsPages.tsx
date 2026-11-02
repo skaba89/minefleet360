@@ -133,9 +133,15 @@ function InspectionForm({ onClose }: { onClose: () => void }) {
     enabled: !!site && can(me.grants, "fleet.vehicle.read", site) && template?.target_type !== "WORK_AREA",
     queryFn: () => read("/vehicles", { query: { site_id: site, page_size: 200 } }),
   });
-  useEffect(() => {
-    setAnswers(Object.fromEntries((template?.items ?? []).map((i) => [i.key, { item_key: i.key, result: "COMPLIANT" as const }])));
-  }, [template]);
+  // Réponses initialisées au moment du choix de la checklist (et non dans un effet différé) : une saisie
+  // rapide ne peut pas être écrasée, et chaque réponse porte toujours la clé de son point.
+  const chooseTemplate = (id: string) => {
+    setTemplateId(id);
+    const chosen = (templates.data ?? []).find((t) => t.hse_checklist_template_id === id);
+    setAnswers(Object.fromEntries((chosen?.items ?? []).map((i) => [i.key, { item_key: i.key, result: "COMPLIANT" as const }])));
+  };
+  const setAnswer = (key: string, patch: Partial<Answer>) =>
+    setAnswers((current) => ({ ...current, [key]: { item_key: key, result: "COMPLIANT", ...current[key], ...patch } }));
   if (created) {
     return (
       <div className="card">
@@ -180,7 +186,7 @@ function InspectionForm({ onClose }: { onClose: () => void }) {
     >
       <label>
         Checklist
-        <select required value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+        <select required value={templateId} onChange={(e) => chooseTemplate(e.target.value)}>
           <option value="">— Choisir —</option>
           {(templates.data ?? []).map((t: Template) => (
             <option key={t.hse_checklist_template_id} value={t.hse_checklist_template_id}>
@@ -236,7 +242,7 @@ function InspectionForm({ onClose }: { onClose: () => void }) {
                 <select
                   aria-label={`Résultat : ${item.label}`}
                   value={answer?.result ?? "COMPLIANT"}
-                  onChange={(e) => setAnswers({ ...answers, [item.key]: { ...answer!, result: e.target.value as Answer["result"] } })}
+                  onChange={(e) => setAnswer(item.key, { result: e.target.value as Answer["result"] })}
                 >
                   <Options map={HSE_ANSWER} />
                 </select>
@@ -247,7 +253,7 @@ function InspectionForm({ onClose }: { onClose: () => void }) {
                     placeholder="Constat (obligatoire)"
                     maxLength={1000}
                     value={answer.comment ?? ""}
-                    onChange={(e) => setAnswers({ ...answers, [item.key]: { ...answer, comment: e.target.value } })}
+                    onChange={(e) => setAnswer(item.key, { comment: e.target.value })}
                   />
                 )}
               </div>
