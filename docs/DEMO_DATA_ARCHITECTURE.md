@@ -142,8 +142,21 @@ de bande (prix × usure mesurée ÷ usure utile), ou sur une durée de vie atten
 - **Durée** : le profil `small` prend environ 8 minutes (≈22 000 positions) ; le profil `qa` (9 jours, une
   position toutes les 5 minutes) environ 3 minutes, utilisé par les tests automatisés.
 
-## 9. Hors périmètre (prochains lots)
+## 9. Parcours navigateur automatisés
+
+`frontend/e2e-demo/` + `playwright.demo.config.ts` : un parcours par rôle sur le profil `qa` (lecture seule),
+exécuté en CI par le job `demo-journeys` (base éphémère, `demo seed` puis `demo verify`, identifiants dans un
+fichier 600 supprimé en fin de job). En local, sur une pile locale uniquement :
+
+```
+MF_API_URL=http://localhost:8000 MF_DEMO_ACCOUNTS=/chemin/comptes-demo.tsv \
+  npx playwright test --config=playwright.demo.config.ts
+```
+
+L'API doit tourner avec `MF_COOKIE_SECURE=false` (HTTP local) et `MF_MFA_ENFORCEMENT=off` (comptes sans
+téléphone), comme les autres E2E du projet ; jamais contre une instance partagée.
+
+## 10. Hors périmètre (prochains lots)
 
 Contrats et documents, émetteur GPS en direct, parcours hors ligne, préventif, bons de
-commande de pièces, profils `standard`/`large` mesurés, mode « démonstration commerciale » guidé, E2E Playwright
-sur les données DEMO.
+commande de pièces, profils `standard`/`large` mesurés, mode « démonstration commerciale » guidé, parcours navigateur en écriture (actions) sur les données DEMO.
