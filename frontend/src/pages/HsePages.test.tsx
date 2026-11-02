@@ -6,7 +6,9 @@ import { MemoryRouter } from "react-router";
 import { call, read } from "../api/client";
 import { HsePage } from "./HsePages";
 
-let grants = [{ role_code: "HSE", scope_type: "TENANT", site_id: null }];
+let grants: { role_code: string; scope_type: string; site_id: string | null }[] = [
+  { role_code: "HSE", scope_type: "TENANT", site_id: null },
+];
 vi.mock("../auth/AuthContext", () => ({
   useMe: () => ({ user_account_id: "moi", timezone: "Africa/Conakry", grants }),
 }));
