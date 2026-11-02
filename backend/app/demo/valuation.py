@@ -26,7 +26,9 @@ from app.fuel import service as fuel
 from app.fuel.schemas import PurchaseCreate, PurchaseDecisionCreate, PurchaseReceiptCreate, SupplierCreate
 from app.hse import inspections as hse_inspections
 from app.maintenance import parts_router
+from app.maintenance import router as maintenance_router
 from app.maintenance import tyre_service as tyres
+from app.maintenance.preventive_plan_inputs import PreventivePlanCreate
 
 if TYPE_CHECKING:
     import random
@@ -96,6 +98,7 @@ class ValuationMixin:
         self._parts_catalog()
         self._tyres_initial()
         self._checklist()
+        self._preventive_plans()
 
     def _labour_rate(self) -> None:
         call(
@@ -404,6 +407,29 @@ class ValuationMixin:
             "tread": TYRE_SIZE[hauler["category"]][1],
         }
         self.report.add("tyres_mounted")
+
+    # --- préventif ----------------------------------------------------------------------------------
+    def _preventive_plans(self) -> None:
+        """Plan d'entretien par engin de transport (heures + calendrier ; km pour les porteurs routiers).
+
+        Seuls les plans sont créés : la génération automatique des échéances n'est pas activée dans le produit
+        (docs/PREVENTIVE_OT_TRANSACTION.md) ; la démo ne fabrique donc aucune échéance."""
+        chief = self.actor("WORKSHOP_CHIEF")
+        for hauler in self.haulers:
+            road = hauler["category"] == "ROAD_DUMP_TRUCK"
+            route(
+                chief,
+                "maintenance.preventive.manage",
+                maintenance_router.create_preventive_plan,
+                PreventivePlanCreate(
+                    vehicle_id=hauler["vehicle_id"],
+                    code="ENTRETIEN-A",
+                    km_interval=Decimal("10000") if road else None,
+                    hours_interval=None if road else Decimal("250"),
+                    days_interval=90,
+                ),
+            )
+            self.report.add("preventive_plans")
 
     # --- inspections HSE ----------------------------------------------------------------------------
     def _checklist(self) -> None:

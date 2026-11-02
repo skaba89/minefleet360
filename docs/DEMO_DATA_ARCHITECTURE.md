@@ -69,6 +69,7 @@ elle demande une décision explicite (droit destructif, journalisation, double c
 | Atelier | 6 OT, taux horaire | une panne clôturée (approbation, assignation, pièces réservées puis consommées, 3 h de main-d'œuvre, contrôle qualité) et une panne ouverte par société ; taux société 85 000 GNF/h |
 | Pièces | 6 références, 1 magasin par site | réceptions valorisées (GNF) ; sorties valorisées au CMP sur l'OT |
 | Pneus | ≈95 pneus, ≈180 inspections | 6 pneus par engin de transport, 2 tournées d'inspection (usure, pression, compteurs) ; un pneu usé déposé, réformé et remplacé par un pneu neuf |
+| Préventif | 15 plans | un plan « ENTRETIEN-A » par engin de transport (250 h ou 10 000 km, et 90 jours) ; **aucune échéance** (voir §10) |
 | GPS | 15 traceurs, 25 zones, ≈22 000 positions | une position toutes les 2 min calée sur les événements de chaque rotation (parc → chargement → déchargement → retour) ; compteur km = distance du tracé |
 | HSE | 6 incidents, 65 inspections | un presque-accident enquêté, action corrective réalisée puis vérifiée, incident clos ; un incident critique ouvert ; checklist « avant poste » quotidienne, dont une non conforme (freins, point critique) |
 
@@ -156,7 +157,20 @@ MF_API_URL=http://localhost:8000 MF_DEMO_ACCOUNTS=/chemin/comptes-demo.tsv \
 L'API doit tourner avec `MF_COOKIE_SECURE=false` (HTTP local) et `MF_MFA_ENFORCEMENT=off` (comptes sans
 téléphone), comme les autres E2E du projet ; jamais contre une instance partagée.
 
-## 10. Hors périmètre (prochains lots)
+## 10. Constat : moteur d'échéances préventives non branché
 
-Contrats et documents, émetteur GPS en direct, parcours hors ligne, préventif, bons de
+Le produit sait créer, réviser et suspendre des plans, et planifier puis finaliser une échéance existante
+(`/preventive-dues/{id}/schedule`, `/work-orders/{id}/complete-preventive`). Mais **aucune route, commande ni
+tâche n'enregistre d'échéance** : `persist_due` n'est appelé que par les tests, conformément à
+`docs/PREVENTIVE_OT_TRANSACTION.md` (« ne pas activer d'automatisation » avant transaction atomique échéance + OT,
+tests de concurrence et compte technique). L'écran d'un engin affiche donc toujours « Aucune échéance
+préventive », quels que soient les compteurs.
+
+La démo **ne fabrique pas** d'échéances en appelant directement ce service : elle montrerait une fonctionnalité
+que l'application ne produit pas seule. Brancher le moteur (déclenchement à la demande par le chef d'atelier ou
+tâche planifiée, transaction atomique, compte technique) est une évolution produit à décider.
+
+## 11. Hors périmètre (prochains lots)
+
+Contrats et documents, émetteur GPS en direct, parcours hors ligne, échéances préventives (§10), bons de
 commande de pièces, profils `standard`/`large` mesurés, mode « démonstration commerciale » guidé, parcours navigateur en écriture (actions) sur les données DEMO.
