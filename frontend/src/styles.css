@@ -96,11 +96,36 @@ pre { white-space:pre-wrap; word-break:break-word; background:var(--bg); border-
 .gps-workspace { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(250px,1fr); gap:1rem; margin-bottom:1.2rem; }.gps-workspace .card { margin-bottom:0; }.gps-vehicle-list { display:flex; flex-direction:column; gap:.4rem; padding-top:.6rem; max-height:460px; overflow-y:auto; }.gps-vehicle-list > button { display:flex; align-items:center; gap:.6rem; text-align:left; padding:.7rem; background:#f9fbfe; }.gps-vehicle-list > button[aria-pressed=true] { border-color:#7cb5f7; background:#edf5ff; }.gps-vehicle-list strong { display:block; font-size:.82rem; }.gps-vehicle-list small { display:block; color:var(--muted); font-size:.71rem; }.gps-vehicle-list .gps-status { margin-left:auto; }
 .fleet-positions-overview { margin-top:0; }.fleet-positions-plot { position:relative; min-height:290px; height:min(40vh,390px); border:1px solid var(--border); border-radius:5px; overflow:hidden; background:repeating-linear-gradient(0deg,transparent,transparent 39px,#e6edf5 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,#e6edf5 40px),#f8fbfe; }.fleet-positions-svg { width:100%; height:100%; }.fleet-position-dot { fill:#1489ea; stroke:#fff; stroke-width:.6px; cursor:pointer; }.fleet-position-dot.is-selected { fill:#fb9e18; stroke:#b86500; }.fleet-position-dot:focus { stroke:#142e4a; stroke-width:1px; }.tracking-card { max-width:900px; }.tracking-card label { margin-bottom:1.1rem; }
 
+/* Tableau plus large que l'écran (grille de cases à cocher, nombreuses colonnes) : défilement dans son cadre. */
+.table-scroll { max-width:100%; overflow-x:auto; }
+.table-scroll table { width:max-content; min-width:100%; }
 @media (min-width:1400px) { .content { padding:2.2rem 2.4rem; } }
-@media (max-width:1180px) { .dashboard-metrics { grid-template-columns:repeat(2,1fr); }.shell { grid-template-columns:195px minmax(0,1fr); }.user-name { display:none; }.topbar { padding:.6rem 1.2rem; }.content { padding:1.3rem; }.metric-card { gap:.7rem; } }
+/* Jusqu'aux petits portables : un tableau plus large que l'écran défile dans son cadre, jamais la page. */
+@media (max-width:1180px) { table { display:block; overflow-x:auto; white-space:nowrap; } .dashboard-metrics { grid-template-columns:repeat(2,1fr); }.shell { grid-template-columns:195px minmax(0,1fr); }.user-name { display:none; }.topbar { padding:.6rem 1.2rem; }.content { padding:1.3rem; }.metric-card { gap:.7rem; } }
 @media (max-width:900px) { .shell { grid-template-columns:1fr; grid-template-rows:auto minmax(0,1fr); }.topbar { grid-column:1; flex-wrap:wrap; min-height:62px; gap:.8rem; }.content { grid-column:1; }.menu-toggle { display:grid; place-items:center; padding:.35rem; min-height:32px; }.mainnav { display:none; position:static; height:auto; grid-column:1; grid-row:2; }.menu-open { grid-template-rows:auto auto minmax(0,1fr); }.menu-open .mainnav { display:flex; }.menu-open .content { grid-row:3; }.sidebar-footer { display:none; }.mainnav .sidebar-brand { margin-bottom:.3rem; }.dashboard-panels { grid-template-columns:1fr; gap:0; }.gps-workspace { grid-template-columns:1fr; }.login-reference { width:calc(100% - 32px); margin:16px; min-height:calc(100vh - 32px); }.login-form-area { padding:2rem; }.login-visual { padding:2.5rem 1.6rem; }.login-brand h1 { font-size:1.25rem; }.login-tagline { font-size:1.05rem; } }
-@media (max-width:700px) { table { display:block; overflow-x:auto; white-space:nowrap; }.dashboard-metrics,.live-fleet-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.7rem; }.metric-card { padding:.9rem; }.metric-icon { width:34px; height:38px; }.metric-card strong { font-size:1.5rem; }.metric-card small { font-size:.65rem; }.fuel-dashboard-controls { width:100%; }.fuel-dashboard-controls label { flex:1; }.user { margin-left:auto; }.site-picker { order:3; width:100%; }.site-picker select { flex:1; }.workspace-brand { display:none; }.connectivity-status { order:2; }.login-reference { grid-template-columns:1fr; }.login-visual { min-height:250px; background-position:center 61%; padding:1.5rem; }.login-benefits { display:none; }.login-tagline { margin-bottom:0; }.login-form-area { padding:2rem 1.5rem; }.login-footer { padding-top:1.5rem; }.content { padding:1rem; }.shell > .error { grid-column:1; }.facts { grid-template-columns:1fr; } }
+@media (max-width:700px) {.dashboard-metrics,.live-fleet-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); gap:.7rem; }.metric-card { padding:.9rem; }.metric-icon { width:34px; height:38px; }.metric-card strong { font-size:1.5rem; }.metric-card small { font-size:.65rem; }.fuel-dashboard-controls { width:100%; }.fuel-dashboard-controls label { flex:1; }.user { margin-left:auto; }.site-picker { order:3; width:100%; }.site-picker select { flex:1; }.workspace-brand { display:none; }.connectivity-status { order:2; }.login-reference { grid-template-columns:1fr; }.login-visual { min-height:250px; background-position:center 61%; padding:1.5rem; }.login-benefits { display:none; }.login-tagline { margin-bottom:0; }.login-form-area { padding:2rem 1.5rem; }.login-footer { padding-top:1.5rem; }.content { padding:1rem; }.shell > .error { grid-column:1; }.facts { grid-template-columns:1fr; } }
 @media (max-width:420px) { .dashboard-metrics { grid-template-columns:1fr; }.status-distribution { gap:.5rem; }.status-legend { font-size:.7rem; }.live-fleet-metrics .card { padding:.8rem; }.user { font-size:.72rem; gap:.6rem; }.login-brand h1 { font-size:1.4rem; } }
+/* Téléphone (≤ 700 px) : cibles tactiles d'au moins 44 px (usage terrain, gants), champs en 16 px pour éviter le
+   zoom automatique d'iOS, actions de formulaire en pleine largeur. Vérifié par e2e/responsive.spec.ts. */
+@media (max-width:700px) {
+  button,select,textarea,input:not([type=checkbox]):not([type=radio]) { min-height:44px; font-size:16px; }
+  .checkbox input { width:22px; height:22px; margin-top:0; }
+  .checkbox { align-items:center; }
+  button.link { min-height:44px; padding:.5rem .35rem; display:inline-flex; align-items:center; }
+  .pager button,td.actions button { min-height:44px; padding:.5rem .9rem; }
+  .mainnav a { min-height:44px; display:flex; align-items:center; }
+  .menu-toggle { min-width:44px; min-height:44px; }
+  .form-grid .row { flex-direction:column; align-items:stretch; }
+  .form-grid .row button { width:100%; justify-content:center; }
+  .page-head h1 { font-size:1.35rem; }
+  .toolbar { display:flex; flex-wrap:wrap; gap:.5rem; }
+  .toolbar button { flex:1 1 auto; }
+  /* Tableaux larges : ombre côté contenu masqué (défilement visible) et première colonne figée (identifiant de
+     la ligne toujours lisible pendant le défilement horizontal). */
+  table { background:linear-gradient(to right,#fff 30%,rgba(255,255,255,0)),linear-gradient(to right,rgba(255,255,255,0),#fff 70%) 100% 0,radial-gradient(farthest-side at 0 50%,rgba(16,42,67,.18),transparent),radial-gradient(farthest-side at 100% 50%,rgba(16,42,67,.18),transparent) 100% 0; background-repeat:no-repeat; background-size:40px 100%,40px 100%,14px 100%,14px 100%; background-attachment:local,local,scroll,scroll; }
+  th:first-child,td:first-child { position:sticky; left:0; z-index:1; background:#fff; box-shadow:1px 0 0 #e9eff6; white-space:normal; min-width:7.5rem; max-width:11rem; }
+  th:first-child { background:#f5f8fc; }
+}
 @media (prefers-reduced-motion:reduce) { button { transition:none; } }
 @media print { .topbar,.mainnav,.toolbar,button { display:none !important; }.shell { display:block; }.content { max-width:none; padding:0; } }
 

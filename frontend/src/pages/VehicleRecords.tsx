@@ -425,6 +425,7 @@ export function RequiredDocumentsPage() {
         par défaut proposées par l'expert flotte ; la liste légale est à valider localement.
       </p>
       <DataState loading={categories.isLoading} error={categories.error} empty={items.length === 0}>
+        <div className="table-scroll" role="region" aria-label="Documents exigés par catégorie" tabIndex={0}>
         <table>
           <thead>
             <tr>
@@ -443,6 +444,7 @@ export function RequiredDocumentsPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </DataState>
     </>
   );

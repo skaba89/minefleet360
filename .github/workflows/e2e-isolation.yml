@@ -101,7 +101,7 @@ jobs:
         working-directory: frontend
         env:
           MF_API_URL: http://localhost:8000
-        run: npx playwright test --config=playwright.config.ts e2e/affectations.spec.ts e2e/missions.spec.ts e2e/atelier.spec.ts e2e/vehicule-documents.spec.ts e2e/carburant.spec.ts e2e/fuel-anomalies.spec.ts e2e/pneus.spec.ts e2e/hse-inspections.spec.ts
+        run: npx playwright test --config=playwright.config.ts e2e/affectations.spec.ts e2e/missions.spec.ts e2e/atelier.spec.ts e2e/vehicule-documents.spec.ts e2e/carburant.spec.ts e2e/fuel-anomalies.spec.ts e2e/pneus.spec.ts e2e/hse-inspections.spec.ts e2e/responsive.spec.ts
 
       - name: Test offline HSE field declaration (desktop and Android emulation)
         working-directory: frontend
