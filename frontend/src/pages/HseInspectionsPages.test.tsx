@@ -109,3 +109,44 @@ it("la fiche affiche les réponses figées et charge les photos par l'API authen
   expect(screen.getByRole("button", { name: "Ajouter une action corrective" })).toBeTruthy();
   client.clear();
 });
+
+it("inspection d'engin non conforme : panne bloquante proposée, jamais automatique", async () => {
+  grants = [{ role_code: "MECHANIC", scope_type: "SITE", site_id: "s1" }];
+  const vehicleInspection = { ...inspection, target_type: "VEHICLE", vehicle_id: "veh-1", vehicle_fleet_number: "CAM-07" };
+  vi.mocked(call).mockImplementation((async (method: string, path: string) =>
+    method === "post" && path === "/work-orders"
+      ? { data: { work_order_id: "wo-1", reference: "OT-000042" }, etag: null }
+      : { data: vehicleInspection, etag: null }) as never);
+  const { InspectionBreakdownPrompt } = await import("./HseInspectionsPages");
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter>
+        <InspectionBreakdownPrompt inspection={vehicleInspection as never} />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  expect(screen.getByText(/ne devrait pas être utilisé/)).toBeTruthy();
+  expect(call).not.toHaveBeenCalled(); // rien d'automatique
+  fireEvent.click(screen.getByRole("button", { name: "Signaler une panne bloquante" }));
+  fireEvent.click(screen.getByRole("button", { name: "Confirmer et immobiliser l'engin" }));
+  await waitFor(() => expect(call).toHaveBeenCalledWith("post", "/work-orders", expect.anything()));
+  const body = (vi.mocked(call).mock.calls[0]![2] as { body: Record<string, unknown> }).body;
+  expect(body).toMatchObject({ vehicle_id: "veh-1", priority: "CRITICAL", immobilize: true, symptom_code: "SAFETY_EQUIPMENT" });
+  expect(String(body.description)).toContain("INS-000001");
+  expect(String(body.description)).toContain("EPI portés");
+  expect(String(body.description)).not.toContain("Casque absent"); // constat libre non recopié
+  expect(await screen.findByRole("link", { name: "OT-000042" })).toBeTruthy();
+  client.clear();
+});
+
+it("aucune proposition pour une inspection conforme ou sans engin", async () => {
+  const { InspectionBreakdownPrompt } = await import("./HseInspectionsPages");
+  const { container } = render(
+    <MemoryRouter>
+      <InspectionBreakdownPrompt inspection={{ ...inspection, result: "PASS", vehicle_id: "veh-1" } as never} />
+      <InspectionBreakdownPrompt inspection={inspection as never} />
+    </MemoryRouter>,
+  );
+  expect(container.innerHTML).toBe("");
+});

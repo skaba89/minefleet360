@@ -173,6 +173,7 @@ function InspectionForm({ onClose }: { onClose: () => void }) {
         <h2>
           Inspection {created.reference} enregistrée — {label(HSE_RESULT, created.result)}
         </h2>
+        <InspectionBreakdownPrompt inspection={created} />
         <EvidenceUploader uploadPath={`/hse/inspections/${created.hse_inspection_id}/evidence`} onUploaded={() => undefined} />
         <div className="row">
           {can(me.grants, "hse.inspection.read", created.site_id) && (
@@ -337,6 +338,7 @@ export function HseInspectionPage() {
               <Fact label="Non-conformités">{`${i.nonconformities} dont ${i.critical_nonconformities} critique(s)`}</Fact>
               <Fact label="Observation">{i.note}</Fact>
             </dl>
+            <InspectionBreakdownPrompt inspection={i} />
             <h2>Points de contrôle</h2>
             <table>
               <thead>
@@ -541,5 +543,71 @@ function TemplateForm({ onCancel, onDone }: { onCancel: () => void; onDone: () =
         )}
       </fieldset>
     </ActionForm>
+  );
+}
+
+/**
+ * Inspection d'engin non conforme sur un point critique (décision déléguée D-DEL-05) : aucune immobilisation
+ * automatique ; avertissement et signalement de panne bloquante pré-rempli, confirmé par l'utilisateur, qui passe
+ * par le circuit atelier existant (immobilisation, suspension de mission, audit).
+ */
+export function InspectionBreakdownPrompt({ inspection }: { inspection: Inspection }) {
+  const me = useMe();
+  const [open, setOpen] = useState(false);
+  const [created, setCreated] = useState<{ id: string; reference: string } | null>(null);
+  if (inspection.result !== "FAIL" || !inspection.vehicle_id) return null;
+  const canRequest = can(me.grants, "maintenance.work_order.request", inspection.site_id);
+  const critical = (inspection.answers ?? []).filter((a) => a.critical && a.result === "NON_COMPLIANT").map((a) => a.label);
+  const description = [
+    `Inspection ${inspection.reference} non conforme sur un point critique.`,
+    ...critical.map((item) => `- ${item}`),
+  ]
+    .join("\n")
+    .slice(0, 2000);
+  return (
+    <div className="error" role="alert">
+      <p>
+        <strong>Point critique non conforme :</strong> l'engin {inspection.vehicle_fleet_number ?? ""} ne devrait pas être utilisé
+        avant vérification par l'atelier.
+      </p>
+      {created ? (
+        <p>
+          Panne bloquante signalée : <Link to={`/atelier/${created.id}`}>{created.reference}</Link> (engin immobilisé).
+        </p>
+      ) : canRequest ? (
+        open ? (
+          <ActionForm
+            title="Signaler une panne bloquante"
+            submitLabel="Confirmer et immobiliser l'engin"
+            danger
+            onCancel={() => setOpen(false)}
+            onSubmit={async () => {
+              const { data } = await call("post", "/work-orders", {
+                body: {
+                  vehicle_id: inspection.vehicle_id!,
+                  symptom_code: "SAFETY_EQUIPMENT",
+                  priority: "CRITICAL",
+                  description,
+                  immobilize: true,
+                },
+              });
+              setCreated({ id: data.work_order_id, reference: data.reference });
+            }}
+          >
+            <p className="small">
+              Un ordre de travail critique sera créé, l'engin immobilisé et sa mission en cours suspendue, selon les règles de
+              l'atelier.
+            </p>
+            <pre className="small">{description}</pre>
+          </ActionForm>
+        ) : (
+          <button type="button" className="danger" onClick={() => setOpen(true)}>
+            Signaler une panne bloquante
+          </button>
+        )
+      ) : (
+        <p className="small">Prévenez l'atelier ou l'exploitation : vous n'avez pas le droit de signaler une panne.</p>
+      )}
+    </div>
   );
 }
