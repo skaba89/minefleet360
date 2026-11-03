@@ -363,3 +363,35 @@ def test_tyre_cost_is_estimated_per_km_on_vehicle(client: TestClient, api: Api) 
     # 400 km mesurés, tout le kilométrage connu du pneu : amortissement estimé = coût total du pneu.
     assert row["tyres"] == {"amount": "1000000.00", "status": "ESTIMATED", "currency": "GNF", "missing": []}
     assert Decimal(row["total"]) == Decimal("1000000.00") and row["total_status"] == "ESTIMATED"
+
+
+def test_tyre_km_attributed_per_mounting_in_one_pass() -> None:
+    """Chaque montage est attribué à son engin ; remontage sans démontage : segment ouvert abandonné."""
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from app.costs.service import _km_by_vehicle
+
+    a, b = uuid4(), uuid4()
+    t0 = datetime(2026, 1, 1, tzinfo=UTC)
+
+    def ev(kind: str, vehicle: object, day: int, km: str | None) -> SimpleNamespace:
+        return SimpleNamespace(
+            event_type=kind,
+            vehicle_id=vehicle,
+            occurred_at=t0 + timedelta(days=day),
+            odometer_km=Decimal(km) if km else None,
+        )
+
+    events = [
+        ev("MOUNTED", a, 0, "1000"),
+        ev("INSPECTED", a, 5, "1400"),
+        ev("DISMOUNTED", a, 10, "1600"),
+        ev("MOUNTED", b, 12, "50"),
+        ev("INSPECTED", b, 15, "250"),
+        ev("MOUNTED", a, 20, "2000"),
+        ev("INSPECTED", a, 25, "2300"),  # segment b abandonné
+        ev("INSPECTED", a, 90, "9000"),  # hors période
+    ]
+    km = _km_by_vehicle(events, t0 + timedelta(days=1), t0 + timedelta(days=30))  # type: ignore[arg-type]
+    assert km == {a: Decimal("200") + Decimal("300")}
