@@ -34,9 +34,12 @@ CREATE INDEX ix_legal_contract_review_queue
 -- No UPDATE RLS grant yet: transitions are not exposed before RBAC and audit are implemented.
 """
 DOWNGRADE = r"""
+-- RLS forcée levée le temps de la reprise multi-tenant (sinon aucune ligne n'est visible), puis rétablie.
+ALTER TABLE legal_contract NO FORCE ROW LEVEL SECURITY;
 UPDATE legal_contract SET status = 'DRAFT', submitted_at = NULL,
   reviewed_by = NULL, reviewed_at = NULL, review_note = NULL
 WHERE status <> 'DRAFT';
+ALTER TABLE legal_contract FORCE ROW LEVEL SECURITY;
 ALTER TABLE legal_contract
   DROP CONSTRAINT ck_legal_contract_review_consistency,
   DROP CONSTRAINT ck_legal_contract_status,

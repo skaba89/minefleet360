@@ -29,10 +29,13 @@ ALTER TABLE legal_contract_document
 -- The app role retains SELECT, INSERT only. No verification endpoint exists.
 """
 DOWNGRADE = r"""
+-- RLS forcée levée le temps de la reprise multi-tenant (sinon aucune ligne n'est visible), puis rétablie.
+ALTER TABLE legal_contract_document NO FORCE ROW LEVEL SECURITY;
 UPDATE legal_contract_document
   SET status = 'PENDING', verified_at = NULL,
       stored_object_verified = false, malware_scan_passed = false
 WHERE status <> 'PENDING';
+ALTER TABLE legal_contract_document FORCE ROW LEVEL SECURITY;
 ALTER TABLE legal_contract_document
   DROP CONSTRAINT ck_legal_contract_document_verified,
   DROP CONSTRAINT ck_legal_contract_document_status,

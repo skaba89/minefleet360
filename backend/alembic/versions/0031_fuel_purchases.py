@@ -163,7 +163,10 @@ CREATE UNIQUE INDEX uq_fuel_purchase_receipt_movement
 
 DOWNGRADE = r"""
 DROP TRIGGER tg_fuel_stock_movement_append_only ON fuel_stock_movement;
+-- RLS forcée levée le temps de la reprise multi-tenant (sinon aucune ligne n'est visible), puis rétablie.
+ALTER TABLE fuel_stock_movement NO FORCE ROW LEVEL SECURITY;
 DELETE FROM fuel_stock_movement WHERE fuel_purchase_receipt_id IS NOT NULL;
+ALTER TABLE fuel_stock_movement FORCE ROW LEVEL SECURITY;
 ALTER TABLE fuel_stock_movement DROP CONSTRAINT fk_fuel_movement_purchase_receipt;
 DROP INDEX uq_fuel_purchase_receipt_movement;
 ALTER TABLE fuel_stock_movement DROP CONSTRAINT ck_fuel_movement_source;

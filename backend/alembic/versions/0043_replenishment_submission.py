@@ -18,8 +18,11 @@ ALTER TABLE spare_part_replenishment
   ADD COLUMN submitted_at timestamptz;
 """
 DOWNGRADE = r"""
+-- RLS forcée levée le temps de la reprise multi-tenant (sinon aucune ligne n'est visible), puis rétablie.
+ALTER TABLE spare_part_replenishment NO FORCE ROW LEVEL SECURITY;
 UPDATE spare_part_replenishment SET status = 'DRAFT', submitted_at = NULL
   WHERE status = 'SUBMITTED';
+ALTER TABLE spare_part_replenishment FORCE ROW LEVEL SECURITY;
 ALTER TABLE spare_part_replenishment
   DROP COLUMN submitted_at,
   DROP CONSTRAINT ck_replenishment_status,
