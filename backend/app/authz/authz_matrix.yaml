@@ -622,6 +622,8 @@ permissions:
       - { method: POST, path: "/preventive-dues/{due_id}/schedule", shape: item, success: 200 }
       - { method: POST, path: "/work-orders/{work_order_id}/complete-preventive", shape: item, success: 200 }
       - { method: GET, path: "/work-orders/{work_order_id}/preventive-completion", shape: item, success: 200 }
+      - { method: POST, path: /preventive-declarations, shape: collection, success: 201 }
+      - { method: POST, path: "/preventive-declarations/{declaration_id}/decide", shape: item, success: 200 }
     # La finalisation écrit maintenance.preventive_due.complete.
     audit: { action: maintenance.plan.create }
     grants:
@@ -634,6 +636,8 @@ permissions:
     routes:
       - { method: GET, path: "/vehicles/{vehicle_id}/preventive-plans", shape: collection, success: 200 }
       - { method: GET, path: "/vehicles/{vehicle_id}/preventive-dues", shape: collection, success: 200 }
+      - { method: GET, path: "/vehicles/{vehicle_id}/preventive-status", shape: collection, success: 200 }
+      - { method: GET, path: "/vehicles/{vehicle_id}/preventive-declarations", shape: collection, success: 200 }
     grants:
       DIRECTION: [TENANT]
       OPS_MANAGER: [TENANT, SITE]

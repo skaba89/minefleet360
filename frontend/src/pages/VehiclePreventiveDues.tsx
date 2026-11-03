@@ -11,11 +11,18 @@ interface PreventiveDue {
   maintenance_due_id: string;
   maintenance_plan_id: string;
   status: "DUE" | "SCHEDULED" | "COMPLETED" | "CANCELLED";
-  trigger_kind: "KM" | "HOURS" | "DAYS";
+  trigger_kind: "KM" | "HOURS" | "DAYS" | "INITIAL";
   due_on: string | null;
   due_meter: number | string | null;
   work_order_id: string | null;
 }
+
+const TRIGGER_LABEL: Record<PreventiveDue["trigger_kind"], string> = {
+  KM: "Kilomètres",
+  HOURS: "Heures moteur",
+  DAYS: "Calendrier",
+  INITIAL: "Entretien initial",
+};
 
 export function VehiclePreventiveDues({ vehicleId, siteId }: { vehicleId: string; siteId: string }) {
   const me = useMe();
@@ -64,7 +71,7 @@ export function VehiclePreventiveDues({ vehicleId, siteId }: { vehicleId: string
           <tbody>
             {(dues.data ?? []).map((due) => (
               <tr key={due.maintenance_due_id}>
-                <td>{due.trigger_kind}</td>
+                <td>{TRIGGER_LABEL[due.trigger_kind]}</td>
                 <td>{due.due_on ?? (due.due_meter == null ? "—" : String(due.due_meter))}</td>
                 <td>{due.status}</td>
                 <td>

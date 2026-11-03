@@ -33,12 +33,17 @@ def due_candidates(
 ) -> tuple[DueCandidate, ...]:
     """Un seul événement par cycle, même si plusieurs seuils sont franchis.
 
-    Priorité stable : calendrier, kilomètres, heures. Une échéance connue
+    Priorité stable : entretien initial, calendrier, kilomètres, heures. Une échéance connue
     reste due même si un autre compteur n'est pas fiable.
     """
     result = evaluate_due(rule, baseline, meters, as_of)
     if result.status != "DUE":
         return ()
+
+    if "INITIAL" in result.due_triggers:
+        assert baseline.initial_due_on is not None
+        assert baseline.initial_key is not None
+        return (DueCandidate("INITIAL", "INITIAL:" + baseline.initial_key, baseline.initial_due_on, None),)
 
     if "DAYS" in result.due_triggers:
         assert baseline.serviced_on is not None

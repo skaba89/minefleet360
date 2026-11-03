@@ -1988,6 +1988,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/preventive-declarations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Service Declaration */
+        post: operations["create_service_declaration_api_v1_preventive_declarations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/preventive-declarations/{declaration_id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Service Declaration */
+        post: operations["decide_service_declaration_api_v1_preventive_declarations__declaration_id__decide_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/preventive-dues/{due_id}/schedule": {
         parameters: {
             query?: never;
@@ -2879,6 +2913,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/vehicles/{vehicle_id}/preventive-declarations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Vehicle Service Declarations */
+        get: operations["list_vehicle_service_declarations_api_v1_vehicles__vehicle_id__preventive_declarations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/vehicles/{vehicle_id}/preventive-dues": {
         parameters: {
             query?: never;
@@ -2905,6 +2956,23 @@ export interface paths {
         };
         /** List Vehicle Preventive Plans */
         get: operations["list_vehicle_preventive_plans_api_v1_vehicles__vehicle_id__preventive_plans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/vehicles/{vehicle_id}/preventive-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vehicle Preventive Status */
+        get: operations["get_vehicle_preventive_status_api_v1_vehicles__vehicle_id__preventive_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6662,7 +6730,7 @@ export interface components {
              * Trigger Kind
              * @enum {string}
              */
-            trigger_kind: "KM" | "HOURS" | "DAYS";
+            trigger_kind: "KM" | "HOURS" | "DAYS" | "INITIAL";
             /**
              * Vehicle Id
              * Format: uuid
@@ -6715,6 +6783,49 @@ export interface components {
             vehicle_id: string;
             /** Version */
             version: number;
+        };
+        /**
+         * PreventivePlanStatusOut
+         * @description État calculé d'un plan actif à l'instant de la lecture (aucune échéance enregistrée).
+         */
+        PreventivePlanStatusOut: {
+            /**
+             * Baseline Source
+             * @enum {string}
+             */
+            baseline_source: "WORK_ORDER" | "DECLARATION" | "INITIAL_REQUIRED" | "NONE";
+            /** Code */
+            code: string;
+            /** Current Hours */
+            current_hours: string | null;
+            /** Current Km */
+            current_km: string | null;
+            /** Due On */
+            due_on: string | null;
+            /** Due Triggers */
+            due_triggers: ("KM" | "HOURS" | "DAYS" | "INITIAL")[];
+            /** Hours Reliable */
+            hours_reliable: boolean;
+            /** Km Reliable */
+            km_reliable: boolean;
+            /**
+             * Maintenance Plan Id
+             * Format: uuid
+             */
+            maintenance_plan_id: string;
+            /** Remaining Hours */
+            remaining_hours: string | null;
+            /** Remaining Km */
+            remaining_km: string | null;
+            /** Serviced On */
+            serviced_on: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "DUE" | "UPCOMING" | "INSUFFICIENT_DATA" | "NOT_CONFIGURED";
+            /** Unknown Triggers */
+            unknown_triggers: ("KM" | "HOURS" | "DAYS" | "INITIAL")[];
         };
         /** PreventivePlanSuspend */
         PreventivePlanSuspend: {
@@ -7083,6 +7194,96 @@ export interface components {
             unloaded_at: string | null;
             /** Unloading Started At */
             unloading_started_at: string | null;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+        };
+        /**
+         * ServiceDeclarationCreate
+         * @description Dernier entretien connu d'un engin et d'un code de plan (ou « inconnu »), à faire approuver.
+         */
+        ServiceDeclarationCreate: {
+            /** Hour Meter */
+            hour_meter?: number | string | null;
+            /**
+             * Knowledge
+             * @enum {string}
+             */
+            knowledge: "KNOWN" | "UNKNOWN";
+            /** Note */
+            note?: string | null;
+            /** Odometer Km */
+            odometer_km?: number | string | null;
+            /** Plan Code */
+            plan_code: string;
+            /** Serviced At */
+            serviced_at?: string | null;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+        };
+        /** ServiceDeclarationDecide */
+        ServiceDeclarationDecide: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "APPROVE" | "REJECT";
+            /** Note */
+            note?: string | null;
+        };
+        /** ServiceDeclarationOut */
+        ServiceDeclarationOut: {
+            /** Decided At */
+            decided_at: string | null;
+            /** Decided By */
+            decided_by: string | null;
+            /** Decision Note */
+            decision_note: string | null;
+            /**
+             * Declared At
+             * Format: date-time
+             */
+            declared_at: string;
+            /**
+             * Declared By
+             * Format: uuid
+             */
+            declared_by: string;
+            /** Hour Meter */
+            hour_meter: string | null;
+            /**
+             * Knowledge
+             * @enum {string}
+             */
+            knowledge: "KNOWN" | "UNKNOWN";
+            /** Note */
+            note: string | null;
+            /** Odometer Km */
+            odometer_km: string | null;
+            /** Plan Code */
+            plan_code: string;
+            /**
+             * Service Declaration Id
+             * Format: uuid
+             */
+            service_declaration_id: string;
+            /** Serviced At */
+            serviced_at: string | null;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PENDING" | "APPROVED" | "REJECTED";
             /**
              * Vehicle Id
              * Format: uuid
@@ -13549,6 +13750,78 @@ export interface operations {
             };
         };
     };
+    create_service_declaration_api_v1_preventive_declarations_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServiceDeclarationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceDeclarationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_service_declaration_api_v1_preventive_declarations__declaration_id__decide_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                declaration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ServiceDeclarationDecide"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceDeclarationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     schedule_preventive_due_api_v1_preventive_dues__due_id__schedule_post: {
         parameters: {
             query?: never;
@@ -15884,6 +16157,39 @@ export interface operations {
             };
         };
     };
+    list_vehicle_service_declarations_api_v1_vehicles__vehicle_id__preventive_declarations_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceDeclarationOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_vehicle_preventive_dues_api_v1_vehicles__vehicle_id__preventive_dues_get: {
         parameters: {
             query?: never;
@@ -15939,6 +16245,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PreventivePlanOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vehicle_preventive_status_api_v1_vehicles__vehicle_id__preventive_status_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vehicle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreventivePlanStatusOut"][];
                 };
             };
             /** @description Validation Error */

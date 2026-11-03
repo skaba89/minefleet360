@@ -13,6 +13,7 @@ import { useSites } from "../site/SiteContext";
 import { Documents, Meters } from "./VehicleRecords";
 import { VehiclePreventiveDues } from "./VehiclePreventiveDues";
 import { VehiclePreventivePlans } from "./VehiclePreventivePlans";
+import { VehiclePreventiveStatus } from "./VehiclePreventiveStatus";
 import { useCategories, VEHICLE_TONE } from "./VehiclesPage";
 import { VehicleTyres } from "./TyresPages";
 import { VehicleTrackPanel } from "./GpsHistory";
@@ -119,6 +120,7 @@ export function VehicleDetailPage() {
             )}
             {can(me.grants, "fleet.document.read", v.site_id) && <Documents vehicle={v} />}
             <VehiclePreventivePlans vehicleId={v.vehicle_id} siteId={v.site_id} />
+            <VehiclePreventiveStatus vehicleId={v.vehicle_id} siteId={v.site_id} />
             <VehiclePreventiveDues vehicleId={v.vehicle_id} siteId={v.site_id} />
             <VehicleTyres vehicleId={v.vehicle_id} siteId={v.site_id} />
             <History vehicle={v} timeZone={timezoneOf(v.site_id)} />

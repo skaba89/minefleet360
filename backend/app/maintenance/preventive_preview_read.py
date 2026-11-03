@@ -11,11 +11,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.fleet.models import Vehicle
-from app.maintenance.preventive import CurrentMeters, ServiceRule
+from app.maintenance.preventive import ServiceRule
 from app.maintenance.preventive_baseline_read import load_verified_service_baseline
 from app.maintenance.preventive_batch import PlannedDue, PlanSnapshot, preview_due_batch
 from app.maintenance.preventive_batch_read import load_active_plans
-from app.maintenance.preventive_meter_approval_read import load_approved_current_meters
+from app.maintenance.preventive_meters_since import meters_since_anchor
 
 
 def _as_utc(as_of: datetime) -> datetime:
@@ -56,7 +56,6 @@ def load_plan_snapshots(
     vehicle_ids = frozenset(plan.vehicle_id for plan in plans)
     vehicle_sites = _vehicle_sites(db, tenant_id, vehicle_ids, site_ids)
 
-    meters: dict[uuid.UUID, CurrentMeters] = {}
     snapshots: list[PlanSnapshot] = []
 
     for plan in plans:
@@ -64,20 +63,22 @@ def load_plan_snapshots(
         if site_id is None:
             continue
 
-        if plan.vehicle_id not in meters:
-            meters[plan.vehicle_id] = load_approved_current_meters(
-                db,
-                tenant_id,
-                plan.vehicle_id,
-                site_id,
-                as_of=as_of_utc,
-            )
-
         baseline = load_verified_service_baseline(
             db,
             tenant_id,
             plan.vehicle_id,
             plan_code=plan.code,
+            as_of=as_of_utc,
+        )
+        # Compteurs propres au jalon du plan : cumul validé + hausses des relevés depuis
+        # (une baisse rend le compteur non fiable).
+        current = meters_since_anchor(
+            db,
+            tenant_id,
+            plan.vehicle_id,
+            anchor_at=baseline.anchor_at,
+            anchor_km=baseline.cumulative_km,
+            anchor_hours=baseline.cumulative_hours,
             as_of=as_of_utc,
         )
         snapshots.append(
@@ -91,7 +92,7 @@ def load_plan_snapshots(
                     days_interval=plan.days_interval,
                 ),
                 baseline=baseline,
-                meters=meters[plan.vehicle_id],
+                meters=current,
                 active=True,
             )
         )

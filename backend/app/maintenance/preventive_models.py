@@ -108,3 +108,31 @@ class ServiceMeterBaseline(Base):
     recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
+
+
+class ServiceDeclaration(Base):
+    """Dernier entretien connu (ou inconnu) d'un engin et d'un code de plan, approuvé par un tiers."""
+
+    __tablename__ = "maintenance_service_declaration"
+    __mapper_args__ = {"eager_defaults": True}
+
+    service_declaration_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    vehicle_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    plan_code: Mapped[str] = mapped_column(String, nullable=False)
+    knowledge: Mapped[str] = mapped_column(String, nullable=False)
+    serviced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    odometer_km: Mapped[Decimal | None] = mapped_column(Numeric(12, 1))
+    hour_meter: Mapped[Decimal | None] = mapped_column(Numeric(12, 1))
+    note: Mapped[str | None] = mapped_column(String)
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default="PENDING")
+    declared_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    declared_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_note: Mapped[str | None] = mapped_column(String)
