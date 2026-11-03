@@ -20,12 +20,13 @@ et les écrans existants, sans aucun chiffre codé en dur dans l'interface.
 ## 2. Commandes
 
 ```
-minefleet demo seed --profile small --seed 42 [--anchor 2026-10-01] --credentials-out /chemin/comptes-demo.tsv
+minefleet demo seed --profile small --seed 42 [--anchor 2026-10-01] [--parallel] --credentials-out /chemin/comptes-demo.tsv
 minefleet demo verify [--anchor 2026-10-01]
 minefleet demo reset-credentials --tenant demo-bauxite --credentials-out /chemin/nouveaux-comptes.tsv
 ```
 
-- `seed` : charge les sociétés absentes ; écrit les identifiants dans un **nouveau** fichier créé en mode 600
+- `seed` : charge les sociétés absentes (`--parallel` : une société par processus, mêmes données ; conseillé
+  pour `standard` et `large`) ; écrit les identifiants dans un **nouveau** fichier créé en mode 600
   (refus si le fichier existe) ; n'affiche jamais un mot de passe dans le terminal.
 - `verify` : contrôles recalculés depuis les données sources (§5). Code de sortie 1 au premier écart.
 - `reset-credentials` : régénère les mots de passe d'une société DEMO (sessions fermées, action auditée
@@ -150,7 +151,9 @@ de bande (prix × usure mesurée ÷ usure utile), ou sur une durée de vie atten
   qu'« aucune simulation n'est affichée » sur un espace DEMO. Les sociétés du jeu `seed-fictif`, marquées
   `is_demo`, affichent aussi ce bandeau.
 - **Durée** : le profil `small` prend environ 8 minutes (≈22 000 positions) ; le profil `qa` (9 jours, une
-  position toutes les 5 minutes) environ 3 minutes, utilisé par les tests automatisés.
+  position toutes les 5 minutes) environ 3 minutes, utilisé par les tests automatisés. `standard` (90 jours,
+  ≈45 engins de transport, GPS sur les 14 derniers jours) et `large` (60 jours, ≈120 engins, GPS sur 7 jours) :
+  durées et temps de réponse mesurés dans `docs/PERFORMANCE_DEMO.md`.
 
 ## 9. Parcours navigateur automatisés
 

@@ -59,6 +59,10 @@ def offset(lat: float, lon: float, east_m: float, north_m: float) -> tuple[float
     return lat + north_m / 111_320.0, lon + east_m / (111_320.0 * math.cos(math.radians(lat)))
 
 
+def path_km(points: list[tuple[datetime, float, float, float]]) -> float:
+    return sum(gps_history.haversine_m(a[1], a[2], b[1], b[2]) for a, b in itertools.pairwise(points)) / 1000
+
+
 def square(lat: float, lon: float, half_m: float) -> list[tuple[float, float]]:
     """Polygone carré en ordre GeoJSON [longitude, latitude]."""
     corners = [(-half_m, -half_m), (half_m, -half_m), (half_m, half_m), (-half_m, half_m)]
@@ -172,6 +176,15 @@ class GpsMixin:
                 speed = 0.0 if still else math.dist(origin, dest) / duration * 3.6
                 points.append((t, lat, lon, round(speed * self.rng.uniform(0.85, 1.1), 1)))
                 t += timedelta(minutes=self.profile.gps_step_minutes)
+        gps_days = self.profile.gps_days
+        if (
+            gps_days is not None
+            and points
+            and points[0][0] < self.start + timedelta(days=self.profile.days - gps_days)
+        ):
+            # Hors fenêtre d'historique GPS : aucune position envoyée ; le compteur km suit le tracé.
+            hauler["km"] += Decimal(str(round(path_km(points), 1)))
+            return
         self._send(hauler, points)
 
     def _send(self, hauler: dict[str, Any], points: list[tuple[datetime, float, float, float]]) -> None:
