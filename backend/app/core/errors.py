@@ -137,6 +137,12 @@ CATALOG: dict[str, ErrorDef] = {
     "SELF_APPROVAL_FORBIDDEN": ErrorDef(
         422, "Une saisie dégradée doit être approuvée par une autre personne que celle qui l'a saisie."
     ),
+    "PREVENTIVE_SELF_APPROVAL_FORBIDDEN": ErrorDef(
+        422, "Le dernier entretien déclaré doit être approuvé par une autre personne que le déclarant."
+    ),
+    "PREVENTIVE_DECLARATION_PENDING": ErrorDef(
+        409, "Une déclaration du dernier entretien attend déjà une décision pour cet engin et ce plan."
+    ),
     "HSE_SELF_CLOSURE_FORBIDDEN": ErrorDef(
         422, "L'incident doit être clôturé par une autre personne que celle qui l'a déclaré."
     ),

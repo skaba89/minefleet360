@@ -5,12 +5,13 @@ décisions métier avant branchement aux modèles et aux politiques RLS.
 """
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Literal
 
 Status = Literal["DUE", "UPCOMING", "INSUFFICIENT_DATA", "NOT_CONFIGURED"]
-Trigger = Literal["KM", "HOURS", "DAYS"]
+Trigger = Literal["KM", "HOURS", "DAYS", "INITIAL"]
+BaselineSource = Literal["WORK_ORDER", "DECLARATION", "INITIAL_REQUIRED", "NONE"]
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,12 @@ class ServiceBaseline:
     # Valeurs cumulatives validées, jamais des compteurs bruts ayant subi un reset.
     cumulative_km: Decimal | None = None
     cumulative_hours: Decimal | None = None
+    source: BaselineSource = "NONE"
+    # Instant du jalon : origine des relevés de compteur à cumuler (preventive_meters_since).
+    anchor_at: datetime | None = None
+    # Dernier entretien déclaré inconnu et approuvé : entretien initial dû à cette date (clé = déclaration).
+    initial_due_on: date | None = None
+    initial_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -60,7 +67,12 @@ class DueResult:
 def evaluate_due(
     rule: ServiceRule, baseline: ServiceBaseline, meters: CurrentMeters, as_of: date
 ) -> DueResult:
-    """Premier seuil atteint => entretien dû ; aucune donnée manquante supposée nulle."""
+    """Premier seuil atteint => entretien dû ; aucune donnée manquante supposée nulle.
+
+    Un dernier entretien déclaré inconnu (et approuvé) rend l'entretien initial dû sans attendre de seuil.
+    """
+    if baseline.initial_due_on is not None:
+        return DueResult("DUE", ("INITIAL",), (), None, None, baseline.initial_due_on)
     due: list[Trigger] = []
     unknown: list[Trigger] = []
     remaining_km: Decimal | None = None

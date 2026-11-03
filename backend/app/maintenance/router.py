@@ -9,10 +9,15 @@ from app.authz.routing import SecuredRoute
 from app.core.errors import AppError
 from app.core.http import IfMatch, Page, Pagination, etag
 from app.core.idempotency import claim, optional_idempotency_key
-from app.maintenance import preventive_service, service
+from app.maintenance import preventive_declarations, preventive_service, service
 from app.maintenance.preventive_complete import complete_preventive_due
 from app.maintenance.preventive_completion_read import preventive_completion_context
-from app.maintenance.preventive_plan_inputs import PreventivePlanCreate, PreventivePlanSuspend
+from app.maintenance.preventive_plan_inputs import (
+    PreventivePlanCreate,
+    PreventivePlanSuspend,
+    ServiceDeclarationCreate,
+    ServiceDeclarationDecide,
+)
 from app.maintenance.preventive_revise import revise_plan
 from app.maintenance.preventive_schedule import schedule_preventive_order
 from app.maintenance.preventive_schemas import (
@@ -21,7 +26,9 @@ from app.maintenance.preventive_schemas import (
     PreventiveCompletionOut,
     PreventiveDueOut,
     PreventivePlanOut,
+    PreventivePlanStatusOut,
     PreventiveScheduledOrderOut,
+    ServiceDeclarationOut,
 )
 from app.maintenance.preventive_suspend import suspend_plan
 from app.maintenance.preventive_write import create_plan
@@ -178,6 +185,42 @@ def list_vehicle_preventive_dues(vehicle_id: uuid.UUID, auth: PreventiveRead) ->
         PreventiveDueOut.model_validate(item)
         for item in preventive_service.dues_for_vehicle(auth, vehicle_id)
     ]
+
+
+@router.get("/vehicles/{vehicle_id}/preventive-status", response_model=list[PreventivePlanStatusOut])
+def get_vehicle_preventive_status(
+    vehicle_id: uuid.UUID, auth: PreventiveRead
+) -> list[PreventivePlanStatusOut]:
+    # Calcul à la lecture, sans rien enregistrer : jalon le plus récent + relevés depuis ce jalon.
+    return preventive_declarations.plan_statuses(auth, vehicle_id)
+
+
+@router.get("/vehicles/{vehicle_id}/preventive-declarations", response_model=list[ServiceDeclarationOut])
+def list_vehicle_service_declarations(
+    vehicle_id: uuid.UUID, auth: PreventiveRead
+) -> list[ServiceDeclarationOut]:
+    return [
+        ServiceDeclarationOut.model_validate(item)
+        for item in preventive_declarations.declarations_for_vehicle(auth, vehicle_id)
+    ]
+
+
+@router.post(
+    "/preventive-declarations",
+    status_code=status.HTTP_201_CREATED,
+    response_model=ServiceDeclarationOut,
+)
+def create_service_declaration(
+    body: ServiceDeclarationCreate, auth: PreventiveManage
+) -> ServiceDeclarationOut:
+    return ServiceDeclarationOut.model_validate(preventive_declarations.declare(auth, body))
+
+
+@router.post("/preventive-declarations/{declaration_id}/decide", response_model=ServiceDeclarationOut)
+def decide_service_declaration(
+    declaration_id: uuid.UUID, body: ServiceDeclarationDecide, auth: PreventiveManage
+) -> ServiceDeclarationOut:
+    return ServiceDeclarationOut.model_validate(preventive_declarations.decide(auth, declaration_id, body))
 
 
 @router.post(
