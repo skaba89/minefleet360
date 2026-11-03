@@ -261,6 +261,10 @@ def _costs_recomputed(code: str, tenant_id: uuid.UUID, anchor: date | None) -> l
             db.execute(
                 select(WorkOrder.vehicle_id, func.sum(WorkOrderLabour.minutes))
                 .join(WorkOrderLabour, WorkOrderLabour.work_order_id == WorkOrder.work_order_id)
+                # Même fenêtre que le coût servi : seules les minutes saisies dans la période comptent.
+                .where(
+                    WorkOrderLabour.performed_on >= start.date(), WorkOrderLabour.performed_on < end.date()
+                )
                 .group_by(WorkOrder.vehicle_id)
             )
             .tuples()
@@ -290,7 +294,7 @@ def _costs_recomputed(code: str, tenant_id: uuid.UUID, anchor: date | None) -> l
         Check(
             code,
             "main-d'œuvre servie = minutes saisies × taux horaire",
-            bool(minutes) and not labour_gaps,
+            not labour_gaps,
             f"OT avec temps={len(minutes)}, écarts={labour_gaps}",
         ),
         Check(

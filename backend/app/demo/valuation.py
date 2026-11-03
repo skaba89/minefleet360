@@ -246,7 +246,7 @@ class ValuationMixin:
                     spare_part_store_id=self.stores[site],
                     spare_part_id=self.parts[code],
                     quantity=Decimal(quantity),
-                    reference=f"RES-{code}",
+                    reference=f"RES-{code}-{work_order_id.hex[:8]}",  # unique par magasin
                 ),
             )
             route(

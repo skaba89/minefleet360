@@ -16,6 +16,9 @@ def register(sub: "argparse._SubParsersAction[argparse.ArgumentParser]") -> None
     seed.add_argument("--seed", type=int, default=42)
     seed.add_argument("--anchor", type=date.fromisoformat, default=None, help="date de fin AAAA-MM-JJ")
     seed.add_argument("--credentials-out", required=True, help="nouveau fichier (créé en 600)")
+    seed.add_argument(
+        "--parallel", action="store_true", help="une société par processus (profils volumineux)"
+    )
     verify = actions.add_parser("verify")
     verify.add_argument("--anchor", type=date.fromisoformat, default=None)
     live = actions.add_parser("live-feed", help="émetteur GPS de démonstration (API locale)")
@@ -48,7 +51,7 @@ def _seed(args: argparse.Namespace) -> int:
     from app.demo.generator import seed_demo
 
     ensure_new_file(args.credentials_out)
-    report = seed_demo(profile=args.profile, seed=args.seed, anchor=args.anchor)
+    report = seed_demo(profile=args.profile, seed=args.seed, anchor=args.anchor, parallel=args.parallel)
     if report.skipped:
         print("Déjà présentes (inchangées) :", ", ".join(report.skipped))
     print(f"Profil {report.profile}, graine {report.seed}, ancrage {report.anchor}")

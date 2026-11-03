@@ -114,6 +114,9 @@ class Profile:
     missions_per_hauler_day: int
     rotations_per_mission: tuple[int, int]
     gps_step_minutes: int = 2  # intervalle entre deux positions GPS
+    # Historique GPS limité aux N derniers jours (None : toute la période). Missions, pesées, carburant et
+    # coûts couvrent toujours toute la période ; le compteur km reste calé sur la distance du tracé.
+    gps_days: int | None = None
 
 
 PROFILES: dict[str, Profile] = {
@@ -141,15 +144,19 @@ PROFILES: dict[str, Profile] = {
         fleet_factor=3,
         drivers_per_hauler=2,
         missions_per_hauler_day=1,
-        rotations_per_mission=(3, 6),
+        rotations_per_mission=(3, 5),
+        gps_step_minutes=3,
+        gps_days=14,
     ),
     "large": Profile(
         "large",
-        days=180,
+        days=60,
         fleet_factor=8,
         drivers_per_hauler=2,
-        missions_per_hauler_day=2,
-        rotations_per_mission=(3, 6),
+        missions_per_hauler_day=1,
+        rotations_per_mission=(3, 5),
+        gps_step_minutes=5,
+        gps_days=7,
     ),
 }
 

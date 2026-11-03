@@ -9,9 +9,12 @@ Principes (docs/DEMO_DATA_ARCHITECTURE.md) :
 - idempotent à la maille de la société : une société DEMO déjà présente est ignorée (aucune écriture).
 """
 
+import multiprocessing
 import random
 import secrets
+import traceback
 import uuid
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
@@ -448,6 +451,11 @@ class _TenantBuilder(ValuationMixin, GpsMixin):
                 self._hse_closed_incident(day)
             if d == breakdown_day:
                 self._closed_breakdown(self.haulers[0], day)
+            elif days > 30 and d % 15 == 0 and d < days - 2:
+                # Profils longs : une panne réparée tous les 15 jours, sur un engin différent à chaque fois
+                # (fiabilité MTBF/MTTR et coûts atelier crédibles). Jamais l'engin de la panne ouverte finale.
+                candidates = self.haulers[:-1] or self.haulers
+                self._closed_breakdown(candidates[(d // 15) % len(candidates)], day)
             if d % 7 == 0:
                 for site in self.spec.sites:
                     self.purchase_fuel(site.code, datetime.combine(day, time(5, 0), UTC), Decimal("40000"))
@@ -812,14 +820,56 @@ class _TenantBuilder(ValuationMixin, GpsMixin):
         self.report.add("hse_incidents_open")
 
 
-def seed_demo(
-    *, profile: str = "small", seed: int = 42, anchor: date | None = None, settings: Settings | None = None
+def _build_tenant(index: int, profile: str, seed: int, anchor: date, live_start: datetime) -> DemoReport:
+    """Construit UNE société DEMO (fonction de module : exécutable dans un processus séparé).
+
+    En cas d'échec, l'erreur porte le code de la société et la trace complète : un processus enfant ne
+    transmet sinon que le type de l'exception au parent."""
+    try:
+        return _build_tenant_unsafe(index, profile, seed, anchor, live_start)
+    except Exception as exc:
+        raise RuntimeError(f"échec de la société {CATALOG[index].code} :\n{traceback.format_exc()}") from exc
+
+
+def _build_tenant_unsafe(
+    index: int, profile: str, seed: int, anchor: date, live_start: datetime
 ) -> DemoReport:
+    settings = get_settings()
+    prof = PROFILES[profile]
+    spec = CATALOG[index]
+    report = DemoReport(profile=profile, seed=seed, anchor=anchor)
+    start = datetime.combine(anchor - timedelta(days=prof.days), time(4, 0), UTC)
+    clock = FrozenClock(start)
+    platform = _PlatformActor(_platform_admin(clock), clock)
+    # Une graine dérivée par société : ajouter une société ne modifie pas les données des autres.
+    rng = random.Random(f"{seed}:{index}:{spec.code}")  # noqa: S311 (données de démo, pas de secret)
+    builder = _TenantBuilder(spec, prof, rng, clock, start, settings, report)
+    builder.build(platform)
+    builder.simulate()
+    builder.live_day(live_start)
+    return report
+
+
+def _merge(into: DemoReport, part: DemoReport) -> None:
+    into.credentials.extend(part.credentials)
+    for key, n in part.counts.items():
+        into.add(key, n)
+
+
+def seed_demo(
+    *,
+    profile: str = "small",
+    seed: int = 42,
+    anchor: date | None = None,
+    settings: Settings | None = None,
+    parallel: bool = False,
+) -> DemoReport:
+    """Charge les sociétés DEMO absentes. `parallel` : une société par processus (sociétés indépendantes,
+    graines par société : résultat identique au mode séquentiel, hors identifiants techniques)."""
     settings = settings or get_settings()
     ensure_demo_database(settings)
     if profile not in PROFILES:
         raise ValueError(f"profil inconnu : {profile} (attendus : {', '.join(PROFILES)})")
-    prof = PROFILES[profile]
     real_now = SystemClock().now()
     anchor = anchor or real_now.date()
     # Jour J : activité « en cours » démarrée 2 h 30 avant l'exécution (ou à 08:00 pour un ancrage passé),
@@ -830,17 +880,22 @@ def seed_demo(
         else datetime.combine(anchor, time(8, 0), UTC)
     )
     report = DemoReport(profile=profile, seed=seed, anchor=anchor)
-    start = datetime.combine(anchor - timedelta(days=prof.days), time(4, 0), UTC)
-    clock = FrozenClock(start)
-    platform = _PlatformActor(_platform_admin(clock), clock)
+    todo = []
     for index, spec in enumerate(CATALOG):
         if _already_loaded(spec.code):
             report.skipped.append(spec.code)
-            continue
-        # Une graine dérivée par société : ajouter une société ne modifie pas les données des autres.
-        rng = random.Random(f"{seed}:{index}:{spec.code}")  # noqa: S311 (données de démo, pas de secret)
-        builder = _TenantBuilder(spec, prof, rng, clock, start, settings, report)
-        builder.build(platform)
-        builder.simulate()
-        builder.live_day(live_start)
+        else:
+            todo.append(index)
+    _platform_admin(SystemClock())  # échoue tôt et clairement sans PLATFORM_ADMIN
+    if parallel and len(todo) > 1:
+        context = multiprocessing.get_context("spawn")  # moteur SQL neuf dans chaque processus
+        with ProcessPoolExecutor(max_workers=len(todo), mp_context=context) as pool:
+            n = len(todo)
+            parts = list(
+                pool.map(_build_tenant, todo, [profile] * n, [seed] * n, [anchor] * n, [live_start] * n)
+            )
+    else:
+        parts = [_build_tenant(index, profile, seed, anchor, live_start) for index in todo]
+    for part in parts:
+        _merge(report, part)
     return report
