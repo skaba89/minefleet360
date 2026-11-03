@@ -13,6 +13,7 @@ from app.authz.dependencies import Authorized
 from app.core.errors import AppError
 from app.fleet.models import VehicleMeterReading
 from app.maintenance.models import WorkOrder
+from app.maintenance.preventive_closure_meters import closure_totals
 from app.maintenance.preventive_models import (
     MaintenanceDue,
     MaintenancePlan,
@@ -83,6 +84,12 @@ def preventive_completion_context(
         required_kinds.append("ODOMETER_KM")
     if plan.hours_interval is not None:
         required_kinds.append("HOUR_METER")
+    pending = [kind for kind in required_kinds if kind not in frozen] if due.status != "COMPLETED" else []
+    totals = (
+        closure_totals(auth.db, auth.tenant_id, order.vehicle_id, plan.code, order.closed_at)
+        if pending
+        else {}
+    )
     for kind in required_kinds:
         choices: list[MeterReconciliationApproval]
         if kind in frozen or due.status == "COMPLETED":
@@ -127,6 +134,7 @@ def preventive_completion_context(
                     )
                     for approval in choices
                 ],
+                computed_total=totals.get(kind),
             )
         )
     return PreventiveCompletionContextOut(

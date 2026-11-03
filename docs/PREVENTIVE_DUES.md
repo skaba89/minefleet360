@@ -37,11 +37,29 @@ insuffisante ». Après 36 déclarations « connu » et 12 « inconnu », toutes
 plans connus sont dus par les heures moteur (exemple : 381 h depuis le jalon pour un intervalle de 250 h), et les
 12 inconnus demandent un entretien initial. L'auto-approbation a été refusée à chaque fois.
 
+## Tranche B1 : finalisation sans approbation de compteur (migration 0059)
+
+Avant cette tranche, finaliser l'échéance d'un plan en km ou en heures exigeait une approbation de compteur que
+rien ne permettait de créer : le cycle ne pouvait pas boucler.
+
+| Élément | Détail |
+|---|---|
+| `maintenance_service_meter_baseline.source` | `APPROVAL` (approbation explicite, inchangé) ou `READINGS` (calculé, sans approbation). Contrainte : approbation présente si et seulement si `source = APPROVAL`. La table reste en ajout seul |
+| Cumul de clôture (`preventive_closure_meters`) | (1) cumul au jalon **précédent** + hausses des relevés jusqu'à la clôture, si le compteur est fiable ; (2) sinon (entretien initial sans cumul, ou baisse depuis le jalon), **dernier relevé brut** au plus tard à la clôture. C'est prudent : ce qui a été parcouru entre ce relevé et la clôture est compté dans le cycle suivant ; (3) aucun relevé : finalisation refusée (409, « enregistrez un relevé ») |
+| Jalon utilisé à la clôture | ce qui était validé **avant** la clôture : l'OT clôturé lui-même est exclu, et une déclaration approuvée après la clôture n'est pas prise en compte (repli prudent sur le dernier relevé) |
+| Finalisation | `POST /work-orders/{id}/complete-preventive` : les approbations restent acceptées ; pour chaque compteur exigé sans approbation fournie, le cumul calculé est figé (`READINGS`) et audité (`maintenance.service_meter_baseline.create`, valeur et source) dans la même transaction. Le rejeu reste idempotent |
+| Contexte et écran | `GET /work-orders/{id}/preventive-completion` expose `computed_total` ; l'écran l'affiche (« calculé depuis le dernier jalon validé et les relevés »), propose une approbation seulement si elle existe, et signale l'absence de relevé |
+
+Vérifié par deux parcours PostgreSQL/API :
+- plan à 1 000 km : déclaration à 5 000 km sur un compteur brut à 4 000, relevés 4 400 puis 4 700, soit 5 700 km
+  figés à la clôture. Le cycle suivant repart de 5 700, avec un relevé de 4 900 après la clôture : 5 900, reste 800 ;
+- entretien initial sur un plan à 250 h : finalisation refusée sans relevé, puis 300 h figées. Le cycle suivant
+  part de 300 h, reste 250.
+
 ## Reste à faire
 
-- **B** : clôturer une échéance sans approbation de compteur (le cumul à la clôture est calculé selon la même
-  règle, puis figé), et ajouter le bouton « Évaluer les échéances », qui enregistre les échéances dues (idempotent,
-  audité, limité au site) et les liste sur la page Préventif.
+- **B2** : bouton « Évaluer les échéances », qui enregistre les échéances dues (idempotent, audité, limité au
+  site) et les liste sur la page Préventif.
 - **C** : tâche quotidienne (compte technique à droits minimaux, supervision des échecs, reprise sans doublon).
 - Le calendrier utilise la date UTC du jalon ; le fuseau du site pour les échéances calendaires reste à arbitrer
   (`PLAN_LOT3B_PREVENTIF.md`).

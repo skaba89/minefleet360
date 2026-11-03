@@ -163,3 +163,51 @@ def record_service_meter_baseline(
         ),
     )
     return True
+
+
+def record_computed_meter_baseline(
+    auth: Authorized,
+    order: WorkOrder,
+    due: MaintenanceDue,
+    meter_kind: str,
+    total: Decimal,
+) -> None:
+    """Figer un cumul calculé (jalon précédent + relevés) ; appelé dans la transaction de finalisation.
+
+    L'appelant a verrouillé l'OT et l'échéance et vérifié permission, portée et états. Une ligne
+    existante pour le même OT et compteur est conservée (ajout seul).
+    """
+    assert order.closed_at is not None
+    statement = (
+        insert(ServiceMeterBaseline)
+        .values(
+            tenant_id=auth.tenant_id,
+            maintenance_plan_id=due.maintenance_plan_id,
+            maintenance_due_id=due.maintenance_due_id,
+            work_order_id=order.work_order_id,
+            vehicle_id=order.vehicle_id,
+            site_id=order.site_id,
+            meter_kind=meter_kind,
+            cumulative_total=total,
+            reconciliation_approval_id=None,
+            source="READINGS",
+            serviced_at=order.closed_at,
+            recorded_by=auth.user_id,
+        )
+        .on_conflict_do_nothing(constraint="uq_msmb_work_order_kind")
+        .returning(ServiceMeterBaseline.service_meter_baseline_id)
+    )
+    inserted_id = auth.db.execute(statement).scalar_one_or_none()
+    if inserted_id is None:
+        raise AppError("STATE_TRANSITION_INVALID")
+    record(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        site_id=order.site_id,
+        actor_user_id=auth.user_id,
+        action="maintenance.service_meter_baseline.create",
+        entity_type="maintenance_service_meter_baseline",
+        entity_id=inserted_id,
+        after={"meter_kind": meter_kind, "cumulative_total": str(total), "source": "READINGS"},
+        changed_fields=("meter_kind", "cumulative_total", "source"),
+    )
