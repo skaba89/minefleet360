@@ -1,6 +1,6 @@
 # Performances mesurées sur les jeux DEMO
 
-État au 2 novembre 2026. **Mesures sur une seule machine de développement** (6 vCPU, 11 Gio de RAM, PostgreSQL
+État au 3 novembre 2026. **Mesures sur une seule machine de développement** (6 vCPU, 11 Gio de RAM, PostgreSQL
 16 + PostGIS en conteneur sur la même machine, API `uvicorn` un seul processus, sans cache ni réglage).
 Elles donnent des ordres de grandeur et des tendances, pas une garantie de production. Aucune prise en charge
 d'une flotte de 1 000 engins n'est revendiquée tant qu'elle n'a pas été mesurée (voir §4).
@@ -94,11 +94,31 @@ Mesures `standard` et `large` prises avec la correction des dernières positions
 | Écran | Évolution qa → standard → large (p50) | Lecture |
 |---|---|---|
 | Dernières positions GPS | 29 → 75 → — ms **avant** #331 ; 27 → 30 ms **après** | la requête triait tout l'historique de la société ; corrigée (lecture indexée par véhicule, 58 → 2 ms côté SQL) |
-| Coût complet 30 j | 61 → 126 → **327 ms** (max 513) | croît à peu près linéairement avec le nombre d'engins (≈ 3,4 ms par engin) : **prochain point à traiter** avant de grandes flottes (extrapolation non mesurée : plusieurs secondes vers 1 000 engins) |
+| Coût complet 30 j | 61 → 126 → 327 ms **avant** correction ; **197 ms** après (large, voir §3 bis) | la composante pneus était quadratique (chaque pneu × chaque engin) et le comptage des missions terminées lisait tous les événements ; corrigés le 3 novembre |
 | Indicateurs 30 j | 44 → 83 → 133 ms | croît avec les rotations de la période ; acceptable à ces volumes |
 | Missions, pesées (pagination 50) | 48–98 ms | stable : pagination effective |
 | Parc, HSE, fiabilité, carburant, trajet GPS 24 h | 22–51 ms | stables |
 
+
+### 3 bis. Correction du coût complet (3 novembre 2026, jeu `large`, demo-bauxite)
+
+| Version | Coût complet 30 j p50 / p95 (ms) | Indicateurs 30 j p50 (ms) |
+|---|---:|---:|
+| main avant correction | 373 / 498 | — |
+| main + index seul (migration 0057) | 286 / 445 | 116 |
+| **branche (pneus en un passage + index)** | **197 / 350** | **110** |
+
+- **Pneus** : le calcul rejouait l'historique de chaque pneu pour chaque engin de la société
+  (pneus × engins × événements). Il est désormais fait en un seul passage par pneu, chaque montage étant attribué
+  à son engin (`_km_by_vehicle`). Résultat identique vérifié sur 5 000 historiques aléatoires contre l'ancien
+  algorithme, et réponses de l'API identiques sur trois périodes du jeu `large`. Banc isolé à 224 engins et
+  1 344 pneus : 752 → 20 ms.
+- **Missions terminées** : sans index sur `(event_type, occurred_at)`, PostgreSQL lisait les 54 000 événements de
+  la société pour en garder 1 400 (24 → 6 ms avec l'index `ix_me_type_time`, migration 0057, qui sert aussi aux
+  indicateurs de pesée).
+- Reste : environ 65 ms de SQL répartis entre six requêtes de 3 à 14 ms (compteurs, pesées, carburant,
+  historique des pneus), sans requête dominante. L'historique complet des pneus de la société reste chargé à
+  chaque appel ; ce sera le prochain levier si les flottes grossissent (valeurs à date pré-calculées par pneu).
 
 ## 4. Non mesuré à ce stade
 

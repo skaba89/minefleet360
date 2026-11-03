@@ -118,27 +118,31 @@ def _rising(readings: list[tuple[datetime, Decimal]]) -> Decimal:
     return total
 
 
-def _km_on_vehicle(events: list[TyreEvent], vehicle_id: uuid.UUID, start: datetime, end: datetime) -> Decimal:
-    """Km parcourus par un pneu sur un engin dans la période, montage par montage (relevés de la période).
+def _km_by_vehicle(events: list[TyreEvent], start: datetime, end: datetime) -> dict[uuid.UUID, Decimal]:
+    """Km parcourus par un pneu sur chaque engin dans la période, montage par montage (relevés de la période).
 
+    Un seul passage sur l'historique du pneu (événements triés par date) : chaque montage ouvre un segment
+    attribué à son engin, le démontage le ferme ; un remontage sans démontage abandonne le segment ouvert.
     Prudent : la portion d'un montage antérieure au premier relevé de la période n'est pas comptée.
     """
-    segments: list[list[tuple[datetime, Decimal]]] = []
+    km: dict[uuid.UUID, Decimal] = defaultdict(Decimal)
+    owner: uuid.UUID | None = None
     current: list[tuple[datetime, Decimal]] | None = None
     for e in events:
         if e.event_type == "MOUNTED":
-            current = [] if e.vehicle_id == vehicle_id else None
+            owner, current = e.vehicle_id, []
         if current is None:
             continue
         if e.event_type in ("MOUNTED", "INSPECTED", "DISMOUNTED") and e.odometer_km is not None:
             if start <= e.occurred_at < end:
                 current.append((e.occurred_at, e.odometer_km))
         if e.event_type == "DISMOUNTED":
-            segments.append(current)
-            current = None
-    if current is not None:
-        segments.append(current)
-    return sum((_rising(segment) for segment in segments), Decimal("0"))
+            if owner is not None:
+                km[owner] += _rising(current)
+            owner, current = None, None
+    if current is not None and owner is not None:
+        km[owner] += _rising(current)
+    return km
 
 
 def _ratio(total: Decimal | None, status: Status, quantity: Decimal) -> Decimal | None:
@@ -314,9 +318,8 @@ def vehicle_costs(
             (e.cost for e in events if e.cost is not None and e.event_type in ("REPAIRED", "RETREADED")),
             Decimal("0"),
         )
-        for vid in ids:
-            km = _km_on_vehicle(events, vid, start, end)
-            if km <= 0:
+        for vid, km in _km_by_vehicle(events, start, end).items():
+            if km <= 0 or vid not in ids:
                 continue
             acc = tyres[vid]
             acc.activity = True
