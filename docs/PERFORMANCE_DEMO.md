@@ -125,5 +125,47 @@ Mesures `standard` et `large` prises avec la correction des dernières positions
 - Flotte de 1 000 engins : le chargement par les services prendrait de l'ordre d'une journée par cette voie ;
   une mesure à cette échelle demandera un chargeur de volume dédié (à concevoir sans contourner RLS ni audit)
   et une machine représentative de la production.
-- Concurrence (plusieurs utilisateurs simultanés), ingestion GPS continue de nombreux traceurs, réseau mobile
-  lent, rapports volumineux et exports CSV à grande échelle.
+- Ingestion GPS continue de nombreux traceurs en même temps que la consultation, réseau mobile lent, et
+  rapports sur des sociétés dépassant le plafond d'export de 5 000 lignes (concurrence et exports : §5).
+
+## 5. Plusieurs utilisateurs simultanés et exports (3 novembre 2026, jeu `large`)
+
+Mesure : `python scripts/perf_load.py --accounts <fichier> --api http://127.0.0.1:8000 --exports`.
+API locale lancée **comme en production** (`uvicorn --workers 2`, pool SQLAlchemy par défaut), trois sociétés
+DEMO (sessions AUDITOR), 30 s par niveau. Chaque utilisateur simulé enchaîne **sans pause** des écrans tirés au
+hasard (listes, positions GPS, tableaux de bord, coût complet occasionnel). Le client de charge tourne sur la même
+machine (6 vCPU), et les tests d'un autre projet s'y exécutaient en même temps : chiffres plutôt pessimistes.
+
+| Utilisateurs simultanés sans pause | 2 processus : req/s | p50 / p95 (ms) | 4 processus : req/s | p50 / p95 (ms) |
+|---:|---:|---:|---:|---:|
+| 1 | 15,6 | 54 / 176 | 12,8 | 60 / 226 |
+| 5 | 41,4 | 95 / 346 | 49,6 | 80 / 293 |
+| 10 | 44,8 | 179 / 539 | 62,7 | 123 / 422 |
+| 20 | 44,1 | 410 / 866 | 66,6 | 245 / 693 |
+| 40 | 41,3 | 859 / 1 721 | 63,5 | 544 / 1 258 |
+
+Aucune erreur à aucun niveau. À 40 utilisateurs sans pause (2 processus), l'écran le plus lent reste le coût
+complet (p50 1,8 s) ; les listes sont vers 0,7–1 s.
+
+**Lecture**
+- Le débit plafonne vers **44 requêtes/s avec 2 processus** dès 10 utilisateurs sans pause ; au-delà, les
+  requêtes attendent leur tour et le temps de réponse croît en proportion (pas d'erreur, pas d'effondrement).
+- Le facteur limitant est le **calcul Python de l'API** : chaque processus est à ≈ 85 % d'un cœur sous charge, alors
+  que PostgreSQL reste léger (≈ 4 % par connexion). Sur une liste de 50 engins, le SQL compte ≈ 11 ms (5 requêtes,
+  session et droits compris) sur ≈ 27 ms ; le reste est réparti dans le socle (ORM, validation, sérialisation),
+  sans point chaud isolé.
+- **Dimensionnement indicatif** : un utilisateur réel ouvre un écran toutes les 10 à 30 s environ ; 44 req/s
+  correspondent donc à quelques centaines d'utilisateurs actifs en même temps avec 2 processus. À confirmer sur la
+  machine de production, sans autre charge.
+- **Levier** : `MF_API_WORKERS` (défaut 2) : 4 processus donnent ≈ +50 % de débit sur cette machine partagée. Chaque
+  processus occupe ≈ 170 Mo en charge : au-delà de 3, relever la limite mémoire de l'API (768 Mo).
+
+| Export CSV (pages de 200, plafond 5 000), demo-bauxite | Lignes | Pages | Durée totale | Page la plus lente |
+|---|---:|---:|---:|---:|
+| Pneus | 290 | 2 | 185 ms | 106 ms |
+| Inspections HSE | 118 | 1 | 75 ms | 72 ms |
+| Incidents HSE | 2 | 1 | 54 ms | 54 ms |
+| Missions (référence : pas d'export à l'écran) | 2 878 | 15 | 1,9 s | 324 ms |
+
+Les exports à l'écran restent sous 0,2 s à ce volume. Une liste de près de 3 000 lignes se parcourt en moins de
+2 s ; les pages profondes restent sous 0,35 s.

@@ -30,6 +30,7 @@ Services :
 - `migrate` : tâche ponctuelle, seule à recevoir le secret `mf_owner`.
 - `db` : PostgreSQL 16 + PostGIS, **aucun port publié**, nom d'hôte unique `minefleet-db` ; pas de base de test (`MF_CREATE_TEST_DB` absent).
 - Limites mémoire : API 768 Mo, base 1 Go (serveur partagé).
+- Processus API : `MF_API_WORKERS` (défaut 2, ≈ 170 Mo chacun en charge) ; débit mesuré et dimensionnement dans `docs/PERFORMANCE_DEMO.md` §5.
 - `MF_FORWARDED_ALLOW_IPS` : seuls ces pairs (IP/CIDR) peuvent transmettre `X-Forwarded-For` (sinon usurpation d'IP possible : limitation de débit, audit). Machine dédiée : sous-réseau du projet ; serveur partagé : sous-réseau `edge` (risque résiduel : les autres conteneurs de `edge`, qui sont vos propres applications ; à restreindre à l'IP du proxy si elle est fixée).
 
 ## 4. Procédure (SSH, chaque étape journalisée)
