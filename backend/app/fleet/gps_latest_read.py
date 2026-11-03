@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import select, true
 
 from app.authz.dependencies import Authorized
 from app.core.errors import AppError
@@ -24,36 +24,37 @@ def latest_visible_positions(
         raise AppError("PERMISSION_DENIED")
     if as_of.tzinfo is None or as_of.utcoffset() is None:
         raise AppError("VALIDATION_ERROR")
-    ranked = (
-        select(
-            FleetGpsPosition.gps_position_id.label("position_id"),
-            func.row_number()
-            .over(
-                partition_by=FleetGpsPosition.vehicle_id,
-                order_by=(
-                    FleetGpsPosition.recorded_at.desc(),
-                    FleetGpsPosition.received_at.desc(),
-                    FleetGpsPosition.gps_position_id.desc(),
-                ),
-            )
-            .label("rn"),
-        )
+    # Dernière position de CHAQUE véhicule par une lecture indexée (ix_fgp_latest : tenant, véhicule,
+    # recorded_at DESC) : coût proportionnel au nombre de véhicules, et non à tout l'historique conservé
+    # (l'ancienne fonction de fenêtre lisait et triait toutes les positions de la société).
+    # Même départage qu'avant (recorded_at, received_at, identifiant) ; la position retenue reste exclue si
+    # elle a été relevée sur un autre site que le site actuel du véhicule.
+    latest = (
+        select(FleetGpsPosition.gps_position_id)
         .where(
-            FleetGpsPosition.tenant_id == auth.tenant_id,
+            FleetGpsPosition.tenant_id == Vehicle.tenant_id,
+            FleetGpsPosition.vehicle_id == Vehicle.vehicle_id,
             FleetGpsPosition.recorded_at <= as_of + timedelta(minutes=2),
         )
-        .subquery()
+        .order_by(
+            FleetGpsPosition.recorded_at.desc(),
+            FleetGpsPosition.received_at.desc(),
+            FleetGpsPosition.gps_position_id.desc(),
+        )
+        .limit(1)
+        .correlate(Vehicle)
+        .lateral("latest")
     )
     statement = (
         select(FleetGpsPosition)
-        .join(
-            Vehicle,
-            (Vehicle.tenant_id == FleetGpsPosition.tenant_id)
-            & (Vehicle.vehicle_id == FleetGpsPosition.vehicle_id)
-            & (Vehicle.site_id == FleetGpsPosition.site_id),
+        .select_from(Vehicle)
+        .join(latest, true())
+        .join(FleetGpsPosition, FleetGpsPosition.gps_position_id == latest.c.gps_position_id)
+        .where(
+            Vehicle.tenant_id == auth.tenant_id,
+            FleetGpsPosition.tenant_id == auth.tenant_id,
+            FleetGpsPosition.site_id == Vehicle.site_id,
         )
-        .join(ranked, FleetGpsPosition.gps_position_id == ranked.c.position_id)
-        .where(ranked.c.rn == 1, FleetGpsPosition.tenant_id == auth.tenant_id)
         .order_by(FleetGpsPosition.vehicle_id)
     )
     rows = auth.db.execute(statement).scalars().all()
