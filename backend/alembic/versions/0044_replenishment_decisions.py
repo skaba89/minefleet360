@@ -25,9 +25,12 @@ ALTER TABLE spare_part_replenishment
   );
 """
 DOWNGRADE = r"""
+-- RLS forcée levée le temps de la reprise multi-tenant (sinon aucune ligne n'est visible), puis rétablie.
+ALTER TABLE spare_part_replenishment NO FORCE ROW LEVEL SECURITY;
 UPDATE spare_part_replenishment
 SET status = 'SUBMITTED', decision_by = NULL, decided_at = NULL, decision_note = NULL
 WHERE status IN ('APPROVED', 'REJECTED');
+ALTER TABLE spare_part_replenishment FORCE ROW LEVEL SECURITY;
 ALTER TABLE spare_part_replenishment
   DROP CONSTRAINT ck_replenishment_decision_consistency,
   DROP COLUMN decision_by,
