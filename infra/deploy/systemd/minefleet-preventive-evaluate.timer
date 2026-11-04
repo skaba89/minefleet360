@@ -1,0 +1,11 @@
+[Unit]
+Description=Evaluate MineFleet 360 preventive dues once a day (05:30 server time, before the HSE digest)
+
+[Timer]
+OnCalendar=*-*-* 05:30:00
+Persistent=true
+RandomizedDelaySec=120
+Unit=minefleet-preventive-evaluate.service
+
+[Install]
+WantedBy=timers.target

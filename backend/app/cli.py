@@ -9,6 +9,7 @@ minefleet purge-gps [--days N] [--apply]
     (MF_GPS_RETENTION_DAYS, 180 par défaut, 7 minimum). Seule commande exécutée avec le propriétaire du schéma
     (MF_OWNER_PASSWORD), comme les migrations : la fonction de purge n'est pas accessible au rôle applicatif.
 minefleet send-hse-digest [--dry-run]
+minefleet evaluate-preventive [--dry-run]
     Récapitulatif HSE quotidien par e-mail (actions en retard ou proches, incidents graves ouverts), par
     société, audité ; --dry-run compte les messages sans rien envoyer. À planifier une fois par jour.
 minefleet demo seed --profile small|standard|large [--seed 42] [--anchor AAAA-MM-JJ] --credentials-out <f>
@@ -202,6 +203,44 @@ def send_hse_digest(dry_run: bool) -> int:
     return 1 if failures else 0
 
 
+def evaluate_preventive(dry_run: bool) -> int:
+    """Tâche quotidienne : échéances préventives de chaque société active (acteur SYSTEM, idempotent)."""
+    from app.maintenance.preventive_daily import evaluate_tenant_dues
+    from app.organization.models import Tenant
+
+    now = SystemClock().now()
+    db = new_session()
+    created = due = failures = 0
+    try:
+        set_tenant_context(db, PLATFORM_TENANT_ID)
+        tenants = list(
+            db.execute(
+                select(Tenant.tenant_id).where(Tenant.kind == "CUSTOMER", Tenant.status == "ACTIVE")
+            ).scalars()
+        )
+        db.commit()
+        for tenant_id in tenants:
+            # Une société en échec n'empêche pas les suivantes ; sa transaction est annulée.
+            try:
+                set_tenant_context(db, tenant_id)
+                summary = evaluate_tenant_dues(db, tenant_id, now, dry_run=dry_run)
+                if dry_run:
+                    db.rollback()
+                else:
+                    db.commit()
+                created += summary.created
+                due += summary.due_now
+            except SQLAlchemyError:
+                db.rollback()
+                failures += 1
+                print(f"Échec de l'évaluation préventive pour une société ({tenant_id}).", file=sys.stderr)
+    finally:
+        db.close()
+    mode = " (simulation : rien n'est enregistré)" if dry_run else ""
+    print(f"Échéances préventives dues : {due} ; créées : {created} ; sociétés en échec : {failures}{mode}")
+    return 1 if failures else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="minefleet")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -214,6 +253,8 @@ def main(argv: list[str] | None = None) -> int:
     purge.add_argument("--apply", action="store_true")
     digest = sub.add_parser("send-hse-digest")
     digest.add_argument("--dry-run", action="store_true")
+    preventive = sub.add_parser("evaluate-preventive")
+    preventive.add_argument("--dry-run", action="store_true")
     reset = sub.add_parser("reset-platform-mfa")
     reset.add_argument("--email", required=True)
     from app.demo import cli as demo_cli
@@ -234,6 +275,8 @@ def main(argv: list[str] | None = None) -> int:
         return purge_gps(args.days, args.apply)
     if args.command == "send-hse-digest":
         return send_hse_digest(args.dry_run)
+    if args.command == "evaluate-preventive":
+        return evaluate_preventive(args.dry_run)
     if args.command == "reset-platform-mfa":
         return reset_platform_mfa(args.email)
     return 1
