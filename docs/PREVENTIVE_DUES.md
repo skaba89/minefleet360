@@ -65,3 +65,18 @@ Vérifié par deux parcours PostgreSQL/API :
   (`PLAN_LOT3B_PREVENTIF.md`).
 - La vraisemblance des hausses entre deux relevés est déjà contrôlée à la saisie (D-43) ; aucune autre détection
   d'anomalie n'est ajoutée ici.
+
+## Tranche B2 : bouton « Évaluer les échéances » et liste du site
+
+| Élément | Détail |
+|---|---|
+| `POST /preventive-dues/evaluate` (`maintenance.preventive.manage`) | corps `{site_id?}` : sans site, toute la portée de l'utilisateur (société, ou ses sites). Réutilise le calcul de l'état (jalon validé + relevés) et l'enregistrement idempotent `persist_due` : relancer ne crée **aucun doublon** (`uq_maintenance_due_idempotence`). **Aucun OT créé** : l'atelier planifie ensuite. Réponse : plans évalués, échéances dues, créées, déjà enregistrées, à venir, en information insuffisante. Audit de chaque échéance créée (`maintenance.due.create`) et du résumé (`maintenance.due.evaluate`) |
+| `GET /preventive-dues` (`maintenance.preventive.read`) | `site_id`, `status` ou `open_only` (dues + OT planifié), paginé ; engin, plan, déclencheur, échéance, OT. Portée site et société ; un site d'une autre société → 404 |
+| Écran | page Préventif, section « Échéances à traiter » : bouton « Évaluer les échéances » avec résumé, liste avec lien vers l'engin, « Planifier l'entretien » ou lien vers l'OT |
+| Transaction | tout le lot est enregistré dans **une seule transaction** (`persist_due(..., commit=False)`) : le contexte société, transactionnel, reste valable du début à la fin ; un échec annule le lot, et la relance est sans risque |
+
+**Vérifié sur une copie du jeu `large`** (demo-bauxite, 48 plans déclarés et approuvés) : la première évaluation
+crée **48 échéances en 0,85 s** (36 par les heures moteur, 12 entretiens initiaux) ; le rejeu en crée 0 (48 déjà
+enregistrées, 0,6 s) ; la liste du site en renvoie 48.
+
+Reste : la tâche quotidienne (C), qui appellera `evaluate_site_dues` pour chaque société avec un compte technique.

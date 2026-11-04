@@ -113,3 +113,31 @@ class PreventivePlanStatusOut(BaseModel):
     remaining_hours: Decimal | None
     km_reliable: bool
     hours_reliable: bool
+
+
+class PreventiveEvaluateIn(StrictModel):
+    site_id: uuid.UUID | None = None
+
+
+class PreventiveEvaluationOut(BaseModel):
+    plans_evaluated: int
+    due_now: int
+    created: int
+    already_recorded: int
+    upcoming: int
+    insufficient_data: int
+
+
+class SiteDueOut(BaseModel):
+    maintenance_due_id: uuid.UUID
+    maintenance_plan_id: uuid.UUID
+    plan_code: str
+    vehicle_id: uuid.UUID
+    fleet_number: str
+    site_id: uuid.UUID
+    trigger_kind: Literal["KM", "HOURS", "DAYS", "INITIAL"]
+    status: Literal["DUE", "SCHEDULED", "COMPLETED", "CANCELLED"]
+    due_on: date | None
+    due_meter: Decimal | None
+    evaluated_at: datetime
+    work_order_id: uuid.UUID | None

@@ -17,7 +17,7 @@ interface PreventiveDue {
   work_order_id: string | null;
 }
 
-const TRIGGER_LABEL: Record<PreventiveDue["trigger_kind"], string> = {
+export const TRIGGER_LABEL: Record<PreventiveDue["trigger_kind"], string> = {
   KM: "Kilomètres",
   HOURS: "Heures moteur",
   DAYS: "Calendrier",

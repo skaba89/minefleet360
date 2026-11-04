@@ -19,11 +19,14 @@ from app.maintenance.preventive_models import MaintenanceDue, MaintenancePlan
 MANAGE_PERMISSION = "maintenance.preventive.manage"
 
 
-def persist_due(auth: Authorized, plan_id: uuid.UUID, candidate: DueCandidate) -> bool:
+def persist_due(
+    auth: Authorized, plan_id: uuid.UUID, candidate: DueCandidate, *, commit: bool = True
+) -> bool:
     """Insérer au plus une échéance par (tenant, plan, cycle).
 
     Retourne True si créée, False si déjà présente. L'unicité PostgreSQL
     protège les exécutions concurrentes, y compris sur plusieurs workers.
+    `commit=False` : l'appelant (évaluation par lot) valide une seule transaction pour tout le lot.
     """
     if auth.scope.permission != MANAGE_PERMISSION:
         raise AppError("PERMISSION_DENIED")
@@ -80,5 +83,6 @@ def persist_due(auth: Authorized, plan_id: uuid.UUID, candidate: DueCandidate) -
         entity_id=inserted_id,
         changed_fields=("trigger_kind", "trigger_key", "due_on", "due_meter"),
     )
-    auth.db.commit()
+    if commit:
+        auth.db.commit()
     return True

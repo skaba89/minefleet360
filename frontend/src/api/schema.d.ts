@@ -2022,6 +2022,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/preventive-dues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Preventive Dues */
+        get: operations["list_preventive_dues_api_v1_preventive_dues_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/preventive-dues/evaluate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Evaluate Preventive Dues */
+        post: operations["evaluate_preventive_dues_api_v1_preventive_dues_evaluate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/preventive-dues/{due_id}/schedule": {
         parameters: {
             query?: never;
@@ -6222,6 +6256,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[SiteDueOut] */
+        Page_SiteDueOut_: {
+            /** Items */
+            items: components["schemas"]["SiteDueOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[SiteOut] */
         Page_SiteOut_: {
             /** Items */
@@ -6740,6 +6785,26 @@ export interface components {
             vehicle_id: string;
             /** Work Order Id */
             work_order_id: string | null;
+        };
+        /** PreventiveEvaluateIn */
+        PreventiveEvaluateIn: {
+            /** Site Id */
+            site_id?: string | null;
+        };
+        /** PreventiveEvaluationOut */
+        PreventiveEvaluationOut: {
+            /** Already Recorded */
+            already_recorded: number;
+            /** Created */
+            created: number;
+            /** Due Now */
+            due_now: number;
+            /** Insufficient Data */
+            insufficient_data: number;
+            /** Plans Evaluated */
+            plans_evaluated: number;
+            /** Upcoming */
+            upcoming: number;
         };
         /** PreventivePlanCreate */
         PreventivePlanCreate: {
@@ -7334,6 +7399,54 @@ export interface components {
             site_type: "MINE" | "QUARRY" | "WORKSHOP" | "DEPOT" | "PORT" | "OFFICE";
             /** Timezone */
             timezone?: string | null;
+        };
+        /** SiteDueOut */
+        SiteDueOut: {
+            /** Due Meter */
+            due_meter: string | null;
+            /** Due On */
+            due_on: string | null;
+            /**
+             * Evaluated At
+             * Format: date-time
+             */
+            evaluated_at: string;
+            /** Fleet Number */
+            fleet_number: string;
+            /**
+             * Maintenance Due Id
+             * Format: uuid
+             */
+            maintenance_due_id: string;
+            /**
+             * Maintenance Plan Id
+             * Format: uuid
+             */
+            maintenance_plan_id: string;
+            /** Plan Code */
+            plan_code: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "DUE" | "SCHEDULED" | "COMPLETED" | "CANCELLED";
+            /**
+             * Trigger Kind
+             * @enum {string}
+             */
+            trigger_kind: "KM" | "HOURS" | "DAYS" | "INITIAL";
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+            /** Work Order Id */
+            work_order_id: string | null;
         };
         /** SiteOut */
         SiteOut: {
@@ -13811,6 +13924,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ServiceDeclarationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_preventive_dues_api_v1_preventive_dues_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                status?: ("DUE" | "SCHEDULED" | "COMPLETED" | "CANCELLED") | null;
+                open_only?: boolean;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_SiteDueOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    evaluate_preventive_dues_api_v1_preventive_dues_evaluate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreventiveEvaluateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreventiveEvaluationOut"];
                 };
             };
             /** @description Validation Error */
