@@ -64,6 +64,8 @@ class PreventiveCompletionMeterOut(BaseModel):
     meter_kind: Literal["ODOMETER_KM", "HOUR_METER"]
     frozen_total: Decimal | None = None
     approvals: list[PreventiveApprovalChoiceOut]
+    # Cumul figé sans approbation : jalon précédent + relevés (ou dernier relevé) ; None sans relevé.
+    computed_total: Decimal | None = None
 
 
 class PreventiveCompletionContextOut(BaseModel):

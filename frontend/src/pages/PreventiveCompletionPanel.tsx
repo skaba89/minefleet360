@@ -22,6 +22,7 @@ interface CompletionContext {
     meter_kind: MeterKind;
     frozen_total: string | number | null;
     approvals: ApprovalChoice[];
+    computed_total?: string | number | null;
   }[];
 }
 
@@ -61,7 +62,8 @@ export function PreventiveCompletionPanel({ order, allowed, timeZone }: Props) {
   const data = context.data;
   const ready = data?.meters.every((meter) =>
     meter.frozen_total !== null ||
-    meter.approvals.some((approval) => approval.approval_id === selected[meter.meter_kind]),
+    meter.approvals.some((approval) => approval.approval_id === selected[meter.meter_kind]) ||
+    (meter.computed_total ?? null) !== null,
   ) ?? false;
 
   async function complete(event: FormEvent<HTMLFormElement>) {
@@ -73,9 +75,11 @@ export function PreventiveCompletionPanel({ order, allowed, timeZone }: Props) {
     setMessage(null);
     const body: { odometer_approval_id?: string; hour_meter_approval_id?: string } = {};
     for (const meter of data.meters) {
-      if (meter.frozen_total !== null) continue;
-      if (meter.meter_kind === "ODOMETER_KM") body.odometer_approval_id = selected.ODOMETER_KM;
-      else body.hour_meter_approval_id = selected.HOUR_METER;
+      const choice = selected[meter.meter_kind];
+      // Sans approbation choisie, le serveur fige le cumul calculé (jalon précédent + relevés).
+      if (meter.frozen_total !== null || !choice) continue;
+      if (meter.meter_kind === "ODOMETER_KM") body.odometer_approval_id = choice;
+      else body.hour_meter_approval_id = choice;
     }
     try {
       const response = await request<{ changed: boolean; status: "COMPLETED" }>(
@@ -127,22 +131,36 @@ export function PreventiveCompletionPanel({ order, allowed, timeZone }: Props) {
                         <p>{METERS[meter.meter_kind]} : {meter.frozen_total} — preuve déjà figée.</p>
                       ) : (
                         <>
-                          <label>
-                            {METERS[meter.meter_kind]}
-                            <select required value={selected[meter.meter_kind] ?? ""} onChange={(event) => {
-                              setSelected({ ...selected, [meter.meter_kind]: event.target.value });
-                              setConfirmed(false);
-                            }}>
-                              <option value="">— Choisir une approbation —</option>
-                              {meter.approvals.map((approval) => (
-                                <option key={approval.approval_id} value={approval.approval_id}>
-                                  {approval.cumulative_total} · approuvé le {formatDateTime(approval.approved_at, timeZone)}
+                          {(meter.computed_total ?? null) !== null && (
+                            <p>
+                              {METERS[meter.meter_kind]} à la clôture : <strong>{meter.computed_total}</strong> — calculé depuis le
+                              dernier jalon validé et les relevés.
+                            </p>
+                          )}
+                          {meter.approvals.length > 0 && (
+                            <label>
+                              {(meter.computed_total ?? null) !== null ? "Ou utiliser une approbation" : METERS[meter.meter_kind]}
+                              <select
+                                required={(meter.computed_total ?? null) === null}
+                                value={selected[meter.meter_kind] ?? ""}
+                                onChange={(event) => {
+                                  setSelected({ ...selected, [meter.meter_kind]: event.target.value });
+                                  setConfirmed(false);
+                                }}
+                              >
+                                <option value="">
+                                  {(meter.computed_total ?? null) !== null ? "— Garder le cumul calculé —" : "— Choisir une approbation —"}
                                 </option>
-                              ))}
-                            </select>
-                          </label>
-                          {meter.approvals.length === 0 && (
-                            <p role="alert">Aucune approbation utilisable à la clôture pour ce compteur. Faites examiner le dossier de réconciliation.</p>
+                                {meter.approvals.map((approval) => (
+                                  <option key={approval.approval_id} value={approval.approval_id}>
+                                    {approval.cumulative_total} · approuvé le {formatDateTime(approval.approved_at, timeZone)}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          )}
+                          {meter.approvals.length === 0 && (meter.computed_total ?? null) === null && (
+                            <p role="alert">Aucun relevé de ce compteur avant la clôture : enregistrez un relevé pour finaliser.</p>
                           )}
                         </>
                       )}

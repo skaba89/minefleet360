@@ -7,6 +7,7 @@ l'échéance et valide l'ensemble dans un seul commit.
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import select
 
@@ -14,13 +15,16 @@ from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.core.errors import AppError
 from app.maintenance.models import WorkOrder
+from app.maintenance.preventive_closure_meters import closure_totals
 from app.maintenance.preventive_models import (
     MaintenanceDue,
     MaintenancePlan,
     ServiceMeterBaseline,
 )
 from app.maintenance.preventive_service_baseline_persist import (
+    MAX_TOTAL,
     METER_KINDS,
+    record_computed_meter_baseline,
     record_service_meter_baseline,
 )
 
@@ -102,7 +106,7 @@ def complete_preventive_due(
     if plan is None:
         raise AppError("STATE_TRANSITION_INVALID")
 
-    existing: dict[str, uuid.UUID] = {
+    existing: dict[str, uuid.UUID | None] = {
         meter_kind: approval_id
         for meter_kind, approval_id in auth.db.execute(
             select(
@@ -129,9 +133,19 @@ def complete_preventive_due(
 
     effective_kinds = existing.keys() | requested.keys()
     missing_kinds = _required_meter_kinds(plan) - effective_kinds
+    computed: dict[str, Decimal] = {}
+    if missing_kinds and due.status != "COMPLETED":
+        # Sans approbation fournie : cumul calculé depuis le jalon précédent et les relevés (0059).
+        totals = closure_totals(auth.db, auth.tenant_id, order.vehicle_id, plan.code, order.closed_at)
+        for kind in sorted(missing_kinds):
+            value = totals.get(kind)
+            if value is not None and value.is_finite() and Decimal(0) <= value < MAX_TOTAL:
+                computed[kind] = value
+        missing_kinds -= computed.keys()
     if missing_kinds:
         raise AppError(
             "STATE_TRANSITION_INVALID",
+            message_fr="Aucun relevé de compteur avant la clôture : enregistrez un relevé pour finaliser.",
             details={"missing_meter_kinds": sorted(missing_kinds)},
         )
 
@@ -153,6 +167,9 @@ def complete_preventive_due(
             requested[meter_kind],
             as_of=as_of,
         )
+
+    for meter_kind, total in computed.items():
+        record_computed_meter_baseline(auth, order, due, meter_kind, total)
 
     due.status = "COMPLETED"
     auth.db.flush()

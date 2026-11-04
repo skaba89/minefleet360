@@ -102,7 +102,9 @@ class ServiceMeterBaseline(Base):
     site_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     meter_kind: Mapped[str] = mapped_column(String, nullable=False)
     cumulative_total: Mapped[Decimal] = mapped_column(Numeric(12, 1), nullable=False)
-    reconciliation_approval_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    # NULL quand le cumul est calculé depuis le jalon et les relevés (source READINGS, migration 0059).
+    reconciliation_approval_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    source: Mapped[str] = mapped_column(String, nullable=False, server_default="APPROVAL")
     serviced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     recorded_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     recorded_at: Mapped[datetime] = mapped_column(

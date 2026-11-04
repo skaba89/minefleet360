@@ -81,13 +81,24 @@ describe("finalisation préventive en atelier", () => {
     ));
   });
 
-  it("bloque une preuve requise manquante", async () => {
-    vi.mocked(get).mockResolvedValue({ ...calendar, meters: [{ meter_kind: "ODOMETER_KM", frozen_total: null, approvals: [] }] });
+  it("bloque une preuve requise manquante (ni approbation ni relevé)", async () => {
+    vi.mocked(get).mockResolvedValue({ ...calendar, meters: [{ meter_kind: "ODOMETER_KM", frozen_total: null, approvals: [], computed_total: null }] });
     show();
-    await screen.findByText(/Aucune approbation utilisable/);
+    await screen.findByText(/Aucun relevé de ce compteur avant la clôture/);
     fireEvent.click(screen.getByRole("checkbox"));
     expect((screen.getByRole("button", { name: "Finaliser l'échéance" }) as HTMLButtonElement).disabled).toBe(true);
     expect(request).not.toHaveBeenCalled();
+  });
+
+  it("finalise sans approbation avec le cumul calculé depuis le jalon", async () => {
+    vi.mocked(get).mockResolvedValue({ ...calendar, meters: [{ meter_kind: "ODOMETER_KM", frozen_total: null, approvals: [], computed_total: "15230.0" }] });
+    show();
+    await screen.findByText("15230.0");
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Finaliser l'échéance" }));
+    await waitFor(() =>
+      expect(request).toHaveBeenCalledWith("/work-orders/ot-fictif/complete-preventive", { method: "POST", body: {} }),
+    );
   });
 
   it("réutilise une preuve figée même si son total est zéro", async () => {

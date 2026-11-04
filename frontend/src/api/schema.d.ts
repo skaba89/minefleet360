@@ -6677,6 +6677,8 @@ export interface components {
         PreventiveCompletionMeterOut: {
             /** Approvals */
             approvals: components["schemas"]["PreventiveApprovalChoiceOut"][];
+            /** Computed Total */
+            computed_total?: string | null;
             /** Frozen Total */
             frozen_total?: string | null;
             /**
