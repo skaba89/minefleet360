@@ -66,9 +66,14 @@ Content-Type: application/json
   "longitude": -13.7,
   "accuracy_m": 10.0,
   "speed_kmh": 20.0,
+  "heading_deg": 135.0,
   "recorded_at": "2026-10-29T12:00:00Z"
 }
 ```
+
+`heading_deg` (facultatif, depuis la migration 0060) : cap **mesuré** par le traceur, en degrés de 0 (inclus,
+nord) à 360 (exclu), sens horaire. Un traceur qui ne mesure pas le cap omet le champ : l'API ne le calcule
+jamais. Valeur hors bornes → 422.
 
 Les coordonnées de cet exemple sont fictives. La séquence doit croître pour chaque message
 de la liaison, y compris après redémarrage du traceur. Le tenant, le site et le véhicule sont

@@ -4845,6 +4845,8 @@ export interface components {
         GpsLatestPositionOut: {
             /** Accuracy M */
             accuracy_m: number | null;
+            /** Heading Deg */
+            heading_deg?: number | null;
             /** Latitude */
             latitude: number;
             /** Longitude */
@@ -6620,6 +6622,8 @@ export interface components {
         PhonePointIn: {
             /** Accuracy M */
             accuracy_m: number;
+            /** Heading Deg */
+            heading_deg?: number | null;
             /** Latitude */
             latitude: number;
             /** Longitude */
@@ -7827,6 +7831,8 @@ export interface components {
         TrackPoint: {
             /** Accuracy M */
             accuracy_m: number | null;
+            /** Heading Deg */
+            heading_deg?: number | null;
             /** Late */
             late: boolean;
             /** Latitude */

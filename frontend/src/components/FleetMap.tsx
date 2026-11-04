@@ -1,13 +1,10 @@
-import "maplibre-gl/dist/maplibre-gl.css";
-
 import * as maplibregl from "maplibre-gl";
 import type { GeoJSONSource, Map as MapLibreMap, Marker } from "maplibre-gl";
-import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
-import { Protocol } from "pmtiles";
 import { useEffect, useRef, useState } from "react";
 
-import { basemapAvailable, mapStyle } from "../lib/basemap";
 import type { GpsSignalState } from "../lib/gpsSignal";
+import { createMap, reducedMotion } from "../lib/maplibre";
+import { compass } from "../lib/replay";
 
 /** Engin à afficher : position **mesurée** (jamais estimée), état du signal et textes déjà formatés. */
 export interface MapVehicle {
@@ -19,6 +16,8 @@ export interface MapVehicle {
   stateLabel: string;
   speedText: string;
   recordedText: string;
+  /** Cap **mesuré** par l'équipement (degrés, 0 = nord) ; null s'il n'est pas transmis. */
+  headingDeg?: number | null;
 }
 
 export interface MapGeofence {
@@ -27,20 +26,12 @@ export interface MapGeofence {
   coordinates: [number, number][];
 }
 
-const GUINEA_CENTER: [number, number] = [-11.3, 10.4];
 const MOVE_MS = 800;
 /** En dessous de ce zoom, les engins sont des points (étiquette au survol, au focus ou à la sélection). */
 const LABEL_ZOOM = 11;
 
-let protocolRegistered = false;
-maplibregl.setWorkerUrl(workerUrl);
-
 function validPosition(v: MapVehicle): boolean {
   return Number.isFinite(v.latitude) && Number.isFinite(v.longitude) && Math.abs(v.latitude) <= 90 && Math.abs(v.longitude) <= 180;
-}
-
-function reducedMotion(): boolean {
-  return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 /**
@@ -62,8 +53,13 @@ function glide(marker: Marker, to: [number, number]) {
   requestAnimationFrame(step);
 }
 
+function showHeading(v: MapVehicle): v is MapVehicle & { headingDeg: number } {
+  return v.state === "moving" && v.headingDeg != null && Number.isFinite(v.headingDeg);
+}
+
 function markerTitle(v: MapVehicle): string {
-  return `${v.label} · ${v.stateLabel} · ${v.speedText} · position mesurée ${v.recordedText}`;
+  const heading = showHeading(v) ? ` · cap ${Math.round(v.headingDeg)}° (${compass(v.headingDeg)})` : "";
+  return `${v.label} · ${v.stateLabel} · ${v.speedText}${heading} · position mesurée ${v.recordedText}`;
 }
 
 function geofenceData(geofences: MapGeofence[]) {
@@ -100,26 +96,19 @@ export function FleetMap({
 
   useEffect(() => {
     let cancelled = false;
-    void basemapAvailable().then((available) => {
-      if (cancelled || !container.current) return;
-      setWithBasemap(available);
-      if (available && !protocolRegistered) {
-        maplibregl.addProtocol("pmtiles", new Protocol().tile);
-        protocolRegistered = true;
-      }
+    void (async () => {
+      if (!container.current) return;
       try {
-        const map = new maplibregl.Map({
-          container: container.current,
-          style: mapStyle(available),
-          center: GUINEA_CENTER,
-          zoom: 6,
-          attributionControl: { compact: true },
-        });
-        map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+        const { map, withBasemap: available } = await createMap(container.current);
+        if (cancelled) {
+          map.remove();
+          return;
+        }
+        setWithBasemap(available);
         const toggleLabels = () => container.current?.classList.toggle("fleet-map--labels", map.getZoom() >= LABEL_ZOOM);
         map.on("zoomend", toggleLabels);
-        map.on("load", toggleLabels);
         map.on("load", () => {
+          toggleLabels();
           map.addSource("geofences", { type: "geojson", data: geofenceData([]) });
           map.addLayer({ id: "geofences-fill", type: "fill", source: "geofences", paint: { "fill-color": "#2f6fb0", "fill-opacity": 0.08 } });
           map.addLayer({ id: "geofences-line", type: "line", source: "geofences", paint: { "line-color": "#2f6fb0", "line-width": 1.5 } });
@@ -128,9 +117,9 @@ export function FleetMap({
         mapRef.current = map;
       } catch {
         // WebGL indisponible (vieil appareil, navigateur restreint) : la liste des engins reste utilisable.
-        setFailure(true);
+        if (!cancelled) setFailure(true);
       }
-    });
+    })();
     return () => {
       cancelled = true;
       for (const { marker } of markers.current.values()) marker.remove();
@@ -163,7 +152,16 @@ export function FleetMap({
       const text = document.createElement("span");
       text.className = "fleet-marker-label";
       text.textContent = v.label;
-      entry.button.replaceChildren(text);
+      if (showHeading(v)) {
+        // Flèche orientée selon le cap mesuré (jamais affichée si l'équipement ne l'envoie pas).
+        const arrow = document.createElement("span");
+        arrow.className = "fleet-marker-arrow";
+        arrow.setAttribute("aria-hidden", "true");
+        arrow.style.transform = `rotate(${v.headingDeg}deg)`;
+        entry.button.replaceChildren(arrow, text);
+      } else {
+        entry.button.replaceChildren(text);
+      }
       entry.button.title = markerTitle(v);
       entry.button.setAttribute("aria-label", markerTitle(v));
       entry.button.setAttribute("aria-pressed", String(v.id === selectedId));

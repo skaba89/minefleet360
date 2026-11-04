@@ -50,6 +50,7 @@ def persist_validated_gps_position(
             longitude=position.longitude,
             speed_kmh=position.speed_kmh,
             accuracy_m=position.accuracy_m,
+            heading_deg=position.heading_deg,
             recorded_at=position.recorded_at,
             received_at=received_at,
         )

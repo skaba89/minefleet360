@@ -21,6 +21,8 @@ class GpsTelemetryIn(BaseModel):
     sequence: int = Field(ge=0, le=9223372036854775807)
     speed_kmh: float | None = Field(default=None, ge=0, le=250, allow_inf_nan=False)
     accuracy_m: float | None = Field(default=None, ge=0, le=10000, allow_inf_nan=False)
+    # Cap transmis par le traceur (0 = nord, sens horaire) ; absent s'il ne le mesure pas.
+    heading_deg: float | None = Field(default=None, ge=0, lt=360, allow_inf_nan=False)
 
     @field_validator("device_id")
     @classmethod

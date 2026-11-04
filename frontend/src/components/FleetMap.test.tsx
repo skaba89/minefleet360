@@ -125,3 +125,18 @@ it("enregistre le protocole PMTiles quand le fond auto-hébergé est servi", asy
   await screen.findByRole("button", { name: /CAM-01/ });
   expect(screen.queryByText(/Fond de carte non installé/)).toBeNull();
 });
+
+it("oriente une flèche selon le cap mesuré, seulement en mouvement et si l'équipement l'envoie", async () => {
+  render(<FleetMap vehicles={[
+    truck({ headingDeg: 92 }),
+    truck({ id: "v2", label: "CAM-02", headingDeg: null }),
+    truck({ id: "v3", label: "CAM-03", state: "stopped", stateLabel: "À l'arrêt", headingDeg: 180 }),
+  ]} selectedId={null} onSelect={vi.fn()} />);
+  const moving = await screen.findByRole("button", { name: /CAM-01 · En mouvement · 32.0 km\/h · cap 92° \(E\)/ });
+  expect((moving.querySelector(".fleet-marker-arrow") as HTMLElement).style.transform).toBe("rotate(92deg)");
+  for (const name of [/CAM-02/, /CAM-03/]) {
+    const marker = screen.getByRole("button", { name });
+    expect(marker.querySelector(".fleet-marker-arrow")).toBeNull();
+    expect(marker.getAttribute("aria-label")).not.toMatch(/cap/);
+  }
+});

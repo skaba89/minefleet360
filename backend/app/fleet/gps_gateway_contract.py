@@ -34,6 +34,7 @@ class GpsDeviceMessage:
     sequence: int
     speed_kmh: float | None = None
     accuracy_m: float | None = None
+    heading_deg: float | None = None
 
 
 def position_from_trusted_binding(
@@ -64,4 +65,5 @@ def position_from_trusted_binding(
         recorded_at=message.recorded_at,
         speed_kmh=message.speed_kmh,
         accuracy_m=message.accuracy_m,
+        heading_deg=message.heading_deg,
     )

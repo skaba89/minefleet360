@@ -26,6 +26,8 @@ class FleetGpsPosition(Base):
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
     speed_kmh: Mapped[float | None] = mapped_column(Float)
+    # Cap mesuré par l'équipement (0 = nord, sens horaire) ; NULL s'il n'est pas transmis (0060).
+    heading_deg: Mapped[float | None] = mapped_column(Float)
     accuracy_m: Mapped[float | None] = mapped_column(Float)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     received_at: Mapped[datetime] = mapped_column(

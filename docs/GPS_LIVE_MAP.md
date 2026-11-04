@@ -47,10 +47,24 @@
   défilement horizontal à 360 px. Les seules erreurs de console attendues : 401 (tentative de rafraîchissement de
   session avant connexion) et 404 (fond de carte absent).
 
+## Tranche 2 : cap et replay de trajet
+
+| Élément | Détail |
+|---|---|
+| Cap (`heading_deg`, migration 0060) | facultatif, de 0 (inclus, nord) à 360 (exclu), sens horaire. Accepté du traceur (`/gps/telemetry`) et du téléphone (cap du navigateur, transmis seulement s'il est mesuré ; il vaut `null` ou `NaN` à l'arrêt). Validé à l'entrée (hors bornes → 422) et dans le contrat interne. Restitué par les dernières positions et par le trajet. **Jamais calculé par l'API** : un point sans cap reste sans cap |
+| Démonstration | le traceur simulé joue le rôle du boîtier : il transmet le cap de son propre déplacement entre deux de ses points (rien au premier point, rien à l'arrêt) |
+| Carte en direct | flèche orientée selon le cap mesuré, seulement pour un engin en mouvement ; cap et point cardinal dans le libellé accessible (« cap 92° (E) ») |
+| Replay (fiche engin, « Historique de trajet ») | carte du trajet mesuré, **coupé aux interruptions du signal** ; partie déjà parcourue en bleu ; arrêts en orange ; lecture et pause, vitesse ×10 à ×1800, curseur temporel ; heure, vitesse et cap de la dernière mesure |
+| Honnêteté du replay | marqueur **plein** sur une mesure ; **pointillé** et annoncé « Entre deux mesures : position estimée pour l'animation, non mesurée » pendant la lecture entre deux mesures consécutives ; **gris** et « Signal interrompu » dans un trou de signal (aucun glissement à travers un trou). L'heure de la dernière mesure reste toujours affichée |
+| Accès | inchangé : la consultation exige la finalité et reste journalisée (`fleet.gps.track.read`) |
+
+Vérifié en navigateur réel (même montage que la tranche 1, CSP de production, émetteur de démo) : 31 flèches de cap
+sur 31 engins en mouvement ; replay d'un camion de démo : statut « Position mesurée » au départ, puis « Entre deux
+mesures… » avec le marqueur en pointillés pendant la lecture à ×10.
+
 ## Prochaines tranches
 
-1. Cap et direction (stocker le cap envoyé par le boîtier ; ne jamais le calculer et le présenter comme mesuré).
-2. Replay d'un trajet sur la carte (lecture, pause, vitesse ×1 à ×16, arrêts et trous de signal visibles).
-3. Push temps réel (SSE) à la place de l'interrogation, avec la latence de bout en bout mesurée.
-4. Alertes : vitesse, entrée et sortie de zone, perte de signal.
-5. Regroupement des marqueurs proches en vue d'ensemble (au-delà de quelques centaines d'engins).
+1. Push temps réel (SSE) à la place de l'interrogation, avec la latence de bout en bout mesurée.
+2. Alertes : vitesse, entrée et sortie de zone, perte de signal.
+3. Regroupement des marqueurs proches en vue d'ensemble (au-delà de quelques centaines d'engins).
+4. Comparaison de plusieurs engins et export autorisé d'un trajet.

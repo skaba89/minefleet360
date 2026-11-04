@@ -96,6 +96,7 @@ class TrackPoint(BaseModel):
     latitude: float
     longitude: float
     speed_kmh: float | None
+    heading_deg: float | None = None
     accuracy_m: float | None
     recorded_at: datetime
     received_at: datetime
@@ -497,6 +498,7 @@ def vehicle_track(
                 latitude=p.latitude,
                 longitude=p.longitude,
                 speed_kmh=p.speed_kmh,
+                heading_deg=p.heading_deg,
                 accuracy_m=p.accuracy_m,
                 recorded_at=p.recorded_at,
                 received_at=p.received_at,

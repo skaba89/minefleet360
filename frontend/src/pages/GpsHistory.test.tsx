@@ -51,7 +51,7 @@ it("exige une finalité puis affiche zones, arrêts, interruptions et tracé", a
   expect(await screen.findByText(/Entrée : Fosse nord/)).toBeTruthy();
   expect(screen.getByText(/42 min sans position/)).toBeTruthy();
   expect(screen.getByText("Signal perdu")).toBeTruthy();
-  expect(screen.getByRole("img", { name: "Tracé schématique du trajet" })).toBeTruthy();
+  expect(screen.getByRole("region", { name: "Relecture du trajet" })).toBeTruthy();
   client.clear();
 });
 
