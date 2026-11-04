@@ -10,6 +10,7 @@ class PhonePointIn(BaseModel):
     longitude: float = Field(ge=-180, le=180, allow_inf_nan=False, strict=True)
     accuracy_m: float = Field(ge=0, le=10000, allow_inf_nan=False, strict=True)
     speed_kmh: float | None = Field(default=None, ge=0, le=250, allow_inf_nan=False, strict=True)
+    heading_deg: float | None = Field(default=None, ge=0, lt=360, allow_inf_nan=False, strict=True)
     recorded_at: AwareDatetime
 
 

@@ -55,6 +55,21 @@ FUEL = (180.0, 120.0)
 WORKSHOP = (-220.0, -160.0)
 
 
+def bearing_deg(previous: tuple[float, float] | None, lat: float, lon: float) -> float | None:
+    """Cap du traceur simulé entre deux de ses points (0 = nord, sens horaire) ; None sans déplacement.
+
+    Le traceur de démonstration joue le rôle de l'équipement : c'est lui qui « mesure » et transmet son cap,
+    comme le ferait un boîtier réel. L'API ne calcule jamais de cap.
+    """
+    if previous is None or (previous[0] == lat and previous[1] == lon):
+        return None
+    phi1, phi2 = math.radians(previous[0]), math.radians(lat)
+    dlon = math.radians(lon - previous[1])
+    x = math.sin(dlon) * math.cos(phi2)
+    y = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(dlon)
+    return round(math.degrees(math.atan2(x, y)) % 360, 1) % 360
+
+
 def offset(lat: float, lon: float, east_m: float, north_m: float) -> tuple[float, float]:
     return lat + north_m / 111_320.0, lon + east_m / (111_320.0 * math.cos(math.radians(lat)))
 
@@ -206,6 +221,7 @@ class GpsMixin:
                         "recorded_at": recorded.isoformat(),
                         "sequence": tracker.sequence,
                         "speed_kmh": speed,
+                        "heading_deg": bearing_deg(previous, round(lat, 6), round(lon, 6)),
                         "accuracy_m": round(self.rng.uniform(4.0, 12.0), 1),
                     }
                 ).encode()

@@ -5,6 +5,7 @@ import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, ErrorMessage } from "../components/common";
 import { ActionForm, Options } from "../components/forms";
+import { TrackReplay } from "../components/TrackReplay";
 import { label } from "../lib/labels";
 import { can } from "../lib/permissions";
 import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
@@ -31,28 +32,6 @@ export const GEOFENCE_KIND: Record<string, string> = {
 };
 const SIGNAL: Record<string, string> = { FRESH: "Signal récent", STALE: "Signal ancien", LOST: "Signal perdu", NONE: "Aucune position" };
 const SIGNAL_TONE: Record<string, "ok" | "warn" | "bad" | "neutral"> = { FRESH: "ok", STALE: "warn", LOST: "bad", NONE: "neutral" };
-
-/** Tracé schématique (projection plate locale) : aucun fond de carte, aucune donnée envoyée à un tiers. */
-function TrackSketch({ track }: { track: Track }) {
-  const points = track.points;
-  if (points.length < 2) return null;
-  const lats = points.map((p) => p.latitude);
-  const lons = points.map((p) => p.longitude);
-  const [minLat, maxLat, minLon, maxLon] = [Math.min(...lats), Math.max(...lats), Math.min(...lons), Math.max(...lons)];
-  const span = Math.max(maxLat - minLat, maxLon - minLon) || 1e-6;
-  const xy = (p: { latitude: number; longitude: number }) =>
-    `${(((p.longitude - minLon) / span) * 280 + 10).toFixed(1)},${(290 - ((p.latitude - minLat) / span) * 280).toFixed(1)}`;
-  return (
-    <svg viewBox="0 0 300 300" width="300" height="300" role="img" aria-label="Tracé schématique du trajet">
-      <rect x="0" y="0" width="300" height="300" fill="none" stroke="currentColor" strokeOpacity="0.2" />
-      <polyline points={points.map(xy).join(" ")} fill="none" stroke="currentColor" strokeWidth="1.5" />
-      {track.stops.map((s) => {
-        const [x, y] = xy(s).split(",");
-        return <circle key={s.start} cx={x} cy={y} r="5" fill="none" stroke="currentColor" />;
-      })}
-    </svg>
-  );
-}
 
 /** Historique de trajet d'un engin : finalité obligatoire, consultation tracée dans le journal d'audit. */
 export function VehicleTrackPanel({ vehicleId, siteId }: { vehicleId: string; siteId: string }) {
@@ -116,7 +95,7 @@ export function VehicleTrackPanel({ vehicleId, siteId }: { vehicleId: string; si
             <li>{track.ignored_points} position(s) écartée(s) (imprécision supérieure à 100 m ou saut incohérent)</li>
             <li>{track.late_points} position(s) reçue(s) en retard</li>
           </ul>
-          <TrackSketch track={track} />
+          <TrackReplay track={track} timezone={tz} />
           <h3>Entrées et sorties de zones</h3>
           {track.geofence_events.length === 0 ? (
             <p className="muted">Aucune.</p>

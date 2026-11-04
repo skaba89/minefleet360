@@ -15,6 +15,7 @@ class GpsLatestPositionOut(BaseModel):
     latitude: float
     longitude: float
     speed_kmh: float | None
+    heading_deg: float | None = None
     accuracy_m: float | None
     recorded_at: datetime
     received_at: datetime

@@ -209,6 +209,7 @@ def phone_point(auth: Authorized, share_id: uuid.UUID, body: PhonePointIn) -> No
             longitude=body.longitude,
             accuracy_m=body.accuracy_m,
             speed_kmh=body.speed_kmh,
+            heading_deg=body.heading_deg,
             recorded_at=body.recorded_at,
             received_at=now,
         )

@@ -102,11 +102,13 @@ export function PhoneTrackingPage() {
         if (generation.current !== run || !active.current) return;
         navigator.geolocation.getCurrentPosition((position) => {
           if (generation.current !== run || !active.current) return;
-          const { latitude, longitude, accuracy, speed } = position.coords;
+          const { latitude, longitude, accuracy, speed, heading } = position.coords;
           const speedKmh = speed !== null && Number.isFinite(speed) && speed >= 0 && speed <= 250 / 3.6 ? speed * 3.6 : null;
+          // Cap transmis seulement s'il est mesuré (le navigateur renvoie null ou NaN à l'arrêt).
+          const headingDeg = heading !== null && Number.isFinite(heading) && heading >= 0 && heading < 360 ? heading : null;
           const recorded = new Date(position.timestamp).toISOString();
           void request(`/me/gps/shares/${data.phone_share_id}/positions`, { method: "POST", body: {
-            latitude, longitude, accuracy_m: accuracy, speed_kmh: speedKmh, recorded_at: recorded,
+            latitude, longitude, accuracy_m: accuracy, speed_kmh: speedKmh, heading_deg: headingDeg, recorded_at: recorded,
           } }).then(() => {
             if (generation.current !== run) return;
             setLastSent(recorded); setError(null); setMessage(`Partage actif · précision ±${Math.round(accuracy)} m`);

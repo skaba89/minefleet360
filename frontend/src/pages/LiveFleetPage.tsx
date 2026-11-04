@@ -17,6 +17,7 @@ interface GpsPosition {
   latitude: number;
   longitude: number;
   speed_kmh: number | null;
+  heading_deg?: number | null;
   accuracy_m: number | null;
   recorded_at: string;
   received_at: string;
@@ -70,6 +71,7 @@ export function LiveFleetPage() {
           stateLabel: GPS_SIGNAL_LABEL[state],
           speedText: state === "offline" || state === "unknown" ? "vitesse inconnue" : `${point.speed_kmh!.toFixed(1)} km/h`,
           recordedText: Number.isFinite(Date.parse(point.recorded_at)) ? formatDateTime(point.recorded_at, timezoneOf(point.site_id)) : "—",
+          headingDeg: point.heading_deg ?? null,
         };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps

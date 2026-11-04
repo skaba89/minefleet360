@@ -27,7 +27,7 @@ from sqlalchemy import select
 from app.core.clock import SystemClock
 from app.core.config import Settings, get_settings
 from app.demo.catalog import TENANTS
-from app.demo.gps import DUMP, LOAD, PARK, SITE_CENTERS, offset
+from app.demo.gps import DUMP, LOAD, PARK, SITE_CENTERS, bearing_deg, offset
 from app.demo.guards import DemoRefused, ensure_demo_database
 from app.demo.runtime import as_actor, call
 from app.demo.verify import _tenant
@@ -61,6 +61,7 @@ class Emitter:
     phase_min: float
     active_from: datetime
     sequence: int = 0
+    last: tuple[float, float] | None = None
 
 
 @dataclass
@@ -160,12 +161,16 @@ def prepare(settings: Settings | None = None) -> list[Emitter]:
 def tick(emitters: list[Emitter], send: Sender, now: datetime, start: datetime, report: FeedReport) -> None:
     for e in emitters:
         lat, lon, speed = position(e, now, start)
+        lat, lon = round(lat, 6), round(lon, 6)
+        heading = bearing_deg(e.last, lat, lon)
+        e.last = (lat, lon)
         e.sequence += 1
         payload = json.dumps(
             {
                 "device_id": e.device_id,
-                "latitude": round(lat, 6),
-                "longitude": round(lon, 6),
+                "latitude": lat,
+                "longitude": lon,
+                "heading_deg": heading,
                 # Jamais avant l'activation du traceur renouvelé (refus anti-attribution, GPS-23).
                 "recorded_at": max(now - timedelta(seconds=2), e.active_from).isoformat(),
                 "sequence": e.sequence,

@@ -19,6 +19,7 @@ class GpsPosition:
     recorded_at: datetime
     speed_kmh: float | None = None
     accuracy_m: float | None = None
+    heading_deg: float | None = None
 
 
 def valid_gps_position(position: GpsPosition, *, received_at: datetime) -> bool:
@@ -37,6 +38,10 @@ def valid_gps_position(position: GpsPosition, *, received_at: datetime) -> bool:
         return False
     if position.speed_kmh is not None and (
         not math.isfinite(position.speed_kmh) or not 0 <= position.speed_kmh <= 250
+    ):
+        return False
+    if position.heading_deg is not None and (
+        not math.isfinite(position.heading_deg) or not 0 <= position.heading_deg < 360
     ):
         return False
     if position.accuracy_m is not None and (

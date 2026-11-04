@@ -143,3 +143,11 @@ pre { white-space:pre-wrap; word-break:break-word; background:var(--bg); border-
 .fleet-marker:focus-visible { outline:3px solid var(--focus); outline-offset:2px; }
 .fleet-marker-label { display:none; }.fleet-map--labels .fleet-marker, .fleet-marker--selected, .fleet-marker:hover, .fleet-marker:focus-visible { padding:.15rem .45rem; }
 .fleet-map--labels .fleet-marker-label, .fleet-marker--selected .fleet-marker-label, .fleet-marker:hover .fleet-marker-label, .fleet-marker:focus-visible .fleet-marker-label { display:inline; }
+.fleet-marker { display:inline-flex; align-items:center; justify-content:center; gap:.2rem; }
+.fleet-marker-arrow { display:inline-block; width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-bottom:9px solid currentColor; }
+/* Relecture de trajet : marqueur plein = mesure, pointillé = entre deux mesures, gris = signal interrompu. */
+.track-replay { padding:.5rem; }.track-replay-canvas { width:100%; height:clamp(300px,50vh,560px); border-radius:5px; overflow:hidden; }
+.track-replay-controls { display:flex; flex-wrap:wrap; align-items:end; gap:.8rem; margin:.7rem 0 .3rem; }.track-replay-slider { flex:1 1 220px; }.track-replay-slider input { width:100%; }
+.track-replay-status { margin:.3rem 0; }
+.replay-marker { width:18px; height:18px; border-radius:50%; background:#0667df; border:3px solid #fff; box-shadow:0 1px 4px rgba(19,35,56,.4); }
+.replay-marker--interpolated { background:#fff; border:3px dashed #0667df; }.replay-marker--gap { background:#8a99ab; }
