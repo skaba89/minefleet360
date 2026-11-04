@@ -1,0 +1,15 @@
+[Unit]
+Description=MineFleet 360 daily preventive maintenance due evaluation (idempotent, SYSTEM actor)
+Documentation=file:/opt/minefleet/docs/PREVENTIVE_DUES.md
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+# La commande s'exécute dans un conteneur éphémère de l'image API (rôle applicatif mf_app, jamais le propriétaire).
+# Adapter le répertoire et les fichiers compose au déploiement réel avant activation.
+WorkingDirectory=/opt/minefleet/infra/deploy
+ExecStart=/usr/bin/docker compose -f docker-compose.prod.yml --env-file .env.prod run --rm --no-deps api minefleet evaluate-preventive
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=600

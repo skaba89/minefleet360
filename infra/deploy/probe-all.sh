@@ -20,6 +20,7 @@ run_check() {
 
 run_check "PostgreSQL" "./probe-database.sh"
 run_check "Local backup freshness" "./probe-backup-freshness.sh"
+run_check "Scheduled jobs (HSE digest, preventive dues)" "./probe-scheduled-jobs.sh"
 if [[ -n "${MINEFLEET_BASE_URL:-}" ]]; then
   run_check "External HTTPS API" "./probe-health.sh"
 else

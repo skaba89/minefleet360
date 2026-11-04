@@ -79,4 +79,18 @@ Vérifié par deux parcours PostgreSQL/API :
 crée **48 échéances en 0,85 s** (36 par les heures moteur, 12 entretiens initiaux) ; le rejeu en crée 0 (48 déjà
 enregistrées, 0,6 s) ; la liste du site en renvoie 48.
 
-Reste : la tâche quotidienne (C), qui appellera `evaluate_site_dues` pour chaque société avec un compte technique.
+## Tranche C : tâche quotidienne
+
+| Élément | Détail |
+|---|---|
+| Commande | `minefleet evaluate-preventive [--dry-run]` : chaque société active, sous son propre contexte (RLS), avec le **rôle applicatif** (`mf_app`, jamais le propriétaire), dans un conteneur éphémère de l'image API (même modèle que le digest HSE) |
+| Règles | même calcul et même insertion idempotente que le bouton (`insert_due`, partagé) : la tâche et le bouton ne créent jamais de doublon, quel que soit l'ordre. Aucun OT créé |
+| Identité | aucun utilisateur : l'audit porte l'acteur `SYSTEM` (`maintenance.due.create`, `maintenance.due.evaluate` avec le résumé) |
+| Échec | une société en échec est annulée sans bloquer les autres ; la commande sort en code 1, le service systemd passe en échec |
+| Planification | `infra/deploy/systemd/minefleet-preventive-evaluate.{service,timer}` : tous les jours à 05:30 (heure du serveur), avant le digest HSE de 06:30 |
+| Supervision | nouvelle sonde `probe-scheduled-jobs.sh` (incluse dans `probe-all.sh`) : alerte si le service échoue ou n'a pas tourné depuis 26 h ; couvre aussi le digest HSE, jusqu'ici non surveillé |
+| Simulation | `--dry-run` : compte les échéances sans rien enregistrer ni auditer |
+
+Activation (exploitation, non faite) : lancer une fois `docker compose … run --rm api minefleet evaluate-preventive
+--dry-run`, copier les deux fichiers systemd, adapter `WorkingDirectory`, `systemctl enable --now
+minefleet-preventive-evaluate.timer`, puis ajouter l'unité à `MF_SCHEDULED_UNITS` dans `monitor.env`.
