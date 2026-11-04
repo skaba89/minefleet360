@@ -5,6 +5,7 @@ tenants fictifs, avec des codes uniques. Le PLATFORM_ADMIN est unique pour la se
 """
 
 import os
+import time
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -108,6 +109,7 @@ class Api:
         self.client = client
         self.outbox = outbox
         self._platform: dict[str, str] | None = None
+        self._platform_at = 0.0
 
     def login(self, code: str, email: str, password: str = PASSWORD) -> dict[str, str]:
         resp = self.client.post(
@@ -117,12 +119,15 @@ class Api:
         return bearer(resp.json()["access_token"])
 
     def platform(self) -> dict[str, str]:
-        if self._platform is None:
+        # Jeton d'accès de 15 min : reconnexion après 10 min, sinon une suite longue (machine chargée)
+        # échoue en 401 sur toutes les créations de société suivantes.
+        if self._platform is None or time.monotonic() - self._platform_at > 600:
             resp = self.client.post(
                 f"{API}/auth/platform/login", json={"email": PLATFORM_EMAIL, "password": PASSWORD}
             )
             assert resp.status_code == 200, resp.text
             self._platform = bearer(resp.json()["access_token"])
+            self._platform_at = time.monotonic()
         return self._platform
 
     def activate(self, email: str) -> None:
