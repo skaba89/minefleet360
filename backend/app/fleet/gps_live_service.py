@@ -11,6 +11,7 @@ from app.authz.dependencies import Authorized
 from app.core.errors import AppError
 from app.core.http import PageParams
 from app.core.security import CompositeToken
+from app.fleet.gps_alert_engine import evaluate_position_alerts
 from app.fleet.gps_binding_models import FleetGpsDeviceBinding
 from app.fleet.gps_credential_models import FleetGpsDeviceCredential
 from app.fleet.gps_device_credentials import fingerprint_device_secret, new_device_secret
@@ -197,22 +198,33 @@ def phone_point(auth: Authorized, share_id: uuid.UUID, body: PhonePointIn) -> No
         raise AppError("CONFLICT")
     if share.last_received_at is not None and now - share.last_received_at < timedelta(seconds=5):
         raise AppError("RATE_LIMITED", headers={"Retry-After": "5"})
-    auth.db.add(
-        FleetGpsPosition(
-            tenant_id=auth.tenant_id,
-            vehicle_id=vehicle.vehicle_id,
-            site_id=share.site_id,
-            device_id=f"phone:{share.phone_share_id}",
-            source="PHONE",
-            phone_share_id=share.phone_share_id,
-            latitude=body.latitude,
-            longitude=body.longitude,
-            accuracy_m=body.accuracy_m,
-            speed_kmh=body.speed_kmh,
-            heading_deg=body.heading_deg,
-            recorded_at=body.recorded_at,
-            received_at=now,
-        )
+    point = FleetGpsPosition(
+        tenant_id=auth.tenant_id,
+        vehicle_id=vehicle.vehicle_id,
+        site_id=share.site_id,
+        device_id=f"phone:{share.phone_share_id}",
+        source="PHONE",
+        phone_share_id=share.phone_share_id,
+        latitude=body.latitude,
+        longitude=body.longitude,
+        accuracy_m=body.accuracy_m,
+        speed_kmh=body.speed_kmh,
+        heading_deg=body.heading_deg,
+        recorded_at=body.recorded_at,
+        received_at=now,
+    )
+    auth.db.add(point)
+    auth.db.flush()
+    evaluate_position_alerts(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        site_id=share.site_id,
+        vehicle_id=vehicle.vehicle_id,
+        gps_position_id=point.gps_position_id,
+        recorded_at=body.recorded_at,
+        latitude=body.latitude,
+        longitude=body.longitude,
+        speed_kmh=body.speed_kmh,
     )
     share.last_received_at = now
     share.last_recorded_at = body.recorded_at

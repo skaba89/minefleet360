@@ -823,6 +823,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gps/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Gps Alerts */
+        get: operations["list_gps_alerts_api_v1_gps_alerts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/gps/alerts/{gps_alert_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge Gps Alert */
+        post: operations["acknowledge_gps_alert_api_v1_gps_alerts__gps_alert_id__acknowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gps/geofence-events": {
         parameters: {
             query?: never;
@@ -2267,6 +2301,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sites/{site_id}/gps-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Gps Policy */
+        get: operations["get_gps_policy_api_v1_sites__site_id__gps_policy_get"];
+        /** Put Gps Policy */
+        put: operations["put_gps_policy_api_v1_sites__site_id__gps_policy_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sites/{site_id}/reactivate": {
         parameters: {
             query?: never;
@@ -3296,6 +3348,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcknowledgeIn */
+        AcknowledgeIn: {
+            /** Note */
+            note?: string | null;
+        };
         /** ActionComplete */
         ActionComplete: {
             /** Completion Note */
@@ -4841,6 +4898,61 @@ export interface components {
              */
             site_id: string;
         };
+        /** GpsAlertOut */
+        GpsAlertOut: {
+            /** Acknowledged At */
+            acknowledged_at: string | null;
+            /** Acknowledged By */
+            acknowledged_by: string | null;
+            /** Acknowledgement Note */
+            acknowledgement_note: string | null;
+            /** Closed At */
+            closed_at: string | null;
+            /** Fleet Number */
+            fleet_number: string;
+            /** Geofence Name */
+            geofence_name: string | null;
+            /**
+             * Gps Alert Id
+             * Format: uuid
+             */
+            gps_alert_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "OVERSPEED" | "RESTRICTED_ZONE_ENTRY" | "SITE_BOUNDARY_EXIT";
+            /**
+             * Last Measured At
+             * Format: date-time
+             */
+            last_measured_at: string;
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+            /** Peak Speed Kmh */
+            peak_speed_kmh: number | null;
+            /** Site Geofence Id */
+            site_geofence_id: string | null;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Speed Limit Kmh */
+            speed_limit_kmh: string | null;
+            /**
+             * Vehicle Id
+             * Format: uuid
+             */
+            vehicle_id: string;
+        };
         /** GpsLatestPositionOut */
         GpsLatestPositionOut: {
             /** Accuracy M */
@@ -4884,6 +4996,23 @@ export interface components {
              * Format: uuid
              */
             vehicle_id: string;
+        };
+        /** GpsPolicyIn */
+        GpsPolicyIn: {
+            /** Speed Limit Kmh */
+            speed_limit_kmh?: number | string | null;
+        };
+        /** GpsPolicyOut */
+        GpsPolicyOut: {
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Speed Limit Kmh */
+            speed_limit_kmh: string | null;
+            /** Updated At */
+            updated_at: string | null;
         };
         /** GpsVehicleOut */
         GpsVehicleOut: {
@@ -6130,6 +6259,17 @@ export interface components {
         Page_FuelSupplierOut_: {
             /** Items */
             items: components["schemas"]["FuelSupplierOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[GpsAlertOut] */
+        Page_GpsAlertOut_: {
+            /** Items */
+            items: components["schemas"]["GpsAlertOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -11131,6 +11271,80 @@ export interface operations {
             };
         };
     };
+    list_gps_alerts_api_v1_gps_alerts_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                kind?: ("OVERSPEED" | "RESTRICTED_ZONE_ENTRY" | "SITE_BOUNDARY_EXIT") | null;
+                unacknowledged?: boolean;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GpsAlertOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_gps_alert_api_v1_gps_alerts__gps_alert_id__acknowledge_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                gps_alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcknowledgeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GpsAlertOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     geofence_events_api_v1_gps_geofence_events_get: {
         parameters: {
             query: {
@@ -14564,6 +14778,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SiteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_gps_policy_api_v1_sites__site_id__gps_policy_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GpsPolicyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_gps_policy_api_v1_sites__site_id__gps_policy_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GpsPolicyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GpsPolicyOut"];
                 };
             };
             /** @description Validation Error */

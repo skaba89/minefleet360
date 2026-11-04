@@ -408,6 +408,47 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "fleet.gps_alert.manage": {
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "fleet.gps_alert.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "fleet.gps_policy.manage": {
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "fleet.meter.read": {
     "AUDITOR": [
       "TENANT"

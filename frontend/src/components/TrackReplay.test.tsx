@@ -103,7 +103,7 @@ it("place le marqueur sur la première mesure et trace le trajet coupé à l'int
 it("le curseur saute sur l'instant choisi et signale l'interruption du signal", async () => {
   render(<TrackReplay track={track} timezone="Africa/Conakry" />);
   await screen.findByText("Position mesurée");
-  await act(async () => {});
+  await waitFor(() => expect(calls.positions.get(marker())).toEqual([-12, 10])); // carte chargée
   const slider = screen.getByRole("slider");
   fireEvent.change(slider, { target: { value: "500" } }); // 20 min : pendant le trou de signal
   expect(screen.getByText(/Signal interrompu/)).toBeTruthy();
@@ -121,7 +121,7 @@ it("lecture : interpolation signalée comme non mesurée, puis fin et relecture"
   vi.stubGlobal("cancelAnimationFrame", vi.fn());
   render(<TrackReplay track={track} timezone="Africa/Conakry" />);
   await screen.findByText("Position mesurée");
-  await act(async () => {});
+  await waitFor(() => expect(calls.positions.get(marker())).toEqual([-12, 10])); // carte chargée
   fireEvent.change(screen.getByRole("combobox"), { target: { value: "60" } });
   fireEvent.click(screen.getByRole("button", { name: "Lecture" }));
   await act(async () => {
