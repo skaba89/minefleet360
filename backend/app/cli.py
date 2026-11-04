@@ -11,6 +11,7 @@ minefleet purge-gps [--days N] [--apply]
 minefleet send-hse-digest [--dry-run]
 minefleet evaluate-preventive [--dry-run]
 minefleet sweep-gps-signal
+minefleet deliver-notifications
     Récapitulatif HSE quotidien par e-mail (actions en retard ou proches, incidents graves ouverts), par
     société, audité ; --dry-run compte les messages sans rien envoyer. À planifier une fois par jour.
 minefleet demo seed --profile small|standard|large [--seed 42] [--anchor AAAA-MM-JJ] --credentials-out <f>
@@ -275,6 +276,29 @@ def sweep_gps_signal() -> int:
     return 1 if failures else 0
 
 
+def deliver_notifications() -> int:
+    """Tâche chaque minute : notifications d'alertes GPS en attente (e-mail, SMS ; acteur SYSTEM)."""
+    from app.core.email import build_email_sender
+    from app.core.sms import build_sms_sender
+    from app.fleet.gps_alert_notify import deliver_pending
+
+    settings = get_settings()
+    email_sender, sms_sender = build_email_sender(settings), build_sms_sender(settings)
+    failed = 0
+
+    def work(db: Session, tenant_id: uuid.UUID) -> int:
+        nonlocal failed
+        report = deliver_pending(
+            db, tenant_id, settings=settings, email_sender=email_sender, sms_sender=sms_sender
+        )
+        failed += report.failed
+        return report.sent
+
+    sent, failures = _for_each_tenant("notifications d'alertes GPS", work)
+    print(f"Notifications envoyées : {sent} ; en échec définitif : {failed} ; sociétés en échec : {failures}")
+    return 1 if failures else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="minefleet")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -290,6 +314,7 @@ def main(argv: list[str] | None = None) -> int:
     preventive = sub.add_parser("evaluate-preventive")
     preventive.add_argument("--dry-run", action="store_true")
     sub.add_parser("sweep-gps-signal")
+    sub.add_parser("deliver-notifications")
     reset = sub.add_parser("reset-platform-mfa")
     reset.add_argument("--email", required=True)
     from app.demo import cli as demo_cli
@@ -314,6 +339,8 @@ def main(argv: list[str] | None = None) -> int:
         return evaluate_preventive(args.dry_run)
     if args.command == "sweep-gps-signal":
         return sweep_gps_signal()
+    if args.command == "deliver-notifications":
+        return deliver_notifications()
     if args.command == "reset-platform-mfa":
         return reset_platform_mfa(args.email)
     return 1

@@ -1,0 +1,11 @@
+[Unit]
+Description=Deliver MineFleet 360 GPS alert notifications every minute
+
+[Timer]
+OnCalendar=*:*:00
+Persistent=false
+AccuracySec=5s
+Unit=minefleet-notify-deliver.service
+
+[Install]
+WantedBy=timers.target

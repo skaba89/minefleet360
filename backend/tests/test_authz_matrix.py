@@ -28,6 +28,7 @@ PARAM = re.compile(r"\{(\w+)\}")
 SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
     ("POST", "/gps/alerts/{gps_alert_id}/acknowledge"): {},
     ("PUT", "/sites/{site_id}/gps-policy"): {"speed_limit_kmh": 40},
+    ("PUT", "/me/alert-notifications"): {"email_enabled": False, "sms_enabled": False},
     ("POST", "/fuel/pumps/{fuel_pump_id}/anomaly-cases"): {
         "start_reading_id": "00000000-0000-4000-8000-000000000011",
         "end_reading_id": "00000000-0000-4000-8000-000000000012",

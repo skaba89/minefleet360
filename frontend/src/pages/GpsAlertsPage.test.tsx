@@ -26,7 +26,9 @@ function show() {
 beforeEach(() => {
   grants = [{ role_code: "OPS_MANAGER", scope_type: "TENANT", site_id: null }];
   vi.mocked(get).mockReset().mockImplementation(async (path: string) =>
-    (path.endsWith("gps-policy")
+    (path === "/me/alert-notifications"
+      ? { email_enabled: false, sms_enabled: false, phone_e164: null, sms_available: false }
+      : path.endsWith("gps-policy")
       ? { site_id: "s1", speed_limit_kmh: "50.0", signal_loss_minutes: null, updated_at: null }
       : { items: [alert("1", {}), alert("2", { kind: "RESTRICTED_ZONE_ENTRY", closed_at: "2026-11-04T08:00:00Z", speed_limit_kmh: null, peak_speed_kmh: null, geofence_name: "Zone explosifs" })], total: 2 }) as never,
   );
@@ -73,7 +75,9 @@ it("auditeur : lecture seule", async () => {
 
 it("affiche une perte de signal avec l'heure de la dernière position mesurée", async () => {
   vi.mocked(get).mockImplementation(async (path: string) =>
-    (path.endsWith("gps-policy")
+    (path === "/me/alert-notifications"
+      ? { email_enabled: true, sms_enabled: false, phone_e164: null, sms_available: true }
+      : path.endsWith("gps-policy")
       ? { site_id: "s1", speed_limit_kmh: null, signal_loss_minutes: 15, updated_at: null }
       : { items: [alert("3", { kind: "SIGNAL_LOST", speed_limit_kmh: null, peak_speed_kmh: null, last_measured_at: "2026-11-04T07:40:00Z" })], total: 1 }) as never,
   );
@@ -81,4 +85,20 @@ it("affiche une perte de signal avec l'heure de la dernière position mesurée",
   expect(await screen.findByText("Perte de signal")).toBeTruthy();
   expect(screen.getByText("Dernière position mesurée 04/11/2026 07:40")).toBeTruthy();
   expect(await screen.findByText(/Perte de signal signalée après 15 min sans position/)).toBeTruthy();
+});
+
+it("enregistre le choix personnel e-mail et SMS et signale l'absence de fournisseur SMS", async () => {
+  show();
+  expect(await screen.findByText(/Envoi de SMS pas encore disponible/)).toBeTruthy();
+  fireEvent.click(screen.getByLabelText("Par e-mail"));
+  fireEvent.click(screen.getByLabelText("Par SMS"));
+  fireEvent.change(screen.getByLabelText(/Numéro de mobile/), { target: { value: "+224620000001" } });
+  fireEvent.click(screen.getByRole("button", { name: "Enregistrer mes choix" }));
+  await waitFor(() =>
+    expect(request).toHaveBeenCalledWith("/me/alert-notifications", {
+      method: "PUT",
+      body: { email_enabled: true, sms_enabled: true, phone_e164: "+224620000001" },
+    }),
+  );
+  expect(await screen.findByText("Choix enregistrés.")).toBeTruthy();
 });

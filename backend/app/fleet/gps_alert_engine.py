@@ -22,6 +22,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.fleet.gps_alert_models import GpsAlert, SiteGpsPolicy
+from app.fleet.gps_alert_notify import enqueue_alert_notifications
 from app.fleet.gps_models import FleetGpsPosition
 
 _INSIDE = text(
@@ -126,7 +127,7 @@ def _overspeed(
             alert.closed_at = recorded_at
         return
     if over:
-        db.execute(
+        opened = db.execute(
             insert(GpsAlert)
             .values(
                 tenant_id=tenant_id,
@@ -144,7 +145,17 @@ def _overspeed(
                 index_elements=["tenant_id", "vehicle_id"],
                 index_where=text("kind = 'OVERSPEED' AND closed_at IS NULL"),
             )
-        )
+            .returning(GpsAlert.gps_alert_id)
+        ).scalar_one_or_none()
+        if opened is not None:
+            enqueue_alert_notifications(
+                db,
+                tenant_id=tenant_id,
+                gps_alert_id=opened,
+                site_id=site_id,
+                vehicle_id=vehicle_id,
+                kind="OVERSPEED",
+            )
 
 
 def _zone_alerts(
@@ -180,8 +191,9 @@ def _zone_alerts(
     events += [
         ("SITE_BOUNDARY_EXIT", g) for g, kind in before.items() if kind == "SITE_BOUNDARY" and g not in now
     ]
+    created: list[GpsAlert] = []
     for kind, geofence_id in events:
-        db.add(
+        created.append(
             GpsAlert(
                 tenant_id=tenant_id,
                 site_id=site_id,
@@ -195,5 +207,15 @@ def _zone_alerts(
                 site_geofence_id=geofence_id,
             )
         )
-    if events:
+    if created:
+        db.add_all(created)
         db.flush()
+        for alert in created:
+            enqueue_alert_notifications(
+                db,
+                tenant_id=tenant_id,
+                gps_alert_id=alert.gps_alert_id,
+                site_id=site_id,
+                vehicle_id=vehicle_id,
+                kind=alert.kind,
+            )

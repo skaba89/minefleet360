@@ -1318,6 +1318,9 @@ permissions:
     routes:
       - { method: GET, path: /gps/alerts, shape: collection, success: 200 }
       - { method: GET, path: "/sites/{site_id}/gps-policy", shape: item, success: 200 }
+      # Préférences personnelles de notification (e-mail, SMS) : uniquement ses propres réglages.
+      - { method: GET, path: /me/alert-notifications, shape: singleton, success: 200 }
+      - { method: PUT, path: /me/alert-notifications, shape: singleton, success: 200 }
     grants:
       DIRECTION: [TENANT]
       OPS_MANAGER: [TENANT, SITE]

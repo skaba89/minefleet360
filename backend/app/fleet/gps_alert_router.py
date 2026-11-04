@@ -16,9 +16,10 @@ from sqlalchemy import func, select, text
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
+from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.http import Page, Pagination, StrictModel
-from app.fleet.gps_alert_models import GpsAlert, SiteGpsPolicy
+from app.fleet.gps_alert_models import GpsAlert, SiteGpsPolicy, UserAlertNotification
 from app.fleet.models import Vehicle
 from app.organization.models import Site
 
@@ -248,4 +249,66 @@ def put_gps_policy(site_id: uuid.UUID, body: GpsPolicyIn, auth: PolicyManage) ->
         speed_limit_kmh=policy.speed_limit_kmh,
         signal_loss_minutes=policy.signal_loss_minutes,
         updated_at=policy.updated_at,
+    )
+
+
+class AlertNotificationOut(BaseModel):
+    email_enabled: bool
+    sms_enabled: bool
+    phone_e164: str | None
+    sms_available: bool  # False tant qu'aucun fournisseur SMS n'est configuré (production)
+
+
+class AlertNotificationIn(StrictModel):
+    email_enabled: bool = Field(strict=True)
+    sms_enabled: bool = Field(strict=True)
+    phone_e164: str | None = Field(default=None, pattern=r"^\+[1-9][0-9]{7,14}$")
+
+
+def _sms_available() -> bool:
+    return get_settings().sms_backend != "disabled"
+
+
+@router.get("/me/alert-notifications", response_model=AlertNotificationOut)
+def get_alert_notifications(auth: AlertRead) -> AlertNotificationOut:
+    pref = auth.db.get(UserAlertNotification, (auth.tenant_id, auth.user_id))
+    return AlertNotificationOut(
+        email_enabled=pref.email_enabled if pref else False,
+        sms_enabled=pref.sms_enabled if pref else False,
+        phone_e164=pref.phone_e164 if pref else None,
+        sms_available=_sms_available(),
+    )
+
+
+@router.put("/me/alert-notifications", response_model=AlertNotificationOut)
+def put_alert_notifications(body: AlertNotificationIn, auth: AlertRead) -> AlertNotificationOut:
+    """Choix personnel du canal : seul l'utilisateur règle ses notifications et saisit son numéro."""
+    if body.sms_enabled and not body.phone_e164:
+        raise AppError("VALIDATION_ERROR", details=[{"field": "phone_e164", "type": "required_for_sms"}])
+    pref = auth.db.get(UserAlertNotification, (auth.tenant_id, auth.user_id), with_for_update=True)
+    if pref is None:
+        pref = UserAlertNotification(tenant_id=auth.tenant_id, user_account_id=auth.user_id)
+        auth.db.add(pref)
+    pref.email_enabled = body.email_enabled
+    pref.sms_enabled = body.sms_enabled
+    pref.phone_e164 = body.phone_e164
+    pref.updated_at = auth.clock.now()
+    auth.db.flush()
+    # Le numéro est une donnée personnelle : jamais copié dans l'audit.
+    record(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        actor_user_id=auth.user_id,
+        action="fleet.gps.alert_notification.update",
+        entity_type="user_alert_notification",
+        entity_id=auth.user_id,
+        after={"email_enabled": body.email_enabled, "sms_enabled": body.sms_enabled},
+        changed_fields=("email_enabled", "sms_enabled", "phone_e164"),
+    )
+    auth.db.commit()
+    return AlertNotificationOut(
+        email_enabled=pref.email_enabled,
+        sms_enabled=pref.sms_enabled,
+        phone_e164=pref.phone_e164,
+        sms_available=_sms_available(),
     )

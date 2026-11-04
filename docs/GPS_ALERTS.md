@@ -65,7 +65,7 @@
 
 ## Pas encore fait
 
-1. **Notifications** par e-mail, SMS ou push : à brancher sur le fournisseur choisi par le client (D-41).
+1. **Fournisseur SMS** à choisir par le client (service payant) ; push mobile.
 2. Limites de vitesse par zone, plages horaires autorisées, utilisation hors horaires.
 3. Marqueur d'alerte sur la carte en direct.
 
@@ -85,3 +85,27 @@
   - rejeu : 0 ;
   - émetteur relancé 1 min : les 47 alertes se ferment ;
   - réglage remis à vide ensuite.
+
+## Notifications e-mail et SMS (migration 0063)
+
+Décision du client (4 novembre 2026) : **les deux canaux, au choix de chaque utilisateur.**
+
+| Élément | Détail |
+|---|---|
+| Choix personnel | page Alertes GPS, section « Mes notifications » : e-mail, SMS, les deux, ou aucun (**défaut : aucun**). Le numéro de mobile (format international E.164, ex. `+224…`) est saisi par l'utilisateur lui-même ; il n'est jamais copié dans l'audit. Routes `GET` / `PUT /me/alert-notifications` (permission `fleet.gps_alert.read`) |
+| Destinataires | comptes actifs dont un rôle en vigueur donne la lecture des alertes sur le site de l'alerte (ou toute la société), et qui ont choisi au moins un canal |
+| Mise en file | à la création de l'alerte (vitesse, zones, perte de signal), **dans la même transaction** (`notification_outbox`), jamais d'envoi pendant l'ingestion GPS |
+| Anti-avalanche | (1) au plus une notification par destinataire, canal, engin et type d'alerte toutes les **30 minutes** ; (2) à la livraison, **un seul message par destinataire et par canal** regroupe tout ce qui est en attente : l'e-mail détaille jusqu'à 20 alertes, le SMS résume par type en moins de 160 caractères (« 33 alertes GPS (33 excès de vitesse). lien ») |
+| Livraison | `minefleet deliver-notifications` chaque minute (timer `minefleet-notify-deliver`, exécuté dans le conteneur API déjà démarré), acteur `SYSTEM`, audit `fleet.gps.alert.notify` (canal, type, résultat ; ni adresse, ni numéro, ni contenu) |
+| Contenu | type, engin, site, heure du site, vitesse maximale et limite le cas échéant, lien vers la page Alertes GPS ; **aucune coordonnée** |
+| Échecs | erreur de transport : nouvel essai (5 au plus) ; SMS sans fournisseur : `FAILED` / `SMS_PROVIDER_NOT_CONFIGURED`, et l'écran prévient l'utilisateur |
+| SMS | **aucun fournisseur payant branché** : `MF_SMS_BACKEND=capture` en développement et en recette (fichiers privés, comme les e-mails), `disabled` en production tant que le client n'a pas choisi. Un fournisseur s'ajoute comme une implémentation de `SmsSender` |
+| Supervision | `minefleet-notify-deliver:1` dans `MF_SCHEDULED_UNITS` |
+
+### Vérifié sur la démonstration
+
+Jeu `large`, limite de 15 km/h sur demo-bauxite, un responsable d'exploitation abonné par e-mail et par SMS
+(numéro fictif), émetteur pendant 1 min : **33 alertes** produisent 33 notifications en file par canal. La vraie
+commande `minefleet deliver-notifications` (capture locale) envoie **1 e-mail et 1 SMS** en 2,6 s ; un deuxième
+passage n'envoie rien. Le premier essai, avant regroupement, aurait envoyé 33 SMS et produit un texte de 724
+caractères : c'est ce qui a motivé le regroupement et le résumé SMS. Réglages et préférences remis à vide ensuite.

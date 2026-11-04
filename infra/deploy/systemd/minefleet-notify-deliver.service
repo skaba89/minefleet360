@@ -1,0 +1,16 @@
+[Unit]
+Description=MineFleet 360 delivery of GPS alert notifications (e-mail, SMS ; SYSTEM actor)
+Documentation=file:/opt/minefleet/docs/GPS_ALERTS.md
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+# Chaque minute : exécutée DANS le conteneur API déjà démarré (pas de conteneur éphémère à chaque passage),
+# avec le même rôle applicatif mf_app, jamais le propriétaire.
+# Adapter le répertoire et les fichiers compose au déploiement réel avant activation.
+WorkingDirectory=/opt/minefleet/infra/deploy
+ExecStart=/usr/bin/docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T api minefleet deliver-notifications
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStartSec=55
