@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, Response, status
 
@@ -9,7 +9,7 @@ from app.authz.routing import SecuredRoute
 from app.core.errors import AppError
 from app.core.http import IfMatch, Page, Pagination, etag
 from app.core.idempotency import claim, optional_idempotency_key
-from app.maintenance import preventive_declarations, preventive_service, service
+from app.maintenance import preventive_declarations, preventive_evaluate, preventive_service, service
 from app.maintenance.preventive_complete import complete_preventive_due
 from app.maintenance.preventive_completion_read import preventive_completion_context
 from app.maintenance.preventive_plan_inputs import (
@@ -25,10 +25,13 @@ from app.maintenance.preventive_schemas import (
     PreventiveCompletionIn,
     PreventiveCompletionOut,
     PreventiveDueOut,
+    PreventiveEvaluateIn,
+    PreventiveEvaluationOut,
     PreventivePlanOut,
     PreventivePlanStatusOut,
     PreventiveScheduledOrderOut,
     ServiceDeclarationOut,
+    SiteDueOut,
 )
 from app.maintenance.preventive_suspend import suspend_plan
 from app.maintenance.preventive_write import create_plan
@@ -185,6 +188,27 @@ def list_vehicle_preventive_dues(vehicle_id: uuid.UUID, auth: PreventiveRead) ->
         PreventiveDueOut.model_validate(item)
         for item in preventive_service.dues_for_vehicle(auth, vehicle_id)
     ]
+
+
+@router.post("/preventive-dues/evaluate", response_model=PreventiveEvaluationOut)
+def evaluate_preventive_dues(body: PreventiveEvaluateIn, auth: PreventiveManage) -> PreventiveEvaluationOut:
+    # Enregistre les échéances dues (idempotent) ; aucun OT créé : l'atelier planifie ensuite.
+    return preventive_evaluate.evaluate_site_dues(auth, body.site_id)
+
+
+@router.get("/preventive-dues", response_model=Page[SiteDueOut])
+def list_preventive_dues(
+    auth: PreventiveRead,
+    page: Pagination,
+    site_id: uuid.UUID | None = None,
+    status: Literal["DUE", "SCHEDULED", "COMPLETED", "CANCELLED"] | None = None,
+    open_only: bool = False,
+) -> Page[SiteDueOut]:
+    # open_only : échéances à traiter (dues ou OT planifié).
+    statuses: list[Literal["DUE", "SCHEDULED", "COMPLETED", "CANCELLED"]] = (
+        [status] if status is not None else (["DUE", "SCHEDULED"] if open_only else [])
+    )
+    return preventive_evaluate.list_site_dues(auth, site_id, statuses, page)
 
 
 @router.get("/vehicles/{vehicle_id}/preventive-status", response_model=list[PreventivePlanStatusOut])
