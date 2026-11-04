@@ -35,7 +35,7 @@ fonctionnement hors ligne en dehors du HSE.
 | **P0 avant production** | Avis juridique guinéen (hébergement, conservation), fournisseur e-mail, destination de sauvegarde | décisions client |
 | P1 | Hors ligne limité au HSE | missions, maintenance et carburant hors ligne |
 | P1 | Aucune facturation ni onboarding autonome | Phase 5 |
-| P1 | CSP, SAST, scan de secrets | Phase 1 (sécurité) |
+| P1 | SAST, scan de secrets | Phase 1 (sécurité) |
 | P2 | Anglais, thème sombre, design system | Phase 5 |
 
 ## Limites de cet audit
