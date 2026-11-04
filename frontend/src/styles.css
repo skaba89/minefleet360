@@ -93,7 +93,7 @@ pre { white-space:pre-wrap; word-break:break-word; background:var(--bg); border-
 /* Fleet map, vehicle list and sharing controls. */
 .live-fleet-eyebrow { display:none; }.live-fleet-metrics .card { display:flex; flex-direction:column; margin:0; gap:.2rem; }.live-fleet-metrics .card strong { font-size:1.7rem; }.live-fleet-metrics .card .muted { font-size:.8rem; }.live-fleet-table { overflow-x:auto; }
 .gps-status { display:inline-flex; padding:.18rem .5rem; border-radius:4px; font-size:.74rem; font-weight:600; white-space:nowrap; }.gps-status--moving { background:var(--ok-bg); color:var(--ok); }.gps-status--stopped { background:var(--warn-bg); color:var(--warn); }.gps-status--offline { background:var(--bad-bg); color:var(--bad); }.gps-status--unknown { background:#e5f1fe; color:#196bc0; }
-.gps-map-preview { margin-top:0; }.gps-map-frame { width:100%; height:clamp(300px,48vh,520px); border:1px solid var(--border); border-radius:5px; }
+
 .gps-workspace { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(250px,1fr); gap:1rem; margin-bottom:1.2rem; }.gps-workspace .card { margin-bottom:0; }.gps-vehicle-list { display:flex; flex-direction:column; gap:.4rem; padding-top:.6rem; max-height:460px; overflow-y:auto; }.gps-vehicle-list > button { display:flex; align-items:center; gap:.6rem; text-align:left; padding:.7rem; background:#f9fbfe; }.gps-vehicle-list > button[aria-pressed=true] { border-color:#7cb5f7; background:#edf5ff; }.gps-vehicle-list strong { display:block; font-size:.82rem; }.gps-vehicle-list small { display:block; color:var(--muted); font-size:.71rem; }.gps-vehicle-list .gps-status { margin-left:auto; }
 .fleet-positions-overview { margin-top:0; }.fleet-positions-plot { position:relative; min-height:290px; height:min(40vh,390px); border:1px solid var(--border); border-radius:5px; overflow:hidden; background:repeating-linear-gradient(0deg,transparent,transparent 39px,#e6edf5 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,#e6edf5 40px),#f8fbfe; }.fleet-positions-svg { width:100%; height:100%; }.fleet-position-dot { fill:#1489ea; stroke:#fff; stroke-width:.6px; cursor:pointer; }.fleet-position-dot.is-selected { fill:#fb9e18; stroke:#b86500; }.fleet-position-dot:focus { stroke:#142e4a; stroke-width:1px; }.tracking-card { max-width:900px; }.tracking-card label { margin-bottom:1.1rem; }
 
@@ -135,3 +135,11 @@ pre { white-space:pre-wrap; word-break:break-word; background:var(--bg); border-
 .checklist-item { display:grid; gap:.35rem; }
 .gallery { display:flex; flex-wrap:wrap; gap:.75rem; }
 .gallery figure { margin:0; max-width:min(100%, 320px); }
+/* Carte des engins (MapLibre, fond auto-hébergé) : marqueurs HTML étiquetés, état du signal par couleur. */
+.fleet-map { margin-top:0; padding:.5rem; }.fleet-map-canvas { width:100%; height:clamp(320px,55vh,620px); border-radius:5px; overflow:hidden; }
+.fleet-marker { min-width:24px; min-height:24px; padding:0; border-radius:12px; border:2px solid #fff; font-size:.72rem; font-weight:700; color:#fff; background:#288be5; box-shadow:0 1px 4px rgba(19,35,56,.35); cursor:pointer; white-space:nowrap; }
+.fleet-marker--moving { background:#1bb47d; }.fleet-marker--stopped { background:#e5a126; color:#132338; }.fleet-marker--unknown { background:#288be5; }
+.fleet-marker--offline { background:#ef5665; opacity:.85; }.fleet-marker--selected { outline:3px solid var(--focus); outline-offset:1px; z-index:2; }
+.fleet-marker:focus-visible { outline:3px solid var(--focus); outline-offset:2px; }
+.fleet-marker-label { display:none; }.fleet-map--labels .fleet-marker, .fleet-marker--selected, .fleet-marker:hover, .fleet-marker:focus-visible { padding:.15rem .45rem; }
+.fleet-map--labels .fleet-marker-label, .fleet-marker--selected .fleet-marker-label, .fleet-marker:hover .fleet-marker-label, .fleet-marker:focus-visible .fleet-marker-label { display:inline; }

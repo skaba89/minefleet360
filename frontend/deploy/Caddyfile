@@ -10,7 +10,7 @@
 	encode zstd gzip
 	header {
 		# Aucune ressource tierce : scripts, styles et appels réseau limités à l'origine (anti-XSS).
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; frame-src https://www.openstreetmap.org; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "no-referrer"
 		Permissions-Policy "camera=(), microphone=(), geolocation=(self), payment=()"
@@ -19,12 +19,16 @@
 	# Fichiers versionnés par Vite : cache long ; le reste (index.html) toujours revalidé.
 	@assets path /assets/*
 	header @assets Cache-Control "public, max-age=31536000, immutable"
-	@pages not path /assets/*
+	@pages not path /assets/* /basemap/*
 	header @pages Cache-Control "no-cache"
+	# Fond de carte auto-hébergé (extrait OSM de la Guinée, docs/GPS_LIVE_MAP.md) : lectures par plages
+	# (requêtes Range) servies nativement ; absent => 404, la carte passe sur fond neutre.
+	@basemap path /basemap/*
+	header @basemap Cache-Control "public, max-age=86400"
 	# Routes de l'application (/affectations, /activation…) servies par index.html ; un fichier
 	# /assets/ absent reste un 404 (sinon une erreur de déploiement passerait inaperçue).
 	@spa {
-		not path /assets/*
+		not path /assets/* /basemap/*
 		not file
 	}
 	rewrite @spa /index.html

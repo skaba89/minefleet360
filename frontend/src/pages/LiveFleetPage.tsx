@@ -8,8 +8,7 @@ import { DataState } from "../components/common";
 import { can } from "../lib/permissions";
 import { GPS_SIGNAL_LABEL, gpsSignalState } from "../lib/gpsSignal";
 import { formatDateTime } from "../lib/time";
-import { FleetPositionsOverview } from "./FleetPositionsOverview";
-import { GpsLocationMap } from "./GpsLocationMap";
+import { FleetMap, type MapGeofence, type MapVehicle } from "../components/FleetMap";
 import { useSites } from "../site/SiteContext";
 
 interface GpsPosition {
@@ -49,8 +48,34 @@ export function LiveFleetPage() {
     () => (gps.data ?? []).filter((item) => [item.vehicle_id, byId.get(item.vehicle_id)?.fleet_number, byId.get(item.vehicle_id)?.registration_number].some((value) => value?.toLowerCase().includes(search.toLowerCase()))),
     [gps.data, search, byId],
   );
+  const geofences = useQuery({
+    queryKey: ["gps-geofences", siteId],
+    queryFn: () => get<{ site_geofence_id: string; name: string; coordinates: [number, number][] }[]>("/geofences", siteId ? { site_id: siteId } : undefined),
+    enabled: permitted && can(me.grants, "fleet.geofence.read", siteId),
+  });
+  const zones = useMemo<MapGeofence[]>(
+    () => (geofences.data ?? []).map((g) => ({ id: g.site_geofence_id, name: g.name, coordinates: g.coordinates })),
+    [geofences.data],
+  );
+  const mapVehicles = useMemo<MapVehicle[]>(
+    () =>
+      shown.map((point) => {
+        const state = gpsSignalState(point, now);
+        return {
+          id: point.vehicle_id,
+          label: vehicleLabel(point.vehicle_id),
+          latitude: point.latitude,
+          longitude: point.longitude,
+          state,
+          stateLabel: GPS_SIGNAL_LABEL[state],
+          speedText: state === "offline" || state === "unknown" ? "vitesse inconnue" : `${point.speed_kmh!.toFixed(1)} km/h`,
+          recordedText: Number.isFinite(Date.parse(point.recorded_at)) ? formatDateTime(point.recorded_at, timezoneOf(point.site_id)) : "—",
+        };
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [shown, now, byId],
+  );
   if (!permitted) return <p>Accès à la flotte non autorisé.</p>;
-  const selected = shown.find((point) => point.vehicle_id === selectedId);
 
   const moving = shown.filter((item) => gpsSignalState(item, now) === "moving").length;
   const offline = shown.filter((item) => gpsSignalState(item, now) === "offline").length;
@@ -60,7 +85,7 @@ export function LiveFleetPage() {
         <div>
           <p className="live-fleet-eyebrow">CENTRE DE SUPERVISION</p>
           <h1>Flotte GPS</h1>
-          <p className="muted">Dernières positions connues · actualisation toutes les 15 secondes</p>
+          <p className="muted">Positions mesurées · actualisation toutes les 15 secondes · signal ancien en rouge : la position peut ne plus être actuelle</p>
         </div>
         <button type="button" onClick={() => { setNow(Date.now()); void gps.refetch(); }}>
           Actualiser
@@ -74,7 +99,7 @@ export function LiveFleetPage() {
         <div className="card"><span className="muted">Téléphones localisés</span><strong>{shown.filter((p) => p.source === "PHONE").length}</strong></div>
       </div>
       <div className="gps-workspace">
-        {selected ? <GpsLocationMap key={selected.vehicle_id} point={selected} now={now} timezone={timezoneOf(selected.site_id)} /> : <FleetPositionsOverview points={shown} selectedId={selectedId} onSelect={setSelectedId} now={now} />}
+        <FleetMap vehicles={mapVehicles} geofences={zones} selectedId={selectedId} onSelect={setSelectedId} />
         <aside className="card" aria-label="Liste des véhicules GPS"><div className="page-head"><h2>Véhicules</h2>{selectedId && <button type="button" className="link" onClick={() => setSelectedId(null)}>Vue d'ensemble</button>}</div>
           <label htmlFor="gps-search">Rechercher un véhicule</label><input id="gps-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Immatriculation, n° de parc…" />
           <div className="gps-vehicle-list">{shown.map((p) => <button type="button" key={p.vehicle_id} aria-pressed={p.vehicle_id === selectedId} onClick={() => setSelectedId(p.vehicle_id)}><span className={`connection-dot gps-dot--${gpsSignalState(p, now)}`} /><span><strong>{vehicleLabel(p.vehicle_id)}</strong><small>{p.source === "PHONE" ? "Téléphone du compte" : "Traceur GPS"}{p.source_active === false ? " · partage arrêté" : ""}</small></span><span className={`gps-status gps-status--${gpsSignalState(p, now)}`}>{GPS_SIGNAL_LABEL[gpsSignalState(p, now)]}</span></button>)}</div>

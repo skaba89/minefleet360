@@ -110,6 +110,9 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    # Fond de carte auto-hébergé (facultatif) : scripts/basemap/build-guinee.sh y dépose guinee.pmtiles.
+    volumes:
+      - ${MF_BASEMAP_DIR:-./basemap}:/srv/basemap:ro
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
 
