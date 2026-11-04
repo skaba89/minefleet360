@@ -4921,7 +4921,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "OVERSPEED" | "RESTRICTED_ZONE_ENTRY" | "SITE_BOUNDARY_EXIT";
+            kind: "OVERSPEED" | "RESTRICTED_ZONE_ENTRY" | "SITE_BOUNDARY_EXIT" | "SIGNAL_LOST";
             /**
              * Last Measured At
              * Format: date-time
@@ -4999,11 +4999,15 @@ export interface components {
         };
         /** GpsPolicyIn */
         GpsPolicyIn: {
+            /** Signal Loss Minutes */
+            signal_loss_minutes?: number | null;
             /** Speed Limit Kmh */
             speed_limit_kmh?: number | string | null;
         };
         /** GpsPolicyOut */
         GpsPolicyOut: {
+            /** Signal Loss Minutes */
+            signal_loss_minutes?: number | null;
             /**
              * Site Id
              * Format: uuid
@@ -11275,7 +11279,7 @@ export interface operations {
         parameters: {
             query?: {
                 site_id?: string | null;
-                kind?: ("OVERSPEED" | "RESTRICTED_ZONE_ENTRY" | "SITE_BOUNDARY_EXIT") | null;
+                kind?: ("OVERSPEED" | "RESTRICTED_ZONE_ENTRY" | "SITE_BOUNDARY_EXIT" | "SIGNAL_LOST") | null;
                 unacknowledged?: boolean;
                 page?: number;
                 page_size?: number | null;

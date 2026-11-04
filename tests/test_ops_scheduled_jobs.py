@@ -62,6 +62,13 @@ class ScheduledJobsProbeTests(unittest.TestCase):
         self.assertEqual(self.run_probe(**self.ok(FAKE_MINEFLEET_JOB_LOADSTATE="not-found")).returncode, 3)
         self.assertEqual(self.run_probe(**self.ok(FAKE_MINEFLEET_JOB_EXECMAINEXITTIMESTAMP="")).returncode, 3)
 
+    def test_per_unit_max_age(self):
+        recent_enough = self.ok(FAKE_MINEFLEET_JOB_EXECMAINEXITTIMESTAMP=stamp(0.5))
+        self.assertEqual(self.run_probe(**recent_enough, MF_SCHEDULED_UNITS="minefleet-job:1").returncode, 0)
+        too_old = self.ok(FAKE_MINEFLEET_JOB_EXECMAINEXITTIMESTAMP=stamp(2))
+        self.assertEqual(self.run_probe(**too_old, MF_SCHEDULED_UNITS="minefleet-job:1").returncode, 2)
+        self.assertEqual(self.run_probe(**too_old, MF_SCHEDULED_UNITS="minefleet-job:0").returncode, 3)
+
     def test_invalid_configuration_is_unknown(self):
         self.assertEqual(self.run_probe(**self.ok(MF_SCHEDULED_MAX_AGE_HOURS="0")).returncode, 3)
         self.assertEqual(self.run_probe(**self.ok(MF_SCHEDULED_UNITS="bad;unit")).returncode, 3)

@@ -27,7 +27,7 @@ beforeEach(() => {
   grants = [{ role_code: "OPS_MANAGER", scope_type: "TENANT", site_id: null }];
   vi.mocked(get).mockReset().mockImplementation(async (path: string) =>
     (path.endsWith("gps-policy")
-      ? { site_id: "s1", speed_limit_kmh: "50.0", updated_at: null }
+      ? { site_id: "s1", speed_limit_kmh: "50.0", signal_loss_minutes: null, updated_at: null }
       : { items: [alert("1", {}), alert("2", { kind: "RESTRICTED_ZONE_ENTRY", closed_at: "2026-11-04T08:00:00Z", speed_limit_kmh: null, peak_speed_kmh: null, geofence_name: "Zone explosifs" })], total: 2 }) as never,
   );
   vi.mocked(request).mockReset().mockResolvedValue({ data: {}, etag: null });
@@ -45,7 +45,7 @@ it("liste les alertes avec leur détail mesuré et la limite du site", async () 
   expect(screen.getByText("En cours")).toBeTruthy();
   expect(screen.getByText("Entrée en zone interdite")).toBeTruthy();
   expect(screen.getByText("Zone explosifs")).toBeTruthy();
-  expect(await screen.findByText("Alerte au-delà de 50.0 km/h mesurés.")).toBeTruthy();
+  expect(await screen.findByText(/Alerte au-delà de 50.0 km\/h mesurés\. Perte de signal non surveillée\./)).toBeTruthy();
   expect(get).toHaveBeenCalledWith("/gps/alerts", { site_id: "s1", unacknowledged: true, page_size: 100 });
 });
 
@@ -56,8 +56,11 @@ it("prend une alerte en compte avec une remarque et règle la limite", async () 
     expect(request).toHaveBeenCalledWith("/gps/alerts/1/acknowledge", { method: "POST", body: { note: "conducteur prévenu" } }),
   );
   fireEvent.change(screen.getByLabelText(/Nouvelle limite/), { target: { value: "" } });
+  fireEvent.change(screen.getByLabelText(/Perte de signal après/), { target: { value: "20" } });
   fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
-  await waitFor(() => expect(request).toHaveBeenCalledWith("/sites/s1/gps-policy", { method: "PUT", body: { speed_limit_kmh: null } }));
+  await waitFor(() =>
+    expect(request).toHaveBeenCalledWith("/sites/s1/gps-policy", { method: "PUT", body: { speed_limit_kmh: null, signal_loss_minutes: 20 } }),
+  );
 });
 
 it("auditeur : lecture seule", async () => {
@@ -66,4 +69,16 @@ it("auditeur : lecture seule", async () => {
   expect(await screen.findByText("CAM-1")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Prendre en compte" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Enregistrer" })).toBeNull();
+});
+
+it("affiche une perte de signal avec l'heure de la dernière position mesurée", async () => {
+  vi.mocked(get).mockImplementation(async (path: string) =>
+    (path.endsWith("gps-policy")
+      ? { site_id: "s1", speed_limit_kmh: null, signal_loss_minutes: 15, updated_at: null }
+      : { items: [alert("3", { kind: "SIGNAL_LOST", speed_limit_kmh: null, peak_speed_kmh: null, last_measured_at: "2026-11-04T07:40:00Z" })], total: 1 }) as never,
+  );
+  show();
+  expect(await screen.findByText("Perte de signal")).toBeTruthy();
+  expect(screen.getByText("Dernière position mesurée 04/11/2026 07:40")).toBeTruthy();
+  expect(await screen.findByText(/Perte de signal signalée après 15 min sans position/)).toBeTruthy();
 });

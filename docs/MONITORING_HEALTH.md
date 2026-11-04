@@ -37,13 +37,14 @@ La sonde est en lecture seule : elle recherche les fichiers locaux non vides `ba
 ## Tâches planifiées (digest HSE, échéances préventives)
 
 ```bash
-MF_SCHEDULED_UNITS="minefleet-hse-digest minefleet-preventive-evaluate" MF_SCHEDULED_MAX_AGE_HOURS=26 \
+MF_SCHEDULED_UNITS="minefleet-hse-digest minefleet-preventive-evaluate minefleet-gps-signal-sweep:1" \
+  MF_SCHEDULED_MAX_AGE_HOURS=26 \
   bash infra/deploy/probe-scheduled-jobs.sh
 ```
 
 Lecture seule, via `systemctl show` et `systemctl is-failed` : pour chaque service lancé par un timer, `2` (critique)
 si le service est en échec, si sa dernière exécution n'a pas réussi ou si elle date de plus de
-`MF_SCHEDULED_MAX_AGE_HOURS` ; `3` (indéterminé) s'il n'est pas installé ou n'a jamais tourné. Sans cette sonde, un
+`MF_SCHEDULED_MAX_AGE_HOURS` (ou du délai propre à l'unité, `unité:heures`, par exemple 1 h pour le balayage GPS) ; `3` (indéterminé) s'il n'est pas installé ou n'a jamais tourné. Sans cette sonde, un
 échec nocturne passait inaperçu. Lister dans `MF_SCHEDULED_UNITS` seulement les timers réellement activés sur le
 serveur (`monitor.env`).
 

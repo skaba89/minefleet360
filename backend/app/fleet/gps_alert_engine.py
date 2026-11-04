@@ -6,6 +6,8 @@ Règles (docs/GPS_ALERTS.md) :
 - **excès de vitesse** : vitesse mesurée strictement supérieure à la limite du site. L'alerte reste ouverte
   tant que les mesures dépassent (vitesse maximale retenue) et se ferme à la première mesure revenue au plus
   à la limite. Une mesure sans vitesse ne change rien. Sans limite pour le site : aucune alerte ;
+- **perte de signal** : ouverte par le balayage planifié (gps_signal_sweep), fermée ici par la première
+  position reçue ensuite ;
 - **zones** : entrée dans une zone interdite active, sortie de la limite active du site, par comparaison avec
   la mesure précédente de l'engin (pas d'alerte au premier point : l'état initial est inconnu).
 Le contexte RLS est celui de l'appelant (passerelle authentifiée ou session du téléphone).
@@ -59,6 +61,20 @@ def evaluate_position_alerts(
     longitude: float,
     speed_kmh: float | None,
 ) -> None:
+    # Le signal revient : toute position reçue (même tardive) ferme la perte de signal ouverte, au plus tôt
+    # à l'instant de détection.
+    lost = db.scalar(
+        select(GpsAlert)
+        .where(
+            GpsAlert.tenant_id == tenant_id,
+            GpsAlert.vehicle_id == vehicle_id,
+            GpsAlert.kind == "SIGNAL_LOST",
+            GpsAlert.closed_at.is_(None),
+        )
+        .with_for_update()
+    )
+    if lost is not None:
+        lost.closed_at = max(lost.opened_at, recorded_at)
     newer = db.scalar(
         select(FleetGpsPosition.gps_position_id)
         .where(

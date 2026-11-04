@@ -3,7 +3,8 @@
 # Exit 0 OK, 2 CRITICAL (failed, unsuccessful or stale run), 3 UNKNOWN (not installed, never run, bad config).
 # Without this probe a failing nightly job (HSE digest, preventive dues) would go unnoticed.
 set -uo pipefail
-units="${MF_SCHEDULED_UNITS:-minefleet-hse-digest minefleet-preventive-evaluate}"
+# Entrées « unité » ou « unité:heures » (délai maximal propre à la tâche, sinon MF_SCHEDULED_MAX_AGE_HOURS).
+units="${MF_SCHEDULED_UNITS:-minefleet-hse-digest minefleet-preventive-evaluate minefleet-gps-signal-sweep:1}"
 max_age="${MF_SCHEDULED_MAX_AGE_HOURS:-26}"
 if [[ ! "$max_age" =~ ^[1-9][0-9]*$ ]] || (( max_age > 720 )); then
   echo "UNKNOWN: MF_SCHEDULED_MAX_AGE_HOURS must be an integer 1..720" >&2
@@ -13,11 +14,14 @@ command -v systemctl >/dev/null || { echo "UNKNOWN: systemctl missing" >&2; exit
 now="$(date +%s)"
 critical=0
 unknown=0
-for unit in $units; do
-  if [[ ! "$unit" =~ ^[a-z0-9-]+$ ]]; then
-    echo "UNKNOWN: invalid unit name" >&2
+for entry in $units; do
+  if [[ ! "$entry" =~ ^[a-z0-9-]+(:[1-9][0-9]*)?$ ]]; then
+    echo "UNKNOWN: invalid unit entry" >&2
     exit 3
   fi
+  unit="${entry%%:*}"
+  unit_max="$max_age"
+  [[ "$entry" == *:* ]] && unit_max="${entry##*:}"
   if [[ "$(systemctl show "$unit.service" -p LoadState --value 2>/dev/null)" != "loaded" ]]; then
     echo "UNKNOWN: $unit not installed" >&2
     unknown=1
@@ -43,8 +47,8 @@ for unit in $units; do
   if [[ "$result" != "success" ]]; then
     echo "CRITICAL: $unit last run unsuccessful" >&2
     critical=1
-  elif (( now - last_epoch > max_age * 3600 )); then
-    echo "CRITICAL: $unit has not run for more than ${max_age}h" >&2
+  elif (( now - last_epoch > unit_max * 3600 )); then
+    echo "CRITICAL: $unit has not run for more than ${unit_max}h" >&2
     critical=1
   fi
 done

@@ -16,31 +16,41 @@ export const ALERT_KIND: Record<Alert["kind"], string> = {
   OVERSPEED: "Excès de vitesse",
   RESTRICTED_ZONE_ENTRY: "Entrée en zone interdite",
   SITE_BOUNDARY_EXIT: "Sortie de la limite du site",
+  SIGNAL_LOST: "Perte de signal",
 };
 
-function detail(a: Alert): string {
+function detail(a: Alert, tz: string): string {
+  if (a.kind === "SIGNAL_LOST") return `Dernière position mesurée ${formatDateTime(a.last_measured_at, tz)}`;
   if (a.kind === "OVERSPEED") return `${a.peak_speed_kmh?.toFixed(1)} km/h au maximum pour ${a.speed_limit_kmh} km/h autorisés`;
   return a.geofence_name ?? "Zone";
 }
 
-/** Vitesse limite du site : sans limite, aucune alerte de vitesse n'est produite. */
+/** Réglages du site : sans limite ni délai, aucune alerte de vitesse ni de perte de signal n'est produite. */
 function SitePolicy({ siteId }: { siteId: string }) {
   const me = useMe();
   const queryClient = useQueryClient();
   const managing = can(me.grants, "fleet.gps_policy.manage", siteId);
   const [value, setValue] = useState<string | null>(null);
+  const [delay, setDelay] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [saving, setSaving] = useState(false);
   const policy = useQuery({ queryKey: ["gps-policy", siteId], queryFn: () => get<Policy>(`/sites/${siteId}/gps-policy`) });
   const current = policy.data?.speed_limit_kmh ?? null;
+  const currentDelay = policy.data?.signal_loss_minutes ?? null;
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
     setError(null);
     try {
-      await request(`/sites/${siteId}/gps-policy`, { method: "PUT", body: { speed_limit_kmh: value ? value : null } });
+      const limit = value ?? (current == null ? "" : String(current));
+      const minutes = delay ?? (currentDelay == null ? "" : String(currentDelay));
+      await request(`/sites/${siteId}/gps-policy`, {
+        method: "PUT",
+        body: { speed_limit_kmh: limit ? limit : null, signal_loss_minutes: minutes ? Number(minutes) : null },
+      });
       setValue(null);
+      setDelay(null);
       await queryClient.invalidateQueries({ queryKey: ["gps-policy", siteId] });
     } catch (failure) {
       setError(failure);
@@ -50,19 +60,26 @@ function SitePolicy({ siteId }: { siteId: string }) {
   }
 
   return (
-    <section className="card" aria-label="Vitesse limite du site">
-      <h2>Vitesse limite du site</h2>
+    <section className="card" aria-label="Réglages d'alerte du site">
+      <h2>Réglages d'alerte du site</h2>
       <DataState loading={policy.isLoading} error={policy.error} empty={false}>
         <p>
           {current == null
             ? "Aucune limite : aucune alerte d'excès de vitesse n'est produite sur ce site."
-            : `Alerte au-delà de ${current} km/h mesurés.`}
+            : `Alerte au-delà de ${current} km/h mesurés.`}{" "}
+          {currentDelay == null
+            ? "Perte de signal non surveillée."
+            : `Perte de signal signalée après ${currentDelay} min sans position (engins disponibles équipés d'un traceur).`}
         </p>
         {managing && (
           <form onSubmit={(e) => void save(e)} className="inline-form">
             <label>
               Nouvelle limite (km/h, vide = aucune)
               <input type="number" min="1" max="250" step="0.1" value={value ?? (current == null ? "" : String(current))} onChange={(e) => setValue(e.target.value)} />
+            </label>
+            <label>
+              Perte de signal après (min, vide = non surveillée)
+              <input type="number" min="5" max="1440" step="1" value={delay ?? (currentDelay == null ? "" : String(currentDelay))} onChange={(e) => setDelay(e.target.value)} />
             </label>
             <button type="submit" disabled={saving}>Enregistrer</button>
           </form>
@@ -112,7 +129,7 @@ export function GpsAlertsPage() {
           <h1>Alertes GPS</h1>
           <p className="muted">
             Produites à partir des positions mesurées : excès de vitesse, entrée en zone interdite, sortie de la limite du
-            site. Une position reçue en retard ne crée pas d'alerte.
+            site, perte de signal. Une position reçue en retard ne crée pas d'alerte.
           </p>
         </div>
       </div>
@@ -144,7 +161,7 @@ export function GpsAlertsPage() {
                       <Link to={`/vehicules/${a.vehicle_id}`}>{a.fleet_number}</Link>
                     </td>
                     <td>{ALERT_KIND[a.kind]}</td>
-                    <td>{detail(a)}</td>
+                    <td>{detail(a, tz)}</td>
                     <td>{formatDateTime(a.opened_at, tz)}</td>
                     <td>{a.closed_at == null ? <strong>En cours</strong> : a.closed_at === a.opened_at ? "—" : formatDateTime(a.closed_at, tz)}</td>
                     <td>
