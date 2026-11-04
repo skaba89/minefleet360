@@ -72,6 +72,14 @@ const ITEMS: Item[] = [
     count: (siteId) => read("/tyres", { query: { site_id: siteId, alert_only: true, page_size: 1 } }).then(total),
   },
   {
+    key: "gps-alerts",
+    permission: "fleet.gps_alert.read",
+    label: (n) => `${n} alerte(s) GPS à prendre en compte (vitesse, zones)`,
+    to: "/flotte-gps/alertes",
+    tone: "bad",
+    count: (siteId) => read("/gps/alerts", { query: { site_id: siteId, unacknowledged: true, page_size: 1 } }).then(total),
+  },
+  {
     key: "fuel",
     permission: "fuel.stock.read",
     label: (n) => `${n} alerte(s) de stock carburant active(s)`,

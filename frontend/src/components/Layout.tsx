@@ -29,6 +29,7 @@ export function Layout() {
     { to: "/vehicules", text: "Véhicules", show: can(me.grants, "fleet.vehicle.read") },
     { to: "/flotte-gps", text: "Flotte GPS", show: can(me.grants, "fleet.vehicle.read") },
     { to: "/flotte-gps/zones", text: "Zones GPS", show: can(me.grants, "fleet.geofence.read") },
+    { to: "/flotte-gps/alertes", text: "Alertes GPS", show: can(me.grants, "fleet.gps_alert.read") },
     { to: "/mon-suivi", text: "Mon partage GPS", show: can(me.grants, "fleet.gps.share") },
     { to: "/conducteurs", text: "Conducteurs", show: can(me.grants, "workforce.driver.read") },
     { to: "/affectations", text: "Affectations", show: can(me.grants, "assignment.vehicle_assignment.read") },
@@ -64,7 +65,7 @@ export function Layout() {
     { to: "/indicateurs", text: "Indicateurs", show: can(me.grants, "dispatch.indicators.read") },
     { to: "/administration", text: "Administration", show: canAdminister(me.grants) },
   ];
-  const icons: IconName[] = ["truck", "gps", "phone", "users", "assignment", "mission", "tool", "calendar", "fuel", "tool", "scale", "shield", "chart", "settings"];
+  const icons: IconName[] = ["truck", "gps", "phone", "bell", "users", "assignment", "mission", "tool", "calendar", "fuel", "tool", "scale", "shield", "chart", "settings"];
   return (
     <div className={`shell${menuOpen ? " menu-open" : ""}`}>
       <header className="topbar">
@@ -135,7 +136,8 @@ export function Layout() {
             {links
               .filter((l) => l.show)
               .map((l) => (
-                <NavLink key={l.to} to={l.to} onClick={() => setMenuOpen(false)}>
+                // Lien exact si une sous-page a son propre lien (Flotte GPS / Alertes GPS, Atelier / Fiabilité).
+                <NavLink key={l.to} to={l.to} end={links.some((o) => o.to.startsWith(`${l.to}/`))} onClick={() => setMenuOpen(false)}>
                   <Icon name={icons[links.indexOf(l)] ?? "dashboard"} />{l.text}
                 </NavLink>
               ))}

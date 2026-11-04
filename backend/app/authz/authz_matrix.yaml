@@ -1310,6 +1310,36 @@ permissions:
       - { method: POST, path: "/geofences/{site_geofence_id}/deactivate", shape: item, success: 200 }
     audit: { action: fleet.geofence.create }
     grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT, SITE], HSE: [TENANT, SITE] }
+  # Alertes GPS (vitesse, zones) : comportement de conduite, d'où des permissions dédiées (docs/GPS_ALERTS.md).
+  fleet.gps_alert.read:
+    tranche: 1c
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /gps/alerts, shape: collection, success: 200 }
+      - { method: GET, path: "/sites/{site_id}/gps-policy", shape: item, success: 200 }
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      HSE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  fleet.gps_alert.manage:
+    tranche: 1c
+    kind: action
+    site_bound: true
+    routes:
+      - { method: POST, path: "/gps/alerts/{gps_alert_id}/acknowledge", shape: item, success: 200 }
+    audit: { action: fleet.gps.alert.acknowledge }
+    grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE], HSE: [TENANT, SITE] }
+  fleet.gps_policy.manage:
+    tranche: 1c
+    kind: update
+    site_bound: true
+    routes:
+      - { method: PUT, path: "/sites/{site_id}/gps-policy", shape: item, success: 200 }
+    audit: { action: fleet.gps.policy.update }
+    grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT, SITE] }
   # Historique de positions : donnée sensible (T-31) — finalité obligatoire, chaque lecture est auditée.
   # Pas de DISPATCHER (temps réel seulement) ni de DIRECTION (indicateurs agrégés).
   fleet.gps.history:

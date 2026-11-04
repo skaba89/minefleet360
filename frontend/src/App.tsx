@@ -11,6 +11,7 @@ import { ReliabilityPage } from "./pages/ReliabilityPage";
 import { ReferentialsPage } from "./pages/ReferentialsPage";
 import { DriverDetailPage } from "./pages/DriverDetailPage";
 import { DriversPage } from "./pages/DriversPage";
+import { GpsAlertsPage } from "./pages/GpsAlertsPage";
 import { GeofencesPage } from "./pages/GpsHistory";
 import { HomePage } from "./pages/HomePage";
 import { ChecklistTemplatesPage, HseInspectionPage, HseInspectionsPage } from "./pages/HseInspectionsPages";
@@ -60,6 +61,7 @@ export function App() {
           <Route path="vehicules" element={<VehiclesPage />} />
           <Route path="flotte-gps" element={<LiveFleetPage />} />
           <Route path="flotte-gps/zones" element={<GeofencesPage />} />
+          <Route path="flotte-gps/alertes" element={<GpsAlertsPage />} />
           <Route path="mon-suivi" element={<PhoneTrackingPage />} />
           <Route path="vehicules/echeances" element={<DueDocumentsPage />} />
           <Route path="vehicules/:vehicleId" element={<VehicleDetailPage />} />

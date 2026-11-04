@@ -10,6 +10,7 @@ from datetime import datetime
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.fleet.gps_alert_engine import evaluate_position_alerts
 from app.fleet.gps_contract import GpsPosition
 from app.fleet.gps_ingestion_preflight import preflight_gps_ingestion
 from app.fleet.gps_models import FleetGpsPosition
@@ -57,4 +58,19 @@ def persist_validated_gps_position(
         .on_conflict_do_nothing(constraint="uq_fgp_device_time")
         .returning(FleetGpsPosition.gps_position_id)
     )
-    return db.execute(statement).scalar_one_or_none() is not None
+    inserted = db.execute(statement).scalar_one_or_none()
+    if inserted is None:
+        return False
+    # Alertes (vitesse, zones) dans la même transaction que la position : rien d'orphelin en cas d'échec.
+    evaluate_position_alerts(
+        db,
+        tenant_id=tenant_id,
+        site_id=site_id,
+        vehicle_id=position.vehicle_id,
+        gps_position_id=inserted,
+        recorded_at=position.recorded_at,
+        latitude=position.latitude,
+        longitude=position.longitude,
+        speed_kmh=position.speed_kmh,
+    )
+    return True
