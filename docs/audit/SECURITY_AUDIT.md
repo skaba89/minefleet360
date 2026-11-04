@@ -22,7 +22,7 @@ les remplacer.
 
 | Priorité | Écart | Risque | Action proposée |
 |---|---|---|---|
-| **P0** | Protection de `main` (vérifiée par l'API GitHub le 4 novembre) : seuls `backend` et `frontend` sont obligatoires ; **`tenant-isolation`, `browser-smoke` et `demo-journeys` ne le sont pas** ; aucune revue exigée ; règles non appliquées aux administrateurs | une PR peut être fusionnée alors que l'isolation multi-tenant échoue | rendre les 5 jobs obligatoires (décision du propriétaire du dépôt) ; envisager une revue requise |
+| ~~P0~~ **corrigé le 4 novembre** | Protection de `main` : seuls `backend` et `frontend` étaient obligatoires. Sur décision du propriétaire, les 5 jobs le sont désormais (`backend`, `frontend`, `tenant-isolation`, `browser-smoke`, `demo-journeys`), vérifié par l'API GitHub. Restent : aucune revue exigée, règles non appliquées aux administrateurs | fusion possible sans revue | revue obligatoire à envisager quand l'équipe comptera plusieurs relecteurs |
 | P0 avant production | Hébergement hors Guinée et durées de conservation non validés juridiquement (C-01, C-08, C-09) | non-conformité | avis d'un juriste guinéen (bloquant, déjà noté dans D-41) |
 | P1 | Pas de `Content-Security-Policy` | XSS amplifiée si une injection apparaît | CSP stricte (scripts du même domaine), testée sur la recette |
 | P1 | Pas de SAST ni de scan de secrets en CI | régression non détectée | `bandit` ou `semgrep` (Python), `gitleaks` ; bloquants sur les nouveaux constats |
