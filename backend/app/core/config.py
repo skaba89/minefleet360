@@ -88,6 +88,9 @@ class Settings(BaseSettings):
     mail_capture_dir: str = "var/mail"
     mail_backend: Literal["capture", "smtp"] = "capture"
     mail_capture_ttl_seconds: int = Field(default=86400, ge=60, le=604800)
+    # SMS des alertes GPS : aucun fournisseur payant branché (choix du client attendu) ; capture en recette.
+    sms_backend: Literal["capture", "disabled"] = "disabled"
+    sms_capture_dir: str = "var/sms"
     smtp_host: str = ""
     smtp_port: int = Field(default=587, ge=1, le=65535)
     smtp_username: str = ""

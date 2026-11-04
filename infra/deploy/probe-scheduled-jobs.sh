@@ -4,7 +4,7 @@
 # Without this probe a failing nightly job (HSE digest, preventive dues) would go unnoticed.
 set -uo pipefail
 # Entrées « unité » ou « unité:heures » (délai maximal propre à la tâche, sinon MF_SCHEDULED_MAX_AGE_HOURS).
-units="${MF_SCHEDULED_UNITS:-minefleet-hse-digest minefleet-preventive-evaluate minefleet-gps-signal-sweep:1}"
+units="${MF_SCHEDULED_UNITS:-minefleet-hse-digest minefleet-preventive-evaluate minefleet-gps-signal-sweep:1 minefleet-notify-deliver:1}"
 max_age="${MF_SCHEDULED_MAX_AGE_HOURS:-26}"
 if [[ ! "$max_age" =~ ^[1-9][0-9]*$ ]] || (( max_age > 720 )); then
   echo "UNKNOWN: MF_SCHEDULED_MAX_AGE_HOURS must be an integer 1..720" >&2

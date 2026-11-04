@@ -90,6 +90,68 @@ function SitePolicy({ siteId }: { siteId: string }) {
   );
 }
 
+type Notification = Schemas["AlertNotificationOut"];
+
+/** Choix personnel du canal de notification : e-mail, SMS, les deux, ou aucun (défaut). */
+function MyNotifications() {
+  const queryClient = useQueryClient();
+  const prefs = useQuery({ queryKey: ["alert-notifications"], queryFn: () => get<Notification>("/me/alert-notifications") });
+  const [draft, setDraft] = useState<{ email: boolean; sms: boolean; phone: string } | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [saved, setSaved] = useState(false);
+  const data = prefs.data;
+  const form = draft ?? { email: data?.email_enabled ?? false, sms: data?.sms_enabled ?? false, phone: data?.phone_e164 ?? "" };
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setSaved(false);
+    try {
+      await request("/me/alert-notifications", {
+        method: "PUT",
+        body: { email_enabled: form.email, sms_enabled: form.sms, phone_e164: form.phone.trim() || null },
+      });
+      setDraft(null);
+      setSaved(true);
+      await queryClient.invalidateQueries({ queryKey: ["alert-notifications"] });
+    } catch (failure) {
+      setError(failure);
+    }
+  }
+
+  return (
+    <section className="card" aria-label="Mes notifications d'alertes">
+      <h2>Mes notifications</h2>
+      <p className="muted small">
+        Recevoir les nouvelles alertes de vos sites. Au plus une notification par engin et par type d'alerte toutes les
+        30 minutes. Aucune coordonnée n'est envoyée.
+      </p>
+      <DataState loading={prefs.isLoading} error={prefs.error} empty={false}>
+        <form onSubmit={(e) => void save(e)} className="inline-form">
+          <label className="checkbox">
+            <input type="checkbox" checked={form.email} onChange={(e) => setDraft({ ...form, email: e.target.checked })} />
+            Par e-mail
+          </label>
+          <label className="checkbox">
+            <input type="checkbox" checked={form.sms} onChange={(e) => setDraft({ ...form, sms: e.target.checked })} />
+            Par SMS
+          </label>
+          <label>
+            Numéro de mobile (format international, ex. +224…)
+            <input type="tel" inputMode="tel" autoComplete="tel" pattern="\+[1-9][0-9]{7,14}" required={form.sms} value={form.phone} onChange={(e) => setDraft({ ...form, phone: e.target.value })} />
+          </label>
+          <button type="submit">Enregistrer mes choix</button>
+        </form>
+        {data && !data.sms_available && (
+          <p className="warn-text small">Envoi de SMS pas encore disponible sur ce serveur (fournisseur non configuré) : vos choix sont enregistrés.</p>
+        )}
+        {saved && <p role="status">Choix enregistrés.</p>}
+        {error != null && <ErrorMessage error={error} />}
+      </DataState>
+    </section>
+  );
+}
+
 export function GpsAlertsPage() {
   const me = useMe();
   const { siteId, timezoneOf } = useSites();
@@ -133,6 +195,7 @@ export function GpsAlertsPage() {
           </p>
         </div>
       </div>
+      <MyNotifications />
       {siteId && <SitePolicy siteId={siteId} />}
       <div className="card">
         <label className="checkbox">

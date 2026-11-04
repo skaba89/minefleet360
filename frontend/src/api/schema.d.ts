@@ -1471,6 +1471,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/alert-notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Alert Notifications */
+        get: operations["get_alert_notifications_api_v1_me_alert_notifications_get"];
+        /**
+         * Put Alert Notifications
+         * @description Choix personnel du canal : seul l'utilisateur règle ses notifications et saisit son numéro.
+         */
+        put: operations["put_alert_notifications_api_v1_me_alert_notifications_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/gps/shares": {
         parameters: {
             query?: never;
@@ -3450,6 +3471,26 @@ export interface components {
              * Format: uuid
              */
             user_account_id: string;
+        };
+        /** AlertNotificationIn */
+        AlertNotificationIn: {
+            /** Email Enabled */
+            email_enabled: boolean;
+            /** Phone E164 */
+            phone_e164?: string | null;
+            /** Sms Enabled */
+            sms_enabled: boolean;
+        };
+        /** AlertNotificationOut */
+        AlertNotificationOut: {
+            /** Email Enabled */
+            email_enabled: boolean;
+            /** Phone E164 */
+            phone_e164: string | null;
+            /** Sms Available */
+            sms_available: boolean;
+            /** Sms Enabled */
+            sms_enabled: boolean;
         };
         /** AnomalyCaseOut */
         AnomalyCaseOut: {
@@ -12715,6 +12756,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_alert_notifications_api_v1_me_alert_notifications_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertNotificationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_alert_notifications_api_v1_me_alert_notifications_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlertNotificationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertNotificationOut"];
                 };
             };
             /** @description Validation Error */
