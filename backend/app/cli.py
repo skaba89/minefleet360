@@ -10,6 +10,7 @@ minefleet purge-gps [--days N] [--apply]
     (MF_OWNER_PASSWORD), comme les migrations : la fonction de purge n'est pas accessible au rôle applicatif.
 minefleet send-hse-digest [--dry-run]
 minefleet evaluate-preventive [--dry-run]
+minefleet sweep-gps-signal
     Récapitulatif HSE quotidien par e-mail (actions en retard ou proches, incidents graves ouverts), par
     société, audité ; --dry-run compte les messages sans rien envoyer. À planifier une fois par jour.
 minefleet demo seed --profile small|standard|large [--seed 42] [--anchor AAAA-MM-JJ] --credentials-out <f>
@@ -27,9 +28,12 @@ import argparse
 import getpass
 import os
 import sys
+import uuid
+from collections.abc import Callable
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.audit.contracts import record
 from app.core.clock import SystemClock
@@ -203,14 +207,18 @@ def send_hse_digest(dry_run: bool) -> int:
     return 1 if failures else 0
 
 
-def evaluate_preventive(dry_run: bool) -> int:
-    """Tâche quotidienne : échéances préventives de chaque société active (acteur SYSTEM, idempotent)."""
-    from app.maintenance.preventive_daily import evaluate_tenant_dues
+def _for_each_tenant(
+    label: str, work: Callable[[Session, uuid.UUID], int], *, keep: bool = True
+) -> tuple[int, int]:
+    """Tâche planifiée : `work` pour chaque société active, sous son contexte RLS, une transaction chacune.
+
+    Une société en échec est annulée sans bloquer les suivantes. Renvoie (total, sociétés en échec).
+    `keep=False` (simulation) : chaque transaction est annulée.
+    """
     from app.organization.models import Tenant
 
-    now = SystemClock().now()
     db = new_session()
-    created = due = failures = 0
+    total = failures = 0
     try:
         set_tenant_context(db, PLATFORM_TENANT_ID)
         tenants = list(
@@ -220,24 +228,50 @@ def evaluate_preventive(dry_run: bool) -> int:
         )
         db.commit()
         for tenant_id in tenants:
-            # Une société en échec n'empêche pas les suivantes ; sa transaction est annulée.
             try:
                 set_tenant_context(db, tenant_id)
-                summary = evaluate_tenant_dues(db, tenant_id, now, dry_run=dry_run)
-                if dry_run:
-                    db.rollback()
-                else:
+                total += work(db, tenant_id)
+                if keep:
                     db.commit()
-                created += summary.created
-                due += summary.due_now
+                else:
+                    db.rollback()
             except SQLAlchemyError:
                 db.rollback()
                 failures += 1
-                print(f"Échec de l'évaluation préventive pour une société ({tenant_id}).", file=sys.stderr)
+                print(f"Échec ({label}) pour une société ({tenant_id}).", file=sys.stderr)
     finally:
         db.close()
+    return total, failures
+
+
+def evaluate_preventive(dry_run: bool) -> int:
+    """Tâche quotidienne : échéances préventives de chaque société active (acteur SYSTEM, idempotent)."""
+    from app.maintenance.preventive_daily import evaluate_tenant_dues
+
+    now = SystemClock().now()
+    due = 0
+
+    def work(db: Session, tenant_id: uuid.UUID) -> int:
+        nonlocal due
+        summary = evaluate_tenant_dues(db, tenant_id, now, dry_run=dry_run)
+        due += summary.due_now
+        return summary.created
+
+    created, failures = _for_each_tenant("évaluation préventive", work, keep=not dry_run)
     mode = " (simulation : rien n'est enregistré)" if dry_run else ""
     print(f"Échéances préventives dues : {due} ; créées : {created} ; sociétés en échec : {failures}{mode}")
+    return 1 if failures else 0
+
+
+def sweep_gps_signal() -> int:
+    """Tâche toutes les 5 min : alertes de perte de signal GPS (acteur SYSTEM, une ouverte par engin)."""
+    from app.fleet.gps_signal_sweep import sweep_tenant_signal_loss
+
+    now = SystemClock().now()
+    opened, failures = _for_each_tenant(
+        "perte de signal GPS", lambda db, tenant_id: sweep_tenant_signal_loss(db, tenant_id, now)
+    )
+    print(f"Alertes de perte de signal ouvertes : {opened} ; sociétés en échec : {failures}")
     return 1 if failures else 0
 
 
@@ -255,6 +289,7 @@ def main(argv: list[str] | None = None) -> int:
     digest.add_argument("--dry-run", action="store_true")
     preventive = sub.add_parser("evaluate-preventive")
     preventive.add_argument("--dry-run", action="store_true")
+    sub.add_parser("sweep-gps-signal")
     reset = sub.add_parser("reset-platform-mfa")
     reset.add_argument("--email", required=True)
     from app.demo import cli as demo_cli
@@ -277,6 +312,8 @@ def main(argv: list[str] | None = None) -> int:
         return send_hse_digest(args.dry_run)
     if args.command == "evaluate-preventive":
         return evaluate_preventive(args.dry_run)
+    if args.command == "sweep-gps-signal":
+        return sweep_gps_signal()
     if args.command == "reset-platform-mfa":
         return reset_platform_mfa(args.email)
     return 1

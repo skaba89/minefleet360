@@ -30,7 +30,10 @@ def test_duplicate_returns_false_without_failure() -> None:
     db = MagicMock()
     db.execute.return_value.scalar_one_or_none.return_value = None
     point = GpsPosition(uuid.uuid4(), "tracker-01", 10, -10, NOW)
-    with patch("app.fleet.gps_position_write.preflight_gps_ingestion", return_value=True):
+    with (
+        patch("app.fleet.gps_position_write.preflight_gps_ingestion", return_value=True),
+        patch("app.fleet.gps_position_write.evaluate_position_alerts") as alerts,
+    ):
         result = persist_validated_gps_position(
             db,
             tenant_id=uuid.uuid4(),
@@ -41,20 +44,37 @@ def test_duplicate_returns_false_without_failure() -> None:
         )
     assert not result
     db.execute.assert_called_once()
+    alerts.assert_not_called()  # rien d'inséré : aucune alerte évaluée
 
 
-def test_first_position_returns_true() -> None:
+def test_first_position_returns_true_and_evaluates_alerts() -> None:
     db = MagicMock()
-    db.execute.return_value.scalar_one_or_none.return_value = uuid.uuid4()
-    point = GpsPosition(uuid.uuid4(), "tracker-01", 10, -10, NOW)
-    with patch("app.fleet.gps_position_write.preflight_gps_ingestion", return_value=True):
+    inserted = uuid.uuid4()
+    db.execute.return_value.scalar_one_or_none.return_value = inserted
+    point = GpsPosition(uuid.uuid4(), "tracker-01", 10, -10, NOW, speed_kmh=42.0)
+    tenant, site = uuid.uuid4(), uuid.uuid4()
+    with (
+        patch("app.fleet.gps_position_write.preflight_gps_ingestion", return_value=True),
+        patch("app.fleet.gps_position_write.evaluate_position_alerts") as alerts,
+    ):
         result = persist_validated_gps_position(
             db,
-            tenant_id=uuid.uuid4(),
-            site_id=uuid.uuid4(),
+            tenant_id=tenant,
+            site_id=site,
             position=point,
             supplied_secret="x" * 44,
             received_at=NOW,
         )
     assert result
     db.execute.assert_called_once()
+    alerts.assert_called_once_with(
+        db,
+        tenant_id=tenant,
+        site_id=site,
+        vehicle_id=point.vehicle_id,
+        gps_position_id=inserted,
+        recorded_at=NOW,
+        latitude=10,
+        longitude=-10,
+        speed_kmh=42.0,
+    )

@@ -9,7 +9,13 @@
 | Excès de vitesse (`OVERSPEED`) | vitesse **mesurée** strictement supérieure à la limite du site | première mesure revenue au plus à la limite (ou limite retirée) ; la vitesse maximale atteinte est retenue |
 | Entrée en zone interdite (`RESTRICTED_ZONE_ENTRY`) | la mesure est dans une zone active de type « Zone interdite » et la mesure précédente n'y était pas | ponctuelle |
 | Sortie de la limite du site (`SITE_BOUNDARY_EXIT`) | la mesure précédente était dans la zone « Limite de site », la nouvelle n'y est plus | ponctuelle |
+| Perte de signal (`SIGNAL_LOST`, migration 0062) | balayage planifié toutes les 5 min : engin **disponible**, équipé d'un **traceur actif**, sans position mesurée depuis plus que le délai du site | première position reçue ensuite, même tardive (fin au plus tôt à l'instant de détection) |
 
+- **Sans délai de perte de signal** (réglage par défaut) : pas de surveillance. Délai de 5 à 1 440 min. Les engins
+  en maintenance, immobilisés ou hors service (qui peuvent être éteints) et ceux qui n'ont jamais émis ne sont pas
+  surveillés. Commande `minefleet sweep-gps-signal` (acteur `SYSTEM`, une alerte ouverte au plus par engin), timer
+  `minefleet-gps-signal-sweep` ; la sonde `probe-scheduled-jobs.sh` alerte si le balayage n'a pas tourné depuis
+  1 h (`minefleet-gps-signal-sweep:1`).
 - **Sans limite de vitesse** pour un site (réglage par défaut) : aucune alerte de vitesse. Le responsable
   d'exploitation la fixe sur la page « Alertes GPS » (1 à 250 km/h, au dixième).
 - Seule la **mesure la plus récente** d'un engin fait évoluer ses alertes : une position reçue en retard est gardée
@@ -59,7 +65,23 @@
 
 ## Pas encore fait
 
-1. **Perte de signal** : demande une tâche planifiée (comme la tâche quotidienne du préventif) ; prochaine tranche.
-2. **Notifications** par e-mail, SMS ou push : à brancher sur le fournisseur choisi par le client (D-41).
-3. Limites de vitesse par zone, plages horaires autorisées, utilisation hors horaires.
-4. Marqueur d'alerte sur la carte en direct.
+1. **Notifications** par e-mail, SMS ou push : à brancher sur le fournisseur choisi par le client (D-41).
+2. Limites de vitesse par zone, plages horaires autorisées, utilisation hors horaires.
+3. Marqueur d'alerte sur la carte en direct.
+
+## Perte de signal : vérifications
+
+- Tests API (`test_gps_signal_loss.py`) avec la vraie commande :
+  - pas de surveillance sans délai ;
+  - seul l'engin disponible, à traceur actif et silencieux est signalé ; pas l'engin récent, ni celui en maintenance, ni celui sans traceur ;
+  - rejeu sans doublon ;
+  - dernière mesure conservée ;
+  - fermeture à la position suivante ;
+  - audit `SYSTEM` ;
+  - bornes 5 à 1 440, et refus d'une chaîne.
+- Sonde : délai propre à une tâche (`unité:heures`), 6 tests avec un faux `systemctl`.
+- Démonstration (jeu `large`, émetteur arrêté, délai de 10 min sur demo-bauxite) :
+  - **47 alertes en 1,7 s**, exactement les 47 engins disponibles à traceur actif (l'engin immobilisé est exclu), rien pour les autres sociétés ;
+  - rejeu : 0 ;
+  - émetteur relancé 1 min : les 47 alertes se ferment ;
+  - réglage remis à vide ensuite.

@@ -26,7 +26,7 @@ router = APIRouter(tags=["géolocalisation"], route_class=SecuredRoute)
 AlertRead = Annotated[Authorized, Depends(Require("fleet.gps_alert.read"))]
 AlertManage = Annotated[Authorized, Depends(Require("fleet.gps_alert.manage"))]
 PolicyManage = Annotated[Authorized, Depends(Require("fleet.gps_policy.manage"))]
-AlertKind = Literal["OVERSPEED", "RESTRICTED_ZONE_ENTRY", "SITE_BOUNDARY_EXIT"]
+AlertKind = Literal["OVERSPEED", "RESTRICTED_ZONE_ENTRY", "SITE_BOUNDARY_EXIT", "SIGNAL_LOST"]
 
 
 class GpsAlertOut(BaseModel):
@@ -56,11 +56,14 @@ class AcknowledgeIn(StrictModel):
 class GpsPolicyOut(BaseModel):
     site_id: uuid.UUID
     speed_limit_kmh: Decimal | None
+    signal_loss_minutes: int | None = None
     updated_at: datetime | None
 
 
 class GpsPolicyIn(StrictModel):
     speed_limit_kmh: Decimal | None = Field(default=None, gt=0, le=250, max_digits=5, decimal_places=1)
+    # Délai sans mesure avant alerte (engins disponibles à traceur actif) ; vide = pas de surveillance.
+    signal_loss_minutes: int | None = Field(default=None, ge=5, le=1440, strict=True)
 
 
 def _site_in_scope(auth: Authorized, site_id: uuid.UUID) -> None:
@@ -193,6 +196,7 @@ def get_gps_policy(site_id: uuid.UUID, auth: AlertRead) -> GpsPolicyOut:
     return GpsPolicyOut(
         site_id=site_id,
         speed_limit_kmh=policy.speed_limit_kmh if policy else None,
+        signal_loss_minutes=policy.signal_loss_minutes if policy else None,
         updated_at=policy.updated_at if policy else None,
     )
 
@@ -205,7 +209,12 @@ def put_gps_policy(site_id: uuid.UUID, body: GpsPolicyIn, auth: PolicyManage) ->
         .where(SiteGpsPolicy.tenant_id == auth.tenant_id, SiteGpsPolicy.site_id == site_id)
         .with_for_update()
     )
-    before = policy.speed_limit_kmh if policy else None
+    before = {
+        "speed_limit_kmh": str(policy.speed_limit_kmh)
+        if policy and policy.speed_limit_kmh is not None
+        else None,
+        "signal_loss_minutes": policy.signal_loss_minutes if policy else None,
+    }
     now = auth.clock.now()
     if policy is None:
         policy = SiteGpsPolicy(
@@ -214,6 +223,7 @@ def put_gps_policy(site_id: uuid.UUID, body: GpsPolicyIn, auth: PolicyManage) ->
         auth.db.add(policy)
     limit = body.speed_limit_kmh.quantize(Decimal("0.1")) if body.speed_limit_kmh is not None else None
     policy.speed_limit_kmh = limit
+    policy.signal_loss_minutes = body.signal_loss_minutes
     policy.updated_by = auth.user_id
     policy.updated_at = now
     auth.db.flush()
@@ -225,9 +235,17 @@ def put_gps_policy(site_id: uuid.UUID, body: GpsPolicyIn, auth: PolicyManage) ->
         action="fleet.gps.policy.update",
         entity_type="site_gps_policy",
         entity_id=site_id,
-        before={"speed_limit_kmh": str(before) if before is not None else None},
-        after={"speed_limit_kmh": str(limit) if limit is not None else None},
-        changed_fields=("speed_limit_kmh",),
+        before=before,
+        after={
+            "speed_limit_kmh": str(limit) if limit is not None else None,
+            "signal_loss_minutes": body.signal_loss_minutes,
+        },
+        changed_fields=("speed_limit_kmh", "signal_loss_minutes"),
     )
     auth.db.commit()
-    return GpsPolicyOut(site_id=site_id, speed_limit_kmh=policy.speed_limit_kmh, updated_at=policy.updated_at)
+    return GpsPolicyOut(
+        site_id=site_id,
+        speed_limit_kmh=policy.speed_limit_kmh,
+        signal_loss_minutes=policy.signal_loss_minutes,
+        updated_at=policy.updated_at,
+    )
