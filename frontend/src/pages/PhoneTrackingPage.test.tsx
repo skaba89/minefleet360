@@ -11,8 +11,14 @@ const share = { phone_share_id: "share", vehicle_id: "vehicle", started_at: new 
 let success: PositionCallback;
 let failure: PositionErrorCallback | null;
 const locate = vi.fn((ok: PositionCallback, fail?: PositionErrorCallback | null) => { success = ok; failure = fail ?? null; });
-function setup() {
+function setup(prefillVehicles = false) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  if (prefillVehicles) {
+    client.setQueryData(["gps-sharing-vehicles", 1], {
+      items: [{ vehicle_id: "vehicle", fleet_number: "PARC-FICTIF", registration_number: null, site_id: "site" }],
+      total: 1,
+    });
+  }
   return { ...render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/mon-suivi?vehicle=vehicle"]}><PhoneTrackingPage /></MemoryRouter></QueryClientProvider>), client };
 }
 beforeEach(() => {
@@ -106,8 +112,8 @@ it("arrête le partage expiré sans demander la géolocalisation ni conserver de
   vi.mocked(request).mockImplementation(async (path) => ({
     data: path === "/me/gps/shares" ? expired : undefined, etag: null,
   }));
-  setup();
-  await screen.findByRole("option", { name: "PARC-FICTIF" }, { timeout: 5000 });
+  setup(true);
+  await screen.findByRole("option", { name: "PARC-FICTIF" });
   await screen.findByRole("button", { name: "Démarrer le partage" });
   fireEvent.click(screen.getByRole("checkbox"));
   fireEvent.click(screen.getByRole("button", { name: "Démarrer le partage" }));
