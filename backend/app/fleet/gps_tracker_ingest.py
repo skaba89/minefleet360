@@ -11,6 +11,7 @@ from app.core.tenancy import set_tenant_context
 from app.fleet.gps_authenticated_device import resolve_authenticated_gps_device
 from app.fleet.gps_binding_models import FleetGpsDeviceBinding
 from app.fleet.gps_gateway_ingestion import TrustedGatewayContext
+from app.fleet.gps_notifications import notify_gps_position
 from app.fleet.gps_payload_ingestion import (
     accept_gps_telemetry_payload,
     decode_gps_telemetry,
@@ -103,4 +104,5 @@ def ingest_tracker(db: Session, credential: CompositeToken, payload: bytes, now:
     )
     if not accepted:
         raise AppError("CONFLICT", message_fr="Message GPS refusé, ancien ou déjà reçu.")
+    notify_gps_position(db, trusted.tenant_id)
     db.commit()
