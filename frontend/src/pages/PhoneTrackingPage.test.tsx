@@ -80,3 +80,22 @@ it("bloque le démarrage sans réseau et annonce l'absence de mise en attente", 
   act(() => window.dispatchEvent(new Event("online")));
   expect(button.disabled).toBe(false);
 });
+
+it("conserve des relevés uniquement en mémoire durant une coupure sans requête serveur", async () => {
+  setup();
+  await screen.findByRole("button", { name: "Démarrer le partage" });
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(screen.getByRole("button", { name: "Démarrer le partage" }));
+  await waitFor(() => expect(locate).toHaveBeenCalledOnce());
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+  act(() => window.dispatchEvent(new Event("offline")));
+  act(() => success({
+    timestamp: Date.now(),
+    coords: { latitude: 9.5, longitude: -13.7, accuracy: 12, speed: null, heading: null },
+  } as GeolocationPosition));
+  expect(await screen.findByText(/Hors réseau : 1 relevé\(s\) temporaires en mémoire/)).toBeTruthy();
+  expect(vi.mocked(request).mock.calls.filter(([path]) => path.endsWith("/positions"))).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "Arrêter le partage" }));
+  await screen.findByText("Partage arrêté et confirmé par le serveur");
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+});
