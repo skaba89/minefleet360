@@ -42,8 +42,11 @@ class GpsNotificationHub:
         # actif (jamais avant le fork). Aucune coordonnée n'est transmise.
         while self._subscribers:
             try:
-                url = get_settings().database_url().set(drivername="postgresql").render_as_string(
-                    hide_password=False
+                url = (
+                    get_settings()
+                    .database_url()
+                    .set(drivername="postgresql")
+                    .render_as_string(hide_password=False)
                 )
                 async with await psycopg.AsyncConnection.connect(
                     url, autocommit=True, connect_timeout=5
