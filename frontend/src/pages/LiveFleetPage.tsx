@@ -7,6 +7,8 @@ import { useMe } from "../auth/AuthContext";
 import { DataState } from "../components/common";
 import { can } from "../lib/permissions";
 import { GPS_SIGNAL_LABEL, gpsSignalState } from "../lib/gpsSignal";
+import { gpsRetryDelayMs } from "../lib/gpsRetry";
+import { useConnectivity } from "../lib/connectivity";
 import { formatDateTime } from "../lib/time";
 import { FleetMap, type MapGeofence, type MapVehicle } from "../components/FleetMap";
 import { useSites } from "../site/SiteContext";
@@ -29,6 +31,7 @@ export function LiveFleetPage() {
   const me = useMe();
   const queryClient = useQueryClient();
   const [streaming, setStreaming] = useState(false);
+  const online = useConnectivity();
   const { siteId, timezoneOf } = useSites();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -42,13 +45,17 @@ export function LiveFleetPage() {
     queryKey: ["gps-latest", siteId],
     queryFn: () => get<GpsPosition[]>("/vehicles/gps/latest", siteId ? { site_id: siteId } : undefined),
     refetchInterval: streaming ? false : 15_000,
-    enabled: permitted,
+    enabled: permitted && online,
   });
   // Un flux authentifié par connexion ; en cas d'erreur, le polling reste le repli.
   useEffect(() => {
-    if (!permitted) return;
+    if (!permitted || !online) {
+      setStreaming(false);
+      return;
+    }
     const controller = new AbortController();
     let reconnect: number | undefined;
+    let failures = 0;
     const connect = async () => {
       if (controller.signal.aborted) return;
       try {
@@ -57,6 +64,7 @@ export function LiveFleetPage() {
           (points) => {
             if (controller.signal.aborted) return;
             queryClient.setQueryData(["gps-latest", siteId], points);
+            failures = 0;
             setStreaming(true);
           },
           controller.signal,
@@ -72,7 +80,8 @@ export function LiveFleetPage() {
       } finally {
         if (!controller.signal.aborted) {
           setStreaming(false);
-          reconnect = window.setTimeout(() => { void connect(); }, 3000);
+          failures += 1;
+          reconnect = window.setTimeout(() => { void connect(); }, gpsRetryDelayMs(failures));
         }
       }
     };
@@ -82,7 +91,7 @@ export function LiveFleetPage() {
       if (reconnect !== undefined) window.clearTimeout(reconnect);
       setStreaming(false);
     };
-  }, [siteId, permitted, queryClient]);
+  }, [siteId, permitted, online, queryClient]);
   const vehicles = useQuery({ queryKey: ["gps-vehicle-labels", siteId], queryFn: () => get<{ items: Schemas["VehicleOut"][] }>("/vehicles", { site_id: siteId, page_size: 200 }), enabled: permitted });
   const byId = useMemo(() => new Map((vehicles.data?.items ?? []).map((v) => [v.vehicle_id, v])), [vehicles.data]);
   const vehicleLabel = (id: string) => byId.get(id)?.registration_number || byId.get(id)?.fleet_number || id.slice(0, 8);
@@ -128,7 +137,7 @@ export function LiveFleetPage() {
         <div>
           <p className="live-fleet-eyebrow">CENTRE DE SUPERVISION</p>
           <h1>Flotte GPS</h1>
-          <p className="muted">Positions mesurées · {streaming ? "flux GPS connecté" : "mode de secours : actualisation toutes les 15 secondes"} · signal ancien en rouge : la position peut ne plus être actuelle</p>
+          <p className="muted">Positions mesurées · {!online ? "hors connexion : dernière position connue, non actualisée" : streaming ? "flux GPS connecté" : "mode de secours : actualisation toutes les 15 secondes"} · signal ancien en rouge : la position peut ne plus être actuelle</p>
         </div>
         <button type="button" onClick={() => { setNow(Date.now()); void gps.refetch(); }}>
           Actualiser
