@@ -13,6 +13,10 @@ Le contrôle `pg_restore --list` du script `backup.sh` vérifie la lisibilité d
 
 ```bash
 bash infra/deploy/verify-restore.sh /chemin/absolu/minefleet-20261031T120000Z.dump
+
+# Optionnel : vérifier aussi une image backend déjà construite.
+bash infra/deploy/verify-restore.sh /chemin/absolu/minefleet-20261031T120000Z.dump \
+  --api-image minefleet-api:version-testee
 ```
 
 Ce script :
@@ -22,23 +26,24 @@ Ce script :
 4. restaure réellement l'archive avec ses propriétaires et ACL dans `minefleet_restore_check`, avec `--exit-on-error` ;
 5. vérifie le nombre de tables et la présence d'`alembic_version` ;
 6. vérifie que `tenant` appartient à `mf_owner`, que RLS est activée et forcée, qu'une politique cible `mf_app`, que ce rôle ne voit aucun tenant sans contexte et qu'il peut lire le tenant plateforme avec le contexte autorisé ;
-7. détruit le conteneur temporaire en sortie, succès ou échec.
+7. avec `--api-image`, place PostgreSQL et l'image backend sur un réseau Docker interne sans port publié, active temporairement `mf_app` avec un secret aléatoire, démarre l'API avec un système de fichiers en lecture seule et vérifie `/api/v1/health` et `/api/v1/ready` ;
+8. détruit les conteneurs, le réseau privé et les secrets éphémères en sortie, succès ou échec.
 
 La restauration contient potentiellement des données sensibles **en clair dans le stockage temporaire du conteneur**. Exécuter exclusivement sur un hôte de confiance chiffré et sécurisé, jamais sur un poste partagé. N'utiliser de données réelles en recette que dans le cadre des autorisations et mesures de sécurité applicables.
 
 ## Ce que ce contrôle ne prouve pas
-- Que le service API démarre avec ses secrets d'exécution, ses dépendances et ses tâches planifiées ; le script vérifie seulement un accès SQL représentatif sous `mf_app`.
+- Sans l'option `--api-image`, que le service API démarre. Avec cette option, le démarrage et la connexion DB sont vérifiés, mais pas les tâches planifiées, les parcours authentifiés ni les intégrations externes.
 - Que les sauvegardes distantes sont déchiffrables (décrypter dans un répertoire temporaire sécurisé puis utiliser le script).
 - Que les objectifs RPO/RTO contractuels sont atteints.
 - Qu'une restauration sur un nouveau VPS fonctionne, ni que les clés MFA/JWT sont disponibles.
 - Que des migrations postérieures à la sauvegarde sont réconciliées.
 
 ## Prochaine étape P0
-Sur un environnement **staging séparé**, mesurer le temps d'exécution, tester la restauration et le démarrage API avec un compte de recette, documenter la date du dernier backup vérifié, le résultat, le RPO et le RTO. Ne jamais restaurer vers la base de production active.
+Sur un environnement **staging séparé**, restaurer une sauvegarde distante, exécuter un parcours authentifié avec un compte de recette, mesurer le temps d'exécution et documenter la date du dernier backup vérifié, le résultat, le RPO et le RTO. Ne jamais restaurer vers la base de production active.
 
 
 ## Vérification automatisée dans la CI
 
-Le job backend de `.github/workflows/ci.yml` produit, avec le superutilisateur du service PostgreSQL éphémère, une archive custom de la base fictive `minefleet_test` après les migrations et tests. Il la transmet comme artefact synthétique à très courte rétention. Un job dépendant sur un runner GitHub Actions neuf télécharge l'archive puis lance ce script dans un conteneur PostGIS temporaire isolé. Le job échoue si la restauration complète, les propriétaires, les ACL ou la vérification RLS représentative échouent. La séparation évite de faire tourner simultanément la base source et le conteneur de restauration sur le même runner.
+Le job backend de `.github/workflows/ci.yml` produit, avec le superutilisateur du service PostgreSQL éphémère, une archive custom de la base fictive `minefleet_test` après les migrations et tests. Il la transmet comme artefact synthétique à très courte rétention. Un job dépendant sur un runner GitHub Actions neuf télécharge l'archive, construit l'étage runtime du Dockerfile backend, puis lance le script avec PostgreSQL et l'API sur un réseau Docker interne sans port publié. Le job échoue si la restauration complète, les propriétaires, les ACL, la vérification RLS, le démarrage de l'image API ou sa readiness DB échouent. La séparation évite de faire tourner simultanément la base source et le conteneur de restauration sur le même runner.
 
 Cette vérification automatise un aller-retour PostgreSQL avec les données synthétiques de CI. Les secrets CI aléatoires sont masqués dès leur génération; le mot de passe `postgres` utilisé par le job n'existe que dans le service de base jetable. Elle ne teste pas la destination distante chiffrée, la rotation des clés, la fréquence planifiée, les objectifs RPO/RTO, les secrets d'un hôte client ni un restore depuis une sauvegarde de production.

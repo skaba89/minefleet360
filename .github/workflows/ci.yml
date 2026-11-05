@@ -94,8 +94,12 @@ jobs:
         with:
           name: minefleet-ci-dump
           path: ${{ runner.temp }}
-      - name: Restaurer dans un conteneur PostGIS temporaire isolé
-        run: bash infra/deploy/verify-restore.sh "${RUNNER_TEMP}/minefleet-ci.dump"
+      - name: Construire l'image API de la révision
+        run: docker build --target runtime --tag minefleet-api-restore-check:ci backend
+      - name: Restaurer puis vérifier le démarrage API isolé
+        run: |
+          bash infra/deploy/verify-restore.sh "${RUNNER_TEMP}/minefleet-ci.dump" \
+            --api-image minefleet-api-restore-check:ci
 
   frontend:
     runs-on: ubuntu-24.04
