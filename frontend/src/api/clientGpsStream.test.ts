@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { setAccessToken, streamGpsSnapshots } from "./client";
+import { GpsStreamAccessDenied, setAccessToken, streamGpsSnapshots } from "./client";
 
 afterEach(() => {
   setAccessToken(null);
@@ -56,4 +56,28 @@ it("refuse un snapshot mal formé et ne l'injecte pas dans la carte", async () =
   await expect(streamGpsSnapshots(null, onSnapshot, new AbortController().signal))
     .rejects.toThrow("Snapshot GPS invalide");
   expect(onSnapshot).not.toHaveBeenCalled();
+});
+
+it.each([403, 404])("ne réessaie pas un flux SSE refusé (HTTP %i)", async (status) => {
+  setAccessToken("token-fictif");
+  const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status }));
+  vi.stubGlobal("fetch", fetchMock);
+  const onSnapshot = vi.fn();
+  await expect(streamGpsSnapshots("site-1", onSnapshot, new AbortController().signal))
+    .rejects.toBeInstanceOf(GpsStreamAccessDenied);
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(onSnapshot).not.toHaveBeenCalled();
+});
+
+it("interrompt le flux après révocation de session signalée par le serveur", async () => {
+  setAccessToken("token-fictif");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse([
+    'event: snapshot\ndata: [{"vehicle_id":"v1"}]\n\n',
+    'event: session-ended\ndata: {}\n\n',
+    'event: snapshot\ndata: [{"vehicle_id":"v2"}]\n\n',
+  ])));
+  const snapshots: unknown[][] = [];
+  await expect(streamGpsSnapshots(null, (positions) => snapshots.push(positions), new AbortController().signal))
+    .rejects.toBeInstanceOf(GpsStreamAccessDenied);
+  expect(snapshots).toEqual([[{ vehicle_id: "v1" }]]);
 });
