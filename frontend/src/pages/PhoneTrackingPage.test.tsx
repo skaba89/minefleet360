@@ -7,7 +7,7 @@ import { PhoneTrackingPage } from "./PhoneTrackingPage";
 
 vi.mock("../auth/AuthContext", () => ({ useMe: () => ({ timezone: "Africa/Conakry", grants: [{ role_code: "OPS_MANAGER", scope_type: "TENANT", site_id: null }] }) }));
 vi.mock("../api/client", async (original) => ({ ...await original<typeof import("../api/client")>(), get: vi.fn(), request: vi.fn() }));
-const share = { phone_share_id: "share", vehicle_id: "vehicle", started_at: new Date().toISOString(), expires_at: "2026-10-30T10:00:00Z" };
+const share = { phone_share_id: "share", vehicle_id: "vehicle", started_at: new Date().toISOString(), expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() };
 let success: PositionCallback;
 let failure: PositionErrorCallback | null;
 const locate = vi.fn((ok: PositionCallback, fail?: PositionErrorCallback | null) => { success = ok; failure = fail ?? null; });
@@ -99,4 +99,19 @@ it("conserve des relevés uniquement en mémoire durant une coupure sans requêt
   fireEvent.click(screen.getByRole("button", { name: "Arrêter le partage" }));
   await screen.findByText("Partage arrêté et confirmé par le serveur");
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+});
+
+it("arrête le partage expiré sans demander la géolocalisation ni conserver de positions", async () => {
+  const expired = { ...share, expires_at: new Date(Date.now() - 60_000).toISOString() };
+  vi.mocked(request).mockImplementation(async (path) => ({
+    data: path === "/me/gps/shares" ? expired : undefined, etag: null,
+  }));
+  setup();
+  await screen.findByRole("button", { name: "Démarrer le partage" });
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(screen.getByRole("button", { name: "Démarrer le partage" }));
+  await screen.findByText("Partage arrêté et confirmé par le serveur");
+  expect(locate).not.toHaveBeenCalled();
+  expect(vi.mocked(request).mock.calls.some(([path]) => path.endsWith("/stop"))).toBe(true);
+  expect(vi.mocked(request).mock.calls.some(([path]) => path.endsWith("/positions"))).toBe(false);
 });
