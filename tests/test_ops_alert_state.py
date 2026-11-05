@@ -4,6 +4,8 @@ from pathlib import Path
 import unittest
 
 path = Path(__file__).resolve().parents[1] / "infra" / "deploy" / "alert-state.py"
+import sys
+sys.path.insert(0, str(path.parent))
 spec = importlib.util.spec_from_file_location("alert_state", path)
 assert spec and spec.loader
 module = importlib.util.module_from_spec(spec)
@@ -35,7 +37,7 @@ class AlertStateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             probe = root / "failed.sh"
-            probe.write_text("#!/bin/sh\\nexit 2\\n")
+            probe.write_text("#!/bin/sh\nexit 2\n", encoding="utf-8")
             state = root / "health.json"
             for _ in range(3):
                 run = subprocess.run(

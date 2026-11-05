@@ -4,6 +4,8 @@ from pathlib import Path
 import unittest
 
 path = Path(__file__).resolve().parents[1] / "infra/deploy/run-alert-monitor.py"
+import sys
+sys.path.insert(0, str(path.parent))
 spec = importlib.util.spec_from_file_location("run_alert_monitor", path)
 assert spec and spec.loader
 module = importlib.util.module_from_spec(spec)

@@ -110,3 +110,10 @@ Le risque de doublon après acceptation SMTP demeure. L'écriture d'un fichier J
 Le stockage des transitions d'alerte et de leur file SMTP utilise désormais une écriture dans un fichier temporaire du même répertoire, suivie de `fsync`, `os.replace` et `fsync` du répertoire. Les verrous sont placés dans un fichier `health-state.json.lock` stable et partagé par le producteur et le consommateur. Une corruption existante entraîne un échec explicite plutôt qu'une remise à zéro silencieuse de l'historique.
 
 Le répertoire de monitoring doit être local, privé et accessible uniquement au compte technique. NFS et autres systèmes de fichiers dont les garanties de verrouillage et de synchronisation sont incertaines ne sont pas recommandés. Le risque de notifications en double après une acceptation SMTP suivie d'une interruption demeure.
+
+
+## Validation automatique du mécanisme d'alerte
+
+Le job CI `ops-monitoring` exécute sans réseau ni secret les tests `tests/test_ops_*.py`. Il vérifie notamment le seuil de trois échecs, l'unicité des transitions `ALERT`/`RECOVERED`, la persistance atomique de la file, le refus des états corrompus et des liens symboliques, STARTTLS avant authentification, puis la conservation et le rejeu ordonné d'une notification après une panne SMTP simulée.
+
+Cette preuve est strictement logicielle. Elle ne prouve ni l'installation du timer sur un VPS, ni l'indisponibilité réelle de PostgreSQL, ni la réception d'un message par les destinataires, ni l'acquittement et l'escalade par une personne d'astreinte. Le scénario `OBS-01` reste à exécuter et chronométrer sur staging isolé.
