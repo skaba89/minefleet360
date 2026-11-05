@@ -63,6 +63,6 @@ it("affiche le nombre de sociétés depuis l'API autorisée", async () => {
   canMock.mockReturnValue(true);
   getMock.mockResolvedValue({ items: [], page: 1, page_size: 1, total: 7 });
   mount(<PlatformOverview />);
-  expect(await screen.findByText(/7 société\(s\) cliente\(s\)/)).toBeTruthy();
+  expect((await screen.findByText("7")).closest("a")?.textContent).toContain("société(s) cliente(s)");
   expect(getMock).toHaveBeenCalledWith("/platform/tenants", { page: 1, page_size: 1 });
 });
