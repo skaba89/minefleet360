@@ -97,7 +97,7 @@ async def _events(
             return
         try:
             snapshot = await run_in_threadpool(_authorized_snapshot, principal, clock, site_id)
-        except Exception:
+        except Exception:  # noqa: BLE001 — protocole streaming déjà démarré
             # En-têtes déjà envoyés : ne jamais transmettre d'erreur SQL ou de détail interne.
             yield _sse("unavailable", "{}")
             return
