@@ -159,6 +159,6 @@ def test_stream_reload_on_tenant_notification() -> None:
 
     frames = asyncio.run(run())
     assert frames == [
-        'event: snapshot\\ndata: [{"v":1}]\\n\\n',
-        'event: snapshot\\ndata: [{"v":2}]\\n\\n',
+        'event: snapshot\ndata: [{"v":1}]\n\n',
+        'event: snapshot\ndata: [{"v":2}]\n\n',
     ]
