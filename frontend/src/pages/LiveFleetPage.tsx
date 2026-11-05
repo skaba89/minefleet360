@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 
-import { get, streamGpsSnapshots, type Schemas } from "../api/client";
+import { get, GpsStreamAccessDenied, streamGpsSnapshots, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { DataState } from "../components/common";
 import { can } from "../lib/permissions";
@@ -61,8 +61,14 @@ export function LiveFleetPage() {
           },
           controller.signal,
         );
-      } catch {
-        // Une coupure SSE ne doit pas masquer la carte : React Query reprend l'interrogation.
+      } catch (error) {
+        // Un refus permanent ne doit pas créer une boucle de reconnexions.
+        if (error instanceof GpsStreamAccessDenied) {
+          controller.abort();
+          setStreaming(false);
+          return;
+        }
+        // Une coupure réseau temporaire réactive le polling puis la reconnexion.
       } finally {
         if (!controller.signal.aborted) {
           setStreaming(false);
