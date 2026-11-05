@@ -81,7 +81,7 @@ fi
 # Prove that ownership, ACLs and the representative tenant RLS policy survived the restore.
 if ! docker exec -i -u postgres "$name" psql -v ON_ERROR_STOP=1 -U postgres \
   -d minefleet_restore_check >/dev/null <<'SQL'
-DO $
+DO $verify$
 DECLARE
   restored_owner text;
   rls_enabled boolean;
@@ -113,11 +113,11 @@ BEGIN
     RAISE EXCEPTION 'tenant has no policy assigned to mf_app';
   END IF;
 END
-$;
+$verify$;
 
 BEGIN;
 SET LOCAL ROLE mf_app;
-DO $
+DO $verify$
 DECLARE
   visible_tenants integer;
 BEGIN
@@ -133,7 +133,7 @@ BEGIN
     RAISE EXCEPTION 'mf_app cannot read the authorized platform tenant';
   END IF;
 END
-$;
+$verify$;
 ROLLBACK;
 SQL
 then
