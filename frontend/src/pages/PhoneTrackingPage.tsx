@@ -8,6 +8,7 @@ import { DataState, ErrorMessage } from "../components/common";
 import { Icon } from "../components/Icon";
 import { can } from "../lib/permissions";
 import { useConnectivity } from "../lib/connectivity";
+import { PhoneGpsMemoryBuffer } from "../lib/phoneGpsMemoryBuffer";
 import { formatDateTime } from "../lib/time";
 
 interface VehicleOption { vehicle_id: string; fleet_number: string; registration_number: string | null; site_id: string }
@@ -46,10 +47,12 @@ export function PhoneTrackingPage() {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const share = useRef<Share | null>(null);
   const active = useRef(false);
+  const buffered = useRef(new PhoneGpsMemoryBuffer());
 
   useEffect(() => () => {
     generation.current++;
     active.current = false;
+    buffered.current.clear();
     clearTimeout(timer.current);
     const current = share.current;
     if (current) void request(`/me/gps/shares/${current.phone_share_id}/stop`, { method: "POST" }).catch(() => undefined);
@@ -80,6 +83,7 @@ export function PhoneTrackingPage() {
       return;
     }
     const run = ++generation.current;
+    buffered.current.clear();
     setBusy(true); setError(null); setLastSent(null);
     try {
       const { data } = await request<Share>("/me/gps/shares", { method: "POST", body: { vehicle_id: vehicleId, consent } });
@@ -94,11 +98,6 @@ export function PhoneTrackingPage() {
       setMessage("Autorisez la localisation dans votre navigateur…");
       const sample = () => {
         if (generation.current !== run || !active.current) return;
-        if (!navigator.onLine) {
-          setMessage("Réseau indisponible : transmission GPS suspendue. Aucun relevé mis en attente.");
-          timer.current = setTimeout(sample, 10_000);
-          return;
-        }
         if (generation.current !== run || !active.current) return;
         navigator.geolocation.getCurrentPosition((position) => {
           if (generation.current !== run || !active.current) return;
@@ -107,15 +106,40 @@ export function PhoneTrackingPage() {
           // Cap transmis seulement s'il est mesuré (le navigateur renvoie null ou NaN à l'arrêt).
           const headingDeg = heading !== null && Number.isFinite(heading) && heading >= 0 && heading < 360 ? heading : null;
           const recorded = new Date(position.timestamp).toISOString();
-          void request(`/me/gps/shares/${data.phone_share_id}/positions`, { method: "POST", body: {
+          buffered.current.add({
             latitude, longitude, accuracy_m: accuracy, speed_kmh: speedKmh, heading_deg: headingDeg, recorded_at: recorded,
-          } }).then(() => {
+          });
+          if (!navigator.onLine) {
+            setMessage(`Hors réseau : ${buffered.current.count()} relevé(s) temporaires en mémoire, non transmis.`);
+            timer.current = setTimeout(sample, 10_000);
+            return;
+          }
+          const pending = buffered.current.next();
+          if (!pending) {
+            timer.current = setTimeout(sample, 10_000);
+            return;
+          }
+          void request(`/me/gps/shares/${data.phone_share_id}/positions`, {
+            method: "POST", body: pending,
+          }).then(() => {
             if (generation.current !== run) return;
-            setLastSent(recorded); setError(null); setMessage(`Partage actif · précision ±${Math.round(accuracy)} m`);
+            buffered.current.confirm(pending.recorded_at);
+            setLastSent(pending.recorded_at);
+            setError(null);
+            setMessage(`Partage actif · précision ±${Math.round(accuracy)} m · ${buffered.current.count()} relevé(s) en attente`);
           }).catch((err: unknown) => {
             if (generation.current !== run) return;
-            setError(err); setMessage("Position non transmise. La dernière position peut devenir ancienne.");
-            if (err instanceof ApiError && [401, 403, 404, 409].includes(err.status)) void stop().then(() => setError(err));
+            if (err instanceof ApiError && err.status === 409) {
+              // Doublon, point ancien ou conflit : ne pas rejouer indéfiniment.
+              buffered.current.confirm(pending.recorded_at);
+              setMessage("Relevé refusé ou déjà enregistré : suppression du tampon pour ce point.");
+              return;
+            }
+            setError(err);
+            setMessage("Envoi non confirmé. Reprise contrôlée tant que cette page reste ouverte.");
+            if (err instanceof ApiError && [401, 403, 404].includes(err.status)) {
+              void stop().then(() => setError(err));
+            }
           }).finally(() => {
             if (generation.current === run && active.current) timer.current = setTimeout(sample, 10_000);
           });
@@ -140,7 +164,7 @@ export function PhoneTrackingPage() {
   const chosen = vehicleOptions.find((v) => v.vehicle_id === vehicleId);
   return <section>
     <div className="page-head"><div><h1>Mon partage GPS</h1><p className="muted">Localiser le véhicule avec le téléphone de votre compte</p></div><span className={`badge badge-${running ? "ok" : "neutral"}`}><Icon name="phone" /> {running ? "Partage actif" : "Désactivé"}</span></div>
-    {!online && <p role="status" className="muted">Connexion absente : aucun nouveau relevé GPS ne sera envoyé. Le suivi permanent hors ligne nécessite une synchronisation sécurisée qui n’est pas encore disponible.</p>}
+    {!online && <p role="status" className="muted">Connexion absente : les relevés restent temporairement en mémoire pendant que cette page est ouverte. Aucun envoi avant le retour du réseau ; les points anciens sont abandonnés.</p>}
     <div className="card tracking-card">
       <h2>Partager la position de ce téléphone</h2>
       <p>La position de ce téléphone représentera le véhicule choisi. Activez le partage uniquement lorsque vous êtes à bord.</p>
@@ -156,6 +180,6 @@ export function PhoneTrackingPage() {
       {lastSent && <p className="small">Dernier relevé transmis : {formatDateTime(lastSent, me.timezone)} ({me.timezone})</p>}
       {expires && <p className="small muted">Expiration au plus tard : {formatDateTime(expires, me.timezone)}. La session du compte doit rester active.</p>}
     </div>
-    <div className="card"><h2>Pour garder un suivi fiable</h2><p>Gardez cette page ouverte, le téléphone à bord et le réseau disponible. En ligne, les relevés sont demandés environ toutes les 10 secondes ; la supervision se rafraîchit toutes les 15 secondes. Hors ligne, les relevés ne sont pas stockés ni rejoués.</p><p className="muted">Le navigateur peut suspendre le GPS quand l'écran est verrouillé ou l'application en arrière-plan. Pour un suivi autonome et permanent, utilisez un traceur GPS compatible avec l'API d'ingestion.</p><p className="small">Quitter cette page coupe les relevés sur le téléphone. Si le réseau empêche de confirmer l'arrêt, les coordonnées déjà reçues restent affichées avec leur date ; elles deviennent anciennes après 2 minutes.</p></div>
+    <div className="card"><h2>Pour garder un suivi fiable</h2><p>Gardez cette page ouverte, le téléphone à bord et le réseau disponible. En ligne, les relevés sont demandés environ toutes les 10 secondes ; la supervision se rafraîchit toutes les 15 secondes. Hors ligne, jusqu’à 12 relevés sont gardés uniquement en mémoire pour une reprise limitée à 100 secondes, sans garantie de transmission.</p><p className="muted">Le navigateur peut suspendre le GPS quand l'écran est verrouillé ou l'application en arrière-plan. Pour un suivi autonome et permanent, utilisez un traceur GPS compatible avec l'API d'ingestion.</p><p className="small">Quitter cette page coupe les relevés sur le téléphone. Si le réseau empêche de confirmer l'arrêt, les coordonnées déjà reçues restent affichées avec leur date ; elles deviennent anciennes après 2 minutes.</p></div>
   </section>;
 }
