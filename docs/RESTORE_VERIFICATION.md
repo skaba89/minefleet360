@@ -33,3 +33,10 @@ La restauration contient potentiellement des données sensibles **en clair dans 
 
 ## Prochaine étape P0
 Sur un environnement **staging séparé**, mesurer le temps d'exécution, tester la restauration et le démarrage API avec un compte de recette, documenter la date du dernier backup vérifié, le résultat, le RPO et le RTO. Ne jamais restaurer vers la base de production active.
+
+
+## Vérification automatisée dans la CI
+
+Le job backend de `.github/workflows/ci.yml` produit une archive custom de la base fictive `minefleet_test` après les migrations et tests, puis lance ce script pour restaurer l'archive dans un conteneur PostGIS temporaire isolé du réseau. Le job échoue si la restauration complète ou les vérifications de schéma échouent.
+
+Cette vérification automatise un aller-retour PostgreSQL avec les données synthétiques de CI. Elle ne teste pas la destination distante chiffrée, la rotation des clés, la fréquence planifiée, les objectifs RPO/RTO, les secrets d'un hôte client ni un restore depuis une sauvegarde de production.
