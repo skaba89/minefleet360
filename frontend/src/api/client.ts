@@ -234,3 +234,67 @@ export async function read<P extends ApiPath>(
   const response = await call<P, MethodsOf<P>>("get" as MethodsOf<P>, template, options as never);
   return response.data as ResponseOf<P, "get">;
 }
+
+/**
+ * GPS SSE avec Bearer en en-tête : EventSource natif n'accepte pas les en-têtes.
+ * Chaque événement snapshot remplace l'état entier afin que reconnexions et
+ * changements de périmètre ne conservent aucune position non autorisée.
+ */
+export async function streamGpsSnapshots<T>(
+  siteId: string | null,
+  onSnapshot: (positions: T[]) => void,
+  signal: AbortSignal,
+  retried = false,
+): Promise<void> {
+  if (!accessToken) {
+    if (!await refreshSession()) throw new Error("Session GPS indisponible");
+  }
+  const params = new URLSearchParams();
+  if (siteId) params.set("site_id", siteId);
+  const url = `${API_PREFIX}/vehicles/gps/stream${params.size ? "?" + params.toString() : ""}`;
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: "text/event-stream" },
+    credentials: "same-origin",
+    cache: "no-store",
+    signal,
+  });
+  if (response.status === 401 && !retried) {
+    if (await refreshSession()) return streamGpsSnapshots(siteId, onSnapshot, signal, true);
+    onSessionLost();
+  }
+  if (!response.ok || !response.body || !response.headers.get("content-type")?.includes("text/event-stream")) {
+    throw new Error("Flux GPS indisponible");
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  try {
+    while (!signal.aborted) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
+      if (buffer.length > 5_000_000) throw new Error("Trame GPS trop volumineuse");
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary !== -1) {
+        const frame = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        const event = frame.split("\n").find((line) => line.startsWith("event: "))?.slice(7);
+        if (event === "session-ended") {
+          onSessionLost();
+          throw new Error("Session GPS terminée");
+        }
+        if (event === "unavailable") throw new Error("Flux GPS temporairement indisponible");
+        if (event === "snapshot") {
+          const data = frame.split("\n").filter((line) => line.startsWith("data: ")).map((line) => line.slice(6)).join("\n");
+          const parsed: unknown = JSON.parse(data);
+          if (!Array.isArray(parsed)) throw new Error("Snapshot GPS invalide");
+          onSnapshot(parsed as T[]);
+        }
+        boundary = buffer.indexOf("\n\n");
+      }
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+    reader.releaseLock();
+  }
+}
