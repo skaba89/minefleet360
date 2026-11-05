@@ -34,9 +34,7 @@ INTERVAL_SECONDS = 3
 MAX_TICKS = 20
 
 
-def _authorized_snapshot(
-    principal: Principal, clock: Clock, site_id: uuid.UUID | None
-) -> str | None:
+def _authorized_snapshot(principal: Principal, clock: Clock, site_id: uuid.UUID | None) -> str | None:
     """Retourne un JSON complet ou None quand la session, société ou permission a changé."""
     with new_session() as db:
         set_tenant_context(db, principal.tenant_id)
