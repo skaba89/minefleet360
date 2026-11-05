@@ -15,7 +15,14 @@ if [[ ! -f "$archive" || ! -s "$archive" ]]; then
 fi
 command -v docker >/dev/null || { echo "FAIL: docker required" >&2; exit 1; }
 name="minefleet-restore-check-$$-$RANDOM"
-cleanup() { docker rm -f "$name" >/dev/null 2>&1 || true; }
+restore_failed=0
+cleanup() {
+  if [[ "$restore_failed" == "1" ]]; then
+    echo "PostgreSQL container log (restore failed):" >&2
+    docker logs "$name" >&2 || true
+  fi
+  docker rm -f "$name" >/dev/null 2>&1 || true
+}
 trap cleanup EXIT
 
 echo "Starting disposable PostGIS (network disabled, no persistent volumes)..."
@@ -34,14 +41,19 @@ for _ in $(seq 1 40); do
 done
 if [[ "$ready" != "1" ]]; then
   echo "FAIL: isolated database did not start" >&2
+  restore_failed=1
   exit 1
 fi
 
 docker exec -u postgres "$name" createdb -U postgres minefleet_restore_check
 # A successful catalog listing alone does not prove data can be restored.
-docker exec -u postgres "$name" pg_restore \
+if ! docker exec -u postgres "$name" pg_restore \
   --exit-on-error --no-owner --no-acl -U postgres \
-  -d minefleet_restore_check /tmp/backup.dump >/dev/null
+  -d minefleet_restore_check /tmp/backup.dump >/dev/null; then
+  echo "FAIL: pg_restore failed; collecting PostgreSQL diagnostics" >&2
+  restore_failed=1
+  exit 1
+fi
 
 # Validate real restored relations without logging personal or operational rows.
 table_count="$(docker exec -u postgres "$name" psql -U postgres -d minefleet_restore_check -Atc \
