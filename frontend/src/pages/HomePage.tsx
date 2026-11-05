@@ -4,6 +4,7 @@ import { useMe } from "../auth/AuthContext";
 import { TodoPanel } from "../components/TodoPanel";
 import { can } from "../lib/permissions";
 import { FleetDashboard } from "./FleetDashboard";
+import { PlatformOverview } from "./PlatformPages";
 
 const ROLE_LABELS: Record<string, string> = {
   TENANT_ADMIN: "Administrateur",
@@ -23,6 +24,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function HomePage() {
   const me = useMe();
+  if (can(me.grants, "organization.tenant.list")) return <PlatformOverview />;
   if (can(me.grants, "fleet.vehicle.read")) {
     return (
       <>
