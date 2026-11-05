@@ -71,3 +71,69 @@ def test_hub_dispatches_only_to_matching_tenant_with_real_database() -> None:
             assert a.empty()
 
     asyncio.run(scenario())
+
+
+def test_independent_worker_hubs_receive_same_committed_event() -> None:
+    """Deux connexions LISTEN indépendantes : même message, mêmes droits tenant."""
+
+    async def scenario() -> None:
+        tenant = uuid.uuid4()
+        foreign = uuid.uuid4()
+        worker_a, worker_b = GpsNotificationHub(), GpsNotificationHub()
+        async with (
+            worker_a.subscribe(tenant) as stream_a,
+            worker_b.subscribe(tenant) as stream_b,
+            worker_b.subscribe(foreign) as foreign_stream,
+        ):
+            # Les trois réveils initiaux prouvent que les deux connexions
+            # LISTEN sont déjà établies avant l'envoi.
+            await asyncio.wait_for(stream_a.get(), timeout=5)
+            await asyncio.wait_for(stream_b.get(), timeout=5)
+            await asyncio.wait_for(foreign_stream.get(), timeout=5)
+
+            await asyncio.to_thread(_send, tenant, commit=True)
+            await asyncio.wait_for(stream_a.get(), timeout=5)
+            await asyncio.wait_for(stream_b.get(), timeout=5)
+            assert foreign_stream.empty()
+
+            # Le retour arrière n'entraîne pas de nouveau réveil.
+            await asyncio.to_thread(_send, tenant, commit=False)
+            assert stream_a.empty()
+            assert stream_b.empty()
+            assert foreign_stream.empty()
+
+        assert worker_a._task is None
+        assert worker_b._task is None
+
+    asyncio.run(scenario())
+
+
+def test_independent_worker_hubs_coalesce_burst_without_cross_tenant_leakage() -> None:
+    """Une rafale de commits reste un unique signal en attente par client."""
+
+    async def scenario() -> None:
+        tenant, foreign = uuid.uuid4(), uuid.uuid4()
+        worker_a, worker_b = GpsNotificationHub(), GpsNotificationHub()
+        async with (
+            worker_a.subscribe(tenant) as stream_a,
+            worker_b.subscribe(tenant) as stream_b,
+            worker_b.subscribe(foreign) as foreign_stream,
+        ):
+            await asyncio.wait_for(stream_a.get(), timeout=5)
+            await asyncio.wait_for(stream_b.get(), timeout=5)
+            await asyncio.wait_for(foreign_stream.get(), timeout=5)
+
+            def burst_in_one_transaction() -> None:
+                with new_session() as session:
+                    for _ in range(4):
+                        notify_gps_position(session, tenant)
+                    session.commit()
+
+            await asyncio.to_thread(burst_in_one_transaction)
+            await asyncio.wait_for(stream_a.get(), timeout=5)
+            await asyncio.wait_for(stream_b.get(), timeout=5)
+            assert stream_a.empty()
+            assert stream_b.empty()
+            assert foreign_stream.empty()
+
+    asyncio.run(scenario())
