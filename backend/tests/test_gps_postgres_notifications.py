@@ -6,6 +6,7 @@ Aucun secret ou payload GPS n'est enregistré par ces tests.
 
 import asyncio
 import uuid
+from typing import Any
 from unittest.mock import patch
 
 import psycopg
@@ -148,7 +149,7 @@ def test_listener_recovers_after_initial_connection_failure() -> None:
         original_connect = psycopg.AsyncConnection.connect
         attempts = 0
 
-        async def flaky_connect(*args: object, **kwargs: object) -> psycopg.AsyncConnection:
+        async def flaky_connect(*args: Any, **kwargs: Any) -> psycopg.AsyncConnection:
             nonlocal attempts
             attempts += 1
             if attempts == 1:
