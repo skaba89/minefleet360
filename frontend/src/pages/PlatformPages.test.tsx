@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router";
 
-import { PlatformCreateTenantPage, PlatformOverview, PlatformTenantsPage } from "./PlatformPages";
+import { PlatformCreateTenantPage, PlatformHealthPage, PlatformOverview, PlatformTenantsPage } from "./PlatformPages";
 
 const { getMock, requestMock, canMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
@@ -115,4 +115,21 @@ it("demande un motif et transmet If-Match pour suspendre une société", async (
     "/platform/tenants/11111111-1111-4111-8111-111111111111/suspend",
     { method: "POST", body: { reason: "Suspension demandée après audit" }, ifMatch: '"4"' },
   ));
+});
+
+it("affiche les sondes de disponibilité quand elles répondent", async () => {
+  canMock.mockReturnValue(true);
+  getMock.mockResolvedValue({ status: "ok" });
+  mount(<PlatformHealthPage />);
+  expect(await screen.findByText("API : Disponible")).toBeTruthy();
+  expect(screen.getByText("Base et dépendances : Prêtes")).toBeTruthy();
+  expect(getMock).toHaveBeenCalledWith("/health");
+  expect(getMock).toHaveBeenCalledWith("/ready");
+});
+
+it("ne consulte pas les sondes depuis un compte non autorisé", () => {
+  canMock.mockReturnValue(false);
+  mount(<PlatformHealthPage />);
+  expect(screen.getByRole("alert").textContent).toContain("non autorisé");
+  expect(getMock).not.toHaveBeenCalled();
 });
