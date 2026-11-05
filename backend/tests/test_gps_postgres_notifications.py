@@ -120,8 +120,13 @@ def test_independent_worker_hubs_coalesce_burst_without_cross_tenant_leakage() -
             await asyncio.wait_for(stream_a.get(), timeout=5)
             await asyncio.wait_for(stream_b.get(), timeout=5)
             await asyncio.wait_for(foreign_stream.get(), timeout=5)
-            for _ in range(4):
-                await asyncio.to_thread(_send, tenant, commit=True)
+            def burst_in_one_transaction() -> None:
+                with new_session() as session:
+                    for _ in range(4):
+                        notify_gps_position(session, tenant)
+                    session.commit()
+
+            await asyncio.to_thread(burst_in_one_transaction)
             await asyncio.wait_for(stream_a.get(), timeout=5)
             await asyncio.wait_for(stream_b.get(), timeout=5)
             assert stream_a.empty()
