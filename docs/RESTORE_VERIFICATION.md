@@ -18,9 +18,10 @@ bash infra/deploy/verify-restore.sh /chemin/absolu/minefleet-20261031T120000Z.du
 Ce script :
 1. refuse une archive absente ou vide ;
 2. lance un conteneur temporaire `postgis/postgis:16-3.4`, sans réseau et sans volume PostgreSQL persistant ;
-3. restaure réellement l'archive dans la base temporaire `minefleet_restore_check` avec `--exit-on-error` ;
-4. vérifie qu'au moins dix tables applicatives sont présentes et que `alembic_version` existe ;
-5. détruit le conteneur temporaire en sortie, succès ou échec.
+3. crée dans le conteneur jetable le rôle applicatif `mf_app` sans connexion (les rôles de cluster ne sont pas contenus dans un dump de base) ;
+4. restaure réellement l'archive dans la base temporaire `minefleet_restore_check` avec `--exit-on-error` ;
+5. vérifie qu'au moins dix tables applicatives sont présentes et que `alembic_version` existe ;
+6. détruit le conteneur temporaire en sortie, succès ou échec.
 
 La restauration contient potentiellement des données sensibles **en clair dans le stockage temporaire du conteneur**. Exécuter exclusivement sur un hôte de confiance chiffré et sécurisé, jamais sur un poste partagé. N'utiliser de données réelles en recette que dans le cadre des autorisations et mesures de sécurité applicables.
 
@@ -33,3 +34,10 @@ La restauration contient potentiellement des données sensibles **en clair dans 
 
 ## Prochaine étape P0
 Sur un environnement **staging séparé**, mesurer le temps d'exécution, tester la restauration et le démarrage API avec un compte de recette, documenter la date du dernier backup vérifié, le résultat, le RPO et le RTO. Ne jamais restaurer vers la base de production active.
+
+
+## Vérification automatisée dans la CI
+
+Le job backend de `.github/workflows/ci.yml` produit, avec le superutilisateur du service PostgreSQL éphémère, une archive custom de la base fictive `minefleet_test` après les migrations et tests. Il la transmet comme artefact synthétique à très courte rétention. Un job dépendant sur un runner GitHub Actions neuf télécharge l'archive puis lance ce script dans un conteneur PostGIS temporaire isolé. Le job échoue si la restauration complète ou les vérifications de schéma échouent. La séparation évite de faire tourner simultanément la base source et le conteneur de restauration sur le même runner.
+
+Cette vérification automatise un aller-retour PostgreSQL avec les données synthétiques de CI. Les secrets CI aléatoires sont masqués dès leur génération; le mot de passe `postgres` utilisé par le job n'existe que dans le service de base jetable. Elle ne teste pas la destination distante chiffrée, la rotation des clés, la fréquence planifiée, les objectifs RPO/RTO, les secrets d'un hôte client ni un restore depuis une sauvegarde de production.

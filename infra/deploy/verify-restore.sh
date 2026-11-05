@@ -15,7 +15,14 @@ if [[ ! -f "$archive" || ! -s "$archive" ]]; then
 fi
 command -v docker >/dev/null || { echo "FAIL: docker required" >&2; exit 1; }
 name="minefleet-restore-check-$$-$RANDOM"
-cleanup() { docker rm -f "$name" >/dev/null 2>&1 || true; }
+restore_failed=0
+cleanup() {
+  if [[ "$restore_failed" == "1" ]]; then
+    echo "PostgreSQL container log (restore failed):" >&2
+    docker logs "$name" >&2 || true
+  fi
+  docker rm -f "$name" >/dev/null 2>&1 || true
+}
 trap cleanup EXIT
 
 echo "Starting disposable PostGIS (network disabled, no persistent volumes)..."
@@ -25,8 +32,11 @@ docker run -d --rm --name "$name" --network none \
   postgis/postgis:16-3.4 >/dev/null
 
 ready=0
-for _ in $(seq 1 40); do
-  if docker exec "$name" pg_isready -U postgres >/dev/null 2>&1; then
+for _ in $(seq 1 60); do
+  # The PostGIS image briefly starts a temporary server while initializing extensions.
+  # Wait for its init-complete marker before accepting pg_isready as final readiness.
+  if docker logs "$name" 2>&1 | grep -Fq "PostgreSQL init process complete; ready for start up." \
+    && docker exec "$name" pg_isready -U postgres >/dev/null 2>&1; then
     ready=1
     break
   fi
@@ -34,14 +44,22 @@ for _ in $(seq 1 40); do
 done
 if [[ "$ready" != "1" ]]; then
   echo "FAIL: isolated database did not start" >&2
+  restore_failed=1
   exit 1
 fi
 
 docker exec -u postgres "$name" createdb -U postgres minefleet_restore_check
+# RLS policies reference this application role; pg_dump does not include cluster roles.
+docker exec -u postgres "$name" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+  -c "CREATE ROLE mf_app NOLOGIN"
 # A successful catalog listing alone does not prove data can be restored.
-docker exec -u postgres "$name" pg_restore \
+if ! docker exec -u postgres "$name" pg_restore \
   --exit-on-error --no-owner --no-acl -U postgres \
-  -d minefleet_restore_check /tmp/backup.dump >/dev/null
+  -d minefleet_restore_check /tmp/backup.dump >/dev/null; then
+  echo "FAIL: pg_restore failed; collecting PostgreSQL diagnostics" >&2
+  restore_failed=1
+  exit 1
+fi
 
 # Validate real restored relations without logging personal or operational rows.
 table_count="$(docker exec -u postgres "$name" psql -U postgres -d minefleet_restore_check -Atc \

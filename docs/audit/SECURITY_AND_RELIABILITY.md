@@ -16,7 +16,7 @@
 | GPS/confidentialité | sessions de partage consenties, rétention configurée, arrêt à révocation/expiration; messages SSE ne portent pas de coordonnées | PR #357–#359 et tests associés; CI du HEAD | politique de conservation validée par pays, journaux/proxy et captures Android |
 | GPS temps réel | SSE authentifié avec relecture RLS et repli; LISTEN/NOTIFY, reconnexion | intégration PostgreSQL testée dans la PR #359; CI du HEAD | panne de base/worker physique, publication multi-machine, perte d'événements et SLO |
 | Dépendances / SAST / secrets | audit dépendances + Bandit + Gitleaks dans workflows | `ci` et `security-static` verts au HEAD | DAST, images et supply chain, pinning action SHA, SBOM et politique de remédiation |
-| Sauvegardes | archive PostgreSQL, chiffrement/distant optionnels via configuration, script de restauration isolée | scripts et doc présents | configuration réelle, clé, transfert, restore exécuté, RPO/RTO |
+| Sauvegardes | archive PostgreSQL, chiffrement/distant optionnels via configuration, script de restauration isolée | une étape CI utilise le superutilisateur du PostgreSQL éphémère, restaure la base synthétique en conteneur isolé, et masque les secrets temporaires; la preuve de workflow reste à consulter à chaque HEAD | configuration distante réelle, clés, transfert, restauration hors CI, RPO/RTO |
 | Observabilité | sondes santé/readiness et jobs planifiés documentés | fichiers présents | alertes injectées et acquittées, métriques API/DB/SSE, astreinte et rétention |
 | CI/CD | quatre workflows répertoriés; migrations peuplées testées en CI | toutes les exécutions associées au HEAD sont vertes | CD non démontré, rollback/release et protection main à relire dans les settings |
 
