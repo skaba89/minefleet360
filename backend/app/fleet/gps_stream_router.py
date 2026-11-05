@@ -33,6 +33,9 @@ router = APIRouter(tags=["géolocalisation"], route_class=SecuredRoute)
 GpsReader = Annotated[Authorized, Depends(Require("fleet.vehicle.read"))]
 INTERVAL_SECONDS = 3
 MAX_TICKS = 20
+# Limite par worker, PAS globale à un déploiement multi-workers.
+MAX_STREAMS_PER_WORKER = 32
+_stream_slots = asyncio.BoundedSemaphore(MAX_STREAMS_PER_WORKER)
 
 
 def _authorized_snapshot(principal: Principal, clock: Clock, site_id: uuid.UUID | None) -> str | None:
@@ -112,6 +115,18 @@ async def _events(
             await asyncio.sleep(INTERVAL_SECONDS)
 
 
+
+async def _limited_events(
+    request: Request, principal: Principal, clock: Clock, site_id: uuid.UUID | None
+) -> AsyncIterator[str]:
+    """Libérer la place même après une déconnexion, une erreur ou une annulation."""
+    try:
+        async for event in _events(request, principal, clock, site_id):
+            yield event
+    finally:
+        _stream_slots.release()
+
+
 @router.get("/vehicles/gps/stream", include_in_schema=False)
 async def gps_stream(
     request: Request,
@@ -125,12 +140,17 @@ async def gps_stream(
     """
     if site_id is not None and not auth.scope.covers_site(site_id):
         raise AppError("NOT_FOUND")
+    # Pas d'attente longue, pas de streaming démarré avec HTTP 200 si saturé.
+    try:
+        await asyncio.wait_for(_stream_slots.acquire(), timeout=0.01)
+    except TimeoutError:
+        raise AppError("RATE_LIMITED", headers={"Retry-After": "3"}) from None
     principal, clock = auth.principal, auth.clock
     # Ne pas immobiliser la transaction SQL d'authentification pendant le stream.
     auth.db.rollback()
     auth.db.close()
     return StreamingResponse(
-        _events(request, principal, clock, site_id),
+        _limited_events(request, principal, clock, site_id),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
     )
