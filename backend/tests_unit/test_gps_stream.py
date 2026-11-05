@@ -2,6 +2,7 @@
 
 import asyncio
 import uuid
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -11,6 +12,12 @@ from app.core.clock import FrozenClock
 from app.fleet import gps_stream_router as stream
 
 NOW = datetime(2026, 11, 5, 12, tzinfo=UTC)
+
+
+@asynccontextmanager
+async def isolated_notifications(tenant_id: uuid.UUID):
+    del tenant_id
+    yield asyncio.Queue()
 
 
 def principal() -> Principal:
@@ -103,6 +110,7 @@ def test_stream_sends_snapshot_then_heartbeat() -> None:
         with (
             patch.object(stream, "MAX_TICKS", 2),
             patch.object(stream, "INTERVAL_SECONDS", 0),
+            patch.object(stream.gps_notification_hub, "subscribe", side_effect=isolated_notifications),
             patch.object(stream, "_authorized_snapshot", return_value="[]"),
         ):
             return [frame async for frame in stream._events(request, principal(), FrozenClock(NOW), None)]
@@ -118,6 +126,7 @@ def test_stream_stops_if_permission_is_revoked() -> None:
         with (
             patch.object(stream, "MAX_TICKS", 3),
             patch.object(stream, "INTERVAL_SECONDS", 0),
+            patch.object(stream.gps_notification_hub, "subscribe", side_effect=isolated_notifications),
             patch.object(stream, "_authorized_snapshot", side_effect=["[]", None]),
         ):
             return [frame async for frame in stream._events(request, principal(), FrozenClock(NOW), None)]
@@ -125,4 +134,31 @@ def test_stream_stops_if_permission_is_revoked() -> None:
     assert asyncio.run(run()) == [
         "event: snapshot\ndata: []\n\n",
         "event: session-ended\ndata: {}\n\n",
+    ]
+
+
+def test_stream_reload_on_tenant_notification() -> None:
+    @asynccontextmanager
+    async def changed(tenant_id: uuid.UUID):
+        del tenant_id
+        queue: asyncio.Queue[None] = asyncio.Queue(maxsize=1)
+        queue.put_nowait(None)
+        yield queue
+
+    async def run() -> list[str]:
+        request = MagicMock()
+        request.is_disconnected = AsyncMock(return_value=False)
+        with (
+            patch.object(stream, "MAX_TICKS", 2),
+            patch.object(stream, "INTERVAL_SECONDS", 0.1),
+            patch.object(stream, "MIN_READ_GAP_SECONDS", 0),
+            patch.object(stream.gps_notification_hub, "subscribe", side_effect=changed),
+            patch.object(stream, "_authorized_snapshot", side_effect=['[{"v":1}]', '[{"v":2}]']),
+        ):
+            return [frame async for frame in stream._events(request, principal(), FrozenClock(NOW), None)]
+
+    frames = asyncio.run(run())
+    assert frames == [
+        'event: snapshot\ndata: [{"v":1}]\n\n',
+        'event: snapshot\ndata: [{"v":2}]\n\n',
     ]

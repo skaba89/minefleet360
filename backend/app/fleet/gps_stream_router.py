@@ -6,6 +6,7 @@ connexion, plafonnée à 60 s. Une PR ultérieure mesurera un bus de publication
 
 import asyncio
 import json
+import time
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import replace
@@ -24,6 +25,7 @@ from app.core.db import new_session
 from app.core.errors import AppError
 from app.core.tenancy import set_tenant_context
 from app.fleet.gps_latest_read import latest_visible_positions
+from app.fleet.gps_notification_listener import gps_notification_hub
 from app.fleet.gps_schemas import GpsLatestPositionOut
 from app.fleet.gps_source_read import active_sources
 from app.identity.models import AuthSession, UserAccount
@@ -31,8 +33,10 @@ from app.organization.models import Tenant
 
 router = APIRouter(tags=["géolocalisation"], route_class=SecuredRoute)
 GpsReader = Annotated[Authorized, Depends(Require("fleet.vehicle.read"))]
-INTERVAL_SECONDS = 3
-MAX_TICKS = 20
+INTERVAL_SECONDS = 15  # revalidation de session même sans nouvelle position
+MAX_TICKS = 120  # borne défensive en cas de rafale de notifications
+MAX_STREAM_SECONDS = 60
+MIN_READ_GAP_SECONDS = 0.5
 # Limite par worker, PAS globale à un déploiement multi-workers.
 MAX_STREAMS_PER_WORKER = 32
 _stream_slots = asyncio.BoundedSemaphore(MAX_STREAMS_PER_WORKER)
@@ -93,26 +97,47 @@ async def _events(
     clock: Clock,
     site_id: uuid.UUID | None,
 ) -> AsyncIterator[str]:
+    """Snapshot initial, puis réveil NOTIFY ou revalidation périodique RLS.
+
+    Un NOTIFY n'est pas une preuve d'autorisation : chaque réveil renouvelle
+    la lecture PostgreSQL sous le contexte tenant et le périmètre du lecteur.
+    """
     previous: str | None = None
-    for tick in range(MAX_TICKS):
-        if await request.is_disconnected():
-            return
-        try:
-            snapshot = await run_in_threadpool(_authorized_snapshot, principal, clock, site_id)
-        except Exception:  # noqa: BLE001 — protocole streaming déjà démarré
-            # En-têtes déjà envoyés : ne jamais transmettre d'erreur SQL ou de détail interne.
-            yield _sse("unavailable", "{}")
-            return
-        if snapshot is None:
-            yield _sse("session-ended", "{}")
-            return
-        if snapshot != previous:
-            yield _sse("snapshot", snapshot)
-            previous = snapshot
-        else:
-            yield ": heartbeat\n\n"
-        if tick < MAX_TICKS - 1:
-            await asyncio.sleep(INTERVAL_SECONDS)
+    deadline = time.monotonic() + MAX_STREAM_SECONDS
+    last_read = 0.0
+    # S'abonner AVANT le snapshot initial pour éviter une fenêtre de perte.
+    # En cas d'arrêt/reconnexion du listener, la relecture à 15 s rattrape.
+    async with gps_notification_hub.subscribe(principal.tenant_id) as changes:
+        for tick in range(MAX_TICKS):
+            if await request.is_disconnected():
+                return
+            try:
+                snapshot = await run_in_threadpool(_authorized_snapshot, principal, clock, site_id)
+            except Exception:  # noqa: BLE001 — réponse SSE déjà démarrée
+                yield _sse("unavailable", "{}")
+                return
+            last_read = time.monotonic()
+            if snapshot is None:
+                yield _sse("session-ended", "{}")
+                return
+            if snapshot != previous:
+                yield _sse("snapshot", snapshot)
+                previous = snapshot
+            else:
+                yield ": heartbeat\n\n"
+            remaining = deadline - time.monotonic()
+            if tick == MAX_TICKS - 1 or remaining <= 0:
+                return
+            try:
+                await asyncio.wait_for(changes.get(), timeout=min(INTERVAL_SECONDS, remaining))
+                # Regrouper les réveils proches (p. ex. véhicules nombreux).
+                delay = MIN_READ_GAP_SECONDS - (time.monotonic() - last_read)
+                if delay > 0:
+                    await asyncio.sleep(min(delay, max(0, deadline - time.monotonic())))
+            except TimeoutError:
+                # La relecture périodique garde l'état cohérent et vérifie
+                # la révocation même en l'absence de notifications.
+                pass
 
 
 async def _limited_events(
