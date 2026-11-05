@@ -24,6 +24,7 @@ from app.fleet.gps_live_schemas import (
     TrackerProvisionOut,
 )
 from app.fleet.gps_models import FleetGpsPosition
+from app.fleet.gps_notifications import notify_gps_position
 from app.fleet.gps_phone_models import FleetGpsPhoneShare
 from app.fleet.models import Vehicle
 from app.identity.models import UserAccount, UserRoleAssignment
@@ -228,6 +229,7 @@ def phone_point(auth: Authorized, share_id: uuid.UUID, body: PhonePointIn) -> No
     )
     share.last_received_at = now
     share.last_recorded_at = body.recorded_at
+    notify_gps_position(auth.db, auth.tenant_id)
     # La position est son propre enregistrement immuable ; pas de copie des coordonnées dans l'audit.
     auth.db.commit()
 
