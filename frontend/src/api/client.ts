@@ -235,6 +235,14 @@ export async function read<P extends ApiPath>(
   return response.data as ResponseOf<P, "get">;
 }
 
+/** Une interdiction persistante ne doit pas ouvrir une boucle de reconnexion SSE. */
+export class GpsStreamAccessDenied extends Error {
+  constructor() {
+    super("Accès au flux GPS refusé");
+    this.name = "GpsStreamAccessDenied";
+  }
+}
+
 /**
  * GPS SSE avec Bearer en en-tête : EventSource natif n'accepte pas les en-têtes.
  * Chaque événement snapshot remplace l'état entier afin que reconnexions et
@@ -262,6 +270,9 @@ export async function streamGpsSnapshots<T>(
     if (await refreshSession()) return streamGpsSnapshots(siteId, onSnapshot, signal, true);
     onSessionLost();
   }
+  if (response.status === 401 || response.status === 403 || response.status === 404) {
+    throw new GpsStreamAccessDenied();
+  }
   if (!response.ok || !response.body || !response.headers.get("content-type")?.includes("text/event-stream")) {
     throw new Error("Flux GPS indisponible");
   }
@@ -281,7 +292,7 @@ export async function streamGpsSnapshots<T>(
         const event = frame.split("\n").find((line) => line.startsWith("event: "))?.slice(7);
         if (event === "session-ended") {
           onSessionLost();
-          throw new Error("Session GPS terminée");
+          throw new GpsStreamAccessDenied();
         }
         if (event === "unavailable") throw new Error("Flux GPS temporairement indisponible");
         if (event === "snapshot") {
