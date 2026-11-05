@@ -37,7 +37,7 @@ class AlertStateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             probe = root / "failed.sh"
-            probe.write_text("#!/bin/sh\\nexit 2\\n")
+            probe.write_text("#!/bin/sh\nexit 2\n", encoding="utf-8")
             state = root / "health.json"
             for _ in range(3):
                 run = subprocess.run(
