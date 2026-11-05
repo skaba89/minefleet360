@@ -107,6 +107,7 @@ it("arrête le partage expiré sans demander la géolocalisation ni conserver de
     data: path === "/me/gps/shares" ? expired : undefined, etag: null,
   }));
   setup();
+  await screen.findByRole("option", { name: "PARC-FICTIF" }, { timeout: 5000 });
   await screen.findByRole("button", { name: "Démarrer le partage" });
   fireEvent.click(screen.getByRole("checkbox"));
   fireEvent.click(screen.getByRole("button", { name: "Démarrer le partage" }));
