@@ -1,0 +1,29 @@
+name: gps-benchmark-tests
+
+on:
+  pull_request:
+    paths:
+      - "scripts/gps/**"
+      - ".github/workflows/gps-benchmark-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/gps/**"
+      - ".github/workflows/gps-benchmark-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  gps-benchmark-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tester sans réseau ni secrets
+        run: python -m unittest discover -s scripts/gps -p 'test_*.py' -v
+      - name: Vérifier la syntaxe
+        run: python -m py_compile scripts/gps/benchmark_latest.py scripts/gps/test_benchmark_latest.py
