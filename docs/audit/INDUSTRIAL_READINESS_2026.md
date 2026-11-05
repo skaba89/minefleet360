@@ -1,11 +1,11 @@
 # MineFleet 360 — audit de préparation industrielle
 
-**État observé : 5 novembre 2026, branche `main`, commit `fd1820bb2b74c889bec126c51c6f41dda5bb08fa`.**  
+**État observé : 5 novembre 2026, branche `main`, commit `77dd598701ccbc184c286a980bace7514da34aa0`.**  
 Périmètre : arbre GitHub, migrations, tests, workflows CI, PR fusionnées et documentation versionnée. Il s'agit d'un audit documentaire du dépôt et des preuves GitHub disponibles, pas d'un audit de pénétration, d'une recette client ou d'une certification.
 
 ## Conclusion exécutive
 
-MineFleet 360 est un produit logiciel avancé avec un socle métier large et des fonctions GPS visibles récemment renforcées. Le HEAD actuel est issu de la PR [#361](https://github.com/skaba89/minefleet360/pull/361), fusionnée le 5 novembre. Les workflows `ci`, `e2e-isolation` et `security-static` sur ce HEAD sont terminés avec succès; `ci` comprend maintenant un aller-retour de restauration PostgreSQL de la base synthétique.
+MineFleet 360 est un produit logiciel avancé avec un socle métier large et des fonctions GPS visibles récemment renforcées. Le HEAD actuel est issu de la PR [#364](https://github.com/skaba89/minefleet360/pull/364), fusionnée le 5 novembre. Les workflows `ci`, `e2e-isolation` et `security-static` sur ce HEAD sont terminés avec succès; `ci` restaure la base synthétique avec propriétaires, ACL et RLS, construit l'image backend réelle, puis valide le démarrage sous `mf_app` et les sondes `/health` et `/ready`.
 
 **Maturité dépôt : 70/100**, calculée avec la grille ci-dessous. Cette mesure n'est pas un score de production. L'estimation 81/100 citée auparavant est conservée comme estimation historique non certifiée et ne remplace pas cette note. Le score détaillé précédent de 62/100 (PR #338, 4 novembre) précède les PR GPS #340–#359 et est devenu obsolète pour cette capacité.
 
@@ -13,7 +13,7 @@ MineFleet 360 est un produit logiciel avancé avec un socle métier large et des
 
 ## Références et méthode reproductible
 
-- HEAD : [commit fd1820b](https://github.com/skaba89/minefleet360/commit/fd1820bb2b74c889bec126c51c6f41dda5bb08fa), fusion de la [PR #361](https://github.com/skaba89/minefleet360/pull/361) qui vérifie en CI la restauration d'un dump synthétique.
+- HEAD : [commit 77dd598](https://github.com/skaba89/minefleet360/commit/77dd598701ccbc184c286a980bace7514da34aa0), fusion de la [PR #364](https://github.com/skaba89/minefleet360/pull/364) qui vérifie en CI la restauration d'un dump synthétique, les propriétaires/ACL/RLS et le démarrage de l'image backend avec le rôle restreint.
 - PR les plus pertinentes : [#340 carte MapLibre](https://github.com/skaba89/minefleet360/pull/340), [#341 cap et replay](https://github.com/skaba89/minefleet360/pull/341), [#342 alertes GPS](https://github.com/skaba89/minefleet360/pull/342), [#345 notifications](https://github.com/skaba89/minefleet360/pull/345), [#348–#350 SSE et limites](https://github.com/skaba89/minefleet360/pull/348), [#353–#355 LISTEN/NOTIFY](https://github.com/skaba89/minefleet360/pull/353), [#356–#359 reprise réseau et résilience](https://github.com/skaba89/minefleet360/pull/356).
 - CI du HEAD : exécutions Actions `ci`, `e2e-isolation` et `security-static` en succès. Cela confirme les jobs définis dans le dépôt, pas l'exploitation réelle.
 - Inventaire du HEAD : 63 migrations Alembic, 171 chemins/fichiers sous les répertoires de tests backend selon l'arbre Git, 4 workflows GitHub Actions. Ce décompte est un inventaire de chemins, pas un nombre de tests.
@@ -52,13 +52,13 @@ Recalculer avec les mêmes poids et la même règle à chaque jalon. Une note n'
 | Mode offline métier | HSE partiel/présent; GPS téléphone volatil; autres parcours à confirmer | `hseOfflineSync`, outbox tests, `docs/OFFLINE_FIELD_ACCEPTANCE.md` | Pas de validation Android physique ni de persistance GPS approuvée | Faire un pilote HSE offline d'abord; cadrer le chiffrement avant tout stockage GPS durable | P1 | événements idempotents et chronologiques, conflits résolus, expiration/limites testées, retrait droits purge locale |
 | Sécurité applicative | Contrôles dans le dépôt et scans statiques en CI | RLS/RBAC, workflow `security-static`, dépendances CI | Pentest indépendant, DAST, revue juridique et opérationnelle non attestés | Revue de sécurité indépendante avant données réelles sensibles | P0 pilote | aucun P0/P1 ouvert sans acceptation formelle; plan de correction et rapports reproductibles |
 | CI/CD et migrations | CI vérifiée au HEAD; CD production non établi | `.github/workflows/*.yml`; test migration peuplé présent | Images/actions mutables; rollback et déploiement staging à rejouer depuis zéro | Déploiement automatisé staging et exercice rollback | P1 | promotion reproductible, migration compatible, rollback documenté testé sur copie |
-| Sauvegarde et restauration | Scripts présents; exercice non prouvé | `backup.sh`, `verify-restore.sh`, `docs/RESTORE_VERIFICATION.md` | destination distante, clés, RPO/RTO, restauration API non démontrés | Configurer stockage distant sécurisé puis restaurer sur environnement isolé | P0 avant pilote réel | archive chiffrée lisible, restauration complète, contrôles d'intégrité, chronométrage RPO/RTO signé |
+| Sauvegarde et restauration | Round-trip synthétique et démarrage API validés en CI; exercice staging absent | `backup.sh`, `verify-restore.sh`, `docs/RESTORE_VERIFICATION.md`; PR #364 et job `backup-restore` verts | destination distante, clés opérationnelles, RPO/RTO et restauration staging non démontrés | Configurer stockage distant sécurisé puis restaurer sur environnement staging isolé | P0 avant pilote réel | archive chiffrée distante lisible, restauration complète, contrôles d'intégrité, démarrage API, chronométrage RPO/RTO signé |
 | SaaS commercial | Partiel | vision, modules plateforme, benchmark public | abonnement, limites, factures, support et contrats commerciaux non établis | Entretiens clients/coûts hébergement/support avant choix des prix | P1 avant vente | offre testée avec coûts connus; onboarding et suspension sans perte illicite de données |
 | Conformité et vie privée | Non validée professionnellement | consentement de partage, rétention GPS configurable, documentation sécurité | règles locales/pays de vente et traitement des données salariés à valider | Cartographie données et avis professionnel pays par pays | P0 avant données réelles/vente | base légale, notices, conservation, export/suppression, sous-traitants et transferts documentés et approuvés |
 
 ## Lots de travail ordonnés
 
-1. **P0 — Baseline fiable** : mise à jour faite après #361; les matrices distinguent la preuve CI synthétique d'une vraie reprise opérationnelle.
+1. **P0 — Baseline fiable** : mise à jour faite après #364; les matrices distinguent la restauration et le démarrage API synthétiques en CI d'une vraie reprise opérationnelle sur staging.
 2. **P0 — Validation staging opérationnelle** : restaurer une sauvegarde distante de staging, valider l'API, la supervision/les alertes, le déploiement contrôlé et les SLI/SLO provisoires.
 3. **P0 — Pilote GPS encadré** : appareils précis, autorisation/consentement, scénarios réseau, mesure de latence/capacité et procédure de révocation.
 4. **P1 — Offline Android** : après revue de chiffrement et cycle de vie, synchronisation append-only/idempotente sur parcours HSE puis panne/inspection.
