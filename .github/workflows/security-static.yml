@@ -1,0 +1,45 @@
+name: security-static
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  sast-high:
+    name: SAST Python (high severity and confidence)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Installer Bandit
+        run: python -m pip install bandit==1.8.6
+      - name: Analyser le code applicatif Python
+        run: bandit -r backend/app -lll -iii -f json -o bandit-report.json
+      - name: Conserver le rapport SAST
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  secrets:
+    name: Secret scanning (Git history)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
