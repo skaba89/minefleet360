@@ -19,8 +19,9 @@ Ce script :
 1. refuse une archive absente ou vide ;
 2. lance un conteneur temporaire `postgis/postgis:16-3.4`, sans réseau et sans volume PostgreSQL persistant ;
 3. restaure réellement l'archive dans la base temporaire `minefleet_restore_check` avec `--exit-on-error` ;
-4. vérifie qu'au moins dix tables applicatives sont présentes et que `alembic_version` existe ;
-5. détruit le conteneur temporaire en sortie, succès ou échec.
+4. crée dans le conteneur jetable le rôle applicatif `mf_app` sans connexion (les rôles de cluster ne sont pas contenus dans un dump de base), puis restaure le dump ;
+5. vérifie qu'au moins dix tables applicatives sont présentes et que `alembic_version` existe ;
+6. détruit le conteneur temporaire en sortie, succès ou échec.
 
 La restauration contient potentiellement des données sensibles **en clair dans le stockage temporaire du conteneur**. Exécuter exclusivement sur un hôte de confiance chiffré et sécurisé, jamais sur un poste partagé. N'utiliser de données réelles en recette que dans le cadre des autorisations et mesures de sécurité applicables.
 

@@ -49,6 +49,9 @@ if [[ "$ready" != "1" ]]; then
 fi
 
 docker exec -u postgres "$name" createdb -U postgres minefleet_restore_check
+# RLS policies reference this application role; pg_dump does not include cluster roles.
+docker exec -u postgres "$name" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+  -c "CREATE ROLE mf_app NOLOGIN"
 # A successful catalog listing alone does not prove data can be restored.
 if ! docker exec -u postgres "$name" pg_restore \
   --exit-on-error --no-owner --no-acl -U postgres \
