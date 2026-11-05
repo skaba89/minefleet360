@@ -1,6 +1,6 @@
 # État vérifié de MineFleet 360 — 5 novembre 2026
 
-> Référence actualisée : `main@ee0579f544de84b98cd92f74e499467603dae8ee`, PR #359 fusionnée.
+> Référence actualisée : `main@fd1820bb2b74c889bec126c51c6f41dda5bb08fa`, PR #361 fusionnée.
 > Trois workflows GitHub Actions associés au HEAD (`ci`, `e2e-isolation`, `security-static`) sont terminés avec succès.
 > Cette preuve porte sur les workflows du dépôt. Elle ne prouve pas un déploiement ou une recette terrain.
 
@@ -11,7 +11,7 @@
 - Le GPS téléphone hors réseau conserve un petit tampon **en RAM**, pas d'historique durable. Le système d'exploitation peut suspendre le navigateur.
 - Le workflow HSE offline est présent dans le code et les tests; une validation Android physique et en réseau terrain reste à réaliser.
 - Les compatibilités de traceurs physiques Teltonika/Queclink ne sont **pas certifiées** tant qu'un modèle et firmware n'ont pas passé un test matériel.
-- Les scripts de sauvegarde/restauration et de déploiement existent, mais leur exécution sur l'infrastructure client/VPS n'est pas vérifiée ici.
+- Le script de restauration passe maintenant un round-trip CI sur un dump PostgreSQL synthétique isolé; une sauvegarde distante/staging et l'infrastructure client/VPS n'ont pas été vérifiées.
 - Abonnements, facturation, onboarding autonome, support sous SLA et contrats de vente ne sont pas prouvés complets.
 
 ## Maturité et décision
