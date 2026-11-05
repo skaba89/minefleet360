@@ -82,7 +82,7 @@ def _authorized_snapshot(
 
 def _sse(event: str, payload: str) -> str:
     """Une trame conforme SSE, sans champs sensibles dans l'id ou les commentaires."""
-    return f"event: {event}\\ndata: {payload}\\n\\n".replace("\\n", "\n")
+    return f"event: {event}\ndata: {payload}\n\n"
 
 
 async def _events(
