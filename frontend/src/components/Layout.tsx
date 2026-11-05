@@ -27,6 +27,7 @@ export function Layout() {
   });
   const links = [
     { to: "/plateforme/societes", text: "Sociétés clientes", show: can(me.grants, "organization.tenant.list") },
+    { to: "/plateforme/nouvelle-societe", text: "Nouvelle société", show: can(me.grants, "organization.tenant.create") },
     { to: "/vehicules", text: "Véhicules", show: can(me.grants, "fleet.vehicle.read") },
     { to: "/flotte-gps", text: "Flotte GPS", show: can(me.grants, "fleet.vehicle.read") },
     { to: "/flotte-gps/zones", text: "Zones GPS", show: can(me.grants, "fleet.geofence.read") },
@@ -66,7 +67,7 @@ export function Layout() {
     { to: "/indicateurs", text: "Indicateurs", show: can(me.grants, "dispatch.indicators.read") },
     { to: "/administration", text: "Administration", show: canAdminister(me.grants) },
   ];
-  const icons: IconName[] = ["settings", "truck", "gps", "phone", "bell", "users", "assignment", "mission", "tool", "calendar", "fuel", "tool", "scale", "shield", "chart", "settings"];
+  const icons: IconName[] = ["settings", "settings", "truck", "gps", "phone", "bell", "users", "assignment", "mission", "tool", "calendar", "fuel", "tool", "scale", "shield", "chart", "settings"];
   return (
     <div className={`shell${menuOpen ? " menu-open" : ""}`}>
       <header className="topbar">
