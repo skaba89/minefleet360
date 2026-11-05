@@ -39,9 +39,17 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
       - name: Secrets éphémères
         run: |
-          echo "MF_OWNER_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
-          echo "MF_APP_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
-          echo "MF_JWT_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
+          owner_password="$(openssl rand -hex 24)"
+          app_password="$(openssl rand -hex 24)"
+          jwt_secret="$(openssl rand -hex 48)"
+          echo "::add-mask::$owner_password"
+          echo "::add-mask::$app_password"
+          echo "::add-mask::$jwt_secret"
+          {
+            printf 'MF_OWNER_PASSWORD=%s\n' "$owner_password"
+            printf 'MF_APP_PASSWORD=%s\n' "$app_password"
+            printf 'MF_JWT_SECRET=%s\n' "$jwt_secret"
+          } >> "$GITHUB_ENV"
       - name: Amorçage de la base (rôles, extensions)
         env:
           PGHOST: localhost
@@ -63,10 +71,10 @@ jobs:
       - name: Sauvegarde et restauration isolée de la base de test
         run: |
           docker run --rm --network host \
-            -e PGPASSWORD="$MF_OWNER_PASSWORD" \
+            -e PGPASSWORD=ci-postgres-only \
             -v "${RUNNER_TEMP}:/artifacts" \
             postgis/postgis:16-3.4 \
-            pg_dump --host=127.0.0.1 --port=5432 --username=mf_owner \
+            pg_dump --host=127.0.0.1 --port=5432 --username=postgres \
               --format=custom --file=/artifacts/minefleet-ci.dump "$MF_DB_NAME"
           bash ../infra/deploy/verify-restore.sh "${RUNNER_TEMP}/minefleet-ci.dump"
 
