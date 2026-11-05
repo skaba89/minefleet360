@@ -124,7 +124,7 @@ async def _events(
                 yield _sse("snapshot", snapshot)
                 previous = snapshot
             else:
-                yield ": heartbeat\\n\\n"
+                yield ": heartbeat\n\n"
             remaining = deadline - time.monotonic()
             if tick == MAX_TICKS - 1 or remaining <= 0:
                 return
