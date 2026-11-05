@@ -49,9 +49,11 @@ def test_site_permission_revocation_stops_before_position_read() -> None:
         patch.object(stream, "new_session") as open_db,
         patch.object(stream, "set_tenant_context"),
         patch.object(stream, "load_grants", return_value=()),
-        patch.object(stream, "evaluate", return_value=PermissionScope(
-            "fleet.vehicle.read", False, frozenset(), frozenset()
-        )),
+        patch.object(
+            stream,
+            "evaluate",
+            return_value=PermissionScope("fleet.vehicle.read", False, frozenset(), frozenset()),
+        ),
         patch.object(stream, "latest_visible_positions") as latest,
     ):
         open_db.return_value.__enter__.return_value = db
@@ -64,9 +66,17 @@ def test_valid_snapshot_is_json_array_not_cached_foreign_data() -> None:
     db = MagicMock()
     db.execute.return_value.first.return_value = SimpleNamespace(mfa_enabled=False, amr=["pwd"])
     position = SimpleNamespace(
-        gps_position_id=uuid.uuid4(), vehicle_id=uuid.uuid4(), site_id=uuid.uuid4(),
-        latitude=10.0, longitude=-12.0, speed_kmh=20.0, heading_deg=90.0,
-        accuracy_m=None, recorded_at=NOW, received_at=NOW, source="TRACKER",
+        gps_position_id=uuid.uuid4(),
+        vehicle_id=uuid.uuid4(),
+        site_id=uuid.uuid4(),
+        latitude=10.0,
+        longitude=-12.0,
+        speed_kmh=20.0,
+        heading_deg=90.0,
+        accuracy_m=None,
+        recorded_at=NOW,
+        received_at=NOW,
+        source="TRACKER",
     )
     scope = PermissionScope("fleet.vehicle.read", True, frozenset(), frozenset({"OPS_MANAGER"}))
     with (
@@ -95,6 +105,7 @@ def test_stream_sends_snapshot_then_heartbeat() -> None:
             patch.object(stream, "_authorized_snapshot", return_value="[]"),
         ):
             return [frame async for frame in stream._events(request, principal(), FrozenClock(NOW), None)]
+
     frames = asyncio.run(run())
     assert frames == ["event: snapshot\ndata: []\n\n", ": heartbeat\n\n"]
 
@@ -109,6 +120,7 @@ def test_stream_stops_if_permission_is_revoked() -> None:
             patch.object(stream, "_authorized_snapshot", side_effect=["[]", None]),
         ):
             return [frame async for frame in stream._events(request, principal(), FrozenClock(NOW), None)]
+
     assert asyncio.run(run()) == [
         "event: snapshot\ndata: []\n\n",
         "event: session-ended\ndata: {}\n\n",
