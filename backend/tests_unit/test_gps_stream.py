@@ -1,4 +1,5 @@
 """SSE GPS : trames, snapshot complet, révocation et perte d'autorisation."""
+
 import asyncio
 import uuid
 from datetime import UTC, datetime
