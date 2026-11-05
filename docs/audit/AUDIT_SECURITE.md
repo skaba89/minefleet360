@@ -1,3 +1,5 @@
+> **Note historique :** cet audit est daté du 26 octobre 2026 et ne décrit pas le HEAD actuel. Des modules, contrôles et workflows ont changé depuis. Pour la situation vérifiée au 5 novembre, voir [SECURITY_AND_RELIABILITY.md](SECURITY_AND_RELIABILITY.md) et [INDUSTRIAL_READINESS_2026.md](INDUSTRIAL_READINESS_2026.md). Les anomalies historiques ne sont pas nécessairement encore présentes; elles doivent être reproduites au HEAD avant de les traiter comme courantes.
+
 # Audit sécurité
 
 Commit `2e3b803`, 26 octobre 2026. Revue statique spécialisée et reproduction en mémoire du limiteur. Tests DB existants vérifiés dans la CI du même SHA; aucun nouveau test de pénétration externe ni exploitation sur des données réelles.

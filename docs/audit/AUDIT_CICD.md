@@ -1,3 +1,5 @@
+> **Note historique :** cet audit est daté du 26 octobre 2026 et ne décrit pas le HEAD actuel. Des modules, contrôles et workflows ont changé depuis. Pour la situation vérifiée au 5 novembre, voir [SECURITY_AND_RELIABILITY.md](SECURITY_AND_RELIABILITY.md) et [INDUSTRIAL_READINESS_2026.md](INDUSTRIAL_READINESS_2026.md). Les anomalies historiques ne sont pas nécessairement encore présentes; elles doivent être reproduites au HEAD avant de les traiter comme courantes.
+
 # Audit CI/CD et exploitation
 
 Commit `2e3b803`, 26 octobre 2026.

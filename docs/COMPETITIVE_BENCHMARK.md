@@ -1,3 +1,5 @@
+> **Lecture de prudence :** comparatif consulté le 4 novembre 2026, prix tiers indicatifs, sans tests directs. Plusieurs affirmations sur l'absence de fonctions GPS sont périmées depuis les PR #340–#359. Pour le positionnement et les acteurs régionaux consultés le 5 novembre, voir [COMPETITIVE_POSITIONING.md](product/COMPETITIVE_POSITIONING.md). Les prix et offres restent à confirmer auprès des éditeurs.
+
 # Benchmark concurrentiel
 
 Recherche du 4 novembre 2026 à partir de sources publiques (liens en fin de document). **Avertissement** : la plupart
