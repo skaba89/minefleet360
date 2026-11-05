@@ -70,7 +70,7 @@ export function PlatformTenantsPage() {
           <label>Motif obligatoire
             <textarea required minLength={3} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} />
           </label>
-          {actionError && <ErrorMessage error={actionError} />}
+          {actionError !== null && <ErrorMessage error={actionError} />}
           <div className="row">
             <button type="submit" className={selected.status === "ACTIVE" ? "danger" : "primary"}
               disabled={changing !== null || reason.trim().length < 3}>
