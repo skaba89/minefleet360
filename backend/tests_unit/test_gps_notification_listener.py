@@ -34,6 +34,7 @@ def test_notifies_only_matching_tenant_and_coalesces() -> None:
 def test_disconnected_listener_wakes_all_for_full_snapshot() -> None:
     async def scenario() -> None:
         hub = GpsNotificationHub()
+
         async def inactive() -> None:
             await asyncio.Event().wait()
 
