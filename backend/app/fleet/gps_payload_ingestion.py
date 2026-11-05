@@ -17,6 +17,8 @@ from app.fleet.gps_payload_adapters import (
     MAX_GPS_PAYLOAD_BYTES,
 )
 
+__all__ = ["MAX_GPS_PAYLOAD_BYTES", "accept_gps_telemetry_payload", "decode_gps_telemetry"]
+
 
 def decode_gps_telemetry(
     payload: bytes,
