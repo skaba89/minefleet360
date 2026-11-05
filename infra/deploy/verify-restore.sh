@@ -4,9 +4,17 @@
 set -euo pipefail
 umask 077
 
-if [[ $# -ne 1 ]]; then
-  echo "Usage: $0 /absolute/path/to/minefleet-YYYYMMDD.dump" >&2
+if [[ $# -ne 1 && $# -ne 3 ]]; then
+  echo "Usage: $0 /absolute/path/to/minefleet-YYYYMMDD.dump [--api-image IMAGE]" >&2
   exit 2
+fi
+api_image=""
+if [[ $# -eq 3 ]]; then
+  if [[ "$2" != "--api-image" || -z "$3" || ! "$3" =~ ^[A-Za-z0-9][A-Za-z0-9._/:@-]+$ ]]; then
+    echo "FAIL: expected --api-image followed by a local Docker image reference" >&2
+    exit 2
+  fi
+  api_image="$3"
 fi
 archive="$(realpath -- "$1")"
 if [[ ! -f "$archive" || ! -s "$archive" ]]; then
@@ -14,19 +22,49 @@ if [[ ! -f "$archive" || ! -s "$archive" ]]; then
   exit 1
 fi
 command -v docker >/dev/null || { echo "FAIL: docker required" >&2; exit 1; }
-name="minefleet-restore-check-$$-$RANDOM"
+name="minefleet-restore-check-${BASHPID}-${RANDOM}"
+api_name="$name-api"
+network_name="$name-net"
+network_created=0
 restore_failed=0
+runtime_db_credential=""
+runtime_signing_material=""
+runtime_mfa_material=""
+
 cleanup() {
   if [[ "$restore_failed" == "1" ]]; then
+    if docker inspect "$api_name" >/dev/null 2>&1; then
+      echo "MineFleet API container log (recovery smoke failed):" >&2
+      docker logs "$api_name" >&2 || true
+    fi
     echo "PostgreSQL container log (restore failed):" >&2
     docker logs "$name" >&2 || true
   fi
+  docker rm -f "$api_name" >/dev/null 2>&1 || true
   docker rm -f "$name" >/dev/null 2>&1 || true
+  if [[ "$network_created" == "1" ]]; then
+    docker network rm "$network_name" >/dev/null 2>&1 || true
+  fi
 }
 trap cleanup EXIT
 
-echo "Starting disposable PostGIS (network disabled, no persistent volumes)..."
-docker run -d --rm --name "$name" --network none \
+db_network_args=(--network none)
+if [[ -n "$api_image" ]]; then
+  command -v openssl >/dev/null || { echo "FAIL: openssl required for API smoke secrets" >&2; exit 1; }
+  if ! docker image inspect "$api_image" >/dev/null 2>&1; then
+    echo "FAIL: API image is not available locally: $api_image" >&2
+    exit 1
+  fi
+  docker network create --internal "$network_name" >/dev/null
+  network_created=1
+  db_network_args=(--network "$network_name" --network-alias restore-db)
+  runtime_db_credential="$(openssl rand -hex 24)"
+  runtime_signing_material="$(openssl rand -hex 48)"
+  runtime_mfa_material="$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n')"
+fi
+
+echo "Starting disposable PostGIS (isolated network, no persistent volumes)..."
+docker run -d --rm --name "$name" "${db_network_args[@]}" \
   --mount "type=bind,source=$archive,target=/tmp/backup.dump,readonly" \
   -e POSTGRES_PASSWORD=throwaway-restore-only \
   postgis/postgis:16-3.4 >/dev/null
@@ -55,6 +93,12 @@ docker exec -u postgres "$name" psql -v ON_ERROR_STOP=1 -U postgres -d postgres 
   -c "CREATE ROLE mf_owner NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS"
 docker exec -u postgres "$name" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
   -c "CREATE ROLE mf_app NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOINHERIT"
+if [[ -n "$api_image" ]]; then
+  docker exec -i -u postgres "$name" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -v app_pw="$runtime_db_credential" >/dev/null <<'SQL'
+ALTER ROLE mf_app LOGIN PASSWORD :'app_pw';
+SQL
+fi
 # Restore ownership and ACLs. Omitting them would not prove that the API role can use the recovered schema.
 if ! docker exec -u postgres "$name" pg_restore \
   --exit-on-error -U postgres \
@@ -143,4 +187,46 @@ then
 fi
 
 echo "PASS: isolated restore succeeded; tables=$table_count; ownership, ACLs and tenant RLS validated."
-echo "NOTICE: this smoke test is not a full disaster-recovery exercise, API startup test or RPO/RTO certification."
+
+if [[ -n "$api_image" ]]; then
+  echo "Starting the recovered API image on the private Docker network..."
+  docker run -d --rm --name "$api_name" --network "$network_name" \
+    --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m --tmpfs /data/mail:rw,noexec,nosuid,size=16m \
+    --cap-drop ALL --security-opt no-new-privileges:true \
+    -e MF_ENV=staging \
+    -e MF_DB_HOST=restore-db -e MF_DB_PORT=5432 -e MF_DB_NAME=minefleet_restore_check \
+    -e MF_APP_PASSWORD="$runtime_db_credential" -e MF_JWT_SECRET="$runtime_signing_material" \
+    -e MF_MFA_ENCRYPTION_KEY="$runtime_mfa_material" -e MF_COOKIE_SECURE=true \
+    -e MF_MAIL_BACKEND=capture -e MF_MAIL_CAPTURE_DIR=/data/mail \
+    -e MF_PUBLIC_WEB_URL=https://staging.example.invalid \
+    "$api_image" >/dev/null
+
+  api_ready=0
+  for _ in $(seq 1 60); do
+    if [[ "$(docker inspect --format '{{.State.Running}}' "$api_name" 2>/dev/null || true)" != "true" ]]; then
+      break
+    fi
+    if docker exec -i "$api_name" python - >/dev/null 2>&1 <<'PY'
+import json
+from urllib.request import urlopen
+
+for route in ("/api/v1/health", "/api/v1/ready"):
+    with urlopen(f"http://127.0.0.1:8000{route}", timeout=2) as response:
+        assert response.status == 200
+        assert json.load(response) == {"status": "ok"}
+PY
+    then
+      api_ready=1
+      break
+    fi
+    sleep 1
+  done
+  if [[ "$api_ready" != "1" ]]; then
+    echo "FAIL: recovered API did not pass health and database readiness probes" >&2
+    restore_failed=1
+    exit 1
+  fi
+  echo "PASS: recovered API started with mf_app and passed /health and /ready."
+fi
+
+echo "NOTICE: this smoke test is not a full disaster-recovery exercise, staging restore or RPO/RTO certification."
