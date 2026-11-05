@@ -49,12 +49,15 @@ if [[ "$ready" != "1" ]]; then
 fi
 
 docker exec -u postgres "$name" createdb -U postgres minefleet_restore_check
-# RLS policies reference this application role; pg_dump does not include cluster roles.
+# pg_dump archives contain ownership and ACL references, but not cluster roles.
+# NOLOGIN roles are sufficient for a faithful isolated restore and cannot authenticate.
 docker exec -u postgres "$name" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
-  -c "CREATE ROLE mf_app NOLOGIN"
-# A successful catalog listing alone does not prove data can be restored.
+  -c "CREATE ROLE mf_owner NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS"
+docker exec -u postgres "$name" psql -v ON_ERROR_STOP=1 -U postgres -d postgres \
+  -c "CREATE ROLE mf_app NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOINHERIT"
+# Restore ownership and ACLs. Omitting them would not prove that the API role can use the recovered schema.
 if ! docker exec -u postgres "$name" pg_restore \
-  --exit-on-error --no-owner --no-acl -U postgres \
+  --exit-on-error -U postgres \
   -d minefleet_restore_check /tmp/backup.dump >/dev/null; then
   echo "FAIL: pg_restore failed; collecting PostgreSQL diagnostics" >&2
   restore_failed=1
@@ -74,5 +77,70 @@ if [[ "$migration_count" != "1" ]]; then
   echo "FAIL: alembic_version is missing" >&2
   exit 1
 fi
-echo "PASS: isolated restore succeeded; tables=$table_count; alembic_version present."
-echo "NOTICE: this smoke test is not a full disaster-recovery exercise or RPO/RTO certification."
+
+# Prove that ownership, ACLs and the representative tenant RLS policy survived the restore.
+if ! docker exec -i -u postgres "$name" psql -v ON_ERROR_STOP=1 -U postgres \
+  -d minefleet_restore_check >/dev/null <<'SQL'
+DO $
+DECLARE
+  restored_owner text;
+  rls_enabled boolean;
+  rls_forced boolean;
+  app_policy_count integer;
+BEGIN
+  SELECT pg_get_userbyid(c.relowner), c.relrowsecurity, c.relforcerowsecurity
+    INTO restored_owner, rls_enabled, rls_forced
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+   WHERE n.nspname = 'public' AND c.relname = 'tenant';
+
+  IF restored_owner IS DISTINCT FROM 'mf_owner' THEN
+    RAISE EXCEPTION 'tenant owner mismatch: %', restored_owner;
+  END IF;
+  IF NOT COALESCE(rls_enabled, false) OR NOT COALESCE(rls_forced, false) THEN
+    RAISE EXCEPTION 'tenant RLS is not enabled and forced';
+  END IF;
+
+  SELECT count(*)
+    INTO app_policy_count
+    FROM pg_policy p
+    JOIN pg_class c ON c.oid = p.polrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_roles r ON r.oid = ANY (p.polroles)
+   WHERE n.nspname = 'public' AND c.relname = 'tenant' AND r.rolname = 'mf_app';
+
+  IF app_policy_count < 1 THEN
+    RAISE EXCEPTION 'tenant has no policy assigned to mf_app';
+  END IF;
+END
+$;
+
+BEGIN;
+SET LOCAL ROLE mf_app;
+DO $
+DECLARE
+  visible_tenants integer;
+BEGIN
+  PERFORM set_config('app.tenant_id', '', true);
+  SELECT count(*) INTO visible_tenants FROM public.tenant;
+  IF visible_tenants <> 0 THEN
+    RAISE EXCEPTION 'RLS fail-closed check exposed % tenants', visible_tenants;
+  END IF;
+
+  PERFORM set_config('app.tenant_id', '00000000-0000-4000-8000-000000000001', true);
+  SELECT count(*) INTO visible_tenants FROM public.tenant;
+  IF visible_tenants < 1 THEN
+    RAISE EXCEPTION 'mf_app cannot read the authorized platform tenant';
+  END IF;
+END
+$;
+ROLLBACK;
+SQL
+then
+  echo "FAIL: restored ownership, ACL or RLS validation failed" >&2
+  restore_failed=1
+  exit 1
+fi
+
+echo "PASS: isolated restore succeeded; tables=$table_count; ownership, ACLs and tenant RLS validated."
+echo "NOTICE: this smoke test is not a full disaster-recovery exercise, API startup test or RPO/RTO certification."
