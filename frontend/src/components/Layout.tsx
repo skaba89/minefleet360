@@ -26,6 +26,7 @@ export function Layout() {
     refetchInterval: 60_000,
   });
   const links = [
+    { to: "/plateforme/societes", text: "Sociétés clientes", show: can(me.grants, "organization.tenant.list") },
     { to: "/vehicules", text: "Véhicules", show: can(me.grants, "fleet.vehicle.read") },
     { to: "/flotte-gps", text: "Flotte GPS", show: can(me.grants, "fleet.vehicle.read") },
     { to: "/flotte-gps/zones", text: "Zones GPS", show: can(me.grants, "fleet.geofence.read") },
