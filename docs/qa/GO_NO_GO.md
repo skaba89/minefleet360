@@ -1,15 +1,15 @@
-# GO / NO-GO — situation au 5 novembre 2026
+# GO / NO-GO — situation au 5 novembre 2026 (main fd1820b)
 
 ## Verdict
 
 **NO-GO commercialisation industrialisée et déploiement large.**  
-**GO conditionnel pour préparer un pilote fermé**, sous réserve de respecter les blocages P0 ci-dessous. Aucun pilote terrain, déploiement production, modèle de traceur certifié, avis juridique, test de restauration réelle ou SLO de charge n'est attesté dans l'audit GitHub.
+**GO conditionnel pour préparer un pilote fermé**, sous réserve de respecter les blocages P0 ci-dessous. Aucun pilote terrain, déploiement production, modèle de traceur certifié, avis juridique, restauration d'une sauvegarde opérationnelle ou SLO de charge n'est attesté. Une restauration CI d'un dump synthétique est validée par la PR #361.
 
 ## Preuves positives disponibles
 
-- `main` est au commit `ee0579f544de84b98cd92f74e499467603dae8ee`.
+- `main` est au commit `fd1820bb2b74c889bec126c51c6f41dda5bb08fa`, après fusion de la PR #361.
 - PR #359 est fusionnée et son code apporte un backoff de reconnexion LISTEN borné; la PR décrit ses tests unitaires et PostgreSQL.
-- Sur HEAD, les workflows GitHub `ci`, `e2e-isolation` et `security-static` sont terminés en succès.
+- Sur HEAD, `ci`, `e2e-isolation` et `security-static` sont terminés en succès. `ci` réalise un round-trip de restauration d'un dump de test synthétique.
 - Les migrations, modules métiers, code GPS, tests, scripts de sauvegarde/restauration, sondes et documentation sont présents dans l'arbre.
 - Les fonctionnalités GPS cartographiques/alertes/SSE des PR #340–#359 ne doivent plus être décrites comme absentes.
 
@@ -18,7 +18,7 @@
 | Condition | État prouvé | Preuve à fournir avant décision GO |
 |---|---|---|
 | Environnement staging isolé et déploiement reproductible | Non validé dans cet audit | capture de version, checklist readiness, test migration/rollback daté |
-| Sauvegarde et restore isolé | Scripts/doc présents, exécution non prouvée | restore complet sur archive fictive protégée; temps RPO/RTO observé |
+| Sauvegarde et restore isolé | Round-trip CI sur dump synthétique validé; exercice staging/non-CI absent | restaurer une sauvegarde staging chiffrée en environnement distinct, vérifier l'API et mesurer RPO/RTO |
 | Isolation tenant/site dans la configuration de recette | tests CI verts, staging non vérifié | suite croisée A/B avec rôles et tenant DB applicatif |
 | Confidentialité GPS/salariés et consentement | contrôles de code documentés, revue juridique absente | notice, finalités, accès, rétention, suppression et validation professionnelle |
 | Traceur physique ciblé | non certifié | essai daté du modèle/firmware/protocole exact |

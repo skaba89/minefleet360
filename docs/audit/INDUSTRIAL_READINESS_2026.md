@@ -1,19 +1,19 @@
 # MineFleet 360 — audit de préparation industrielle
 
-**État observé : 5 novembre 2026, branche `main`, commit `ee0579f544de84b98cd92f74e499467603dae8ee`.**  
+**État observé : 5 novembre 2026, branche `main`, commit `fd1820bb2b74c889bec126c51c6f41dda5bb08fa`.**  
 Périmètre : arbre GitHub, migrations, tests, workflows CI, PR fusionnées et documentation versionnée. Il s'agit d'un audit documentaire du dépôt et des preuves GitHub disponibles, pas d'un audit de pénétration, d'une recette client ou d'une certification.
 
 ## Conclusion exécutive
 
-MineFleet 360 est un produit logiciel avancé avec un socle métier large et des fonctions GPS visibles récemment renforcées. Le dernier commit est issu de la PR [#359](https://github.com/skaba89/minefleet360/pull/359), fusionnée le 5 novembre. Les trois workflows déclenchés sur ce commit — `ci`, `e2e-isolation` et `security-static` — sont terminés avec succès.
+MineFleet 360 est un produit logiciel avancé avec un socle métier large et des fonctions GPS visibles récemment renforcées. Le HEAD actuel est issu de la PR [#361](https://github.com/skaba89/minefleet360/pull/361), fusionnée le 5 novembre. Les workflows `ci`, `e2e-isolation` et `security-static` sur ce HEAD sont terminés avec succès; `ci` comprend maintenant un aller-retour de restauration PostgreSQL de la base synthétique.
 
 **Maturité dépôt : 70/100**, calculée avec la grille ci-dessous. Cette mesure n'est pas un score de production. L'estimation 81/100 citée auparavant est conservée comme estimation historique non certifiée et ne remplace pas cette note. Le score détaillé précédent de 62/100 (PR #338, 4 novembre) précède les PR GPS #340–#359 et est devenu obsolète pour cette capacité.
 
-**Décision actuelle : NO-GO pour une commercialisation annoncée comme prête à l'emploi industriel et pour un déploiement national.** Un pilote technique encadré peut être préparé après sécurisation des conditions P0. Aucun déploiement de production, test matériel réel, restauration réelle, mesure de charge en environnement représentatif, revue juridique locale ou validation client n'est démontré par les preuves examinées.
+**Décision actuelle : NO-GO pour une commercialisation annoncée comme prête à l'emploi industriel et pour un déploiement national.** Un pilote technique encadré peut être préparé après sécurisation des conditions P0. Aucun déploiement de production, test matériel réel, restauration d'une sauvegarde distante ou d'une base opérationnelle, mesure de charge en environnement représentatif, revue juridique locale ou validation client n'est démontré par les preuves examinées.
 
 ## Références et méthode reproductible
 
-- HEAD : [commit ee0579f](https://github.com/skaba89/minefleet360/commit/ee0579f544de84b98cd92f74e499467603dae8ee).
+- HEAD : [commit fd1820b](https://github.com/skaba89/minefleet360/commit/fd1820bb2b74c889bec126c51c6f41dda5bb08fa), fusion de la [PR #361](https://github.com/skaba89/minefleet360/pull/361) qui vérifie en CI la restauration d'un dump synthétique.
 - PR les plus pertinentes : [#340 carte MapLibre](https://github.com/skaba89/minefleet360/pull/340), [#341 cap et replay](https://github.com/skaba89/minefleet360/pull/341), [#342 alertes GPS](https://github.com/skaba89/minefleet360/pull/342), [#345 notifications](https://github.com/skaba89/minefleet360/pull/345), [#348–#350 SSE et limites](https://github.com/skaba89/minefleet360/pull/348), [#353–#355 LISTEN/NOTIFY](https://github.com/skaba89/minefleet360/pull/353), [#356–#359 reprise réseau et résilience](https://github.com/skaba89/minefleet360/pull/356).
 - CI du HEAD : exécutions Actions `ci`, `e2e-isolation` et `security-static` en succès. Cela confirme les jobs définis dans le dépôt, pas l'exploitation réelle.
 - Inventaire du HEAD : 63 migrations Alembic, 171 chemins/fichiers sous les répertoires de tests backend selon l'arbre Git, 4 workflows GitHub Actions. Ce décompte est un inventaire de chemins, pas un nombre de tests.
@@ -31,7 +31,7 @@ Chaque domaine reçoit une note entière de 0 à 5 selon les preuves, puis est c
 | Sécurité et isolation | 15 | 4 | 12 | RLS, RBAC, MFA, tests d'isolation et scans statiques dans le dépôt et CI; absence de rapport de pentest indépendant, de DAST et de preuve d'incident/restauration réelle. |
 | UX, mobile et hors ligne | 10 | 3 | 6 | PWA, parcours HSE offline et tampon GPS volatil documentés/testés; pas de synchronisation GPS durable sécurisée ni de validation Android en arrière-plan. |
 | Architecture et performance | 10 | 3,5 | 7 | Monolithe modulaire et SSE avec limites/reprise; pas de latences ingestion-écran ou capacité multi-machine mesurées sur staging représentatif. |
-| SaaS et exploitation | 10 | 2 | 4 | Déploiement recette, scripts de sauvegarde/restauration et supervision existent; abonnements, onboarding autonome et validation de restauration/production non prouvés. |
+| SaaS et exploitation | 10 | 2 | 4 | Scripts, supervision et round-trip CI d'un dump synthétique vérifiés; restauration externe/staging, abonnements et onboarding autonome non prouvés. |
 | Documentation et commercialisation | 5 | 3 | 3 | Documentation métier et benchmark existent; tarifs, contrat/SLA commercial, support opérationnel et validation des besoins clients restent à établir. |
 | **Total** | **100** |  | **70** | **Dépôt avancé; industrialisation et preuves terrain insuffisantes.** |
 
@@ -58,8 +58,8 @@ Recalculer avec les mêmes poids et la même règle à chaque jalon. Une note n'
 
 ## Lots de travail ordonnés
 
-1. **P0 — Baseline fiable** : mettre les audits et matrices à jour sur le HEAD courant; définir les preuves manquantes sans prétendre qu'un script a été exécuté.
-2. **P0 — Validation staging opérationnelle** : restauration isolée, supervision/alertes, déploiement contrôlé et SLI/SLO provisoires.
+1. **P0 — Baseline fiable** : mise à jour faite après #361; les matrices distinguent la preuve CI synthétique d'une vraie reprise opérationnelle.
+2. **P0 — Validation staging opérationnelle** : restaurer une sauvegarde distante de staging, valider l'API, la supervision/les alertes, le déploiement contrôlé et les SLI/SLO provisoires.
 3. **P0 — Pilote GPS encadré** : appareils précis, autorisation/consentement, scénarios réseau, mesure de latence/capacité et procédure de révocation.
 4. **P1 — Offline Android** : après revue de chiffrement et cycle de vie, synchronisation append-only/idempotente sur parcours HSE puis panne/inspection.
 5. **P1 — Complétude métier** : contrats de sous-traitance, SLA, coûts par prestation, rapprochement pièces/carburant/pneus, rapports métier.
