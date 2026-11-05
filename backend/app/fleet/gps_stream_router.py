@@ -113,7 +113,7 @@ async def _events(
             await asyncio.sleep(INTERVAL_SECONDS)
 
 
-@router.get("/vehicles/gps/stream")
+@router.get("/vehicles/gps/stream", include_in_schema=False)
 async def gps_stream(
     request: Request,
     auth: GpsReader,
