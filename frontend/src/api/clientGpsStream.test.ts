@@ -72,9 +72,9 @@ it.each([403, 404])("ne réessaie pas un flux SSE refusé (HTTP %i)", async (sta
 it("interrompt le flux après révocation de session signalée par le serveur", async () => {
   setAccessToken("token-fictif");
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(sseResponse([
-    'event: snapshot\\ndata: [{"vehicle_id":"v1"}]\\n\\n',
-    'event: session-ended\\ndata: {}\\n\\n',
-    'event: snapshot\\ndata: [{"vehicle_id":"v2"}]\\n\\n',
+    'event: snapshot\ndata: [{"vehicle_id":"v1"}]\n\n',
+    'event: session-ended\ndata: {}\n\n',
+    'event: snapshot\ndata: [{"vehicle_id":"v2"}]\n\n',
   ])));
   const snapshots: unknown[][] = [];
   await expect(streamGpsSnapshots(null, (positions) => snapshots.push(positions), new AbortController().signal))
