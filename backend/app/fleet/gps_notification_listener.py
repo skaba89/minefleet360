@@ -26,7 +26,6 @@ def listener_retry_seconds(failures: int) -> int:
     return min(30, 2 ** min(5, max(1, failures)))
 
 
-
 class GpsNotificationHub:
     """Un abonné DB par processus, files coalescentes, aucun contenu métier."""
 
