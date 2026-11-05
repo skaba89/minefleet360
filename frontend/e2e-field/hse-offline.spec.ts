@@ -44,9 +44,23 @@ async function openHse(page: Page): Promise<void> {
 }
 
 async function waitForServiceWorker(page: Page): Promise<void> {
+  // ready indique qu'un worker est actif, pas que cet onglet est contrôlé ni que
+  // le shell de production est entièrement disponible en cache hors réseau.
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
+  await page.waitForFunction(async () => {
+    if (!navigator.serviceWorker.controller) return false;
+    const shell = await caches.match("/index.html");
+    const raw = localStorage.getItem("minefleet-field-profile-v1");
+    if (!shell || !raw) return false;
+    try {
+      const profile = JSON.parse(raw) as { sites?: unknown[] };
+      return Array.isArray(profile.sites) && profile.sites.length > 0;
+    } catch {
+      return false;
+    }
+  }, undefined, { timeout: 20_000 });
 }
 
 test("déclaration sans réseau, synchronisée une seule fois au retour du réseau", async ({ page, context, request }) => {
