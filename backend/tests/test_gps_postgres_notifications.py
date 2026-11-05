@@ -143,6 +143,7 @@ def test_independent_worker_hubs_coalesce_burst_without_cross_tenant_leakage() -
 
 def test_listener_recovers_after_initial_connection_failure() -> None:
     """Un premier refus n'interrompt pas le flux ; un COMMIT réveille ensuite."""
+
     async def scenario() -> None:
         tenant = uuid.uuid4()
         hub = GpsNotificationHub()
