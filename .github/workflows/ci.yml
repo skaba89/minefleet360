@@ -76,6 +76,12 @@ jobs:
             postgis/postgis:16-3.4 \
             pg_dump --host=127.0.0.1 --port=5432 --username=postgres \
               --format=custom --file=/artifacts/minefleet-ci.dump "$MF_DB_NAME"
+          test_db_container="$(docker ps --filter publish=5432 --format '{{.ID}}')"
+          if [ -z "$test_db_container" ]; then
+            echo "FAIL: CI PostgreSQL container was not found" >&2
+            exit 1
+          fi
+          docker stop --time 5 "$test_db_container" >/dev/null
           bash ../infra/deploy/verify-restore.sh "${RUNNER_TEMP}/minefleet-ci.dump"
 
   frontend:

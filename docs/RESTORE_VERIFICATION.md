@@ -37,6 +37,6 @@ Sur un environnement **staging séparé**, mesurer le temps d'exécution, tester
 
 ## Vérification automatisée dans la CI
 
-Le job backend de `.github/workflows/ci.yml` produit, avec le superutilisateur du service PostgreSQL éphémère, une archive custom de la base fictive `minefleet_test` après les migrations et tests, puis lance ce script pour restaurer l'archive dans un conteneur PostGIS temporaire isolé du réseau. Le job échoue si la restauration complète ou les vérifications de schéma échouent.
+Le job backend de `.github/workflows/ci.yml` produit, avec le superutilisateur du service PostgreSQL éphémère, une archive custom de la base fictive `minefleet_test` après les migrations et tests. Après la création du dump, le job arrête le conteneur source pour libérer les ressources avant de lancer ce script pour restaurer l'archive dans un conteneur PostGIS temporaire isolé du réseau. Le job échoue si la restauration complète ou les vérifications de schéma échouent.
 
 Cette vérification automatise un aller-retour PostgreSQL avec les données synthétiques de CI. Les secrets CI aléatoires sont masqués dès leur génération; le mot de passe `postgres` utilisé par le job n'existe que dans le service de base jetable. Elle ne teste pas la destination distante chiffrée, la rotation des clés, la fréquence planifiée, les objectifs RPO/RTO, les secrets d'un hôte client ni un restore depuis une sauvegarde de production.
