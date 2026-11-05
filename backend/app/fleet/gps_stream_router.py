@@ -115,7 +115,6 @@ async def _events(
             await asyncio.sleep(INTERVAL_SECONDS)
 
 
-
 async def _limited_events(
     request: Request, principal: Principal, clock: Clock, site_id: uuid.UUID | None
 ) -> AsyncIterator[str]:
