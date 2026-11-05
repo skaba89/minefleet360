@@ -34,6 +34,10 @@ Ce document décrit des essais à exécuter sur environnement isolé ou staging 
 | MINE-03 | carburant/stock | approvisionnement→distribution→rapprochement→écart et cycle pneu | autorisations de site et audit | unités, corrections, valorisation et écarts reproductibles |
 | PRIV-01 | confidentialité | export, correction, rétention, suppression ou gel légal | test à deux comptes/deux tenants | réponse conforme à la politique validée et preuve d'audit minimale |
 
+## Prévalidation CI de l'observabilité
+
+Le job `ops-monitoring` prévalide la machine d'état, la file persistante et la reprise après un échec SMTP simulé. Il ne change pas le statut du scénario `OBS-01` : seule une injection de panne en staging, une notification réellement reçue et acquittée, puis un rétablissement chronométré permettent de le déclarer réussi.
+
 ## Rapport de résultat obligatoire
 
 Pour chaque exécution, archiver : commit, date/heure, environnement, configuration anonymisée, version navigateur/OS, commandes et scripts, noms des tests, résultat, traces expurgées, latence/ressources et écarts. Ajouter la limite connue (simulateur, mock, matériel réel, réseau simulé ou terrain). Un résultat de CI ne vaut pas recette client.
