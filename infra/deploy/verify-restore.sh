@@ -32,8 +32,11 @@ docker run -d --rm --name "$name" --network none \
   postgis/postgis:16-3.4 >/dev/null
 
 ready=0
-for _ in $(seq 1 40); do
-  if docker exec "$name" pg_isready -U postgres >/dev/null 2>&1; then
+for _ in $(seq 1 60); do
+  # The PostGIS image briefly starts a temporary server while initializing extensions.
+  # Wait for its init-complete marker before accepting pg_isready as final readiness.
+  if docker logs "$name" 2>&1 | grep -Fq "PostgreSQL init process complete; ready for start up." \
+    && docker exec "$name" pg_isready -U postgres >/dev/null 2>&1; then
     ready=1
     break
   fi
