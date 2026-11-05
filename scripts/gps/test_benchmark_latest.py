@@ -16,6 +16,7 @@ class BenchmarkGpsTests(TestCase):
     def test_percentiles(self):
         self.assertEqual(benchmark.percentile([5, 1, 4, 3, 2], 50), 3)
         self.assertEqual(benchmark.percentile([5, 1, 4, 3, 2], 95), 5)
+        self.assertEqual(benchmark.percentile(list(range(1, 101)), 99), 99)
         with self.assertRaises(ValueError):
             benchmark.percentile([], 95)
 
@@ -30,9 +31,14 @@ class BenchmarkGpsTests(TestCase):
         )
         self.assertIsNone(benchmark.position_age_seconds({}, at))
 
-    def test_refuses_plaintext_remote_base(self):
-        with self.assertRaises(ValueError):
-            benchmark.collect("http://example.com", "fake", None, 1)
+    def test_refuses_unsafe_remote_base(self):
+        for url in (
+            "http://example.com",
+            "https://user:pass@example.com",
+            "https://example.com?token=secret",
+        ):
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                benchmark.collect(url, "fake", None, 1)
 
     def test_collect_never_returns_coordinates(self):
         from io import BytesIO
@@ -50,3 +56,11 @@ class BenchmarkGpsTests(TestCase):
         self.assertEqual(result["positions"], 1)
         self.assertNotIn("latitude", result)
         self.assertNotIn("longitude", result)
+        report = benchmark.summarize([result], 1, 0)
+        self.assertEqual(report["success_rate"], 1.0)
+        self.assertEqual(report["failure_rate"], 0.0)
+        self.assertIsNotNone(report["http_latency_ms"]["p99"])
+        rendered = str(report)
+        self.assertNotIn("latitude", rendered)
+        self.assertNotIn("longitude", rendered)
+        self.assertNotIn("dummy-token", rendered)

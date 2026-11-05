@@ -71,11 +71,17 @@ class StreamBenchTests(TestCase):
         self.assertEqual(benchmark.summarize([result])["http_429"], 1)
 
     def test_empty_and_percentiles(self):
-        self.assertIsNone(benchmark.summarize([])["first_frame_ms_p95"])
+        empty = benchmark.summarize([])
+        self.assertIsNone(empty["first_frame_ms_p95"])
+        self.assertIsNone(empty["first_frame_ms_p99"])
+        self.assertEqual(empty["connection_failure_rate"], 0.0)
         results = [benchmark.Result(200, float(x), 1, 0, 0) for x in range(1, 21)]
         summary = benchmark.summarize(results)
         self.assertEqual(summary["first_frame_ms_p50"], 10.0)
         self.assertEqual(summary["first_frame_ms_p95"], 19.0)
+        self.assertEqual(summary["first_frame_ms_p99"], 20.0)
+        self.assertEqual(len(summary["samples"]), 20)
+        self.assertEqual(summary["first_frame_missing"], 0)
 
     def test_invalid_content_type_is_failure(self):
         response = StubResponse(b'{"not":"stream"}')

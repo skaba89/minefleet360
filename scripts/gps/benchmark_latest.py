@@ -8,7 +8,6 @@ Exemple (recette seulement):
 import argparse
 import json
 import os
-import statistics
 import sys
 import time
 import urllib.error
@@ -26,6 +25,19 @@ def percentile(values: list[float], percent: float) -> float:
     return ordered[index]
 
 
+def validate_base_url(url: str) -> str:
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise ValueError("URL sans identifiants, query ni fragment requise")
+    if parsed.scheme != "https" and not (
+        parsed.scheme == "http" and parsed.hostname in ("localhost", "127.0.0.1")
+    ):
+        raise ValueError("HTTPS obligatoire hors localhost")
+    if not parsed.hostname:
+        raise ValueError("hôte requis")
+    return url.rstrip("/")
+
+
 def position_age_seconds(position: dict, observed_at: datetime) -> float | None:
     """Heuristic device-to-observer age. Clock offsets can bias this metric."""
     try:
@@ -38,11 +50,7 @@ def position_age_seconds(position: dict, observed_at: datetime) -> float | None:
 
 
 def collect(url: str, token: str, site_id: str | None, timeout: float) -> dict:
-    base = url.rstrip("/")
-    if not base.startswith("https://") and not (
-        base.startswith("http://localhost") or base.startswith("http://127.0.0.1")
-    ):
-        raise ValueError("HTTPS obligatoire hors localhost")
+    base = validate_base_url(url)
     endpoint = base + "/api/v1/vehicles/gps/latest"
     if site_id:
         endpoint += "?" + urllib.parse.urlencode({"site_id": site_id})
@@ -69,6 +77,31 @@ def collect(url: str, token: str, site_id: str | None, timeout: float) -> dict:
     }
 
 
+def summarize(samples: list[dict], total_requests: int, failures: int) -> dict:
+    latencies = [sample["http_ms"] for sample in samples]
+    successes = len(samples)
+    return {
+        "schema_version": "1.0",
+        "benchmark_kind": "gps_latest_rest",
+        "observed_at": datetime.now(timezone.utc).isoformat(),
+        "total_requests": total_requests,
+        "successes": successes,
+        "failures": failures,
+        "success_rate": round(successes / total_requests, 4),
+        "failure_rate": round(failures / total_requests, 4),
+        "http_latency_ms": {
+            "p50": percentile(latencies, 50) if latencies else None,
+            "p95": percentile(latencies, 95) if latencies else None,
+            "p99": percentile(latencies, 99) if latencies else None,
+            "max": max(latencies) if latencies else None,
+        },
+        "max_observed_positions": max((sample["positions"] for sample in samples), default=0),
+        # Sanitized individual measurements: no coordinates, vehicle IDs or tokens.
+        "samples": samples,
+        "note": "REST polling baseline only; not ingestion-to-screen latency or SSE throughput",
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Mesure de référence de la lecture GPS")
     parser.add_argument("--samples", type=int, default=20)
@@ -76,6 +109,8 @@ def main() -> int:
     parser.add_argument("--timeout", type=float, default=10.0)
     parser.add_argument("--site-id", default=None)
     args = parser.parse_args()
+    if os.environ.get("MF_ENV") == "production":
+        parser.error("ce benchmark ne doit pas être exécuté en production")
     if not 1 <= args.samples <= 200 or not 0 <= args.interval <= 60 or not 0 < args.timeout <= 60:
         parser.error("samples 1..200, interval 0..60, timeout (0, 60]")
     url, token = os.getenv("MF_GPS_BENCH_URL"), os.getenv("MF_GPS_BENCH_TOKEN")
@@ -95,19 +130,7 @@ def main() -> int:
             failures += 1
         if i < args.samples - 1:
             time.sleep(args.interval)
-    latencies = [sample["http_ms"] for sample in samples]
-    report = {
-        "total_requests": args.samples,
-        "successes": len(samples),
-        "failures": failures,
-        "http_latency_ms": {
-            "p50": percentile(latencies, 50) if latencies else None,
-            "p95": percentile(latencies, 95) if latencies else None,
-            "max": max(latencies) if latencies else None,
-        },
-        "max_observed_positions": max((s["positions"] for s in samples), default=0),
-        "note": "REST polling baseline only; not ingestion-to-screen latency or SSE throughput",
-    }
+    report = summarize(samples, args.samples, failures)
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0 if failures == 0 else 1
 

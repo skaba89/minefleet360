@@ -10,7 +10,6 @@ import argparse
 import concurrent.futures
 import json
 import os
-import statistics
 import sys
 import threading
 import time
@@ -28,6 +27,14 @@ class Result:
     snapshots: int
     heartbeats: int
     failures: int
+
+
+def percentile(values: list[float], percent: int) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    rank = max(0, min(len(ordered) - 1, (percent * len(ordered) + 99) // 100 - 1))
+    return round(ordered[rank], 1)
 
 
 def validate_base_url(url: str) -> str:
@@ -94,24 +101,35 @@ def observe(
 
 
 def summarize(results: list[Result]) -> dict:
-    times = sorted(r.first_event_ms for r in results if r.first_event_ms is not None)
-
-    def percentile(p: int) -> float | None:
-        if not times:
-            return None
-        rank = max(0, min(len(times) - 1, (p * len(times) + 99) // 100 - 1))
-        return round(times[rank], 1)
-
+    times = [r.first_event_ms for r in results if r.first_event_ms is not None]
+    errors = sum(r.failures for r in results)
+    total = len(results)
     return {
-        "connections": len(results),
+        "schema_version": "1.0",
+        "benchmark_kind": "gps_sse_stream",
+        "connections": total,
         "http_200": sum(r.status == 200 for r in results),
         "http_429": sum(r.status == 429 for r in results),
         "http_401_403": sum(r.status in (401, 403) for r in results),
-        "errors": sum(r.failures for r in results),
-        "first_frame_ms_p50": percentile(50),
-        "first_frame_ms_p95": percentile(95),
+        "errors": errors,
+        "connection_failure_rate": round(errors / total, 4) if total else 0.0,
+        "first_frame_missing": sum(r.status == 200 and r.first_event_ms is None for r in results),
+        "first_frame_ms_p50": percentile(times, 50),
+        "first_frame_ms_p95": percentile(times, 95),
+        "first_frame_ms_p99": percentile(times, 99),
         "snapshots_seen": sum(r.snapshots for r in results),
         "heartbeats_seen": sum(r.heartbeats for r in results),
+        # Sanitized individual measurements: never include payloads, coordinates or tokens.
+        "samples": [
+            {
+                "status": r.status,
+                "first_event_ms": round(r.first_event_ms, 1) if r.first_event_ms is not None else None,
+                "snapshots": r.snapshots,
+                "heartbeats": r.heartbeats,
+                "failures": r.failures,
+            }
+            for r in results
+        ],
         "note": "Measurement at HTTP client, not ingestion-to-screen latency or device validation",
     }
 
@@ -121,12 +139,16 @@ def main() -> int:
     parser.add_argument("--concurrency", type=int, default=5)
     parser.add_argument("--hold-seconds", type=float, default=5)
     parser.add_argument("--timeout", type=float, default=10)
+    parser.add_argument("--rounds", type=int, default=1)
+    parser.add_argument("--reconnect-delay", type=float, default=0.5)
     parser.add_argument("--site-id")
     args = parser.parse_args()
     if not 1 <= args.concurrency <= 64:
         parser.error("--concurrency must be between 1 and 64")
     if not 1 <= args.hold_seconds <= 15 or not 1 <= args.timeout <= 30:
         parser.error("--hold-seconds 1..15, --timeout 1..30")
+    if not 1 <= args.rounds <= 10 or not 0 <= args.reconnect_delay <= 30:
+        parser.error("--rounds 1..10, --reconnect-delay 0..30")
     if os.environ.get("MF_ENV") == "production":
         parser.error("This probe must not run in production")
     url, token = os.getenv("MF_GPS_BENCH_URL"), os.getenv("MF_GPS_BENCH_TOKEN")
@@ -136,14 +158,28 @@ def main() -> int:
         base = validate_base_url(url)
     except ValueError as exc:
         parser.error(str(exc))
-    barrier = threading.Barrier(args.concurrency)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as pool:
-        futures = [
-            pool.submit(observe, base, token, args.site_id, barrier, args.hold_seconds, args.timeout)
-            for _ in range(args.concurrency)
-        ]
-        results = [f.result() for f in futures]
+    results: list[Result] = []
+    for round_index in range(args.rounds):
+        barrier = threading.Barrier(args.concurrency)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as pool:
+            futures = [
+                pool.submit(
+                    observe,
+                    base,
+                    token,
+                    args.site_id,
+                    barrier,
+                    args.hold_seconds,
+                    args.timeout,
+                )
+                for _ in range(args.concurrency)
+            ]
+            results.extend(future.result() for future in futures)
+        if round_index < args.rounds - 1:
+            time.sleep(args.reconnect_delay)
     report = summarize(results)
+    report["rounds"] = args.rounds
+    report["reconnect_attempts"] = args.concurrency * (args.rounds - 1)
     report["observed_at"] = datetime.now(timezone.utc).isoformat()
     print(json.dumps(report, indent=2))
     # 429 is expected when probing capacity, but unauthorized and failures are errors.
