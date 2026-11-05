@@ -201,3 +201,41 @@ export function PlatformCreateTenantPage() {
     </section>
   );
 }
+
+export function PlatformHealthPage() {
+  const me = useMe();
+  const authorized = can(me.grants, "organization.tenant.list");
+  const probes = useQuery({
+    queryKey: ["platform-health"],
+    enabled: authorized,
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const [health, ready] = await Promise.all([
+        get<{ status: string }>("/health"),
+        get<{ status: string }>("/ready"),
+      ]);
+      return { health: health.status === "ok", ready: ready.status === "ok" };
+    },
+  });
+  if (!authorized) return <p className="error" role="alert">Accès plateforme non autorisé.</p>;
+  return (
+    <section>
+      <h1>État des services</h1>
+      <p className="muted">Sondes API vérifiées toutes les 30 secondes. Elles ne remplacent pas
+        les alertes d'exploitation, les sauvegardes ni les mesures de performance.</p>
+      <DataState loading={probes.isLoading} error={probes.error} empty={false}>
+        <div className="tiles">
+          <div className="tile">
+            <strong>API : {probes.data?.health ? "Disponible" : "Indisponible"}</strong>
+          </div>
+          <div className="tile">
+            <strong>Base et dépendances : {probes.data?.ready ? "Prêtes" : "Non prêtes"}</strong>
+          </div>
+        </div>
+      </DataState>
+      <button type="button" onClick={() => void probes.refetch()} disabled={probes.isFetching}>
+        Actualiser les sondes
+      </button>
+    </section>
+  );
+}
