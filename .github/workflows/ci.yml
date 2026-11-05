@@ -101,6 +101,24 @@ jobs:
           bash infra/deploy/verify-restore.sh "${RUNNER_TEMP}/minefleet-ci.dump" \
             --api-image minefleet-api-restore-check:ci
 
+  ops-monitoring:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tester transitions, état atomique et reprise SMTP simulée
+        run: python -m unittest discover -s tests -p 'test_ops_*.py' -v
+      - name: Vérifier la syntaxe des composants de monitoring
+        run: >-
+          python -m py_compile
+          infra/deploy/alert-state.py
+          infra/deploy/monitor_state.py
+          infra/deploy/notify-alert-smtp.py
+          infra/deploy/run-alert-monitor.py
+
   frontend:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
