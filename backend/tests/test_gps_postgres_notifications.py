@@ -75,11 +75,12 @@ def test_hub_dispatches_only_to_matching_tenant_with_real_database() -> None:
 
 def test_independent_worker_hubs_receive_same_committed_event() -> None:
     """Deux connexions LISTEN indépendantes : même message, mêmes droits tenant."""
+
     async def scenario() -> None:
         tenant = uuid.uuid4()
         foreign = uuid.uuid4()
         worker_a, worker_b = GpsNotificationHub(), GpsNotificationHub()
-        async (
+        async with (
             worker_a.subscribe(tenant) as stream_a,
             worker_b.subscribe(tenant) as stream_b,
             worker_b.subscribe(foreign) as foreign_stream,
@@ -109,10 +110,11 @@ def test_independent_worker_hubs_receive_same_committed_event() -> None:
 
 def test_independent_worker_hubs_coalesce_burst_without_cross_tenant_leakage() -> None:
     """Une rafale de commits reste un unique signal en attente par client."""
+
     async def scenario() -> None:
         tenant, foreign = uuid.uuid4(), uuid.uuid4()
         worker_a, worker_b = GpsNotificationHub(), GpsNotificationHub()
-        async (
+        async with (
             worker_a.subscribe(tenant) as stream_a,
             worker_b.subscribe(tenant) as stream_b,
             worker_b.subscribe(foreign) as foreign_stream,
@@ -120,6 +122,7 @@ def test_independent_worker_hubs_coalesce_burst_without_cross_tenant_leakage() -
             await asyncio.wait_for(stream_a.get(), timeout=5)
             await asyncio.wait_for(stream_b.get(), timeout=5)
             await asyncio.wait_for(foreign_stream.get(), timeout=5)
+
             def burst_in_one_transaction() -> None:
                 with new_session() as session:
                     for _ in range(4):
