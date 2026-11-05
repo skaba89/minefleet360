@@ -1,34 +1,48 @@
-# Intégration d'un fournisseur de traceurs GPS — éléments à obtenir
+# Intégration d’un fournisseur de traceurs GPS — éléments à obtenir
 
-Décision déléguée D-DEL-06 (2 novembre 2026) : **aucun adaptateur n'est développé sans la spécification réelle du
-fournisseur** (format, authentification, horodatage). Un adaptateur écrit « à l'aveugle » produirait des positions
-fausses ou mal datées, ce qui est pire qu'une absence de donnée. Ce document liste ce qu'il faut demander.
+Décision déléguée D-DEL-06 (2 novembre 2026) : **aucun décodeur constructeur n’est développé sans la spécification réelle du fournisseur** (format, authentification, horodatage). Un décodeur écrit à l’aveugle produirait des positions fausses ou mal datées.
 
-## Point d'entrée existant
+## Point d’entrée existant
 
-Les traceurs peuvent déjà envoyer leurs positions à `POST /api/v1/gps/telemetry` (JSON HTTPS, secret par traceur,
-révocable, numéro de séquence anti-rejeu ; voir `docs/GPS_INGESTION_BOUNDARY.md`). Si le fournisseur sait **pousser**
-ce format (ou un webhook configurable), aucune intégration spécifique n'est nécessaire.
+Les traceurs peuvent envoyer une position à `POST /api/v1/gps/telemetry` avec le contrat `minefleet-json-v1` : JSON HTTPS, secret par traceur révocable et séquence anti-rejeu. Si le fournisseur sait pousser ce format, aucun décodeur spécifique n’est nécessaire.
 
-## À obtenir du fournisseur (par écrit)
+## Architecture d’adaptateurs
+
+Le module `backend/app/fleet/gps_payload_adapters.py` fournit un registre fermé et versionné :
+
+- l’adaptateur est sélectionné par la configuration serveur, jamais par le corps du traceur ;
+- chaque adaptateur déclare un identifiant canonique, un fournisseur, un protocole, une version et sa limite de taille ;
+- le résultat est toujours un `GpsDeviceMessage` normalisé, sans tenant, site, véhicule ni secret ;
+- l’authentification, la résolution de l’association serveur, l’anti-rejeu et l’écriture atomique restent communs ;
+- un identifiant dupliqué, invalide ou inconnu est refusé avant toute écriture ;
+- aucun chargement dynamique de code ou plugin fourni par un tiers n’est autorisé.
+
+Le registre ne contient actuellement que `minefleet-json-v1`, explicitement marqué **non certifié matériellement**. Teltonika, Queclink et les autres fabricants ne sont ni enregistrés ni annoncés compatibles à ce stade.
+
+## À obtenir du fournisseur par écrit
 
 | Sujet | Questions |
 |---|---|
-| Mode | Poussée (webhook) ou interrogation de leur API ? Fréquence et volume par traceur ? |
-| Format | Schéma exact des messages (champs, unités : degrés décimaux, km/h, mètres), exemples réels anonymisés |
-| Horodatage | Heure GNSS ou heure de réception ? Fuseau ? Résolution ? Comportement quand le GPS n'a pas de fix |
-| Identité | Identifiant stable du boîtier (IMEI, numéro de série) ; remplacement d'un boîtier |
-| Authentification | Secret partagé, signature HMAC, certificat client, liste d'adresses IP sources ? Rotation des secrets |
-| Fiabilité | Rejeu des messages après coupure (stockage embarqué) ? Ordre garanti ? Doublons possibles ? |
-| Qualité | Précision (HDOP, nombre de satellites), vitesse, cap, état du moteur / contact, compteur kilométrique |
-| Événements | Alertes natives (choc, sortie de zone, batterie) : format et sémantique |
-| Contrat | Hébergement des données chez le fournisseur, durée de conservation, sous-traitance, réversibilité |
-| Environnement de test | Accès à un bac à sable ou à un boîtier de test, avec messages réels |
+| Modèle exact | Référence commerciale, variante matérielle et version de firmware testée ? |
+| Mode | Poussée, TCP/UDP propriétaire, webhook ou interrogation d’API ? Fréquence et volume ? |
+| Format | Spécification exacte, unités, encodage, checksum et exemples réels anonymisés ? |
+| Horodatage | Heure GNSS ou réception, fuseau, résolution et comportement sans fix ? |
+| Identité | IMEI ou numéro de série stable, remplacement et réaffectation d’un boîtier ? |
+| Authentification | Secret, HMAC, certificat client, IP source, rotation et révocation ? |
+| Fiabilité | Stockage embarqué, rejeu après coupure, ordre, doublons, accusés réseau ? |
+| Qualité | Précision, satellites, vitesse, cap, contact, compteur et batterie ? |
+| Événements | Choc, entrée/sortie, batterie, bouton d’urgence : format et sémantique ? |
+| Contrat | Hébergement, conservation, sous-traitance, réversibilité et support ? |
+| Test | Bac à sable et boîtier physique avec SIM/réseau représentatifs ? |
 
-## Critères d'acceptation de l'adaptateur (quand la spécification sera fournie)
+## Cycle obligatoire d’un nouvel adaptateur
 
-1. Test d'intégration avec des messages réels du bac à sable (format, unités, horodatage, absence de fix).
-2. Authentification vérifiée avant toute écriture ; refus journalisé ; secret révocable.
-3. Rejeu idempotent (doublons et messages tardifs replacés à leur heure, sans fausse alerte de zone).
-4. Isolation par société et par site ; aucun secret du fournisseur dans le dépôt.
-5. Essai de charge au volume annoncé et essai terrain sur un engin réel.
+1. Créer un identifiant distinct par protocole/version ; ne jamais remplacer silencieusement un décodeur existant.
+2. Ajouter des fixtures fournisseur expurgées et autorisées, sans IMEI réel, coordonnées sensibles ni secret.
+3. Tester les unités, fuseaux, timestamps invalides, absence de fix, limites, checksum et charges hostiles.
+4. Vérifier authentification, révocation, réaffectation, doublons, messages hors ordre et rejeu après coupure.
+5. Mesurer charge, pertes et latence sur staging.
+6. Tester le couple modèle + firmware + réseau sur matériel réel.
+7. Enregistrer le rapport daté et son périmètre avant de déclarer une compatibilité.
+
+Une validation de fixtures ou de CI ne vaut pas certification matérielle. La certification ne concerne que le couple modèle/firmware/protocole réellement essayé.
