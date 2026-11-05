@@ -4,7 +4,7 @@ import asyncio
 import uuid
 from unittest.mock import patch
 
-from app.fleet.gps_notification_listener import GpsNotificationHub
+from app.fleet.gps_notification_listener import GpsNotificationHub, listener_retry_seconds
 
 
 def test_notifies_only_matching_tenant_and_coalesces() -> None:
@@ -45,3 +45,10 @@ def test_disconnected_listener_wakes_all_for_full_snapshot() -> None:
                 assert b.qsize() == 1
 
     asyncio.run(scenario())
+
+
+def test_listener_retry_backoff_is_bounded_and_resets_on_success() -> None:
+    assert [listener_retry_seconds(n) for n in (1, 2, 3, 4, 5, 6, 100)] == [
+        2, 4, 8, 16, 30, 30, 30,
+    ]
+    assert listener_retry_seconds(0) == 2
