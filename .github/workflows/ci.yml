@@ -68,7 +68,7 @@ jobs:
         run: pytest -q -p no:warnings --cov=app --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=85
       - name: Audit des dépendances
         run: pip-audit --skip-editable
-      - name: Sauvegarde et restauration isolée de la base de test
+      - name: Créer une sauvegarde synthétique pour le test de restauration
         run: |
           docker run --rm --network host \
             -e PGPASSWORD=ci-postgres-only \
@@ -76,13 +76,26 @@ jobs:
             postgis/postgis:16-3.4 \
             pg_dump --host=127.0.0.1 --port=5432 --username=postgres \
               --format=custom --file=/artifacts/minefleet-ci.dump "$MF_DB_NAME"
-          test_db_container="$(docker ps --filter publish=5432 --format '{{.ID}}')"
-          if [ -z "$test_db_container" ]; then
-            echo "FAIL: CI PostgreSQL container was not found" >&2
-            exit 1
-          fi
-          docker stop --time 5 "$test_db_container" >/dev/null
-          bash ../infra/deploy/verify-restore.sh "${RUNNER_TEMP}/minefleet-ci.dump"
+      - name: Transmettre la sauvegarde synthétique au job isolé
+        uses: actions/upload-artifact@v4
+        with:
+          name: minefleet-ci-dump
+          path: ${{ runner.temp }}/minefleet-ci.dump
+          retention-days: 1
+
+  backup-restore:
+    needs: backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Récupérer la sauvegarde synthétique éphémère
+        uses: actions/download-artifact@v4
+        with:
+          name: minefleet-ci-dump
+          path: ${{ runner.temp }}
+      - name: Restaurer dans un conteneur PostGIS temporaire isolé
+        run: bash infra/deploy/verify-restore.sh "${RUNNER_TEMP}/minefleet-ci.dump"
 
   frontend:
     runs-on: ubuntu-24.04
