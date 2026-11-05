@@ -1,13 +1,13 @@
 # Feuille de route — 70 vers 85 puis 95
 
-Baseline au 5 novembre 2026 : `main@ee0579f`, score dépôt 70/100 selon `docs/audit/INDUSTRIAL_READINESS_2026.md`. Les seuils 85 et 95 ne seront validés qu'à partir de preuves d'exploitation, pas du nombre de PR.
+Baseline au 5 novembre 2026 : `main@77dd598`, score dépôt 70/100 selon `docs/audit/INDUSTRIAL_READINESS_2026.md`. Les seuils 85 et 95 ne seront validés qu'à partir de preuves d'exploitation, pas du nombre de PR.
 
 ## Backlog avec dépendances et critères
 
 | ID | Priorité | Lot | Problème / risque | Dépend de | Acceptation | Statut initial |
 |---|---|---|---|---|---|---|
-| A0 | P0 | Audit de référence et inventaire des preuves | Docs d'état et score précèdent #340–#359 et indiquent des capacités GPS désormais livrées | HEAD fixé | 8 documents cohérents; aucune preuve terrain inventée; CI HEAD référencée | En cours |
-| R1 | P0 | Restauration isolée | Existence du script ne prouve pas restaurabilité, ni RPO/RTO | environnement staging isolé, archive fictive | restore complet chronométré, contrôles tables/migrations, procédure et alerting | À faire |
+| A0 | P0 | Audit de référence et inventaire des preuves | Docs d'état et score doivent suivre les preuves fusionnées sans confondre CI et terrain | HEAD fixé | 8 documents cohérents; aucune preuve terrain inventée; CI HEAD référencée | Fusionnée (#360–#364), validation terrain non applicable |
+| R1 | P0 | Restauration isolée | La CI synthétique prouve restore, propriétaires/ACL/RLS et démarrage API, mais pas la reprise staging ni RPO/RTO | environnement staging isolé, archive distante chiffrée | restore complet chronométré, contrôles tables/migrations, démarrage API, procédure et alerting | CI validée (#364); recette staging à faire |
 | R2 | P0 | Relance staging et rollback | Pas de répétition de déploiement et retour arrière démontrée | accès infra, migrations compatibles | installation reproductible, health/readiness, rollback répété sans toucher prod | À faire |
 | G1 | P0 | Pilote matériel GPS | Ingestion logicielle sans certification modèle/firmware | appareil réel et partenaire/consentement | preuve d'auth, décodage, duplicat, ordre, replay, rétention, révocation par modèle | À faire |
 | G2 | P0 | Benchmark bout en bout GPS | SSE et limites en place mais capacité et latence non mesurées sur infra | staging représentatif, dataset synthétique | résultats bruts CPU/RAM/DB/latences/p95/p99/pertes à plusieurs niveaux de concurrence | À faire |
