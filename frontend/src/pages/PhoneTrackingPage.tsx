@@ -61,6 +61,7 @@ export function PhoneTrackingPage() {
   async function stop() {
     generation.current++;
     active.current = false;
+    buffered.current.clear();
     clearTimeout(timer.current);
     setRunning(false);
     setMessage("GPS du téléphone arrêté");
@@ -97,7 +98,6 @@ export function PhoneTrackingPage() {
       setRunning(true);
       setMessage("Autorisez la localisation dans votre navigateur…");
       const sample = () => {
-        if (generation.current !== run || !active.current) return;
         if (generation.current !== run || !active.current) return;
         navigator.geolocation.getCurrentPosition((position) => {
           if (generation.current !== run || !active.current) return;
