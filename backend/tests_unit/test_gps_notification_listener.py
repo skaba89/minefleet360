@@ -10,8 +10,10 @@ from app.fleet.gps_notification_listener import GpsNotificationHub
 def test_notifies_only_matching_tenant_and_coalesces() -> None:
     async def scenario() -> None:
         hub = GpsNotificationHub()
+
         async def inactive() -> None:
             await asyncio.Event().wait()
+
         tenant_a, tenant_b = uuid.uuid4(), uuid.uuid4()
         with patch.object(hub, "_listen", side_effect=inactive):
             async with hub.subscribe(tenant_a) as a, hub.subscribe(tenant_b) as b:
@@ -34,6 +36,7 @@ def test_disconnected_listener_wakes_all_for_full_snapshot() -> None:
         hub = GpsNotificationHub()
         async def inactive() -> None:
             await asyncio.Event().wait()
+
         with patch.object(hub, "_listen", side_effect=inactive):
             async with hub.subscribe(uuid.uuid4()) as a, hub.subscribe(uuid.uuid4()) as b:
                 hub._wake_all()
