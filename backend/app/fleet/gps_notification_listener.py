@@ -23,7 +23,7 @@ logger = logging.getLogger("minefleet.gps.notifications")
 
 def listener_retry_seconds(failures: int) -> int:
     """Attente bornée après pertes successives de la connexion LISTEN."""
-    return min(30, 2 ** min(5, max(1, failures)))
+    return min(30, 1 << min(5, max(1, failures)))
 
 
 class GpsNotificationHub:
