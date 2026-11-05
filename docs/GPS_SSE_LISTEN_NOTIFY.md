@@ -10,6 +10,7 @@ La PR #352 émet déjà une notification `minefleet_gps_positions` dans la trans
 - une relecture au maximum toutes les 15 secondes même sans notification, indispensable pour la révocation d'autorisations et les notifications perdues ;
 - fermeture du listener lorsque le dernier abonné se déconnecte ;
 - redémarrage après perte de connexion DB, avec réveil de tous les abonnés pour rattrapage ;
+- délai progressif de reconnexion PostgreSQL (2, 4, 8, 16, puis 30 secondes maximum), remis à zéro après un LISTEN réussi ;
 - aucune coordonnée, vitesse, identifiant de véhicule ni jeton conservé dans le bus.
 
 ## Sécurité
@@ -26,3 +27,12 @@ Les notifications `LISTEN/NOTIFY` ne sont **pas durables**. Au lancement du flux
 - supervision du listener, limites DB et proxy, et essais de coupures réseau réelles sur appareils.
 
 **Ce n'est pas encore une garantie temps réel ni un SLA de latence mesuré.** Le mécanisme privilégie la sûreté des droits d'accès et le rattrapage à l'absence totale de polling.
+
+
+## Vérification de résilience du listener (PR suivante)
+
+Un test d'intégration simule un premier refus de connexion Psycopg, puis établit
+une vraie connexion `LISTEN` à PostgreSQL de test et vérifie que la notification
+suivant un `COMMIT` parvient au bon abonné. Un test unitaire vérifie les bornes
+du backoff. Ces vérifications n'arrêtent pas réellement le serveur PostgreSQL et
+ne constituent pas un exercice de panne réseau multi-machine.

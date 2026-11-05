@@ -21,6 +21,11 @@ from app.fleet.gps_notifications import GPS_NOTIFICATION_CHANNEL
 logger = logging.getLogger("minefleet.gps.notifications")
 
 
+def listener_retry_seconds(failures: int) -> int:
+    """Attente bornée après pertes successives de la connexion LISTEN."""
+    return min(30, 1 << min(5, max(1, failures)))
+
+
 class GpsNotificationHub:
     """Un abonné DB par processus, files coalescentes, aucun contenu métier."""
 
@@ -40,6 +45,7 @@ class GpsNotificationHub:
     async def _listen(self) -> None:
         # Une connexion de service distincte du pool RLS, ouverte dans le worker
         # actif (jamais avant le fork). Aucune coordonnée n'est transmise.
+        failures = 0
         while self._subscribers:
             try:
                 url = (
@@ -52,6 +58,7 @@ class GpsNotificationHub:
                     url, autocommit=True, connect_timeout=5
                 ) as connection:
                     await connection.execute(f"LISTEN {GPS_NOTIFICATION_CHANNEL}")
+                    failures = 0
                     # Relecture immédiate après chaque reconnexion : tous les
                     # abonnés rechargent leur propre snapshot sous RLS.
                     self._wake_all()
@@ -69,7 +76,8 @@ class GpsNotificationHub:
                 # Ne jamais logger l'URL avec mot de passe, ni le payload.
                 logger.warning("GPS notification listener indisponible")
                 self._wake_all()
-                await asyncio.sleep(2)
+                failures += 1
+                await asyncio.sleep(listener_retry_seconds(failures))
 
     @asynccontextmanager
     async def subscribe(self, tenant_id: uuid.UUID) -> AsyncIterator[asyncio.Queue[None]]:
