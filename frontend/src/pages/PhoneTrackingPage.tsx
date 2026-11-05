@@ -99,8 +99,17 @@ export function PhoneTrackingPage() {
       setMessage("Autorisez la localisation dans votre navigateur…");
       const sample = () => {
         if (generation.current !== run || !active.current) return;
+        if (!Number.isFinite(Date.parse(data.expires_at)) || Date.parse(data.expires_at) <= Date.now()) {
+          // Un partage expiré ne doit plus déclencher de nouvelles acquisitions GPS.
+          void stop();
+          return;
+        }
         navigator.geolocation.getCurrentPosition((position) => {
           if (generation.current !== run || !active.current) return;
+          if (Date.parse(data.expires_at) <= Date.now()) {
+            void stop();
+            return;
+          }
           const { latitude, longitude, accuracy, speed, heading } = position.coords;
           const speedKmh = speed !== null && Number.isFinite(speed) && speed >= 0 && speed <= 250 / 3.6 ? speed * 3.6 : null;
           // Cap transmis seulement s'il est mesuré (le navigateur renvoie null ou NaN à l'arrêt).
