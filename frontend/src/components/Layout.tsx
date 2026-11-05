@@ -27,7 +27,10 @@ export function Layout() {
   });
   const links = [
     { to: "/plateforme/societes", text: "Sociétés clientes", show: can(me.grants, "organization.tenant.list") },
+    { to: "/plateforme/nouvelle-societe", text: "Nouvelle société", show: can(me.grants, "organization.tenant.create") },
+    { to: "/plateforme/etat", text: "État des services", show: can(me.grants, "organization.tenant.list") },
     { to: "/vehicules", text: "Véhicules", show: can(me.grants, "fleet.vehicle.read") },
+    { to: "/vehicules/echeances", text: "Échéances documents", show: can(me.grants, "fleet.document.read") },
     { to: "/flotte-gps", text: "Flotte GPS", show: can(me.grants, "fleet.vehicle.read") },
     { to: "/flotte-gps/zones", text: "Zones GPS", show: can(me.grants, "fleet.geofence.read") },
     { to: "/flotte-gps/alertes", text: "Alertes GPS", show: can(me.grants, "fleet.gps_alert.read") },
@@ -60,13 +63,30 @@ export function Layout() {
         can(me.grants, "hse.incident.report") ||
         can(me.grants, "hse.inspection.perform"),
     },
+    { to: "/hse/inspections", text: "Inspections HSE", show: can(me.grants, "hse.inspection.read") || can(me.grants, "hse.inspection.perform") },
+    { to: "/hse/checklists", text: "Checklists HSE", show: can(me.grants, "hse.checklist.manage") },
     { to: "/pesees", text: "Pesées", show: can(me.grants, "dispatch.weighing.read") },
     { to: "/juridique", text: "Contrats & assurances", show: can(me.grants, "legal.contract.read", siteId) || can(me.grants, "legal.insurance.read", siteId) },
     { to: "/couts", text: "Coût complet", show: can(me.grants, "cost.vehicle.read") },
     { to: "/indicateurs", text: "Indicateurs", show: can(me.grants, "dispatch.indicators.read") },
     { to: "/administration", text: "Administration", show: canAdminister(me.grants) },
   ];
-  const icons: IconName[] = ["settings", "truck", "gps", "phone", "bell", "users", "assignment", "mission", "tool", "calendar", "fuel", "tool", "scale", "shield", "chart", "settings"];
+  // Associer l'icône au chemin, jamais à la position du lien : les permissions filtrent des entrées.
+  const iconFor = (to: string): IconName => {
+    if (to.startsWith("/plateforme") || to.startsWith("/administration")) return "settings";
+    if (to.startsWith("/flotte-gps")) return "gps";
+    if (to === "/mon-suivi") return "phone";
+    if (to.startsWith("/vehicules")) return "truck";
+    if (to.startsWith("/conducteurs")) return "users";
+    if (to.startsWith("/affectations")) return "assignment";
+    if (to.startsWith("/missions")) return "mission";
+    if (to.startsWith("/atelier") || to.startsWith("/maintenance") || to.startsWith("/pieces") || to.startsWith("/pneus")) return "tool";
+    if (to.startsWith("/carburant")) return "fuel";
+    if (to.startsWith("/hse")) return "shield";
+    if (to.startsWith("/pesees")) return "scale";
+    if (to.startsWith("/indicateurs") || to.startsWith("/couts")) return "chart";
+    return "calendar";
+  };
   return (
     <div className={`shell${menuOpen ? " menu-open" : ""}`}>
       <header className="topbar">
@@ -139,7 +159,7 @@ export function Layout() {
               .map((l) => (
                 // Lien exact si une sous-page a son propre lien (Flotte GPS / Alertes GPS, Atelier / Fiabilité).
                 <NavLink key={l.to} to={l.to} end={links.some((o) => o.to.startsWith(`${l.to}/`))} onClick={() => setMenuOpen(false)}>
-                  <Icon name={icons[links.indexOf(l)] ?? "dashboard"} />{l.text}
+                  <Icon name={iconFor(l.to)} />{l.text}
                 </NavLink>
               ))}
             <div className="sidebar-footer"><span className="connection-dot" /> Exploitation minière<small>{me.workspace_code}</small></div>
