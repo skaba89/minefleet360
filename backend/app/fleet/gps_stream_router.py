@@ -3,6 +3,7 @@
 Pas de broker dans cette première tranche : lecture indexée toutes les 3 s par
 connexion, plafonnée à 60 s. Une PR ultérieure mesurera un bus de publication.
 """
+
 import asyncio
 import json
 import uuid
