@@ -66,7 +66,7 @@ export function Layout() {
     { to: "/indicateurs", text: "Indicateurs", show: can(me.grants, "dispatch.indicators.read") },
     { to: "/administration", text: "Administration", show: canAdminister(me.grants) },
   ];
-  const icons: IconName[] = ["truck", "gps", "phone", "bell", "users", "assignment", "mission", "tool", "calendar", "fuel", "tool", "scale", "shield", "chart", "settings"];
+  const icons: IconName[] = ["settings", "truck", "gps", "phone", "bell", "users", "assignment", "mission", "tool", "calendar", "fuel", "tool", "scale", "shield", "chart", "settings"];
   return (
     <div className={`shell${menuOpen ? " menu-open" : ""}`}>
       <header className="topbar">
