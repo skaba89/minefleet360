@@ -18,8 +18,8 @@ bash infra/deploy/verify-restore.sh /chemin/absolu/minefleet-20261031T120000Z.du
 Ce script :
 1. refuse une archive absente ou vide ;
 2. lance un conteneur temporaire `postgis/postgis:16-3.4`, sans réseau et sans volume PostgreSQL persistant ;
-3. restaure réellement l'archive dans la base temporaire `minefleet_restore_check` avec `--exit-on-error` ;
-4. crée dans le conteneur jetable le rôle applicatif `mf_app` sans connexion (les rôles de cluster ne sont pas contenus dans un dump de base), puis restaure le dump ;
+3. crée dans le conteneur jetable le rôle applicatif `mf_app` sans connexion (les rôles de cluster ne sont pas contenus dans un dump de base) ;
+4. restaure réellement l'archive dans la base temporaire `minefleet_restore_check` avec `--exit-on-error` ;
 5. vérifie qu'au moins dix tables applicatives sont présentes et que `alembic_version` existe ;
 6. détruit le conteneur temporaire en sortie, succès ou échec.
 
