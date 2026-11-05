@@ -30,6 +30,7 @@ def test_stream_refuses_when_worker_is_full() -> None:
             assert error.value.code == "RATE_LIMITED"
             assert error.value.headers["Retry-After"] == "3"
             assert slots.locked()
+
     asyncio.run(run())
 
 
