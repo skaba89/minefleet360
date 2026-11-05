@@ -36,6 +36,7 @@ def test_set_tenant_context_callers_are_known() -> None:
         "verify.py",
         "credentials.py",
         "gps_tracker_ingest.py",  # sélecteur tenant d'un jeton GPS opaque, secret vérifié avant écriture
+        "gps_stream_router.py",  # SSE : session courte et revérification des autorisations à chaque snapshot
     }
     callers = {p.name for p, src in _sources() if "set_tenant_context(" in src and p.name != "tenancy.py"}
     assert callers <= allowed, callers - allowed
