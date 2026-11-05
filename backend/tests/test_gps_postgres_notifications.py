@@ -6,6 +6,7 @@ Aucun secret ou payload GPS n'est enregistré par ces tests.
 
 import asyncio
 import uuid
+from unittest.mock import patch
 
 import psycopg
 
@@ -135,5 +136,43 @@ def test_independent_worker_hubs_coalesce_burst_without_cross_tenant_leakage() -
             assert stream_a.empty()
             assert stream_b.empty()
             assert foreign_stream.empty()
+
+    asyncio.run(scenario())
+
+
+def test_listener_recovers_after_initial_connection_failure() -> None:
+    """Un premier refus n'interrompt pas le flux ; un COMMIT réveille ensuite."""
+    async def scenario() -> None:
+        tenant = uuid.uuid4()
+        hub = GpsNotificationHub()
+        original_connect = psycopg.AsyncConnection.connect
+        attempts = 0
+
+        async def flaky_connect(*args: object, **kwargs: object) -> psycopg.AsyncConnection:
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                raise psycopg.OperationalError("simulation de coupure de test")
+            return await original_connect(*args, **kwargs)
+
+        with (
+            patch(
+                "app.fleet.gps_notification_listener.psycopg.AsyncConnection.connect",
+                side_effect=flaky_connect,
+            ),
+            patch(
+                "app.fleet.gps_notification_listener.listener_retry_seconds",
+                return_value=0.01,
+            ),
+        ):
+            async with hub.subscribe(tenant) as events:
+                # Premier réveil : premier échec. Puis LISTEN reconnecté et
+                # snapshot de rattrapage, avant l'envoi transactionnel.
+                await asyncio.wait_for(events.get(), timeout=5)
+                await asyncio.wait_for(events.get(), timeout=5)
+                assert attempts >= 2
+                await asyncio.to_thread(_send, tenant, commit=True)
+                await asyncio.wait_for(events.get(), timeout=5)
+            assert hub._task is None
 
     asyncio.run(scenario())
