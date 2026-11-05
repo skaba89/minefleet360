@@ -16,7 +16,7 @@ function setup() {
   return { ...render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/mon-suivi?vehicle=vehicle"]}><PhoneTrackingPage /></MemoryRouter></QueryClientProvider>), client };
 }
 beforeEach(() => {
-  vi.clearAllMocks(); vi.stubGlobal("isSecureContext", true);
+  vi.clearAllMocks(); vi.mocked(get).mockReset(); vi.mocked(request).mockReset(); vi.stubGlobal("isSecureContext", true);
   Object.defineProperty(navigator, "geolocation", { configurable: true, value: { getCurrentPosition: locate } });
   vi.mocked(get).mockResolvedValue([{ vehicle_id: "vehicle", fleet_number: "PARC-FICTIF", registration_number: null, site_id: "site" }]);
   vi.mocked(request).mockImplementation(async (path) => ({ data: path === "/me/gps/shares" ? share : undefined, etag: null }));
@@ -71,7 +71,7 @@ it("bloque le démarrage sans réseau et annonce l'absence de mise en attente", 
   await screen.findByRole("button", { name: "Démarrer le partage" });
   Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
   act(() => window.dispatchEvent(new Event("offline")));
-  expect(screen.getByText(/Connexion absente : aucun nouveau relevé GPS/)).toBeTruthy();
+  expect(screen.getByText(/Connexion absente : les relevés restent temporairement en mémoire/)).toBeTruthy();
   fireEvent.click(screen.getByRole("checkbox"));
   const button = screen.getByRole("button", { name: "Démarrer le partage" }) as HTMLButtonElement;
   expect(button.disabled).toBe(true);
@@ -83,6 +83,7 @@ it("bloque le démarrage sans réseau et annonce l'absence de mise en attente", 
 
 it("conserve des relevés uniquement en mémoire durant une coupure sans requête serveur", async () => {
   setup();
+  await waitFor(() => expect(vi.mocked(get)).toHaveBeenCalled());
   await screen.findByRole("button", { name: "Démarrer le partage" });
   fireEvent.click(screen.getByRole("checkbox"));
   fireEvent.click(screen.getByRole("button", { name: "Démarrer le partage" }));
