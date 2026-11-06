@@ -31,9 +31,30 @@ Ce script :
 
 La restauration contient potentiellement des données sensibles **en clair dans le stockage temporaire du conteneur**. Exécuter exclusivement sur un hôte de confiance chiffré et sécurisé, jamais sur un poste partagé. N'utiliser de données réelles en recette que dans le cadre des autorisations et mesures de sécurité applicables.
 
-## Ce que ce contrôle ne prouve pas
+## Vérifier une copie hors machine chiffrée
+
+La configuration `offsite.env` n'est jamais exécutée comme du shell. Elle accepte uniquement les trois clés documentées, exige un remote rclone nommé, un chemin absolu de phrase secrète et une rétention de 1 à 3650 jours. Les fichiers de configuration et de phrase secrète doivent être réguliers, non symboliques et en mode `400` ou `600`.
+
+Après une sauvegarde réussie, le coffre contient seulement :
+
+- `minefleet-YYYYMMDDTHHMMSSZ.dump.gpg` ;
+- `minefleet-YYYYMMDDTHHMMSSZ.dump.gpg.sha256`.
+
+Le dump en clair n'est jamais envoyé. Pour effectuer l'aller-retour complet sur une machine isolée autorisée :
+
+```bash
+export MF_OFFSITE_CONFIG_FILE=/opt/minefleet/infra/deploy/offsite.env
+export MF_OFFSITE_RESTORE_TMPDIR=/volume-chiffre/temp-restore
+bash infra/deploy/verify-offsite-backup.sh \
+  minefleet-20261106T070000Z.dump.gpg \
+  --api-image ghcr.io/exemple/minefleet-api@sha256:DIGEST
+```
+
+Le script télécharge un nom canonique exact, vérifie le SHA-256 du chiffré, déchiffre dans un répertoire temporaire en mode privé, appelle `verify-restore.sh`, puis supprime le chiffré, le checksum et le dump temporaire. La sortie donne la durée observée de l'exercice, sans la transformer en engagement contractuel.
+
+## Ce que ces contrôles ne prouvent pas
 - Sans l'option `--api-image`, que le service API démarre. Avec cette option, le démarrage et la connexion DB sont vérifiés, mais pas les tâches planifiées, les parcours authentifiés ni les intégrations externes.
-- Que les sauvegardes distantes sont déchiffrables (décrypter dans un répertoire temporaire sécurisé puis utiliser le script).
+- Qu'un remote OVH/S3/SFTP opérationnel, ses identifiants, sa politique d'accès et sa rétention ont été configurés ou testés : la CI utilise un remote rclone local jetable.
 - Que les objectifs RPO/RTO contractuels sont atteints.
 - Qu'une restauration sur un nouveau VPS fonctionne, ni que les clés MFA/JWT sont disponibles.
 - Que des migrations postérieures à la sauvegarde sont réconciliées.
@@ -44,6 +65,6 @@ Sur un environnement **staging séparé**, restaurer une sauvegarde distante, ex
 
 ## Vérification automatisée dans la CI
 
-Le job backend de `.github/workflows/ci.yml` produit, avec le superutilisateur du service PostgreSQL éphémère, une archive custom de la base fictive `minefleet_test` après les migrations et tests. Il la transmet comme artefact synthétique à très courte rétention. Un job dépendant sur un runner GitHub Actions neuf télécharge l'archive, construit l'étage runtime du Dockerfile backend, puis lance le script avec PostgreSQL et l'API sur un réseau Docker interne sans port publié. Le job échoue si la restauration complète, les propriétaires, les ACL, la vérification RLS, le démarrage de l'image API ou sa readiness DB échouent. La séparation évite de faire tourner simultanément la base source et le conteneur de restauration sur le même runner.
+Le job backend de `.github/workflows/ci.yml` produit, avec le superutilisateur du service PostgreSQL éphémère, une archive custom de la base fictive `minefleet_test` après les migrations et tests. Il la transmet comme artefact synthétique à très courte rétention. Un job dépendant sur un runner GitHub Actions neuf chiffre l'archive avec GPG et une phrase aléatoire éphémère, la transfère par rclone dans un coffre local jetable, vérifie l'absence de dump clair dans ce coffre, télécharge le chiffré et son checksum, déchiffre, restaure, puis construit/démarre l'étage runtime du backend sur un réseau Docker interne sans port publié. Le job échoue si le transport, l'intégrité, le déchiffrement, la restauration complète, les propriétaires, les ACL, RLS, le démarrage de l'image API ou sa readiness DB échouent.
 
-Cette vérification automatise un aller-retour PostgreSQL avec les données synthétiques de CI. Les secrets CI aléatoires sont masqués dès leur génération; le mot de passe `postgres` utilisé par le job n'existe que dans le service de base jetable. Elle ne teste pas la destination distante chiffrée, la rotation des clés, la fréquence planifiée, les objectifs RPO/RTO, les secrets d'un hôte client ni un restore depuis une sauvegarde de production.
+Cette vérification automatise un aller-retour PostgreSQL et cryptographique avec les données synthétiques de CI. Les secrets n'existent que dans les fichiers privés du runner jetable. Elle ne teste pas un fournisseur distant réel, la rotation/récupération des clés, la fréquence planifiée, les objectifs RPO/RTO, les secrets d'un hôte client ni une sauvegarde de staging ou production.
