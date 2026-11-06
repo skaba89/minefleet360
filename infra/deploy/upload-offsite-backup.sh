@@ -46,8 +46,8 @@ rclone copyto --quiet --immutable "$checksum" "$remote_checksum" </dev/null
 
 # Retention is confined to the MineFleet namespace. Unrelated remote objects are excluded.
 rclone delete --quiet --min-age "${MF_OFFSITE_RETENTION_DAYS}d" \
-  --include 'minefleet-????????T??????Z.dump.gpg' \
-  --include 'minefleet-????????T??????Z.dump.gpg.sha256' \
-  --exclude '*' "$MF_OFFSITE_REMOTE" </dev/null
+  --filter '+ minefleet-????????T??????Z.dump.gpg' \
+  --filter '+ minefleet-????????T??????Z.dump.gpg.sha256' \
+  --filter '- **' "$MF_OFFSITE_REMOTE" </dev/null
 
 echo "OFFSITE_UPLOAD_OK object=$encrypted_name sha256=$digest retention_days=$MF_OFFSITE_RETENTION_DAYS"
