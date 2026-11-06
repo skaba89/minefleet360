@@ -101,8 +101,9 @@ Incidents pendant le déploiement : (1) `docker compose run` sans `-T` lisait l'
 3. Copie hors machine chiffrée des sauvegardes (§5).
 
 ## 8. Copie des sauvegardes hors du serveur (D-41)
-`backup.sh` chiffre le dernier dump (gpg, AES-256) puis l'envoie par `rclone` vers la destination configurée, et supprime les copies distantes de plus de `MF_OFFSITE_RETENTION_DAYS` jours. Inactif tant que `offsite.env` n'existe pas.
+`backup.sh` délègue le chiffrement AES-256 et le transfert à `upload-offsite-backup.sh`. Le coffre reçoit uniquement le chiffré et son checksum SHA-256. La rétention distante ne cible que les noms canoniques MineFleet et exclut les autres objets. Le dispositif reste inactif tant que `offsite.env` n'existe pas.
 1. Choisir la destination (OVH Object Storage, autre S3, serveur SFTP) et la déclarer : `rclone config` (nom du remote, ex. `ovh-s3`).
 2. Phrase de chiffrement : `head -c 48 /dev/urandom | base64 > ~/.minefleet-offsite-passphrase && chmod 600 ~/.minefleet-offsite-passphrase` — **la conserver aussi dans un coffre** : sans elle, les copies sont illisibles.
-3. `cp offsite.env.example offsite.env && chmod 600 offsite.env`, renseigner `MF_OFFSITE_REMOTE` et `MF_OFFSITE_PASSPHRASE_FILE`, puis lancer `./backup.sh` une fois.
-4. **Test de restauration** (à faire après activation, puis chaque trimestre) : récupérer une copie (`rclone copy <remote>:<fichier>.gpg /tmp/restau/`), la déchiffrer (`gpg --decrypt --pinentry-mode loopback --passphrase-file … > /tmp/restau/test.dump`), la restaurer dans une base jetable (`docker run --rm -d --name pg-restau postgis/postgis:16-3.4` puis `pg_restore --list` et `pg_restore -d …`), vérifier le nombre de véhicules, puis supprimer la base jetable et les fichiers.
+3. `cp offsite.env.example offsite.env && chmod 600 offsite.env`, renseigner des valeurs simples `KEY=value` sans guillemets ni syntaxe shell. Le fichier et la phrase secrète doivent être non symboliques et en mode `400` ou `600`.
+4. Lancer `./backup.sh` une fois et vérifier la présence du couple `.dump.gpg` / `.dump.gpg.sha256`, jamais du `.dump` clair, dans le remote.
+5. **Test de restauration trimestriel minimum** : sur un hôte isolé et un volume temporaire chiffré, exécuter `MF_OFFSITE_RESTORE_TMPDIR=/volume/temp bash verify-offsite-backup.sh minefleet-...dump.gpg --api-image IMAGE_IMMUABLE`. Archiver la sortie expurgée, les heures, la version d'image et les durées observées. Ce test ne doit jamais cibler la base active.

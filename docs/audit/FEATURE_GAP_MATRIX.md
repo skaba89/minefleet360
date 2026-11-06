@@ -1,6 +1,6 @@
-# Matrice des écarts fonctionnels — HEAD `77dd598`
+# Matrice des écarts fonctionnels — base `089d801`
 
-Photo du dépôt le 5 novembre 2026, après fusion de la PR #364. « Présent dans le code » signifie que des routes, pages, modèles, migrations ou tests existent; cela ne vaut pas preuve d'exploitation sur des données ni d'acceptation métier.
+Photo du dépôt le 6 novembre 2026, après fusion de la PR #372 et ajout du lot candidat de sauvegarde chiffrée. « Présent dans le code » signifie que des routes, pages, modèles, migrations ou tests existent; cela ne vaut pas preuve d'exploitation sur des données ni d'acceptation métier.
 
 | Domaine | État du code observé | Limites prouvées / non vérifiées | Prochain critère |
 |---|---|---|---|
@@ -23,7 +23,7 @@ Photo du dépôt le 5 novembre 2026, après fusion de la PR #364. « Présent da
 | Onboarding et abonnements | Administration plateforme et création de tenant existent | Onboarding autonome, offres, quotas, billing et renouvellement non démontrés | Prototype onboarding + devis pilote, sans tarification arbitraire |
 | Support et contrats client | Documentation technique présente | Tickets, astreinte, SLA et contrats de vente absents/non vérifiés | Processus d'incident et contrat examinés professionnellement |
 | Infrastructure et CD | Compose et scripts d'exploitation existent; workflows CI actifs | Environnements isolés, image livrable, CD, rollback et déploiement de production non vérifiés | Déployer staging à partir d'un environnement vide |
-| Restauration / supervision | Round-trip CI validé dans #364 avec propriétaires, ACL, RLS, image backend réelle, rôle `mf_app` et sondes `/health`/`/ready` | Sauvegarde réelle/distante, reprise staging, RPO/RTO, métriques et alertes testées non prouvées | Restaurer un backup staging distant et chiffré, chronométrer puis injecter une alerte |
+| Restauration / supervision | Chaîne CI synthétique : chiffrement, rclone local, checksum, téléchargement, déchiffrement, restore, propriétaires/ACL/RLS, image backend et `mf_app` | Fournisseur distant réel, reprise staging, récupération des clés, RPO/RTO, métriques et alertes non prouvés | Restaurer un backup staging depuis le coffre externe retenu, chronométrer puis injecter une alerte |
 | Appareils et télématique | contrat d'ingestion extensible | Teltonika/Queclink documentés dans le marché; MineFleet n'a pas de certification matérielle établie | POC de modèle, firmware et réseau exacts |
 | Internationalisation | UI française, paramètres locaux dans la vision | i18n, monnaies et règles juridictionnelles internationales à construire | Définir premier marché et langues avant implémentation |
 
@@ -31,9 +31,9 @@ Photo du dépôt le 5 novembre 2026, après fusion de la PR #364. « Présent da
 
 | Chantier | Statut |
 |---|---|
-| Référence HEAD et vérification des contrôles de la PR #364 | Fusionnée; CI, E2E isolation et scans vérifiés |
-| Round-trip de restauration et démarrage API sur dump synthétique en CI | Fusionnée dans #364; contrôles verts |
-| Restauration staging/distance, RPO/RTO et alerting | À faire |
+| Référence HEAD et vérification des contrôles jusqu'à la PR #372 | Fusionnée; CI, E2E isolation et scans vérifiés |
+| Round-trip chiffré sur remote rclone local et démarrage API | En cours dans ce lot; ne vaut pas test d'un fournisseur externe |
+| Restauration staging depuis coffre externe, RPO/RTO et alerting | À faire |
 | Pilote traceur et Android en réseau dégradé | À faire |
 | Revue conformité locale et traitement GPS/salariés | À faire |
 | SaaS onboarding, contrats, support, billing | À faire |

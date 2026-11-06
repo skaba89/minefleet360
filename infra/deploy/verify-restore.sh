@@ -65,7 +65,6 @@ fi
 
 echo "Starting disposable PostGIS (isolated network, no persistent volumes)..."
 docker run -d --rm --name "$name" "${db_network_args[@]}" \
-  --mount "type=bind,source=$archive,target=/tmp/backup.dump,readonly" \
   -e POSTGRES_PASSWORD=throwaway-restore-only \
   postgis/postgis:16-3.4 >/dev/null
 
@@ -85,6 +84,12 @@ if [[ "$ready" != "1" ]]; then
   restore_failed=1
   exit 1
 fi
+
+# Do not relax the host archive permissions for Docker. Copy it into the disposable
+# container, then make only the container's postgres user its private owner.
+docker cp -- "$archive" "$name:/tmp/backup.dump"
+docker exec -u root "$name" sh -c \
+  'chown postgres:postgres /tmp/backup.dump && chmod 600 /tmp/backup.dump'
 
 docker exec -u postgres "$name" createdb -U postgres minefleet_restore_check
 # pg_dump archives contain ownership and ACL references, but not cluster roles.

@@ -86,7 +86,7 @@ jobs:
   backup-restore:
     needs: backend
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Récupérer la sauvegarde synthétique éphémère
@@ -96,9 +96,44 @@ jobs:
           path: ${{ runner.temp }}
       - name: Construire l'image API de la révision
         run: docker build --target runtime --tag minefleet-api-restore-check:ci backend
-      - name: Restaurer puis vérifier le démarrage API isolé
+      - name: Installer le transport de sauvegarde hors machine
         run: |
-          bash infra/deploy/verify-restore.sh "${RUNNER_TEMP}/minefleet-ci.dump" \
+          command -v gpg >/dev/null
+          if ! command -v rclone >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install --no-install-recommends --yes rclone
+          fi
+      - name: Chiffrer, transférer, télécharger, restaurer et démarrer l'API
+        run: |
+          vault="${RUNNER_TEMP}/offsite-vault"
+          passphrase_file="${RUNNER_TEMP}/offsite-passphrase"
+          offsite_config="${RUNNER_TEMP}/offsite.env"
+          rclone_config="${RUNNER_TEMP}/rclone.conf"
+          backup_name="minefleet-$(date -u +%Y%m%dT%H%M%SZ).dump"
+          backup_path="${RUNNER_TEMP}/${backup_name}"
+          mkdir -m 700 "$vault"
+          openssl rand -base64 48 > "$passphrase_file"
+          chmod 600 "$passphrase_file"
+          cat > "$rclone_config" <<EOF
+          [ci-local]
+          type = local
+          EOF
+          chmod 600 "$rclone_config"
+          cat > "$offsite_config" <<EOF
+          MF_OFFSITE_REMOTE=ci-local:${vault}
+          MF_OFFSITE_PASSPHRASE_FILE=${passphrase_file}
+          MF_OFFSITE_RETENTION_DAYS=1
+          EOF
+          chmod 600 "$offsite_config"
+          cp "${RUNNER_TEMP}/minefleet-ci.dump" "$backup_path"
+          export MF_OFFSITE_CONFIG_FILE="$offsite_config"
+          export MF_OFFSITE_RESTORE_TMPDIR="$RUNNER_TEMP"
+          export RCLONE_CONFIG="$rclone_config"
+          bash infra/deploy/upload-offsite-backup.sh "$backup_path"
+          test ! -e "${vault}/${backup_name}"
+          test -s "${vault}/${backup_name}.gpg"
+          test -s "${vault}/${backup_name}.gpg.sha256"
+          bash infra/deploy/verify-offsite-backup.sh "${backup_name}.gpg" \
             --api-image minefleet-api-restore-check:ci
 
   ops-monitoring:
@@ -117,12 +152,16 @@ jobs:
             infra/deploy/alert-state.py \
             infra/deploy/monitor_state.py \
             infra/deploy/notify-alert-smtp.py \
+            infra/deploy/offsite_config.py \
             infra/deploy/run-alert-monitor.py \
             infra/deploy/release_manifest.py
           bash -n \
             infra/deploy/backup.sh \
             infra/deploy/check-preproduction.sh \
-            infra/deploy/staging-release.sh
+            infra/deploy/offsite-common.sh \
+            infra/deploy/staging-release.sh \
+            infra/deploy/upload-offsite-backup.sh \
+            infra/deploy/verify-offsite-backup.sh
       - name: Valider la configuration Compose staging sans démarrage
         run: bash infra/deploy/check-preproduction.sh infra/deploy/docker-compose.prod.yml
 

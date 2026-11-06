@@ -1,7 +1,7 @@
 # Sécurité et fiabilité — revue basée sur le dépôt
 
-**Référence :** `main@77dd598701ccbc184c286a980bace7514da34aa0`, observée le 5 novembre 2026.  
-**Nature de la revue :** lecture des fichiers et docs versionnés + résultats des workflows GitHub sur ce commit, incluant un round-trip CI sur dump synthétique et le démarrage de l'image backend restaurée sous rôle restreint. Pas de pentest, de DAST, d'accès au VPS, ni d'exercice de reprise d'une sauvegarde distante/staging.
+**Référence :** `main@089d8019dc67524ceb7420d42426e2c4921cc566`, observée le 6 novembre 2026.
+**Nature de la revue :** lecture des fichiers et docs versionnés + résultats des workflows GitHub sur ce commit et le lot de sauvegarde candidat, incluant un round-trip synthétique et le démarrage de l'image backend restaurée sous rôle restreint. Pas de pentest, de DAST, d'accès au VPS, ni d'exercice de reprise d'une sauvegarde OVH/staging.
 
 ## Contrôles observés
 
@@ -16,7 +16,7 @@
 | GPS/confidentialité | sessions de partage consenties, rétention configurée, arrêt à révocation/expiration; messages SSE ne portent pas de coordonnées | PR #357–#359 et tests associés; CI du HEAD | politique de conservation validée par pays, journaux/proxy et captures Android |
 | GPS temps réel | SSE authentifié avec relecture RLS et repli; LISTEN/NOTIFY, reconnexion | intégration PostgreSQL testée dans la PR #359; CI du HEAD | panne de base/worker physique, publication multi-machine, perte d'événements et SLO |
 | Dépendances / SAST / secrets | audit dépendances + Bandit + Gitleaks dans workflows | `ci` et `security-static` verts au HEAD | DAST, images et supply chain, pinning action SHA, SBOM et politique de remédiation |
-| Sauvegardes | archive PostgreSQL, chiffrement/distant optionnels via configuration, script de restauration isolée | PR #364 : `ci` a restauré le dump synthétique avec propriétaires/ACL/RLS, construit l'image backend, démarré avec `mf_app` et validé `/health` et `/ready` | configuration distante réelle, clés, transfert, restauration staging/client et RPO/RTO |
+| Sauvegardes | configuration non exécutable, fichiers secrets restreints, GPG AES-256, checksum, transport rclone borné et restauration isolée | CI : coffre rclone local jetable, chiffrement→transfert→téléchargement→déchiffrement→restore→API avec propriétaires/ACL/RLS et `mf_app` | remote OVH/S3/SFTP réel, récupération/rotation des clés, restauration staging/client et RPO/RTO |
 | Observabilité | sondes santé/readiness et jobs planifiés documentés | fichiers présents | alertes injectées et acquittées, métriques API/DB/SSE, astreinte et rétention |
 | CI/CD | quatre workflows répertoriés; migrations peuplées testées en CI | toutes les exécutions associées au HEAD sont vertes | CD non démontré, rollback/release et protection main à relire dans les settings |
 
@@ -24,7 +24,7 @@
 
 | ID | Gravité opérationnelle | Risque | Action de réduction | Critère de fermeture |
 |---|---|---|---|---|
-| REL-01 | Bloquant avant pilote réel | La restauration et le démarrage API sont prouvés seulement avec un dump synthétique CI; aucune sauvegarde chiffrée distante ou opérationnelle n'est testée | restaurer une sauvegarde chiffrée de staging sur une base isolée, vérifier l'intégrité et chronométrer le démarrage API | rapport daté de restauration staging avec durées, contrôle d'intégrité et démarrage API; environnement distinct de production |
+| REL-01 | Bloquant avant pilote réel | L'aller-retour chiffré est prouvé seulement avec un remote local et un dump synthétique CI; aucune sauvegarde sur le coffre externe choisi ni sauvegarde opérationnelle n'est testée | restaurer une sauvegarde chiffrée de staging depuis le fournisseur retenu sur une base isolée, vérifier l'intégrité et chronométrer le démarrage API | rapport daté de restauration staging avec durées, contrôle d'intégrité et démarrage API; environnement distinct de production |
 | GPS-01 | Bloquant avant pilote télématique | Aucun modèle de traceur/firmware réel certifié | choisir un échantillon matériel avec le partenaire client; essais replay, ordre, auth, panne | procès-verbal par modèle/firmware; aucun label « certifié » avant cette preuve |
 | GPS-02 | Bloquant pour SLA GPS | p95/p99 d'ingestion→affichage et taux d'événements perdus inconnus | benchmark autorisé en staging avec véhicules synthétiques | objectifs convenus avec métiers, mesures brutes conservées, seuils atteints |
 | OFF-01 | Bloquant avant GPS persistant sur téléphone | Aucun stockage local durable GPS approuvé; le tampon actuel est seulement RAM | concevoir chiffrement, clés, séparation compte/tenant, effacement et expiration; revue sécurité avant code | tests appareil réel: perte, verrouillage, logout, révocation, changement de tenant et restauration |
