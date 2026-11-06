@@ -123,6 +123,8 @@ jobs:
             infra/deploy/backup.sh \
             infra/deploy/check-preproduction.sh \
             infra/deploy/staging-release.sh
+      - name: Valider la configuration Compose staging sans démarrage
+        run: bash infra/deploy/check-preproduction.sh infra/deploy/docker-compose.prod.yml
 
   frontend:
     runs-on: ubuntu-24.04
