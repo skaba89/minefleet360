@@ -1,7 +1,7 @@
 # Sécurité et fiabilité — revue basée sur le dépôt
 
 **Référence :** `main@089d8019dc67524ceb7420d42426e2c4921cc566`, observée le 6 novembre 2026.
-**Nature de la revue :** lecture des fichiers et docs versionnés + résultats des workflows GitHub sur ce commit et le lot de sauvegarde candidat, incluant un round-trip synthétique et le démarrage de l'image backend restaurée sous rôle restreint. Pas de pentest, de DAST, d'accès au VPS, ni d'exercice de reprise d'une sauvegarde OVH/staging.
+**Nature de la revue :** lecture des fichiers et docs versionnés + résultats des workflows GitHub de la base et de la PR #373, incluant un round-trip chiffré synthétique et le démarrage de l'image backend restaurée sous rôle restreint. Pas de pentest, de DAST, d'accès au VPS, ni d'exercice de reprise d'une sauvegarde OVH/staging.
 
 ## Contrôles observés
 

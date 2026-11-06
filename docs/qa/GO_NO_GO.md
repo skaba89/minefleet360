@@ -9,7 +9,7 @@
 
 - La base auditée est `main@089d8019dc67524ceb7420d42426e2c4921cc566`, après fusion de la PR #372.
 - PR #359 est fusionnée et son code apporte un backoff de reconnexion LISTEN borné; la PR décrit ses tests unitaires et PostgreSQL.
-- Sur la base #372, `ci`, `e2e-isolation` et `security-static` sont terminés en succès. Le lot suivant étend `ci` au chiffrement, transport rclone local, checksum, déchiffrement et restore du dump synthétique avant le démarrage sous `mf_app`.
+- Sur la base #372 et la PR #373, `ci`, `e2e-isolation` et `security-static` sont terminés en succès. #373 étend `ci` au chiffrement, transport rclone local, checksum, déchiffrement et restore du dump synthétique avant le démarrage sous `mf_app`.
 - Les migrations, modules métiers, code GPS, tests, scripts de sauvegarde/restauration, sondes et documentation sont présents dans l'arbre.
 - Les fonctionnalités GPS cartographiques/alertes/SSE des PR #340–#359 ne doivent plus être décrites comme absentes.
 

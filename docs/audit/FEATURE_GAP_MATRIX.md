@@ -1,6 +1,6 @@
 # Matrice des écarts fonctionnels — base `089d801`
 
-Photo du dépôt le 6 novembre 2026, après fusion de la PR #372 et ajout du lot candidat de sauvegarde chiffrée. « Présent dans le code » signifie que des routes, pages, modèles, migrations ou tests existent; cela ne vaut pas preuve d'exploitation sur des données ni d'acceptation métier.
+Photo du dépôt le 6 novembre 2026, après fusion de la PR #372 et validation CI de la PR #373 sur la sauvegarde chiffrée. « Présent dans le code » signifie que des routes, pages, modèles, migrations ou tests existent; cela ne vaut pas preuve d'exploitation sur des données ni d'acceptation métier.
 
 | Domaine | État du code observé | Limites prouvées / non vérifiées | Prochain critère |
 |---|---|---|---|
@@ -32,7 +32,7 @@ Photo du dépôt le 6 novembre 2026, après fusion de la PR #372 et ajout du lot
 | Chantier | Statut |
 |---|---|
 | Référence HEAD et vérification des contrôles jusqu'à la PR #372 | Fusionnée; CI, E2E isolation et scans vérifiés |
-| Round-trip chiffré sur remote rclone local et démarrage API | En cours dans ce lot; ne vaut pas test d'un fournisseur externe |
+| Round-trip chiffré sur remote rclone local et démarrage API | PR #373 validée en CI; ne vaut pas test d'un fournisseur externe |
 | Restauration staging depuis coffre externe, RPO/RTO et alerting | À faire |
 | Pilote traceur et Android en réseau dégradé | À faire |
 | Revue conformité locale et traitement GPS/salariés | À faire |

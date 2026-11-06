@@ -1,11 +1,11 @@
 # MineFleet 360 — audit de préparation industrielle
 
-**État observé : 6 novembre 2026, base `main`, commit `089d8019dc67524ceb7420d42426e2c4921cc566`, complétée par le lot candidat de sauvegarde hors machine.**
+**État observé : 6 novembre 2026, base `main@089d801`, complétée par la PR #373 de sauvegarde hors machine.**
 Périmètre : arbre GitHub, migrations, tests, workflows CI, PR fusionnées et documentation versionnée. Il s'agit d'un audit documentaire du dépôt et des preuves GitHub disponibles, pas d'un audit de pénétration, d'une recette client ou d'une certification.
 
 ## Conclusion exécutive
 
-MineFleet 360 est un produit logiciel avancé avec un socle métier large et des fonctions GPS récemment renforcées. La base inclut la PR [#372](https://github.com/skaba89/minefleet360/pull/372), qui ajoute un déploiement staging par images immuables et un rollback applicatif contrôlé. Le lot candidat suivant durcit la sauvegarde hors machine et étend la CI à un aller-retour synthétique GPG/rclone/checksum avant restauration, démarrage sous `mf_app` et sondes `/health` et `/ready`.
+MineFleet 360 est un produit logiciel avancé avec un socle métier large et des fonctions GPS récemment renforcées. La base inclut la PR [#372](https://github.com/skaba89/minefleet360/pull/372), qui ajoute un déploiement staging par images immuables et un rollback applicatif contrôlé. La PR [#373](https://github.com/skaba89/minefleet360/pull/373) durcit la sauvegarde hors machine; sa CI a validé un aller-retour synthétique GPG/rclone/checksum avant restauration, démarrage sous `mf_app` et sondes `/health` et `/ready`.
 
 **Maturité dépôt : 70/100**, calculée avec la grille ci-dessous. Cette mesure n'est pas un score de production. L'estimation 81/100 citée auparavant est conservée comme estimation historique non certifiée et ne remplace pas cette note. Le score détaillé précédent de 62/100 (PR #338, 4 novembre) précède les PR GPS #340–#359 et est devenu obsolète pour cette capacité.
 
@@ -13,7 +13,7 @@ MineFleet 360 est un produit logiciel avancé avec un socle métier large et des
 
 ## Références et méthode reproductible
 
-- Base : [commit 089d801](https://github.com/skaba89/minefleet360/commit/089d8019dc67524ceb7420d42426e2c4921cc566), fusion de la [PR #372](https://github.com/skaba89/minefleet360/pull/372). La PR #364 avait introduit la restauration synthétique; le présent lot ajoute la prévalidation cryptographique et de transport.
+- Base : [commit 089d801](https://github.com/skaba89/minefleet360/commit/089d8019dc67524ceb7420d42426e2c4921cc566), fusion de la [PR #372](https://github.com/skaba89/minefleet360/pull/372), complétée par la PR #373. La PR #364 avait introduit la restauration synthétique; #373 ajoute la prévalidation cryptographique et de transport.
 - PR les plus pertinentes : [#340 carte MapLibre](https://github.com/skaba89/minefleet360/pull/340), [#341 cap et replay](https://github.com/skaba89/minefleet360/pull/341), [#342 alertes GPS](https://github.com/skaba89/minefleet360/pull/342), [#345 notifications](https://github.com/skaba89/minefleet360/pull/345), [#348–#350 SSE et limites](https://github.com/skaba89/minefleet360/pull/348), [#353–#355 LISTEN/NOTIFY](https://github.com/skaba89/minefleet360/pull/353), [#356–#359 reprise réseau et résilience](https://github.com/skaba89/minefleet360/pull/356).
 - CI du HEAD : exécutions Actions `ci`, `e2e-isolation` et `security-static` en succès. Cela confirme les jobs définis dans le dépôt, pas l'exploitation réelle.
 - Inventaire du HEAD : 63 migrations Alembic, 171 chemins/fichiers sous les répertoires de tests backend selon l'arbre Git, 4 workflows GitHub Actions. Ce décompte est un inventaire de chemins, pas un nombre de tests.
