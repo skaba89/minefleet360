@@ -71,7 +71,10 @@ Le même secret JWT doit être utilisé par toutes les instances; sa rotation in
 Double authentification (D-40) : un compte `mfa_enabled` reçoit un défi après le mot de passe (`/auth/mfa/verify`) ; seule une session marquée `otp` donne accès et peut être rafraîchie. Les rôles sensibles sans second facteur sont limités à leur compte jusqu'à l'enrôlement (`MF_MFA_ENFORCEMENT=enroll`, défaut). Perte du téléphone : codes de récupération, sinon retrait par l'administrateur (`POST /users/{id}/reset-mfa`) ; pour un `PLATFORM_ADMIN`, `docker compose ... run --rm api minefleet reset-platform-mfa --email <e-mail>`.
 
 ## 6. Retour arrière
-`git checkout <commit précédent>` puis `up -d --build`. Aucune migration n'est rétrogradée hors `local/test/ci` : toute migration doit rester rétrocompatible (expansion/contraction). Dernier recours : restauration du dernier `pg_dump`.
+
+Le retour arrière par `git checkout` et reconstruction locale n'est plus la procédure cible : il ne garantit pas que les mêmes artefacts sont réutilisés. Pour staging, utiliser le manifeste et les images par digest décrits dans `docs/STAGING_RELEASE_ROLLBACK.md`.
+
+Le rollback recrée uniquement l'API et l'interface avec les images précédentes dont le label OCI correspond au commit déclaré. Aucune migration n'est rétrogradée hors `local/test/ci` : le schéma reste en avant et les migrations doivent respecter une stratégie d'expansion/contraction compatible avec la version applicative précédente. Une restauration de sauvegarde relève d'une décision d'incident séparée, sur un environnement isolé, jamais d'un automatisme contre la base active.
 
 ## 7. Recette déployée (2026-10-26)
 | Élément | Valeur |

@@ -10,6 +10,10 @@ RUN pip install -e ".[dev]"
 USER mf
 
 FROM base AS runtime
+ARG MF_RELEASE_COMMIT=unknown
+ARG MF_MIGRATION_HEAD=unknown
+LABEL org.opencontainers.image.revision=$MF_RELEASE_COMMIT \
+      com.minefleet.alembic-head=$MF_MIGRATION_HEAD
 COPY . .
 RUN pip install . && mkdir -p /data/mail && chown -R mf:mf /app /data
 USER mf

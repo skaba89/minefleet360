@@ -7,6 +7,8 @@ COPY . .
 RUN npm run build
 
 FROM caddy:2.11.6-alpine AS runtime
+ARG MF_RELEASE_COMMIT=unknown
+LABEL org.opencontainers.image.revision=$MF_RELEASE_COMMIT
 COPY --chmod=644 deploy/Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /app/dist /srv
 # Le binaire officiel porte cap_net_bind_service (ports < 1024) : inutile sur 8080, et refusé à l'exécution

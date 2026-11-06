@@ -112,12 +112,17 @@ jobs:
       - name: Tester transitions, état atomique et reprise SMTP simulée
         run: python -m unittest discover -s tests -p 'test_ops_*.py' -v
       - name: Vérifier la syntaxe des composants de monitoring
-        run: >-
-          python -m py_compile
-          infra/deploy/alert-state.py
-          infra/deploy/monitor_state.py
-          infra/deploy/notify-alert-smtp.py
-          infra/deploy/run-alert-monitor.py
+        run: |
+          python -m py_compile \
+            infra/deploy/alert-state.py \
+            infra/deploy/monitor_state.py \
+            infra/deploy/notify-alert-smtp.py \
+            infra/deploy/run-alert-monitor.py \
+            infra/deploy/release_manifest.py
+          bash -n \
+            infra/deploy/backup.sh \
+            infra/deploy/check-preproduction.sh \
+            infra/deploy/staging-release.sh
 
   frontend:
     runs-on: ubuntu-24.04

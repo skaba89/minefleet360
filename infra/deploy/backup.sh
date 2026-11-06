@@ -5,9 +5,17 @@
 set -euo pipefail
 umask 077  # dumps lisibles par le seul propriétaire (données, même fictives)
 cd "$(dirname "$0")"
-mkdir -p backups
-chmod 700 backups
-dump="backups/minefleet-$(date -u +%Y%m%dT%H%M%SZ).dump"
+backup_dir="${MF_BACKUP_DIR:-backups}"
+if [[ "$backup_dir" != /* ]]; then
+  backup_dir="$(pwd)/$backup_dir"
+fi
+if [[ -L "$backup_dir" ]]; then
+  echo "FAIL: backup directory must not be a symlink" >&2
+  exit 1
+fi
+mkdir -p -- "$backup_dir"
+chmod 700 "$backup_dir"
+dump="$backup_dir/minefleet-$(date -u +%Y%m%dT%H%M%SZ).dump"
 # Write to a temporary file: a failed dump must never look like a usable backup.
 partial="$dump.partial"
 trap 'rm -f -- "$partial"' EXIT
@@ -29,7 +37,8 @@ trap - EXIT
 
 if [ ! -f offsite.env ]; then
   echo "WARNING: backup only local; offsite backup NOT configured (offsite.env absent)" >&2
-  ls -1t backups/*.dump | tail -n +8 | xargs -r rm --
+  find "$backup_dir" -maxdepth 1 -type f -name 'minefleet-*.dump' -printf '%T@ %p\0' \
+    | sort -zrn | tail -z -n +8 | cut -z -d' ' -f2- | xargs -0r rm --
   exit 0
 fi
 # shellcheck source=/dev/null
@@ -48,7 +57,8 @@ gpg --batch --yes --quiet --pinentry-mode loopback --symmetric --cipher-algo AES
 rclone copy --quiet "$encrypted" "$MF_OFFSITE_REMOTE" </dev/null
 rm -f -- "$encrypted"
 # Apply local retention only once the current archive has been verified and transferred.
-ls -1t backups/*.dump | tail -n +8 | xargs -r rm --
+find "$backup_dir" -maxdepth 1 -type f -name 'minefleet-*.dump' -printf '%T@ %p\0' \
+  | sort -zrn | tail -z -n +8 | cut -z -d' ' -f2- | xargs -0r rm --
 # Rétention distante (jours) : les copies plus anciennes sont supprimées de la destination.
 rclone delete --quiet --min-age "${retention}d" "$MF_OFFSITE_REMOTE" </dev/null
 echo "copie hors machine : $(basename "$encrypted") envoyée vers $MF_OFFSITE_REMOTE (rétention ${retention} j)"

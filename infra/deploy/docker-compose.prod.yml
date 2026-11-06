@@ -31,6 +31,9 @@ services:
       retries: 30
 
   api:
+    # En recette contrôlée, fournir une référence immuable registry/repo@sha256:...
+    # Le défaut conserve le flux de construction locale existant.
+    image: ${MF_API_IMAGE:-minefleet-api:local}
     build:
       context: ../../backend
       target: runtime
@@ -103,6 +106,7 @@ services:
 
   # Interface web : fichiers statiques servis par Caddy (non root, aucun secret, aucun volume).
   web:
+    image: ${MF_WEB_IMAGE:-minefleet-web:local}
     build:
       context: ../../frontend
     restart: unless-stopped
@@ -118,6 +122,8 @@ services:
 
   # Tâche ponctuelle (rôle mf_owner) : docker compose ... run --rm migrate
   migrate:
+    # Exactement la même image que l'API : migrations et runtime restent alignés.
+    image: ${MF_API_IMAGE:-minefleet-api:local}
     build:
       context: ../../backend
       target: runtime
