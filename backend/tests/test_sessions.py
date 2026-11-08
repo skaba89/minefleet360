@@ -33,13 +33,14 @@ def refresh_with(api: Api, cookie: str) -> int:
     ("method", "path"),
     [("get", "/me/sessions"), ("post", "/me/sessions/revoke-others")],
 )
-def test_sessions_exigent_l_authentification(api: Api, tenant: TenantFixture, method: str, path: str) -> None:
+def test_sessions_exigent_l_authentification(api: Api, method: str, path: str) -> None:
     # Sans jeton : 401 avant même la vérification de permission.
     resp = getattr(api.client, method)(f"{API}{path}")
     assert resp.status_code == 401
 
 
-def test_liste_marque_la_session_courante(api: Api, tenant: TenantFixture) -> None:
+def test_liste_marque_la_session_courante(api: Api) -> None:
+    tenant = api.tenant()
     email = tenant.admin.email
     login_cookie(api, tenant, email)
     login_cookie(api, tenant, email)
@@ -48,7 +49,8 @@ def test_liste_marque_la_session_courante(api: Api, tenant: TenantFixture) -> No
     assert sum(1 for s in sessions if s["is_current"]) == 1
 
 
-def test_revoque_une_session_precise_et_invalide_son_refresh(api: Api, tenant: TenantFixture) -> None:
+def test_revoque_une_session_precise_et_invalide_son_refresh(api: Api) -> None:
+    tenant = api.tenant()
     email = tenant.admin.email
     ancien_cookie = login_cookie(api, tenant, email)
     login_cookie(api, tenant, email)  # session courante du harnais (headers)
@@ -70,7 +72,8 @@ def test_revoque_une_session_precise_et_invalide_son_refresh(api: Api, tenant: T
     assert refresh_with(api, ancien_cookie) == 401
 
 
-def test_revoque_toutes_les_autres_sessions(api: Api, tenant: TenantFixture) -> None:
+def test_revoque_toutes_les_autres_sessions(api: Api) -> None:
+    tenant = api.tenant()
     email = tenant.admin.email
     cookie1 = login_cookie(api, tenant, email)
     cookie2 = login_cookie(api, tenant, email)
@@ -89,7 +92,8 @@ def test_revoque_toutes_les_autres_sessions(api: Api, tenant: TenantFixture) -> 
     assert refresh_with(api, cookie3) == 200
 
 
-def test_session_etrangere_indiscernable(api: Api, tenant: TenantFixture) -> None:
+def test_session_etrangere_indiscernable(api: Api) -> None:
+    tenant = api.tenant()
     # Une session d'un autre tenant ne peut être ni listée ni révoquée (404 indiscernable).
     autre: TenantFixture = api.tenant(sites=())
     theirs = api.client.get(f"{API}/me/sessions", headers=autre.admin.headers).json()
@@ -103,7 +107,8 @@ def test_session_etrangere_indiscernable(api: Api, tenant: TenantFixture) -> Non
     assert cible in {s["auth_session_id"] for s in still}
 
 
-def test_admin_revoque_les_sessions_d_un_utilisateur(api: Api, tenant: TenantFixture) -> None:
+def test_admin_revoque_les_sessions_d_un_utilisateur(api: Api) -> None:
+    tenant = api.tenant()
     driver = api.user(tenant, "DRIVER", scope="SITE", site="S1")
     cookie_driver = login_cookie(api, tenant, driver.email)
 
@@ -126,7 +131,8 @@ def test_admin_revoque_les_sessions_d_un_utilisateur(api: Api, tenant: TenantFix
     assert resp_hr.json()["code"] == "PERMISSION_DENIED"
 
 
-def test_revocations_sont_auditees(api: Api, tenant: TenantFixture) -> None:
+def test_revocations_sont_auditees(api: Api) -> None:
+    tenant = api.tenant()
     driver = api.user(tenant, "DRIVER", scope="SITE", site="S1")
     api.client.post(f"{API}/users/{driver.user_id}/sessions/revoke", headers=tenant.admin.headers)
     api.client.post(f"{API}/me/sessions/revoke-others", headers=tenant.admin.headers)
