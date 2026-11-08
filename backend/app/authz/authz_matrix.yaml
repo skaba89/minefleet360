@@ -232,14 +232,34 @@ permissions:
     tranche: 1a
     kind: action
     site_bound: false
-    routes: []
-    grants: {}
+    routes:
+      - { method: GET, path: /me/sessions, shape: collection, success: 200 }
+      - { method: POST, path: "/me/sessions/revoke-others", shape: singleton, success: 200 }
+      - { method: POST, path: "/me/sessions/{session_id}/revoke", shape: item, success: 204 }
+    audit: { action: user.revoke_own_session }
+    grants:
+      PLATFORM_ADMIN: [PLATFORM]
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      HR: [TENANT, SITE]
+      DRIVER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      MECHANIC: [TENANT, SITE]
+      STOREKEEPER: [TENANT, SITE]
+      FUEL_MANAGER: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
   identity.session.revoke_any:
     tranche: 1a
     kind: action
     site_bound: false
-    routes: []
-    grants: {}
+    routes:
+      - { method: POST, path: "/users/{user_id}/sessions/revoke", shape: item, success: 200 }
+    audit: { action: user.revoke_user_sessions }
+    grants: { TENANT_ADMIN: [TENANT] }
 
   # --- audit (1a) ------------------------------------------------------------------------------------
   audit.event.read:

@@ -1033,8 +1033,63 @@ export const GRANTS = {
       "TENANT"
     ]
   },
-  "identity.session.revoke_any": {},
-  "identity.session.revoke_own": {},
+  "identity.session.revoke_any": {
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "identity.session.revoke_own": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "DISPATCHER": [
+      "SITE"
+    ],
+    "DRIVER": [
+      "SITE"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "FUEL_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "HR": [
+      "TENANT",
+      "SITE"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "MECHANIC": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "PLATFORM_ADMIN": [
+      "PLATFORM"
+    ],
+    "STOREKEEPER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "identity.user.create": {
     "TENANT_ADMIN": [
       "TENANT"

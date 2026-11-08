@@ -63,7 +63,7 @@ Rôles optionnels : `AUDITOR`.
 | [Administration · Utilisateurs et rôles](/administration/utilisateurs) | Administration | — | ✓ | — | — | — | ✓ | — | — | — | — | — | — | — | ✓ |
 | [Administration · Journal d'audit](/administration/journal) | Administration | — | ✓ | — | — | — | — | — | — | — | — | — | — | — | ✓ |
 
-Pages toujours accessibles à tout compte authentifié : Accueil (`/`), Mon compte · sécurité (`/mon-compte/securite`), déconnexion. L'accueil s'adapte au rôle (vue plateforme, tableau de bord flotte ou liste des rôles du compte).
+Pages toujours accessibles à tout compte authentifié : Accueil (`/`), Mon compte · sécurité (`/mon-compte/securite`), déconnexion. L'accueil s'adapte au rôle (vue plateforme, tableau de bord flotte ou liste des rôles du compte). Mes sessions (`/mon-compte/sessions`) exige `identity.session.revoke_own` (accordée aux 14 rôles).
 
 ## 3. Routes UI protégées (`frontend/src/App.tsx`)
 
@@ -106,6 +106,7 @@ Pages toujours accessibles à tout compte authentifié : Accueil (`/`), Mon comp
 | `/pesees` | `WeighingsPage` | `dispatch.weighing.read` |
 | `/indicateurs` | `IndicatorsPage` | `dispatch.indicators.read` |
 | `/mon-compte/securite` | `SecurityPage` | toute session authentifiée |
+| `/mon-compte/sessions` | `SessionsPage` | `identity.session.revoke_own` |
 | `/administration` | `AdminLayout` | `organization.site.create` ou `identity.user.read` ou `audit.event.read` ou `dispatch.location.manage` ou `dispatch.material.manage` |
 | `/administration/sites` | `SitesAdminPage` | `organization.site.create` |
 | `/administration/utilisateurs` | `UsersAdminPage` | `identity.user.read` |
@@ -140,8 +141,8 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `identity.role_assignment.read` | 1a | `GET /role-assignments` | `AUDITOR`, `TENANT_ADMIN` |
 | `identity.role_assignment.create` | 1a | `POST /role-assignments` | `TENANT_ADMIN` |
 | `identity.role_assignment.revoke` | 1a | `POST /role-assignments/{assignment_id}/revoke` | `TENANT_ADMIN` |
-| `identity.session.revoke_own` | 1a | *(aucune route)* | — |
-| `identity.session.revoke_any` | 1a | *(aucune route)* | — |
+| `identity.session.revoke_own` | 1a | `GET /me/sessions`<br>`POST /me/sessions/revoke-others`<br>`POST /me/sessions/{session_id}/revoke` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `DRIVER`, `FINANCE`, `FUEL_MANAGER`, `HR`, `HSE`, `MECHANIC`, `OPS_MANAGER`, `PLATFORM_ADMIN`, `STOREKEEPER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
+| `identity.session.revoke_any` | 1a | `POST /users/{user_id}/sessions/revoke` | `TENANT_ADMIN` |
 | `audit.event.read` | 1a | `GET /audit-events`<br>`GET /audit-events/{event_id}` | `AUDITOR`, `TENANT_ADMIN` |
 | `fleet.vehicle_category.read` | 1b | `GET /vehicle-categories`<br>`GET /vehicle-categories/{category_id}`<br>`GET /vehicle-categories/{category_id}/required-documents` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `FUEL_MANAGER`, `HR`, `HSE`, `MECHANIC`, `OPS_MANAGER`, `STOREKEEPER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
 | `fleet.vehicle.read` | 1b | `GET /vehicles`<br>`GET /vehicles/gps/latest`<br>`GET /vehicles/{vehicle_id}`<br>`GET /vehicles/{vehicle_id}/status-history` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `FUEL_MANAGER`, `HSE`, `MECHANIC`, `OPS_MANAGER`, `STOREKEEPER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
@@ -243,24 +244,24 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 
 | Rôle | Permissions | Routes API accessibles |
 |---|---:|---:|
-| `PLATFORM_ADMIN` | 5 | 13 |
-| `TENANT_ADMIN` | 63 | 118 |
-| `DIRECTION` | 33 | 87 |
-| `OPS_MANAGER` | 83 | 172 |
-| `DISPATCHER` | 36 | 78 |
-| `HR` | 15 | 31 |
-| `DRIVER` | 3 | 12 |
-| `WORKSHOP_CHIEF` | 39 | 100 |
-| `MECHANIC` | 16 | 42 |
-| `STOREKEEPER` | 16 | 46 |
-| `FUEL_MANAGER` | 27 | 59 |
-| `HSE` | 32 | 73 |
-| `FINANCE` | 21 | 49 |
-| `AUDITOR` | 36 | 91 |
+| `PLATFORM_ADMIN` | 6 | 16 |
+| `TENANT_ADMIN` | 65 | 122 |
+| `DIRECTION` | 34 | 90 |
+| `OPS_MANAGER` | 84 | 175 |
+| `DISPATCHER` | 37 | 81 |
+| `HR` | 16 | 34 |
+| `DRIVER` | 4 | 15 |
+| `WORKSHOP_CHIEF` | 40 | 103 |
+| `MECHANIC` | 17 | 45 |
+| `STOREKEEPER` | 17 | 49 |
+| `FUEL_MANAGER` | 28 | 62 |
+| `HSE` | 33 | 76 |
+| `FINANCE` | 22 | 52 |
+| `AUDITOR` | 37 | 94 |
 
 ## 6. Anomalies détectées mécaniquement
 
-- Permissions déclarées sans route : `identity.session.revoke_own`, `identity.session.revoke_any`.
+- Permissions déclarées sans route : aucune.
 - Permissions marquées `tranche: later` avec routes implémentées : `maintenance.preventive.manage`, `maintenance.preventive.read`.
 - `organization.tenant.list` porte aussi le GET item `/platform/tenants/{{tenant_id}}` (dénommage list/read assumé, documenté dans l'en-tête du YAML).
 

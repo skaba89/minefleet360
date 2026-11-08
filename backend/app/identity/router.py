@@ -4,6 +4,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, BackgroundTasks, Cookie, Depends, Header, Query, Request, Response, status
 from sqlalchemy import select
 
+from app.audit.contracts import record
 from app.authz.dependencies import Authorized, ClockDep, DbSession, Require, SettingsDep, load_grants
 from app.authz.routing import SecuredRoute
 from app.core.config import Settings
@@ -13,8 +14,8 @@ from app.core.http import IfMatch, Page, Pagination, etag
 from app.core.logging import security_logger
 from app.identity import auth_service, mfa_service, service
 from app.identity.auth_service import AuthLimiters, IssuedChallenge, IssuedSession
-from app.identity.contracts import mfa_notice
-from app.identity.models import UserAccount
+from app.identity.contracts import mfa_notice, revoke_sessions
+from app.identity.models import AuthSession, UserAccount
 from app.identity.schemas import (
     ChangePasswordRequest,
     GrantOut,
@@ -33,6 +34,8 @@ from app.identity.schemas import (
     RoleAssignmentCreate,
     RoleAssignmentOut,
     RoleOut,
+    SessionOut,
+    SessionsRevokedOut,
     SessionUser,
     TokenPasswordRequest,
     TokenResponse,
@@ -350,6 +353,97 @@ def change_password(
     )
 
 
+# --- Mes sessions (révocation volontaire, permissions identity.session.revoke_own/any implémentées) ---
+
+
+def _session_out(session: AuthSession, current_session_id: uuid.UUID) -> SessionOut:
+    return SessionOut(
+        auth_session_id=session.auth_session_id,
+        ip_address=str(session.ip_address) if session.ip_address is not None else None,
+        user_agent=session.user_agent,
+        amr=list(session.amr or []),
+        created_at=session.created_at,
+        last_seen_at=session.last_seen_at,
+        expires_at=session.expires_at,
+        is_current=session.auth_session_id == current_session_id,
+    )
+
+
+@me_router.get("/sessions", response_model=list[SessionOut])
+def list_my_sessions(
+    auth: Annotated[Authorized, Depends(Require("identity.session.revoke_own"))],
+) -> list[SessionOut]:
+    """Sessions actives de l'utilisateur, la plus récente d'abord ; la session courante est marquée."""
+    rows = (
+        auth.db.execute(
+            select(AuthSession)
+            .where(
+                AuthSession.tenant_id == auth.tenant_id,
+                AuthSession.user_account_id == auth.user_id,
+                AuthSession.revoked_at.is_(None),
+            )
+            .order_by(AuthSession.last_seen_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+    return [_session_out(row, auth.principal.session_id) for row in rows]
+
+
+@me_router.post("/sessions/revoke-others", response_model=SessionsRevokedOut)
+def revoke_my_other_sessions(
+    auth: Annotated[Authorized, Depends(Require("identity.session.revoke_own"))],
+) -> SessionsRevokedOut:
+    """Ferme toutes les autres sessions de l'utilisateur (présomption de session oubliée ou volée)."""
+    count = revoke_sessions(
+        auth.db,
+        now=auth.clock.now(),
+        reason="USER_REVOKED_OTHERS",
+        user_id=auth.user_id,
+        except_session=auth.principal.session_id,
+    )
+    record(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        action="user.revoke_own_session",
+        entity_type="auth_session",
+        actor_user_id=auth.user_id,
+        after={"revoked": count, "scope": "others"},
+    )
+    auth.db.commit()
+    return SessionsRevokedOut(revoked=count)
+
+
+@me_router.post("/sessions/{session_id}/revoke", status_code=status.HTTP_204_NO_CONTENT)
+def revoke_my_session(
+    session_id: uuid.UUID,
+    auth: Annotated[Authorized, Depends(Require("identity.session.revoke_own"))],
+) -> None:
+    """Ferme une session précise ; une session étrangère ou déjà fermée est indiscernable (404)."""
+    session = auth.db.execute(
+        select(AuthSession).where(
+            AuthSession.auth_session_id == session_id,
+            AuthSession.tenant_id == auth.tenant_id,
+            AuthSession.user_account_id == auth.user_id,
+            AuthSession.revoked_at.is_(None),
+        )
+    ).scalar_one_or_none()
+    if session is None:
+        raise AppError("NOT_FOUND")
+    session.revoked_at = auth.clock.now()
+    session.revoked_reason = "USER_REVOKED"
+    record(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        action="user.revoke_own_session",
+        entity_type="auth_session",
+        entity_id=session.auth_session_id,
+        actor_user_id=auth.user_id,
+        after={"revoked": 1, "scope": "one"},
+    )
+    auth.db.commit()
+
+
 # --- Utilisateurs -------------------------------------------------------------------------------------
 
 
@@ -460,6 +554,34 @@ def reset_credentials(
 ) -> dict[str, str]:
     email.send(service.admin_reset_credentials(auth, user_id, settings))
     return {"message_fr": "Lien de réinitialisation envoyé."}
+
+
+@user_router.post("/{user_id}/sessions/revoke", response_model=SessionsRevokedOut)
+def revoke_user_sessions(
+    user_id: uuid.UUID,
+    auth: Annotated[Authorized, Depends(Require("identity.session.revoke_any"))],
+) -> SessionsRevokedOut:
+    """Ferme toutes les sessions d'un utilisateur du tenant (404 indiscernable sinon)."""
+    target = auth.db.execute(
+        select(UserAccount.user_account_id).where(
+            UserAccount.user_account_id == user_id,
+            UserAccount.tenant_id == auth.tenant_id,
+        )
+    ).scalar_one_or_none()
+    if target is None:
+        raise AppError("NOT_FOUND")
+    count = revoke_sessions(auth.db, now=auth.clock.now(), reason="ADMIN_REVOKED", user_id=user_id)
+    record(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        action="user.revoke_user_sessions",
+        entity_type="user_account",
+        entity_id=user_id,
+        actor_user_id=auth.user_id,
+        after={"revoked": count},
+    )
+    auth.db.commit()
+    return SessionsRevokedOut(revoked=count)
 
 
 # --- Rôles et attributions ----------------------------------------------------------------------------

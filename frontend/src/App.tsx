@@ -26,6 +26,7 @@ import { PhoneTrackingPage } from "./pages/PhoneTrackingPage";
 import { PreventivePage } from "./pages/PreventivePage";
 import { ActivationPage, ResetConfirmPage, ResetRequestPage } from "./pages/PasswordPages";
 import { SecurityPage } from "./pages/SecurityPage";
+import { SessionsPage } from "./pages/SessionsPage";
 import { VehicleDetailPage } from "./pages/VehicleDetailPage";
 import { DueDocumentsPage, RequiredDocumentsPage } from "./pages/VehicleRecords";
 import { VehiclesPage } from "./pages/VehiclesPage";
@@ -93,6 +94,7 @@ export function App() {
           <Route path="pesees" element={<WeighingsPage />} />
           <Route path="indicateurs" element={<IndicatorsPage />} />
           <Route path="mon-compte/securite" element={<SecurityPage />} />
+          <Route path="mon-compte/sessions" element={<SessionsPage />} />
           <Route path="administration" element={<AdminLayout />}>
             <Route index element={<AdminIndex />} />
             <Route path="sites" element={<SitesAdminPage />} />

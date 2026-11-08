@@ -344,6 +344,7 @@ DETAIL_ROUTE_PERMISSIONS: dict[str, list[str]] = {
     "/hse/inspections/:inspectionId": ["hse.inspection.read", "hse.inspection.perform"],
     "/pneus/:tyreId": ["maintenance.tyre.read"],
     "/mon-compte/securite": [],  # page personnelle : tout compte authentifié (aucune permission)
+    "/mon-compte/sessions": ["identity.session.revoke_own"],  # révocation volontaire des sessions
     "*": [],  # 404 UI : toute session authentifiée (garde Protected)
 }
 
@@ -468,7 +469,8 @@ def render() -> str:
     w(
         "Pages toujours accessibles à tout compte authentifié : Accueil (`/`), Mon compte · sécurité "
         "(`/mon-compte/securite`), déconnexion. L'accueil s'adapte au rôle (vue plateforme, tableau de bord flotte "
-        "ou liste des rôles du compte)."
+        "ou liste des rôles du compte). Mes sessions (`/mon-compte/sessions`) exige "
+        "`identity.session.revoke_own` (accordée aux 14 rôles)."
     )
     w("")
 

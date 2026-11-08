@@ -1662,6 +1662,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List My Sessions
+         * @description Sessions actives de l'utilisateur, la plus récente d'abord ; la session courante est marquée.
+         */
+        get: operations["list_my_sessions_api_v1_me_sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/sessions/revoke-others": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke My Other Sessions
+         * @description Ferme toutes les autres sessions de l'utilisateur (présomption de session oubliée ou volée).
+         */
+        post: operations["revoke_my_other_sessions_api_v1_me_sessions_revoke_others_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/sessions/{session_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke My Session
+         * @description Ferme une session précise ; une session étrangère ou déjà fermée est indiscernable (404).
+         */
+        post: operations["revoke_my_session_api_v1_me_sessions__session_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/missions": {
         parameters: {
             query?: never;
@@ -2630,6 +2690,26 @@ export interface paths {
          * @description Perte du second facteur : retrait par l'administrateur, sessions fermées, audité, cible prévenue.
          */
         post: operations["reset_mfa_api_v1_users__user_id__reset_mfa_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{user_id}/sessions/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke User Sessions
+         * @description Ferme toutes les sessions d'un utilisateur du tenant (404 indiscernable sinon).
+         */
+        post: operations["revoke_user_sessions_api_v1_users__user_id__sessions_revoke_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7546,6 +7626,40 @@ export interface components {
              */
             vehicle_id: string;
         };
+        /**
+         * SessionOut
+         * @description Session active de l'utilisateur (écran « Mes sessions ») ; la session courante est marquée.
+         */
+        SessionOut: {
+            /** Amr */
+            amr: string[];
+            /**
+             * Auth Session Id
+             * Format: uuid
+             */
+            auth_session_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Ip Address */
+            ip_address: string | null;
+            /** Is Current */
+            is_current: boolean;
+            /**
+             * Last Seen At
+             * Format: date-time
+             */
+            last_seen_at: string;
+            /** User Agent */
+            user_agent: string | null;
+        };
         /** SessionUser */
         SessionUser: {
             /** Display Name */
@@ -7557,6 +7671,11 @@ export interface components {
             user_account_id: string;
             /** Workspace Code */
             workspace_code: string;
+        };
+        /** SessionsRevokedOut */
+        SessionsRevokedOut: {
+            /** Revoked */
+            revoked: number;
         };
         /** SiteCost */
         SiteCost: {
@@ -13172,6 +13291,99 @@ export interface operations {
             };
         };
     };
+    list_my_sessions_api_v1_me_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_my_other_sessions_api_v1_me_sessions_revoke_others_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionsRevokedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_my_session_api_v1_me_sessions__session_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_missions_api_v1_missions_get: {
         parameters: {
             query?: {
@@ -15702,6 +15914,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_user_sessions_api_v1_users__user_id__sessions_revoke_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionsRevokedOut"];
                 };
             };
             /** @description Validation Error */

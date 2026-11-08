@@ -150,6 +150,23 @@ class MeOut(BaseModel):
     is_demo: bool
 
 
+class SessionOut(BaseModel):
+    """Session active de l'utilisateur (écran « Mes sessions ») ; la session courante est marquée."""
+
+    auth_session_id: uuid.UUID
+    ip_address: str | None
+    user_agent: str | None
+    amr: list[str]
+    created_at: datetime
+    last_seen_at: datetime
+    expires_at: datetime
+    is_current: bool
+
+
+class SessionsRevokedOut(BaseModel):
+    revoked: int
+
+
 # --- Rôles --------------------------------------------------------------------------------------------
 
 
