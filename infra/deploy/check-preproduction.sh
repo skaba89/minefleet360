@@ -14,7 +14,7 @@ fi
 echo "Checking Compose syntax (no containers started)..."
 # Use fake non-empty placeholders for mandatory variables; never print or load real secrets.
 POSTGRES_PASSWORD=check MF_OWNER_PASSWORD=check MF_APP_PASSWORD=check \
-MF_JWT_SECRET=check MF_MFA_ENCRYPTION_KEY=check MF_ENV=staging \
+MF_JWT_SECRET=check MF_MFA_ENCRYPTION_KEY=check MF_RATE_LIMIT_KEY=check MF_ENV=staging \
 MF_DOMAIN=staging.example.invalid MF_ACME_EMAIL=ops@example.invalid \
   docker compose -f "$COMPOSE_FILE" config --quiet
 echo "OK: Compose configuration parsed."

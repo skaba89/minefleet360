@@ -19,6 +19,7 @@ import { ChecklistTemplatesPage, HseInspectionPage, HseInspectionsPage } from ".
 import { OfflineFieldPage } from "./pages/HseOffline";
 import { HseIncidentPage, HsePage } from "./pages/HsePages";
 import { LoginPage } from "./pages/LoginPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { LegalRegistriesPage } from "./pages/LegalRegistriesPage";
 import { LiveFleetPage } from "./pages/LiveFleetPage";
 import { PhoneTrackingPage } from "./pages/PhoneTrackingPage";
@@ -100,7 +101,7 @@ export function App() {
             <Route path="lieux-matieres" element={<ReferentialsPage />} />
             <Route path="documents-exiges" element={<RequiredDocumentsPage />} />
           </Route>
-          <Route path="*" element={<p>Page introuvable.</p>} />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
     </>

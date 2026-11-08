@@ -39,7 +39,9 @@ class FailureLimiter:
         self.window = window
 
     def _key(self, key: str) -> str:
-        secret = get_settings().jwt_secret.get_secret_value().encode()
+        # Clé HMAC dédiée (MF_RATE_LIMIT_KEY) : distincte du secret JWT ; sa rotation n'invalide
+        # que les verrouillages en cours (compteurs repartis à zéro), jamais les sessions signées.
+        secret = get_settings().rate_limit_hmac_key
         return hmac.new(secret, f"{self.namespace}:{key}".encode(), hashlib.sha256).hexdigest()
 
     def _call(self, operation: str, key: str) -> bool:
