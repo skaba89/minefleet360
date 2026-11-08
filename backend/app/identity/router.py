@@ -410,6 +410,7 @@ def revoke_my_other_sessions(
         actor_user_id=auth.user_id,
         after={"revoked": count, "scope": "others"},
     )
+    auth.db.commit()
     return SessionsRevokedOut(revoked=count)
 
 
@@ -440,6 +441,7 @@ def revoke_my_session(
         actor_user_id=auth.user_id,
         after={"revoked": 1, "scope": "one"},
     )
+    auth.db.commit()
 
 
 # --- Utilisateurs -------------------------------------------------------------------------------------
@@ -578,6 +580,7 @@ def revoke_user_sessions(
         actor_user_id=auth.user_id,
         after={"revoked": count},
     )
+    auth.db.commit()
     return SessionsRevokedOut(revoked=count)
 
 

@@ -74,10 +74,11 @@ def test_revoque_une_session_precise_et_invalide_son_refresh(api: Api) -> None:
 
 def test_revoque_toutes_les_autres_sessions(api: Api) -> None:
     tenant = api.tenant()
-    email = tenant.admin.email
-    cookie1 = login_cookie(api, tenant, email)
-    cookie2 = login_cookie(api, tenant, email)
-    cookie3 = login_cookie(api, tenant, email)
+    # La session courante des headers admin est celle créée par api.tenant() : capturer son cookie.
+    cookie_courante = api.client.cookies.get(COOKIE)
+    assert cookie_courante
+    cookie1 = login_cookie(api, tenant, tenant.admin.email)
+    cookie2 = login_cookie(api, tenant, tenant.admin.email)
 
     resp = api.client.post(f"{API}/me/sessions/revoke-others", headers=tenant.admin.headers)
     assert resp.status_code == 200
@@ -89,7 +90,7 @@ def test_revoque_toutes_les_autres_sessions(api: Api) -> None:
     assert refresh_with(api, cookie1) == 401
     assert refresh_with(api, cookie2) == 401
     # La session courante, conservée, peut toujours se rafraîchir.
-    assert refresh_with(api, cookie3) == 200
+    assert refresh_with(api, cookie_courante) == 200
 
 
 def test_session_etrangere_indiscernable(api: Api) -> None:
