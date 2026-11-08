@@ -30,6 +30,7 @@ restore_failed=0
 runtime_db_credential=""
 runtime_signing_material=""
 runtime_mfa_material=""
+runtime_ratelimit_material=""
 
 cleanup() {
   if [[ "$restore_failed" == "1" ]]; then
@@ -61,6 +62,7 @@ if [[ -n "$api_image" ]]; then
   runtime_db_credential="$(openssl rand -hex 24)"
   runtime_signing_material="$(openssl rand -hex 48)"
   runtime_mfa_material="$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n')"
+  runtime_ratelimit_material="$(openssl rand -hex 48)"
 fi
 
 echo "Starting disposable PostGIS (isolated network, no persistent volumes)..."
@@ -201,7 +203,7 @@ if [[ -n "$api_image" ]]; then
     -e MF_ENV=staging \
     -e MF_DB_HOST=restore-db -e MF_DB_PORT=5432 -e MF_DB_NAME=minefleet_restore_check \
     -e MF_APP_PASSWORD="$runtime_db_credential" -e MF_JWT_SECRET="$runtime_signing_material" \
-    -e MF_MFA_ENCRYPTION_KEY="$runtime_mfa_material" -e MF_COOKIE_SECURE=true \
+    -e MF_MFA_ENCRYPTION_KEY="$runtime_mfa_material" -e MF_RATE_LIMIT_KEY="$runtime_ratelimit_material" -e MF_COOKIE_SECURE=true \
     -e MF_MAIL_BACKEND=capture -e MF_MAIL_CAPTURE_DIR=/data/mail \
     -e MF_PUBLIC_WEB_URL=https://staging.example.invalid \
     "$api_image" >/dev/null

@@ -1,12 +1,18 @@
-"""Durcissement production : la spécification OpenAPI n'est pas publiée (aucune dépendance PostgreSQL).
+"""Durcissement production : OpenAPI non publiée et secrets serveur dédiés (aucune dépendance PostgreSQL).
 
 En production, /openapi.json et /docs exposent la cartographie des permissions (x-permission) et
 élargissent la surface de reconnaissance : ils sont désactivés quand MF_ENV=production. Les autres
 environnements (local, test, ci, staging) les conservent pour le contrat OpenAPI et le support.
+
+La clé HMAC des compteurs de limitation (rate-limiting) est dédiée du secret JWT : obligatoire en
+recette/production (MF_RATE_LIMIT_KEY), dérivée du secret JWT en local/test/ci uniquement.
 """
 
 import base64
+import hashlib
+import hmac
 import os
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -21,6 +27,7 @@ from app.core.config import get_settings
 from app.main import create_app
 
 JWT_SECRET = "cle-de-test-production-au-moins-32-caracteres"
+RATE_LIMIT_KEY = "cle-rate-limit-dediee-test-au-moins-32-caracteres"
 # Clé MFA factice : 32 octets nuls encodés en base64url (validation : longueur décodée == 32).
 MFA_KEY = base64.urlsafe_b64encode(b"\x00" * 32).decode()
 
@@ -36,8 +43,10 @@ def _install_env(monkeypatch: pytest.MonkeyPatch, env: str) -> None:
         monkeypatch.setenv("MF_PUBLIC_WEB_URL", "https://minefleet.example.com")
     if env in ("staging", "production"):
         monkeypatch.setenv("MF_MFA_ENCRYPTION_KEY", MFA_KEY)
+        monkeypatch.setenv("MF_RATE_LIMIT_KEY", RATE_LIMIT_KEY)
     else:
         monkeypatch.delenv("MF_MFA_ENCRYPTION_KEY", raising=False)
+        monkeypatch.delenv("MF_RATE_LIMIT_KEY", raising=False)
     get_settings.cache_clear()
 
 
@@ -89,3 +98,54 @@ def test_secret_jwt_faible_refuse_en_production(monkeypatch: pytest.MonkeyPatch)
 
     with pytest.raises(ValueError, match="MF_JWT_SECRET"):
         get_settings()
+
+
+@pytest.mark.parametrize("env", ["staging", "production"])
+def test_cle_rate_limit_obligatoire_sur_serveurs(monkeypatch: pytest.MonkeyPatch, env: str) -> None:
+    _install_env(monkeypatch, env)
+    monkeypatch.delenv("MF_RATE_LIMIT_KEY", raising=False)
+    get_settings.cache_clear()
+
+    with pytest.raises(ValueError, match="MF_RATE_LIMIT_KEY"):
+        get_settings()
+
+
+def test_cle_rate_limit_trop_courte_refusee(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_env(monkeypatch, "ci")
+    monkeypatch.setenv("MF_RATE_LIMIT_KEY", "trop-court")
+    get_settings.cache_clear()
+
+    with pytest.raises(ValueError, match="MF_RATE_LIMIT_KEY"):
+        get_settings()
+
+
+def test_cle_rate_limit_dediee_utilisee_si_fournie(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_env(monkeypatch, "ci")
+    monkeypatch.setenv("MF_RATE_LIMIT_KEY", RATE_LIMIT_KEY)
+    get_settings.cache_clear()
+
+    settings = get_settings()
+    assert settings.rate_limit_hmac_key == RATE_LIMIT_KEY.encode()
+    assert settings.rate_limit_hmac_key != JWT_SECRET.encode()
+
+
+def test_cle_rate_limit_derivee_du_jwt_en_developpement(monkeypatch: pytest.MonkeyPatch) -> None:
+    # local supprime MF_RATE_LIMIT_KEY : le harnais de développement dérive la clé du secret JWT.
+    _install_env(monkeypatch, "local")
+
+    settings = get_settings()
+    assert settings.rate_limit_hmac_key == JWT_SECRET.encode()
+
+
+def test_compteurs_limitation_haches_avec_la_cle_dediee(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.ratelimit import FailureLimiter
+
+    _install_env(monkeypatch, "ci")
+    monkeypatch.setenv("MF_RATE_LIMIT_KEY", RATE_LIMIT_KEY)
+    get_settings.cache_clear()
+    limiter = FailureLimiter("login:user", 5, timedelta(minutes=15))
+
+    expected = hmac.new(RATE_LIMIT_KEY.encode(), b"login:user:+224-620-00-00-00", hashlib.sha256)
+    assert limiter._key("+224-620-00-00-00") == expected.hexdigest()
+    jwt_derived = hmac.new(JWT_SECRET.encode(), b"login:user:+224-620-00-00-00", hashlib.sha256)
+    assert limiter._key("+224-620-00-00-00") != jwt_derived.hexdigest()

@@ -101,6 +101,10 @@ class Settings(BaseSettings):
     # Double authentification TOTP (C-03, SEC-04). Clé AES-256 (base64url, 32 octets) obligatoire en
     # recette et production ; dérivée du secret JWT en local/test uniquement (développement).
     mfa_encryption_key: SecretStr | None = Field(default=None, validation_alias="MF_MFA_ENCRYPTION_KEY")
+    # Clé HMAC des compteurs de limitation d'authentification (rate-limiting partagé PostgreSQL).
+    # Dédiée du secret JWT : une rotation de l'un n'invalide pas le service de l'autre. Obligatoire en
+    # recette et production ; dérivée du secret JWT en local/test/ci uniquement (développement).
+    rate_limit_key: SecretStr | None = Field(default=None, validation_alias="MF_RATE_LIMIT_KEY")
     # « enroll » : un rôle concerné sans second facteur n'accède qu'à son compte jusqu'à l'enrôlement.
     mfa_enforcement: Literal["enroll", "off"] = "enroll"
     # D-41 : direction et responsable des opérations ajoutés (vision large des données) ; modifiable.
@@ -137,9 +141,13 @@ class Settings(BaseSettings):
         return value
 
     @model_validator(mode="after")
-    def _mfa_key_required_on_servers(self) -> "Settings":
+    def _server_secrets_required(self) -> "Settings":
         if self.env in ("staging", "production") and self.mfa_encryption_key is None:
             raise ValueError("MF_MFA_ENCRYPTION_KEY est obligatoire en recette et en production")
+        if self.env in ("staging", "production") and self.rate_limit_key is None:
+            raise ValueError("MF_RATE_LIMIT_KEY est obligatoire en recette et en production")
+        if self.rate_limit_key is not None and len(self.rate_limit_key.get_secret_value()) < 32:
+            raise ValueError("MF_RATE_LIMIT_KEY doit contenir au moins 32 caractères")
         if self.mfa_encryption_key is not None:
             # Échec au démarrage plutôt qu'à la première connexion d'un utilisateur (revue MFA-R-07).
             raw = self.mfa_encryption_key.get_secret_value().strip()
@@ -159,6 +167,12 @@ class Settings(BaseSettings):
             if not self.legal_object_storage_access_key or not self.legal_object_storage_secret_key:
                 raise ValueError("Les identifiants du stockage documentaire sont requis")
         return self
+
+    @property
+    def rate_limit_hmac_key(self) -> bytes:
+        """Clé HMAC des compteurs de limitation : dédiée si fournie, sinon secret JWT (dev)."""
+        secret = self.rate_limit_key if self.rate_limit_key is not None else self.jwt_secret
+        return secret.get_secret_value().encode()
 
     @property
     def allowed_origin_list(self) -> list[str]:

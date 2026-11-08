@@ -40,7 +40,7 @@ Hors périmètre de cet audit : matériel GPS réel, Android physique, réseau m
 
 | Domaine | Pondération | Score | Justification synthétique |
 |---|---:|---:|---|
-| Sécurité et isolation | 20 | **16** | RLS forcée sur 75 tables, RBAC machine (118 permissions/228 routes) testé, MFA chiffré, refresh rotatif anti-rejeu, journal append-only. Non certifié indépendant ; 2 durcissements traités ici, 2 restants (§4.1). |
+| Sécurité et isolation | 20 | **16** | RLS forcée sur 75 tables, RBAC machine (118 permissions/228 routes) testé, MFA chiffré, refresh rotatif anti-rejeu, journal append-only. Non certifié indépendant ; 3 durcissements traités ici, 2 restants (§4.1). |
 | Fiabilité et résilience | 20 | **13** | Restauration chiffrée testée en CI avec gates RLS fail-closed ; release/rollback par digest immuables ; supervision sondes+SMTP crash-safe. RPO/RTO jamais mesurés sur coffre réel ; alertes jamais éprouvées par incident réel. |
 | Fonctionnalités métier | 20 | **15** | Couverture large et testée : parc, affectations, missions/pesées, GMAO corrective+préventive, pièces, pneus, carburant, HSE, RH, coûts, juridique. GPS avancé mais **aucun traceur certifié** ; offline limité au périmètre HSE/OT. |
 | UX/UI et offline | 15 | **11** | UI française complète, GNF/fuseaux corrects, responsive audité E2E, 0 bouton inerte constaté, offline HSE idempotent éprouvé (build prod + émulation Android). Android physique jamais testé ; inspections non couvertes hors ligne. |
@@ -56,13 +56,13 @@ Hors périmètre de cet audit : matériel GPS réel, Android physique, réseau m
 
 **Prouvé (statique + exécution locale) :** RLS activée **et forcée** sur 75 tables (`0001_foundation.py:57-71`), rôle applicatif `mf_app` non-superuser/non-BYPASSRLS vérifié au démarrage (`main.py:50-57`) et après restauration (`verify-restore.sh`) ; contexte tenant posé en un seul module transactionnel, whitelist d'appelants fermée (`test_architecture.py`) ; RBAC deny-by-default généré du YAML vers les tests (`test_authz_matrix.py` : concordance route↔permission, refus 403 audité, portée site, objets étrangers indiscernables en 404) ; refresh token rotatif avec détection de rejeu et révocation de session ; MFA TOTP chiffré AES-256-GCM avec enrôlement forcé pour les rôles sensibles ; cookies HttpOnly/SameSite=Strict avec vérification d'Origin ; argon2id ; limiteurs d'authentification persistés PostgreSQL ; journal d'audit append-only partitionné mensuellement ; Gitleaks + Bandit (high/high) en CI.
 
-**Corrigé par cet audit :** `/openapi.json` et `/docs` ne sont plus publiés en production (ils cartographiaient `x-permission` par route) — `app/main.py` + 7 tests (`tests_unit/test_production_hardening.py`).
+**Corrigé par cet audit :** `/openapi.json` et `/docs` ne sont plus publiés en production (ils cartographiaient `x-permission` par route) — `app/main.py` + 7 tests (`tests_unit/test_production_hardening.py`). La clé HMAC des compteurs de limitation d'authentification est **dédiée du secret JWT** (`MF_RATE_LIMIT_KEY`, obligatoire en recette/production, dérivée en local/test/ci) : la rotation du secret JWT n'invalide plus les verrouillages en cours et une fuite de l'une des deux clés ne compromise pas l'autre mécanisme — `app/core/config.py`, `app/core/ratelimit.py`, compose/verify-restore/preflight/.env prod mis à jour, +6 tests.
 
-**Partiel / à traiter (P1) :** `MF_JWT_SECRET` sert aussi de clé HMAC des compteurs de rate-limiting (`core/ratelimit.py:41-43`) — dédier une clé ; permissions mortes `identity.session.revoke_own/any` (YAML l.231-242) sans routes ni UI de gestion de sessions — implémenter ou retirer ; pas de rotation de secrets outillée.
+**Partiel / à traiter (P1) :** permissions mortes `identity.session.revoke_own/any` (YAML l.231-242) sans routes ni UI de gestion de sessions — implémenter ou retirer ; pas de rotation de secrets outillée.
 
 **Absent / risque :** aucun audit de sécurité indépendant (bloquant commercial, SEC-01/02) ; revue juridique géolocalisation/données salariés en Guinée non engagée (bloquant pilote, C-01/C-08/C-09).
 
-**Tests nécessaires :** suite `tests/` complète sur PostgreSQL (CI), exercice A/B d'isolation en recette réelle (GO_NO_GO §prérequis), re-test après dédication de la clé HMAC.
+**Tests nécessaires :** suite `tests/` complète sur PostgreSQL (CI), exercice A/B d'isolation en recette réelle (GO_NO_GO §prérequis), vérifier que le démarrage d'un `api` staging sans `MF_RATE_LIMIT_KEY` échoue proprement (couvert par les tests unitaires + exigence compose).
 
 **Critères de validation :** 0 finding critique/élevé ouvert ; audit indépendant rendu ; avis juridique écrit ; `--check` matrice vert en CI.
 
@@ -133,7 +133,7 @@ La matrice complète (14 rôles × 31 entrées de menu × routes UI × 118 permi
 
 **P0 (bloquants GO pilote — repris du GO_NO_GO, inchangés) :** coffre de sauvegarde externe réel + RPO/RTO mesurés ; exercice staging release→rollback→vérifications (R2) ; isolation A/B en recette réelle ; revue juridique ; essai traceur physique ; essai Android réel ; SLO GPS p95/p99 ; éprouver les alertes par incident.
 
-**P1 (découverts/confirmés par cet audit) :** dédier la clé HMAC du rate-limiting ; implémenter ou retirer `identity.session.revoke_own/any` (écran « Mes sessions ») ; build/push d'images signées en CI + dependabot ; étendre l'offline aux inspections HSE (après arbitrage produit) ; rejouer `MATURITY_SCORECARD.md` et recalibrer `FUNCTIONAL_COVERAGE.md` (périmé au 30 oct : décrit HSE/pièces/pneus comme absents, contredit par les migrations 0036-0045 et la CI actuelle) ; harmoniser les tranches `later` du YAML.
+**P1 (découverts/confirmés par cet audit) :** ~~dédier la clé HMAC du rate-limiting~~ (traité — `MF_RATE_LIMIT_KEY`) ; implémenter ou retirer `identity.session.revoke_own/any` (écran « Mes sessions ») ; build/push d'images signées en CI + dependabot ; étendre l'offline aux inspections HSE (après arbitrage produit) ; rejouer `MATURITY_SCORECARD.md` et recalibrer `FUNCTIONAL_COVERAGE.md` (périmé au 30 oct : décrit HSE/pièces/pneus comme absents, contredit par les migrations 0036-0045 et la CI actuelle) ; harmoniser les tranches `later` du YAML.
 
 **P2 :** chantier SaaS commercial (plans/quotas/facturation) — à lancer seulement après le GO pilote ; consolidation documentaire (regrouper les preuves DR dans `docs/ops/DISASTER_RECOVERY_EVIDENCE.md` après exercice réel).
 
