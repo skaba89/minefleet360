@@ -8,7 +8,7 @@ import uuid
 
 import pytest
 
-from tests.conftest import API, PASSWORD, Api, TenantFixture
+from tests.conftest import API, PASSWORD, Api, TenantFixture, bearer
 
 COOKIE = "mf_refresh"
 
@@ -51,12 +51,19 @@ def test_liste_marque_la_session_courante(api: Api) -> None:
 
 def test_revoque_une_session_precise_et_invalide_son_refresh(api: Api) -> None:
     tenant = api.tenant()
-    email = tenant.admin.email
-    ancien_cookie = login_cookie(api, tenant, email)
-    login_cookie(api, tenant, email)  # session courante du harnais (headers)
-    sessions = api.client.get(f"{API}/me/sessions", headers=tenant.admin.headers).json()
-    cible = next(s for s in sessions if not s["is_current"])
-    courante = next(s for s in sessions if s["is_current"])
+    # Connexion ciblée : on conserve ses headers et son cookie pour la reconnaître dans la liste.
+    resp = api.client.post(
+        f"{API}/auth/login",
+        json={"workspace_code": tenant.code, "email": tenant.admin.email, "password": PASSWORD},
+    )
+    assert resp.status_code == 200, resp.text
+    headers_cible = bearer(resp.json()["access_token"])
+    ancien_cookie = resp.cookies.get(COOKIE)
+    assert ancien_cookie
+    login_cookie(api, tenant, tenant.admin.email)  # une autre session, non ciblée
+
+    sessions = api.client.get(f"{API}/me/sessions", headers=headers_cible).json()
+    cible = next(s for s in sessions if s["is_current"])
 
     assert (
         api.client.post(
@@ -67,8 +74,8 @@ def test_revoque_une_session_precise_et_invalide_son_refresh(api: Api) -> None:
 
     restantes = api.client.get(f"{API}/me/sessions", headers=tenant.admin.headers).json()
     assert cible["auth_session_id"] not in {s["auth_session_id"] for s in restantes}
-    assert courante["auth_session_id"] in {s["auth_session_id"] for s in restantes}
-    # La session révoquée ne peut plus se rafraîchir ; la courante oui.
+    assert len(restantes) >= 2  # la session des headers admin et l'autre connexion restent actives
+    # La session révoquée ne peut plus se rafraîchir.
     assert refresh_with(api, ancien_cookie) == 401
 
 
