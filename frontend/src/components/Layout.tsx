@@ -111,6 +111,7 @@ export function Layout() {
           <span className="user-avatar" aria-hidden="true">{me.display_name.slice(0, 1).toUpperCase()}</span>
           <span className="user-name">{me.display_name}<small>Mon espace</small></span>
           <Link to="/mon-compte/securite">Sécurité</Link>
+          <Link to="/mon-compte/sessions">Mes sessions</Link>
           <button
             type="button"
             className="link"

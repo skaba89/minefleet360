@@ -28,3 +28,5 @@ infra/deploy/release-state/
 
 # Captures locales de démonstration, ne jamais publier les données affichées.
 frontend/artifacts/
+# artefact local de pip install -e (jamais commité)
+backend/minefleet_api.egg-info/
