@@ -81,11 +81,15 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         check_database_role()
         yield
 
+    # En production, la spécification OpenAPI n'est pas publiée : elle cartographie les permissions
+    # de chaque route (x-permission) et élargit la surface de reconnaissance. Les environnements
+    # locaux et de recette la conservent (contrat OpenAPI, intégration, support).
+    expose_docs = settings.env != "production"
     app = FastAPI(
         title="MINEFLEET 360 API",
         version="0.1.0",
-        openapi_url=f"{API_PREFIX}/openapi.json",
-        docs_url=f"{API_PREFIX}/docs",
+        openapi_url=f"{API_PREFIX}/openapi.json" if expose_docs else None,
+        docs_url=f"{API_PREFIX}/docs" if expose_docs else None,
         redoc_url=None,
         lifespan=lifespan,
     )
