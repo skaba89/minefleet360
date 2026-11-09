@@ -21,7 +21,25 @@ docker build --target runtime --build-arg MF_RELEASE_COMMIT="$release_commit" \
 
 Après publication, récupérer les digests attribués par le registre. Le manifeste accepte uniquement `registry/repository@sha256:<digest>`, jamais `latest`, `main` ou un tag seul. Le label OCI `org.opencontainers.image.revision` de chaque image doit correspondre au commit du manifeste. L'image API porte aussi `com.minefleet.alembic-head`, qui doit correspondre à `migration_head`. Le script vérifie ces labels après le téléchargement.
 
-La signature d'image, la provenance SLSA et la publication automatique ne sont pas encore livrées par ce lot.
+La signature d'image, la provenance SLSA et la publication automatique sont livrées par le workflow CI `release-images` (déclenché sur tag `v*.*.*` ou manuellement, choix de la référence) :
+
+1. **Construction et publication** — images `runtime` API et web poussées vers `ghcr.io/skaba89/minefleet360/api` et `…/web`, avec provenance SLSA `mode=max` et SBOM attachés (buildx). Les labels OCI `org.opencontainers.image.revision` et `com.minefleet.alembic-head` sont posés par les `--build-arg` du Dockerfile (la tête de migration est détectée depuis `backend/alembic/versions`, pas codée en dur).
+2. **Signature Cosign keyless** (Sigstore) : `cosign sign --yes IMAGE@DIGEST`, suivie d'une auto-vérification dans le même job. Le certificat porte l'émetteur OIDC `https://token.actions.githubusercontent.com` et l'identité `https://github.com/skaba89/minefleet360/.github/workflows/release-images.yml@<ref>`.
+3. **Vérification côté déploiement** — avant toute application de manifeste, sur un hôte disposant de Cosign :
+
+```bash
+cosign verify \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp '^https://github.com/skaba89/minefleet360/' \
+  ghcr.io/skaba89/minefleet360/api@sha256:<digest>
+
+cosign verify-attestation --type https://slsa.dev/provenance/v1 \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp '^https://github.com/skaba89/minefleet360/' \
+  ghcr.io/skaba89/minefleet360/api@sha256:<digest>
+```
+
+La construction locale ci-dessus reste valable pour un registre privé autre que GHCR ; dans ce cas, signer et vérifier avec la même procédure Cosign (paire de clés gérée hors dépôt).
 
 ## Manifeste
 

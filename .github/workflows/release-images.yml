@@ -1,0 +1,137 @@
+# Publication d'images signées (P1 audit 2026-11) : build runtime, push GHCR, provenance SLSA,
+# SBOM et signature Cosign keyless. Les manifestes de staging n'acceptent que des digests
+# registry/repo@sha256:... (docs/STAGING_RELEASE_ROLLBACK.md) — jamais un tag flottant.
+name: release-images
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Référence git à construire (branche, tag ou SHA)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-images-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  images:
+    name: Construire, publier et signer (${{ matrix.image }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # requis par Cosign keyless (Sigstore)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api
+            context: backend
+          - image: web
+            context: frontend
+    steps:
+      - name: Déterminer la référence à construire
+        id: ref
+        run: echo "ref=${{ inputs.ref || github.ref }}" >> "$GITHUB_OUTPUT"
+
+      - name: Extraire le dépôt
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ref.outputs.ref }}
+          fetch-depth: 0
+
+      - name: Identifiants du build
+        id: meta
+        run: |
+          commit="$(git rev-parse HEAD)"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          if [ "${{ matrix.image }}" = "api" ]; then
+            # Head Alembic = préfixe numérique le plus élevé des migrations (numérotation séquentielle).
+            head_rev="$(ls backend/alembic/versions | grep -E '^[0-9]{4}_.*\.py$' | sort | tail -1 | cut -d_ -f1)"
+            echo "migration_head=$head_rev" >> "$GITHUB_OUTPUT"
+            echo "Tête de migration détectée : $head_rev"
+          fi
+
+      - name: Préparer Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Connexion au registre GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tags de l'image
+        id: tags
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
+
+      - name: Construire, publier (provenance SLSA + SBOM)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          target: runtime
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: ${{ steps.tags.outputs.labels }}
+          provenance: mode=max
+          sbom: true
+          build-args: |
+            MF_RELEASE_COMMIT=${{ steps.meta.outputs.commit }}
+            ${{ matrix.image == 'api' && format('MF_MIGRATION_HEAD={0}', steps.meta.outputs.migration_head) || 'MF_MIGRATION_HEAD=unknown' }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      - name: Digest publié
+        id: digest
+        env:
+          IMAGE_REF: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
+        run: |
+          echo "digest=$IMAGE_REF" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Image \`${{ matrix.image }}\` publiée et signée"
+            echo '```'
+            echo "$IMAGE_REF"
+            echo '```'
+            echo 'Vérification (Cosign requis sur l'"'"'hôte de déploiement) :'
+            echo '```'
+            echo "cosign verify --certificate-oidc-issuer https://token.actions.githubusercontent.com \\"
+            echo "  --certificate-identity-regexp '^https://github.com/${{ github.repository }}/' $IMAGE_REF"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Installer Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Signer l'image (keyless)
+        env:
+          IMAGE_REF: ${{ steps.digest.outputs.digest }}
+        run: cosign sign --yes "$IMAGE_REF"
+
+      - name: Vérifier la signature (auto-contrôle)
+        env:
+          IMAGE_REF: ${{ steps.digest.outputs.digest }}
+        run: |
+          cosign verify \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
+            "$IMAGE_REF"
