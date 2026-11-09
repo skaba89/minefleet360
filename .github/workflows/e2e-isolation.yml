@@ -39,7 +39,7 @@ jobs:
       MF_E2E_ACCOUNTS: /tmp/minefleet-e2e-accounts.txt
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -143,7 +143,7 @@ jobs:
       MF_DEMO_ACCOUNTS: /tmp/minefleet-demo-accounts.tsv
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip

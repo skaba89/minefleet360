@@ -76,7 +76,7 @@ jobs:
 
       - name: Tags de l'image
         id: tags
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}
           tags: |
