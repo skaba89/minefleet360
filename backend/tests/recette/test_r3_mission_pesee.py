@@ -14,7 +14,9 @@ from tests.test_weighing import _loaded_mission, _set_payload, _ticket, _weighbr
 
 
 def test_r3_mission_complete_avec_pesee_mesuree_et_pesee_degradee(
-    client: TestClient, w: World, api: Api  # noqa: F811
+    client: TestClient,
+    w: World,  # noqa: F811
+    api: Api,
 ) -> None:
     refs = _refs(client, w)
     assignment = _assignment(client, w)
