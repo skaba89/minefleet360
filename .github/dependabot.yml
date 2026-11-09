@@ -30,6 +30,10 @@ updates:
         update-types:
           - "minor"
           - "patch"
+        # pytest exclu du groupe : 9.2.0 casse monkeypatch.setattr sur starlette.State
+        # (bisect CI 2026-11-09, cf. commentaire dans backend/pyproject.toml).
+        exclude-patterns:
+          - "pytest"
 
   - package-ecosystem: "npm"
     directory: "/frontend"

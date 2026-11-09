@@ -22,6 +22,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    # pytest épinglé en 9.1.1 : 9.2.0 casse monkeypatch.setattr sur starlette.State (l'undo supprime
+    # l'attribut dynamique au lieu de le restaurer → app.state.clock disparaît en cours de session).
+    # Bisect CI du 2026-11-09 ; à re-bumper après adaptation des tests (pas de setattr direct sur State).
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
     "httpx==0.28.1",
