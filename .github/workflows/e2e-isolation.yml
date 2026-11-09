@@ -38,7 +38,7 @@ jobs:
       MF_MAIL_CAPTURE_DIR: /tmp/minefleet-e2e-mail
       MF_E2E_ACCOUNTS: /tmp/minefleet-e2e-accounts.txt
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -142,7 +142,7 @@ jobs:
       MF_MAIL_CAPTURE_DIR: /tmp/minefleet-demo-mail
       MF_DEMO_ACCOUNTS: /tmp/minefleet-demo-accounts.tsv
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
