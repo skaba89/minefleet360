@@ -65,7 +65,7 @@ jobs:
       - name: Upgrade peuplé 0004 vers head
         run: pytest -q -p no:warnings tests_migrations
       - name: Tests (migrations, RLS, autorisations générées, isolation)
-        run: pytest -q -p no:warnings --maxfail=1 -rfEx --tb=long --cov=app --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=85
+        run: pytest -q -p no:warnings --cov=app --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=85
       - name: Audit des dépendances
         run: pip-audit --skip-editable
       - name: Créer une sauvegarde synthétique pour le test de restauration
