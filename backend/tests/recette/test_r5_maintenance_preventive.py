@@ -84,9 +84,9 @@ def test_r5_maintenance_preventive_bout_en_bout(
     assert approuvee.json()["status"] == "APPROVED" and approuvee.json()["decided_by"] == str(chef.user_id)
     assert _statut(client, w, engin, "R5-VIDANGE")["baseline_source"] == "DECLARATION"
 
-    # Relevé sous le seuil (10 000 + 5 000), daté dans le passé proche : la progression reste
-    # physiquement plausible (RM-103, 60 km/h max sur la catégorie) et l'échéance est à venir.
-    _releve(client, w, engin, "12000", read_at=datetime.now(UTC) - timedelta(hours=6))
+    # Relevé sous le seuil (10 000 + 5 000), daté la veille : la progression reste physiquement
+    # plausible (RM-103, 60 km/h max sur la catégorie) et l'échéance est à venir.
+    _releve(client, w, engin, "12000", read_at=datetime.now(UTC) - timedelta(hours=56))
     premiere = client.post(evaluate, headers=chef.headers, json={"site_id": site_s1})
     assert premiere.status_code == 200, premiere.text
     assert premiere.json() == {
@@ -98,8 +98,8 @@ def test_r5_maintenance_preventive_bout_en_bout(
         "insufficient_data": 0,
     }
 
-    # Au-delà du seuil : 3 100 km sur 6 heures, progression plausible ; l'évaluation enregistre
-    # l'échéance kilométrique à 15 000 km.
+    # Au-delà du seuil : 3 100 km sur 56 heures (≈ 55 km/h), progression plausible ; l'évaluation
+    # enregistre l'échéance kilométrique à 15 000 km.
     _releve(client, w, engin, "15100", read_at=datetime.now(UTC))
     seconde = client.post(evaluate, headers=chef.headers, json={"site_id": site_s1})
     assert seconde.status_code == 200, seconde.text
