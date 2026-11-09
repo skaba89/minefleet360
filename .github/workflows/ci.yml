@@ -90,7 +90,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Récupérer la sauvegarde synthétique éphémère
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: minefleet-ci-dump
           path: ${{ runner.temp }}
