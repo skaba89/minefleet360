@@ -24,7 +24,7 @@ jobs:
         run: bandit -r backend/app -lll -iii -f json -o bandit-report.json
       - name: Conserver le rapport SAST
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bandit-report
           path: bandit-report.json
