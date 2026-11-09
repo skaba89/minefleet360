@@ -222,6 +222,8 @@ def create_tank(auth: Authorized, body: TankCreate) -> Tank:
     _sync_low_stock_alert(auth, tank)
     _audit(auth, "fuel.tank.create", tank.fuel_tank_id, tank.site_id)
     auth.db.commit()
+    # COMMIT clôt SET LOCAL ; rétablir le contexte RLS pour la projection de réponse.
+    set_tenant_context(auth.db, auth.tenant_id)
     return tank
 
 
@@ -589,6 +591,8 @@ def update_threshold(auth: Authorized, tank_id: uuid.UUID, body: ThresholdUpdate
     _sync_low_stock_alert(auth, tank)
     _audit(auth, "fuel.stock.threshold.update", tank.fuel_tank_id, tank.site_id)
     auth.db.commit()
+    # COMMIT clôt SET LOCAL ; rétablir le contexte RLS pour la projection de réponse.
+    set_tenant_context(auth.db, auth.tenant_id)
     return tank
 
 
@@ -770,6 +774,8 @@ def acknowledge_stock_alert(auth: Authorized, alert_id: uuid.UUID) -> StockAlert
     auth.db.flush()
     _audit(auth, "fuel.stock.alert.acknowledge", alert.fuel_stock_alert_id, alert.site_id)
     auth.db.commit()
+    # COMMIT clôt SET LOCAL ; rétablir le contexte RLS avant la relecture de la cuve (stock_alert_output).
+    set_tenant_context(auth.db, auth.tenant_id)
     return alert
 
 
@@ -1220,6 +1226,8 @@ def create_issue(auth: Authorized, body: IssueCreate) -> Issue:
     auth.db.flush()
     _audit(auth, "fuel.issue.request", issue.fuel_issue_id, issue.site_id)
     auth.db.commit()
+    # COMMIT clôt SET LOCAL ; rétablir le contexte RLS pour la projection de réponse.
+    set_tenant_context(auth.db, auth.tenant_id)
     return issue
 
 
