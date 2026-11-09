@@ -21,7 +21,7 @@ pytest -q backend/tests/recette
 | R2 | Référentiel flotte et habilitations | fleet, workforce, assignment | admin, RH | ✅ implémenté |
 | R3 | Mission de transport et pesées pont bascule | dispatch (missions, pesées) | dispatcher, ops, chef atelier | ✅ implémenté |
 | R4 | Parcours panne transversal (vision §Processus) | dispatch, maintenance, magasin, costs | conducteur, dispatcher, chef atelier, mécanicien, magasinier | ✅ implémenté |
-| R5 | Maintenance préventive (échéances km/h) | maintenance | chef atelier, mécanicien | ⏳ à implémenter |
+| R5 | Maintenance préventive (échéances km/h) | maintenance | chef atelier, mécanicien | ✅ implémenté |
 | R6 | Carburant bout en bout (cuve→pompe→rapprochement) | fuel | responsable carburant, pompiste | ⏳ à implémenter |
 | R7 | GPS : ingestion, position courante, alertes | fleet/gps | plateforme technique, dispatcher | ⏳ à implémenter |
 | R8 | Isolation tenant et sécurité négative (IDOR) | authz, audit, ratelimit | comptes de deux tenants | ⏳ à implémenter |
