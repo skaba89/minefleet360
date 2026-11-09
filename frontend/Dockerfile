@@ -1,5 +1,5 @@
 # Interface web MINEFLEET 360 : build Vite puis service statique par Caddy (non root, port 8080).
-FROM node:22.23.4-alpine AS build
+FROM node:26.13.0-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
