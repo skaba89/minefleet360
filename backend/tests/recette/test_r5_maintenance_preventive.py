@@ -193,7 +193,7 @@ def test_r5_maintenance_preventive_bout_en_bout(
     assert graissage.status_code == 201, graissage.text
     suspendu = client.post(
         f"{API}/preventive-plans/{graissage.json()['maintenance_plan_id']}/suspend",
-        headers={**w.ops.headers, "If-Match": str(graissage.json()["row_version"])},
+        headers={**w.ops.headers, "If-Match": f'"{graissage.json()["row_version"]}"'},
         json={"reason": "Engin consigné pour expertise"},
     )
     assert suspendu.status_code == 200, suspendu.text
@@ -207,11 +207,11 @@ def test_r5_maintenance_preventive_bout_en_bout(
     revise_url = f"{API}/preventive-plans/{actuel['maintenance_plan_id']}/revise"
     corps = {"vehicle_id": engin, "code": "R5-VIDANGE", "km_interval": "4000", "days_interval": 365}
     conflit = client.post(
-        revise_url, headers={**w.ops.headers, "If-Match": str(actuel["row_version"] - 1)}, json=corps
+        revise_url, headers={**w.ops.headers, "If-Match": f'"{actuel["row_version"] - 1}"'}, json=corps
     )
     assert (conflit.status_code, conflit.json()["code"]) == (409, "VERSION_CONFLICT")
     revise = client.post(
-        revise_url, headers={**w.ops.headers, "If-Match": str(actuel["row_version"])}, json=corps
+        revise_url, headers={**w.ops.headers, "If-Match": f'"{actuel["row_version"]}"'}, json=corps
     )
     assert revise.status_code == 200, revise.text
     nouveau = revise.json()
