@@ -77,7 +77,7 @@ jobs:
             pg_dump --host=127.0.0.1 --port=5432 --username=postgres \
               --format=custom --file=/artifacts/minefleet-ci.dump "$MF_DB_NAME"
       - name: Transmettre la sauvegarde synthétique au job isolé
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: minefleet-ci-dump
           path: ${{ runner.temp }}/minefleet-ci.dump
