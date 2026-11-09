@@ -40,7 +40,8 @@ def test_r3_mission_complete_avec_pesee_mesuree_et_pesee_degradee(
         assert _event(client, w, mid, event).status_code == 200, event
 
     # Rotation 2 — pont en panne : saisie dégradée puis double validation.
-    for event in ("DEPARTED", "ARRIVED_LOADING", "LOADED"):
+    # Après UNLOADED, la rotation suivante redémarre directement à ARRIVED_LOADING (un seul DEPARTED).
+    for event in ("ARRIVED_LOADING", "LOADED"):
         assert _event(client, w, mid, event).status_code == 200, event
     rotation_2 = client.get(f"{API}/missions/{mid}", headers=w.ops.headers).json()["rotations"][1]
     ticket_2 = client.post(
