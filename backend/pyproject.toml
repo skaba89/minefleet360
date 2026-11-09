@@ -4,8 +4,8 @@ version = "0.1.0"
 description = "MINEFLEET 360 — API (monolithe modulaire)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "fastapi==0.143.0",
-    "starlette==1.7.0",  # épinglé : FastAPI ne borne pas starlette (SEC-01)
+    "fastapi==0.162.0",
+    "starlette==1.10.0",  # épinglé : FastAPI ne borne pas starlette (SEC-01)
     "uvicorn[standard]==0.54.0",
     "pydantic[email]==2.14.3",
     "pydantic-settings==2.16.2",
@@ -22,7 +22,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest==9.2.0",
+    "pytest==9.1.1",
     "pytest-cov==7.1.0",
     "httpx==0.28.1",
     "ruff==0.17.4",
