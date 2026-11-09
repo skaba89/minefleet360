@@ -12,10 +12,11 @@ import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
+import pytest
 from fastapi.testclient import TestClient
 
 from tests.conftest import API, Api
-from tests.test_assignment import World, w  # noqa: F401  (fixture w)
+from tests.test_assignment import OffsetClock, World, w  # noqa: F401  (fixture w)
 from tests.test_dispatch import _assignment, _event, _mission, _refs
 from tests.test_maintenance import _act, _report, _vehicle_status
 
@@ -23,7 +24,12 @@ PRIX_HEURE = "50000.00"  # GNF par heure de main-d'œuvre
 PRIX_PIECE = "150000"  # GNF par pièce (réception valorisée, CMP)
 
 
-def test_r4_panne_transversale_bout_en_bout(client: TestClient, w: World, api: Api) -> None:  # noqa: F811
+def test_r4_panne_transversale_bout_en_bout(
+    client: TestClient,
+    w: World,  # noqa: F811  (fixture w)
+    api: Api,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     chef = api.user(w.t, "WORKSHOP_CHIEF")
     mecanicien = api.user(w.t, "MECHANIC", "SITE", "S1")
     magasinier = api.user(w.t, "STOREKEEPER", "SITE", "S1")
@@ -52,6 +58,10 @@ def test_r4_panne_transversale_bout_en_bout(client: TestClient, w: World, api: A
     # La mission suspendue ne peut pas être clôturée sans réaffectation ni reprise.
     cloture = _event(client, w, mid, "COMPLETED")
     assert (cloture.status_code, cloture.json()["code"]) == (409, "MISSION_STATE_INVALID")
+
+    # L'atelier prend le relais : l'horloge applicative avance de 11 min (dans la durée de vie des jetons)
+    # pour mesurer une immobilisation réelle entre le signalement et la remise en service.
+    monkeypatch.setattr(client.app.state, "clock", OffsetClock(timedelta(minutes=11)))  # type: ignore[attr-defined]
 
     # Réaffectation sur un engin de substitution : cycle perdu, relais tracé (L2A-R-01).
     substitution = _assignment(client, w)
