@@ -6,7 +6,7 @@ RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build
 
-FROM caddy:2.11.8-alpine AS runtime
+FROM caddy:2.11.9-alpine AS runtime
 ARG MF_RELEASE_COMMIT=unknown
 LABEL org.opencontainers.image.revision=$MF_RELEASE_COMMIT
 COPY --chmod=644 deploy/Caddyfile /etc/caddy/Caddyfile
