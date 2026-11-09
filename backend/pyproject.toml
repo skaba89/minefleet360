@@ -4,19 +4,19 @@ version = "0.1.0"
 description = "MINEFLEET 360 — API (monolithe modulaire)"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "fastapi==0.143.0",
-    "starlette==1.7.0",  # épinglé : FastAPI ne borne pas starlette (SEC-01)
+    "fastapi==0.162.0",
+    "starlette==1.10.0",  # épinglé : FastAPI ne borne pas starlette (SEC-01)
     "uvicorn[standard]==0.54.0",
-    "pydantic[email]==2.14.1",
-    "pydantic-settings==2.15.0",
-    "sqlalchemy==2.1.4",
-    "psycopg[binary]==3.3.6",
-    "alembic==1.20.0",
+    "pydantic[email]==2.14.3",
+    "pydantic-settings==2.16.2",
+    "sqlalchemy==2.1.8",
+    "psycopg[binary]==3.3.8",
+    "alembic==1.20.1",
     "argon2-cffi==25.1.0",
     "cryptography==50.0.2",  # chiffrement AES-GCM des secrets TOTP (C-03)
     "pyjwt==2.15.1",
     "pyyaml==6.0.3",
-    "tzdata==2026.5",
+    "tzdata==2026.6",
     "boto3>=1.35,<2",
 ]
 
@@ -25,8 +25,8 @@ dev = [
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
     "httpx==0.28.1",
-    "ruff==0.17.0",
-    "mypy==2.4.0",
+    "ruff==0.17.4",
+    "mypy==2.4.1",
     "types-PyYAML==6.0.12.20261103",
 ]
 
