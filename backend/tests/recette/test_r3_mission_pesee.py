@@ -69,6 +69,10 @@ def test_r3_mission_complete_avec_pesee_mesuree_et_pesee_degradee(
     assert approuve.status_code == 200 and approuve.json()["status"] == "VALID"
     assert approuve.json()["decisions"][0]["decided_by"] == str(autre_ops.user_id)
 
+    # Fin de la rotation 2 (déchargement), puis clôture de la mission.
+    for event in ("ARRIVED_UNLOADING", "UNLOADED"):
+        assert _event(client, w, mid, event).status_code == 200, event
+
     # Clôture de la mission après ses deux rotations.
     assert _event(client, w, mid, "COMPLETED").status_code == 200
     detail = client.get(f"{API}/missions/{mid}", headers=w.ops.headers).json()
