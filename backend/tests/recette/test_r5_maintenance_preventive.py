@@ -28,11 +28,11 @@ def _statut(client: TestClient, w: World, vehicle: str, code: str) -> dict[str, 
     return next(item for item in resp.json() if item["code"] == code)
 
 
-def _releve(client: TestClient, w: World, vehicle: str, value: str) -> Any:  # noqa: F811
+def _releve(client: TestClient, w: World, vehicle: str, value: str, *, read_at: datetime) -> Any:  # noqa: F811
     resp = client.post(
         f"{API}/vehicles/{vehicle}/meter-readings",
         headers=w.ops.headers,
-        json={"meter_kind": "ODOMETER_KM", "value": value},
+        json={"meter_kind": "ODOMETER_KM", "value": value, "read_at": read_at.isoformat()},
     )
     assert resp.status_code == 201, resp.text
     return resp
@@ -84,8 +84,9 @@ def test_r5_maintenance_preventive_bout_en_bout(
     assert approuvee.json()["status"] == "APPROVED" and approuvee.json()["decided_by"] == str(chef.user_id)
     assert _statut(client, w, engin, "R5-VIDANGE")["baseline_source"] == "DECLARATION"
 
-    # Relevé sous le seuil (10 000 + 5 000) : l'échéance n'est pas déclenchée, elle est à venir.
-    _releve(client, w, engin, "12000")
+    # Relevé sous le seuil (10 000 + 5 000), daté dans le passé proche : la progression reste
+    # physiquement plausible (RM-103, 60 km/h max sur la catégorie) et l'échéance est à venir.
+    _releve(client, w, engin, "12000", read_at=datetime.now(UTC) - timedelta(hours=6))
     premiere = client.post(evaluate, headers=chef.headers, json={"site_id": site_s1})
     assert premiere.status_code == 200, premiere.text
     assert premiere.json() == {
@@ -97,8 +98,9 @@ def test_r5_maintenance_preventive_bout_en_bout(
         "insufficient_data": 0,
     }
 
-    # Au-delà du seuil : l'évaluation enregistre l'échéance kilométrique à 15 000 km.
-    _releve(client, w, engin, "15100")
+    # Au-delà du seuil : 3 100 km sur 6 heures, progression plausible ; l'évaluation enregistre
+    # l'échéance kilométrique à 15 000 km.
+    _releve(client, w, engin, "15100", read_at=datetime.now(UTC))
     seconde = client.post(evaluate, headers=chef.headers, json={"site_id": site_s1})
     assert seconde.status_code == 200, seconde.text
     assert seconde.json()["created"] == 1
@@ -112,7 +114,7 @@ def test_r5_maintenance_preventive_bout_en_bout(
 
     # Idempotence : le même relevé rejoué ne pousse pas le cumul (hausse nulle) et ne double pas
     # l'échéance ; rejouer l'évaluation ne crée rien de plus.
-    _releve(client, w, engin, "15100")
+    _releve(client, w, engin, "15100", read_at=datetime.now(UTC))
     rejeu = client.post(evaluate, headers=chef.headers, json={"site_id": site_s1})
     assert rejeu.status_code == 200, rejeu.text
     assert (rejeu.json()["created"], rejeu.json()["already_recorded"]) == (0, 1)
