@@ -1244,6 +1244,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/insurance-policies/expiring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Expiring Insurance
+         * @description Polices échues ou arrivant à échéance dans l'horizon (règles pures de insurance_rules).
+         */
+        get: operations["expiring_insurance_api_v1_insurance_policies_expiring_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/legal-contracts": {
         parameters: {
             query?: never;
@@ -5510,6 +5530,46 @@ export interface components {
             vehicle_fleet_number: string | null;
             /** Vehicle Id */
             vehicle_id: string | null;
+        };
+        /** InsuranceExpiringOut */
+        InsuranceExpiringOut: {
+            /** Contract Id */
+            contract_id: string | null;
+            /**
+             * Coverage End
+             * Format: date
+             */
+            coverage_end: string;
+            /**
+             * Coverage Start
+             * Format: date
+             */
+            coverage_start: string;
+            /** Coverage Type */
+            coverage_type: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Insurance Policy Id
+             * Format: uuid
+             */
+            insurance_policy_id: string;
+            /** Insurer Name */
+            insurer_name: string;
+            /** Policy Number */
+            policy_number: string;
+            /** Premium Amount */
+            premium_amount: string | null;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Validity
+             * @enum {string}
+             */
+            validity: "EXPIRING" | "EXPIRED";
         };
         /** InsuranceOut */
         InsuranceOut: {
@@ -12392,6 +12452,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InsuranceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    expiring_insurance_api_v1_insurance_policies_expiring_get: {
+        parameters: {
+            query?: {
+                within_days?: number;
+                site_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InsuranceExpiringOut"][];
                 };
             };
             /** @description Validation Error */
