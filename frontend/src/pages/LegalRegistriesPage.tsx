@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
-import { DataState, ErrorMessage, Pager } from "../components/common";
+import { Badge, DataState, ErrorMessage, Pager } from "../components/common";
 import { can } from "../lib/permissions";
 import { useSites } from "../site/SiteContext";
 import { StorageReconciliationPanel } from "./StorageReconciliationPanel";
@@ -11,6 +11,8 @@ import { StorageReconciliationPanel } from "./StorageReconciliationPanel";
 const PAGE_SIZE = 25;
 type Contract = Schemas["ContractOut"];
 type Policy = Schemas["InsuranceOut"];
+type Expiring = Schemas["InsuranceExpiringOut"];
+const EXPIRING_HORIZON_DAYS = 45;
 
 type LegalTab = "contracts" | "insurance";
 
@@ -62,6 +64,11 @@ export function LegalRegistriesPage() {
     queryKey: ["insurance-policies", siteId, page],
     enabled: activeTab === "insurance" && canReadPolicies,
     queryFn: () => read("/insurance-policies", { query: { site_id: siteId, page, page_size: PAGE_SIZE } }),
+  });
+  const expiring = useQuery({
+    queryKey: ["insurance-policies-expiring", siteId],
+    enabled: activeTab === "insurance" && canReadPolicies,
+    queryFn: () => read("/insurance-policies/expiring", { query: { within_days: EXPIRING_HORIZON_DAYS, site_id: siteId } }),
   });
   if (!canReadContracts && !canReadPolicies) {
     return <p className="error" role="alert">Vous n'avez pas accès aux registres juridiques.</p>;
@@ -152,6 +159,7 @@ export function LegalRegistriesPage() {
             setCoverageEnd("");
             setPage(1);
             await queryClient.invalidateQueries({ queryKey: ["insurance-policies"] });
+            await queryClient.invalidateQueries({ queryKey: ["insurance-policies-expiring"] });
             setPolicyNotice("Police enregistrée. Vérifiez les documents auprès de votre assureur.");
           } catch (error) {
             setPolicyError(error);
@@ -221,6 +229,29 @@ export function LegalRegistriesPage() {
         </form>
       )}
       {activeTab === "contracts" && reviewNotice && <p role="status">{reviewNotice}</p>}
+      {activeTab === "insurance" && canReadPolicies && (
+        <section aria-label="Échéances d'assurance">
+          <h2>Échéances d'assurance — horizon {EXPIRING_HORIZON_DAYS} jours</h2>
+          <DataState
+            loading={expiring.isLoading}
+            error={expiring.error}
+            empty={!expiring.data?.length}
+            emptyText={`Aucune police échue ou à échéance dans les ${EXPIRING_HORIZON_DAYS} jours.`}
+          >
+            <table>
+              <thead><tr><th>Police</th><th>Assureur</th><th>Garantie</th><th>Début</th><th>Fin</th><th>État</th></tr></thead>
+              <tbody>{(expiring.data ?? []).map((item: Expiring) => (
+                <tr key={item.insurance_policy_id}>
+                  <td>{item.policy_number}</td><td>{item.insurer_name}</td><td>{item.coverage_type}</td>
+                  <td>{item.coverage_start}</td><td>{item.coverage_end}</td>
+                  <td>{item.validity === "EXPIRED" ? <Badge tone="bad">Expirée</Badge> : <Badge tone="warn">Échéance proche</Badge>}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </DataState>
+          <p className="muted small">Polices échues ou arrivant à échéance dans l'horizon ; les attestations signées restent à vérifier auprès de l'assureur.</p>
+        </section>
+      )}
       {!allowed ? <p className="error" role="alert">Accès non autorisé pour ce registre.</p> : (
         <DataState loading={current.isLoading} error={current.error} empty={!current.data?.items.length}>
           {activeTab === "contracts" ? (
@@ -231,12 +262,15 @@ export function LegalRegistriesPage() {
               ))}</tbody>
             </table>
           ) : (
-            <table>
-              <thead><tr><th>Police</th><th>Assureur</th><th>Garantie</th><th>Début</th><th>Fin</th></tr></thead>
-              <tbody>{(policies.data?.items ?? []).map((item: Policy) => (
-                <tr key={item.insurance_policy_id}><td>{item.policy_number}</td><td>{item.insurer_name}</td><td>{item.coverage_type}</td><td>{item.coverage_start}</td><td>{item.coverage_end}</td></tr>
-              ))}</tbody>
-            </table>
+            <>
+              <h2>Polices enregistrées</h2>
+              <table>
+                <thead><tr><th>Police</th><th>Assureur</th><th>Garantie</th><th>Début</th><th>Fin</th></tr></thead>
+                <tbody>{(policies.data?.items ?? []).map((item: Policy) => (
+                  <tr key={item.insurance_policy_id}><td>{item.policy_number}</td><td>{item.insurer_name}</td><td>{item.coverage_type}</td><td>{item.coverage_start}</td><td>{item.coverage_end}</td></tr>
+                ))}</tbody>
+              </table>
+            </>
           )}
           <Pager page={page} pageSize={PAGE_SIZE} total={current.data?.total ?? 0} onPage={setPage} />
         </DataState>

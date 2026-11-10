@@ -37,6 +37,11 @@ export function PartsPage() {
   const [actingReplenishmentId, setActingReplenishmentId] = useState<string | null>(null);
   const [replenishmentError, setReplenishmentError] = useState<unknown>(null);
   const [reservationError, setReservationError] = useState<unknown>(null);
+  const [orderReplenishmentId, setOrderReplenishmentId] = useState("");
+  const [orderSupplier, setOrderSupplier] = useState("");
+  const [orderSupplierRef, setOrderSupplierRef] = useState("");
+  const [orderBusy, setOrderBusy] = useState(false);
+  const [orderError, setOrderError] = useState<unknown>(null);
   const { siteId } = useSites();
   const canManageParts = can(me.grants, "maintenance.parts.manage", siteId);
   const canReceive = can(me.grants, "maintenance.parts.receive", siteId);
@@ -45,7 +50,7 @@ export function PartsPage() {
   const canRelease = can(me.grants, "maintenance.parts.release", siteId);
   const canConsume = can(me.grants, "maintenance.parts.consume", siteId);
   const activeAction = canReceive && (action === "receipt" || !canIssue) ? "receipt" : "issue";
-  const [tab, setTab] = useState<"stocks" | "movements" | "reservations" | "replenishments">("stocks");
+  const [tab, setTab] = useState<"stocks" | "movements" | "reservations" | "replenishments" | "orders">("stocks");
   const [page, setPage] = useState(1);
   const [criticalOnly, setCriticalOnly] = useState(false);
   const [replenishmentStatus, setReplenishmentStatus] = useState("");
@@ -89,8 +94,21 @@ export function PartsPage() {
     enabled: permitted && tab === "replenishments",
     queryFn: () => read("/part-replenishments", { query: { site_id: siteId, page, page_size: PAGE_SIZE, request_status: replenishmentStatus || undefined } }),
   });
+  const orders = useQuery({
+    queryKey: ["parts-purchase-orders", siteId, page],
+    enabled: permitted && tab === "orders",
+    queryFn: () => read("/parts-purchase-orders", { query: { site_id: siteId, page, page_size: PAGE_SIZE } }),
+  });
+  const approvedReplenishments = useQuery({
+    queryKey: ["part-replenishments-approved", siteId],
+    enabled: permitted && tab === "orders" && canManageParts,
+    queryFn: () => read("/part-replenishments", { query: { site_id: siteId, page: 1, page_size: 200, request_status: "APPROVED" } }),
+  });
+  const replenLabels = new Map(
+    (approvedReplenishments.data?.items ?? []).map((item) => [item.replenishment_id, item.reference]),
+  );
   const current = tab === "stocks" ? balances : tab === "movements" ? movements :
-    tab === "reservations" ? reservations : replenishments;
+    tab === "reservations" ? reservations : tab === "orders" ? orders : replenishments;
   if (!permitted) return <p role="alert">Vous n'avez pas accès au magasin de pièces.</p>;
 
   return (
@@ -256,6 +274,7 @@ export function PartsPage() {
           ["movements", "Mouvements"],
           ["reservations", "Réservations"],
           ["replenishments", "Réapprovisionnements"],
+          ["orders", "Commandes d'achat"],
         ] as const).map(([value, label]) => (
           <button
             key={value}
@@ -537,6 +556,81 @@ export function PartsPage() {
                     </div>
                   )}
                 </td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </DataState>
+      )}
+      {tab === "orders" && canManageParts && (
+        <form onSubmit={async (event) => {
+          event.preventDefault();
+          if (orderBusy) return;
+          setOrderBusy(true);
+          setOrderError(null);
+          setMessage("");
+          try {
+            await call("post", "/parts-purchase-orders", { body: {
+              replenishment_id: orderReplenishmentId,
+              supplier_name: orderSupplier.trim(),
+              supplier_reference: orderSupplierRef.trim(),
+            } });
+            setOrderReplenishmentId("");
+            setOrderSupplier("");
+            setOrderSupplierRef("");
+            setPage(1);
+            setMessage("Commande enregistrée comme brouillon. Transmettez-la à votre fournisseur.");
+            await queryClient.invalidateQueries({ queryKey: ["parts-purchase-orders"] });
+          } catch (error) {
+            setOrderError(error);
+          } finally {
+            setOrderBusy(false);
+          }
+        }}>
+          <h2>Créer une commande d'achat (brouillon)</h2>
+          <p className="muted small">La commande reprend la quantité de la demande approuvée ; elle reste un brouillon à transmettre au fournisseur.</p>
+          <div className="filters">
+            <label>Demande approuvée
+              <select required value={orderReplenishmentId}
+                onChange={(event) => setOrderReplenishmentId(event.target.value)}>
+                <option value="">Choisir une demande approuvée</option>
+                {(approvedReplenishments.data?.items ?? []).map((item) => (
+                  <option key={item.replenishment_id} value={item.replenishment_id}>
+                    {item.reference} — {partLabel(item.spare_part_id)} ({item.quantity})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>Fournisseur
+              <input required maxLength={200} value={orderSupplier}
+                onChange={(event) => setOrderSupplier(event.target.value)} />
+            </label>
+            <label>Référence fournisseur
+              <input required maxLength={120} value={orderSupplierRef}
+                onChange={(event) => setOrderSupplierRef(event.target.value)} />
+            </label>
+          </div>
+          <button className="primary" type="submit"
+            disabled={orderBusy || !orderReplenishmentId || !orderSupplier.trim() || !orderSupplierRef.trim()}>
+            {orderBusy ? "Création…" : "Créer la commande"}
+          </button>
+          {approvedReplenishments.data && !approvedReplenishments.data.items.length && (
+            <p className="muted small">Aucune demande de réapprovisionnement approuvée. Créez puis faites approuver une demande avant de commander.</p>
+          )}
+          {orderError !== null && <ErrorMessage error={orderError} />}
+        </form>
+      )}
+      {tab === "orders" && (
+        <DataState loading={orders.isLoading} error={orders.error} empty={!orders.data?.items.length}
+          emptyText="Aucune commande d'achat enregistrée.">
+          <table>
+            <thead><tr><th>Fournisseur</th><th>Référence fournisseur</th><th>Quantité</th><th>Statut</th><th>Demande liée</th></tr></thead>
+            <tbody>{orders.data?.items.map((item) => (
+              <tr key={item.purchase_order_id}>
+                <td>{item.supplier_name}</td>
+                <td>{item.supplier_reference}</td>
+                <td>{item.quantity}</td>
+                <td>{({ DRAFT: "Brouillon" } as Record<string, string>)[item.status] ?? item.status}</td>
+                <td className="muted small">{replenLabels.get(item.replenishment_id) ?? item.replenishment_id}</td>
               </tr>
             ))}</tbody>
           </table>

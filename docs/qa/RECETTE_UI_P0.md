@@ -86,7 +86,7 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 | Réception valorisée, réservation, consommation | STOREKEEPER, WORKSHOP_CHIEF | `/pieces` | `POST /part-movements/valued-receipts`, `/part-reservations[/consume]` | CMP et soldes exacts | ✔ API (R4/R10 backend) ; E2E ⏳ |
 | Réapprovisionnement (soumission + décision) | STOREKEEPER, OPS_MANAGER | `/pieces` | `POST /part-replenishments[/submit\|/decision]` | cycle complet, jamais auto-décidé | ⏳ non couvert E2E |
 | Cycle pneu (montage, usure, démontage, rebut, export) | WORKSHOP_CHIEF, MECHANIC | `/pneus` | `POST /tyres[/{id}/mount\|…]`, `/tyres/stock` | km consommés, alertes, CSV | ✔ `e2e/pneus.spec.ts` |
-| Commandes de pièces (`/parts-purchase-orders`) | STOREKEEPER, OPS_MANAGER | — (aucune page) | `GET\|POST /parts-purchase-orders` | ⏳ **aucune UI** — écart ouvert | ❌ |
+| Commandes de pièces (`/parts-purchase-orders`) | STOREKEEPER, OPS_MANAGER | `/pieces` (onglet « Commandes d'achat ») | `GET\|POST /parts-purchase-orders` | brouillon créé depuis une demande APPROVED, quantité reprise de la demande | ✔ `src/pages/PartsPage.test.tsx` (vitest) ; E2E ⏳ |
 
 ### HSE (scénario 8)
 | Action | Rôle(s) | Route UI | API | Résultat attendu | Preuve |
@@ -110,7 +110,7 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 |---|---|---|---|---|---|
 | Contrat brouillon → décision (quatre-yeux) | TENANT_ADMIN (créer), DIRECTION (décider) | `/juridique` | `POST /legal-contracts`, `/{id}/decision` | incomplet non soumis, décision tracée | ⏳ UI créée ; E2E ⏳ |
 | Police d'assurance | FINANCE | `/juridique` | `POST /insurance-policies` | GNF, dates cohérentes | ⏳ non couvert E2E |
-| Échéances d'assurance (nouvel endpoint) | FINANCE, DIRECTION, OPS_MANAGER, HSE, AUDITOR | `/juridique` | `GET /insurance-policies/expiring` | polices EXPIRING/EXPIRED | ⏳ **aucune UI** — écart ouvert |
+| Échéances d'assurance (nouvel endpoint) | FINANCE, DIRECTION, OPS_MANAGER, HSE, AUDITOR | `/juridique` (onglet assurances) | `GET /insurance-policies/expiring` | polices EXPIRING/EXPIRED avec état traduit | ✔ `src/pages/LegalRegistriesPage.test.tsx` (vitest) ; E2E ⏳ |
 | Réconciliation du stockage légal | DIRECTION, TENANT_ADMIN | `/juridique` | `GET /legal-contracts/storage-reconciliation` | cohérent / orphelin détecté | ⏳ non couvert E2E |
 | Coût complet par engin + taux horaires | FINANCE, OPS_MANAGER, DIRECTION, AUDITOR | `/couts` | `GET /costs/vehicles[/{id}/history]`, `POST /costs/labour-rates` | GNF, totaux = somme des lignes | ✔ `e2e-demo/parcours-demo.spec.ts` (lecture) ; actions ⏳ |
 
@@ -123,12 +123,13 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 
 ## 4. Écarts ouverts (prochaines PR)
 
-1. **UI manquante pour deux capacités backend** : `GET /insurance-policies/expiring` (échéances d'assurance) et
-   `GET|POST /parts-purchase-orders` (commandes de pièces) — à ajouter respectivement à `/juridique` et `/pieces`.
-2. **Specs E2E d'actions à écrire** : correction/annulation de pesée, décision/complétion d'action corrective HSE,
+1. **Specs E2E d'actions à écrire** : correction/annulation de pesée, décision/complétion d'action corrective HSE,
    décision de réapprovisionnement pièces, acquittement d'alerte GPS, cycle juridique complet, parcours plateforme.
-3. **Pages à deux formes de refus** : harmoniser l'accès direct non autorisé (texte dédié vs 403 générique) —
+2. **Pages à deux formes de refus** : harmoniser l'accès direct non autorisé (texte dédié vs 403 générique) —
    acceptable aujourd'hui (aucun crash, jamais de donnée), à uniformiser pour l'UX.
+
+*Résolu : l'écart d'UI pour `GET /insurance-policies/expiring` et `GET|POST /parts-purchase-orders` est couvert
+(onglet assurances de `/juridique` et onglet « Commandes d'achat » de `/pieces`, tests vitest inclus).*
 
 ## 5. Exécution
 
