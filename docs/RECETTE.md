@@ -26,7 +26,7 @@ pytest -q backend/tests/recette
 | R7 | GPS : ingestion, position courante, alertes | fleet/gps | plateforme technique, dispatcher | ✅ implémenté |
 | R8 | Isolation tenant et sécurité négative (IDOR) | authz, audit, ratelimit | comptes de deux tenants | ✅ implémenté |
 | R9 | Contrats, documents et assurance | legal | admin, finance | ✅ implémenté |
-| R10 | Consolidation des coûts et rentabilité | costs | finance, ops | ⏳ à implémenter |
+| R10 | Consolidation des coûts et rentabilité | costs | finance, ops | ✅ implémenté |
 
 ## Détail des scénarios
 
