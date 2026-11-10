@@ -1171,7 +1171,9 @@ permissions:
     tranche: 1c
     kind: read
     site_bound: true
-    routes: [{ method: GET, path: /insurance-policies, shape: collection, success: 200 }]
+    routes:
+      - { method: GET, path: /insurance-policies, shape: collection, success: 200 }
+      - { method: GET, path: /insurance-policies/expiring, shape: collection, success: 200 }
     grants:
       TENANT_ADMIN: [TENANT]
       DIRECTION: [TENANT]
