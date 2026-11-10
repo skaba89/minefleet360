@@ -141,6 +141,7 @@ jobs:
       MF_MAIL_BACKEND: capture
       MF_MAIL_CAPTURE_DIR: /tmp/minefleet-demo-mail
       MF_DEMO_ACCOUNTS: /tmp/minefleet-demo-accounts.tsv
+      MF_PLATFORM_ACCOUNT: /tmp/minefleet-demo-platform.tsv
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -179,6 +180,10 @@ jobs:
           alembic upgrade head
           mkdir -p "$MF_MAIL_CAPTURE_DIR"
           minefleet create-platform-admin --email platform-admin@example.com --name "Administrateur fictif"
+          # Le compte plateforme n'est pas dans le TSV DEMO : exposer e-mail + mot de passe (éphémère)
+          # pour la recette d'accès direct PLATFORM_ADMIN (e2e-demo/direct-url-access.spec.ts).
+          umask 077
+          printf '%s\t%s\n' "platform-admin@example.com" "$MF_BOOTSTRAP_PASSWORD" > "$MF_PLATFORM_ACCOUNT"
           minefleet demo seed --profile qa --seed 42 --credentials-out "$MF_DEMO_ACCOUNTS"
           minefleet demo verify
 
@@ -208,5 +213,5 @@ jobs:
       - name: Remove ephemeral credentials and traces
         if: always()
         run: |
-          rm -f "$MF_DEMO_ACCOUNTS"
+          rm -f "$MF_DEMO_ACCOUNTS" "$MF_PLATFORM_ACCOUNT"
           rm -rf frontend/test-results frontend/playwright-report
