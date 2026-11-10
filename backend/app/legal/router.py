@@ -1,11 +1,11 @@
 """Read-only legal and insurance registries, constrained by RBAC and site scope."""
 
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Header, Request, status
+from fastapi import APIRouter, Depends, Header, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import Date, Numeric, String, func, select, text
 from sqlalchemy.dialects.postgresql import UUID
@@ -28,6 +28,7 @@ from app.legal.document_registry import (
 from app.legal.document_upload_policy import DocumentUploadContext, contract_document_upload_allowed
 from app.legal.document_validation import MAX_PDF_BYTES
 from app.legal.document_verification_usecase import verify_contract_pdf_usecase
+from app.legal.insurance_rules import CoverageStatus, coverage_status
 from app.legal.reconciliation_service import summarize_tenant_contract_storage
 from app.legal.s3_factory import build_private_contract_store
 from app.legal.schemas import ContractDraftInput, InsurancePolicyInput
@@ -97,6 +98,10 @@ class InsuranceOut(BaseModel):
     premium_amount: Decimal | None
     currency: str
     contract_id: uuid.UUID | None
+
+
+class InsuranceExpiringOut(InsuranceOut):
+    validity: Literal["EXPIRING", "EXPIRED"]
 
 
 class ReconciliationSummaryOut(BaseModel):
@@ -226,6 +231,35 @@ def list_insurance(
         page_size=page.page_size,
         total=total,
     )
+
+
+@router.get("/insurance-policies/expiring", response_model=list[InsuranceExpiringOut])
+def expiring_insurance(
+    auth: InsuranceRead,
+    within_days: Annotated[int, Query(ge=0, le=365)] = 45,
+    site_id: uuid.UUID | None = None,
+) -> list[InsuranceExpiringOut]:
+    """Polices échues ou arrivant à échéance dans l'horizon (règles pures de insurance_rules)."""
+    if site_id is not None and not auth.scope.covers_site(site_id):
+        raise AppError("NOT_FOUND")
+    today = auth.clock.now().date()
+    horizon = today + timedelta(days=within_days + 1)
+    query = select(InsurancePolicy).where(
+        InsurancePolicy.tenant_id == auth.tenant_id,
+        InsurancePolicy.coverage_end <= horizon,
+    )
+    if not auth.scope.tenant_wide:
+        query = query.where(InsurancePolicy.site_id.in_(auth.scope.site_ids))
+    if site_id is not None:
+        query = query.where(InsurancePolicy.site_id == site_id)
+    rows = auth.db.scalars(query.order_by(InsurancePolicy.coverage_end).limit(500)).all()
+    expirantes: list[InsuranceExpiringOut] = []
+    for row in rows:
+        validity = coverage_status(row.coverage_start, row.coverage_end, today, warning_days=within_days)
+        if validity in (CoverageStatus.EXPIRING, CoverageStatus.EXPIRED):
+            item = InsuranceOut.model_validate(row, from_attributes=True).model_dump()
+            expirantes.append(InsuranceExpiringOut(**item, validity=validity.value))
+    return expirantes
 
 
 @router.post("/legal-contracts", response_model=ContractOut, status_code=status.HTTP_201_CREATED)
