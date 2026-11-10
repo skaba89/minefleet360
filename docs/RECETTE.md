@@ -23,7 +23,7 @@ pytest -q backend/tests/recette
 | R4 | Parcours panne transversal (vision §Processus) | dispatch, maintenance, magasin, costs | conducteur, dispatcher, chef atelier, mécanicien, magasinier | ✅ implémenté |
 | R5 | Maintenance préventive (échéances km/h) | maintenance | chef atelier, mécanicien | ✅ implémenté |
 | R6 | Carburant bout en bout (cuve→pompe→rapprochement) | fuel | responsable carburant, pompiste | ✅ implémenté |
-| R7 | GPS : ingestion, position courante, alertes | fleet/gps | plateforme technique, dispatcher | ⏳ à implémenter |
+| R7 | GPS : ingestion, position courante, alertes | fleet/gps | plateforme technique, dispatcher | ✅ implémenté |
 | R8 | Isolation tenant et sécurité négative (IDOR) | authz, audit, ratelimit | comptes de deux tenants | ⏳ à implémenter |
 | R9 | Contrats, documents et assurance | legal | admin, finance | ⏳ à implémenter |
 | R10 | Consolidation des coûts et rentabilité | costs | finance, ops | ⏳ à implémenter |
