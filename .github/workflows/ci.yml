@@ -182,7 +182,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Permissions de l'interface alignées sur authz_matrix.yaml
-        run: pip install pyyaml==6.0.3 && python ../scripts/gen_permissions.py --check
+        run: |
+          pip install pyyaml==6.0.3
+          python ../scripts/gen_permissions.py --check
+          python ../scripts/generate_role_route_matrix.py --check
       - run: npm ci
       - name: Contrat OpenAPI synchronisé avec le backend
         env:

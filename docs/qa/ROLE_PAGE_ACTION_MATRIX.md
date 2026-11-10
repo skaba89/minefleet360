@@ -223,7 +223,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `legal.contract.submit` | 1c | `POST /legal-contracts/{contract_id}/submit` | `OPS_MANAGER`, `TENANT_ADMIN` |
 | `legal.contract.review` | 1c | `POST /legal-contracts/{contract_id}/decision`<br>`POST /legal-contracts/{contract_id}/documents/{document_id}/verify`<br>`GET /legal-contracts/storage-reconciliation` | `DIRECTION`, `TENANT_ADMIN` |
 | `legal.insurance.create` | 1c | `POST /insurance-policies` | `FINANCE`, `OPS_MANAGER`, `TENANT_ADMIN` |
-| `legal.insurance.read` | 1c | `GET /insurance-policies` | `AUDITOR`, `DIRECTION`, `FINANCE`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN` |
+| `legal.insurance.read` | 1c | `GET /insurance-policies`<br>`GET /insurance-policies/expiring` | `AUDITOR`, `DIRECTION`, `FINANCE`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN` |
 | `hse.incident.read` | 1c | `GET /hse/incidents`<br>`GET /hse/incidents/{hse_incident_id}`<br>`GET /hse/corrective-actions`<br>`GET /hse/summary` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `HSE`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
 | `hse.incident.report` | 1c | `POST /hse/incidents`<br>`POST /hse/incidents/{hse_incident_id}/evidence` | `DISPATCHER`, `FUEL_MANAGER`, `HSE`, `MECHANIC`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
 | `hse.incident.manage` | 1c | `POST /hse/incidents/{hse_incident_id}/transition`<br>`GET /hse/incidents/{hse_incident_id}/action-owners`<br>`POST /hse/incidents/{hse_incident_id}/actions`<br>`POST /hse/corrective-actions/{hse_corrective_action_id}/decision`<br>`GET /hse/inspections/{hse_inspection_id}/action-owners`<br>`POST /hse/inspections/{hse_inspection_id}/actions` | `HSE` |
@@ -245,9 +245,9 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | Rôle | Permissions | Routes API accessibles |
 |---|---:|---:|
 | `PLATFORM_ADMIN` | 6 | 16 |
-| `TENANT_ADMIN` | 65 | 122 |
-| `DIRECTION` | 34 | 90 |
-| `OPS_MANAGER` | 84 | 175 |
+| `TENANT_ADMIN` | 65 | 123 |
+| `DIRECTION` | 34 | 91 |
+| `OPS_MANAGER` | 84 | 176 |
 | `DISPATCHER` | 37 | 81 |
 | `HR` | 16 | 34 |
 | `DRIVER` | 4 | 15 |
@@ -255,9 +255,9 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `MECHANIC` | 17 | 45 |
 | `STOREKEEPER` | 17 | 49 |
 | `FUEL_MANAGER` | 28 | 62 |
-| `HSE` | 33 | 76 |
-| `FINANCE` | 22 | 52 |
-| `AUDITOR` | 37 | 94 |
+| `HSE` | 33 | 77 |
+| `FINANCE` | 22 | 53 |
+| `AUDITOR` | 37 | 95 |
 
 ## 6. Anomalies détectées mécaniquement
 
