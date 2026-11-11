@@ -1402,6 +1402,31 @@ permissions:
     audit: { action: billing.plan.update }
     grants: { PLATFORM_ADMIN: [PLATFORM] }
 
+  # --- commercialisation SaaS (lot 2 : abonnements tenant↔plan) --------------------------------------
+  # Gestion plateforme du cycle de vie (essai, activation, suspension, annulation, renouvellement) ;
+  # la lecture par la société de SON abonnement passe par billing.subscription.read (RLS applicative).
+  billing.subscription.manage:
+    tranche: 2a
+    kind: action
+    site_bound: false
+    routes:
+      - { method: POST, path: "/platform/tenants/{tenant_id}/subscriptions", shape: collection, success: 201 }
+      - { method: GET, path: "/platform/tenants/{tenant_id}/subscriptions", shape: collection, success: 200 }
+      - { method: POST, path: "/platform/tenants/{tenant_id}/subscriptions/{subscription_id}/activate", shape: item, success: 200 }
+      - { method: POST, path: "/platform/tenants/{tenant_id}/subscriptions/{subscription_id}/suspend", shape: item, success: 200 }
+      - { method: POST, path: "/platform/tenants/{tenant_id}/subscriptions/{subscription_id}/reactivate", shape: item, success: 200 }
+      - { method: POST, path: "/platform/tenants/{tenant_id}/subscriptions/{subscription_id}/cancel", shape: item, success: 200 }
+      - { method: POST, path: "/platform/tenants/{tenant_id}/subscriptions/{subscription_id}/renew", shape: item, success: 200 }
+    audit: { action: billing.subscription.manage }
+    grants: { PLATFORM_ADMIN: [PLATFORM] }
+  billing.subscription.read:
+    tranche: 2a
+    kind: read
+    site_bound: false
+    routes: [{ method: GET, path: /tenant/subscription, shape: singleton, success: 200 }]
+    grants:
+      { TENANT_ADMIN: [TENANT], DIRECTION: [TENANT], FINANCE: [TENANT], AUDITOR: [TENANT] }
+
 public_routes:
   # Authentification machine obligatoire dans la route ; aucun accès anonyme aux données.
   - { method: POST, path: /gps/telemetry }

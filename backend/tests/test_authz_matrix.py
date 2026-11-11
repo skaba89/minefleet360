@@ -425,7 +425,16 @@ def world(api: Api, client: TestClient) -> Iterator[World]:
         json={"code": "RBAC_PLAN", "name": "Plan RBAC", "status": "ACTIVE", "max_users": 5},
     )
     assert plan.status_code == 201, plan.text
+    # Lot 2 SaaS : un abonnement vivant sur la société A, cible du GET /tenant/subscription
+    # et de l'historique plateforme généré par ST02.
+    subscription = client.post(
+        f"{API}/platform/tenants/{a.tenant_id}/subscriptions",
+        headers=api.platform(),
+        json={"plan_id": plan.json()["plan_id"], "notes": "Abonnement RBAC"},
+    )
+    assert subscription.status_code == 201, subscription.text
     objects = {
+        "subscription_id": uuid.UUID(subscription.json()["subscription_id"]),
         "template_id": uuid.UUID(template.json()["hse_checklist_template_id"]),
         "hse_inspection_id": uuid.UUID(inspection.json()["hse_inspection_id"]),
         "hse_evidence_id": uuid.UUID(evidence.json()["hse_evidence_id"]),

@@ -1,15 +1,16 @@
-"""Catalogue de plans SaaS (lot 1 commercialisation).
+"""Catalogue de plans SaaS (lot 1) et abonnements (lot 2) — commercialisation.
 
 `saas_plan` est une donnée de référence PLATEFORME (aucun tenant_id, hors RLS applicative,
-comme `tenant`) : elle décrit l'offre commerciale et les quotas associés. L'attachement
-d'un plan à une société (abonnement, essai, suspension) est le lot 2 ; la facturation le lot 3.
-Aucune colonne de prix à ce stade : conformément à la règle « pas d'intégration de paiement
+comme `tenant`) : elle décrit l'offre commerciale et les quotas associés. `tenant_subscription`
+(lot 2) est une table applicative RLS classique : la société lit SON abonnement.
+Aucune colonne de prix : conformément à la règle « pas d'intégration de paiement
 ni de tarif non approuvé », la tarification n'est PAS modélisée avant arbitrage métier.
 """
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import CheckConstraint, Integer, String, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -45,3 +46,34 @@ class SaaSPlan(AuditedColumns, Base):
     max_vehicles: Mapped[int | None] = mapped_column(Integer)
     max_gps_trackers: Mapped[int | None] = mapped_column(Integer)
     document_retention_days: Mapped[int | None] = mapped_column(Integer)
+
+
+class TenantSubscription(AuditedColumns, Base):
+    """Abonnement d'une société à un plan (un abonnement « vivant » à la fois par société).
+
+    Cycle : TRIAL → ACTIVE → SUSPENDED (↔ réactivation) ; CANCELLED terminal.
+    La table est soumise à la RLS applicative : chaque société ne voit que ses lignes.
+    """
+
+    __tablename__ = "tenant_subscription"
+    __table_args__ = (
+        CheckConstraint("status IN ('TRIAL', 'ACTIVE', 'SUSPENDED', 'CANCELLED')", name="ck_ts_status"),
+    )
+    __mapper_args__ = {"eager_defaults": True}
+
+    subscription_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenant.tenant_id"), nullable=False, index=True
+    )
+    plan_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("saas_plan.plan_id"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String, nullable=False, server_default="TRIAL")
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    period_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    suspension_reason: Mapped[str | None] = mapped_column(String)
+    notes: Mapped[str | None] = mapped_column(String)

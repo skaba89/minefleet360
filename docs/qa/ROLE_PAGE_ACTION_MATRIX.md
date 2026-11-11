@@ -75,6 +75,8 @@ Pages toujours accessibles à tout compte authentifié : Accueil (`/`), Mon comp
 | `/mot-de-passe-oublie` | `ResetRequestPage` | publique (non authentifié) |
 | `/plateforme/societes` | `PlatformTenantsPage` | `organization.tenant.list` |
 | `/plateforme/plans` | `PlatformPlansPage` | détail imbriqué (cf. parent) |
+| `/plateforme/abonnements` | `PlatformSubscriptionsPage` | détail imbriqué (cf. parent) |
+| `/abonnement` | `TenantSubscriptionPage` | détail imbriqué (cf. parent) |
 | `/plateforme/nouvelle-societe` | `PlatformCreateTenantPage` | `organization.tenant.create` |
 | `/plateforme/etat` | `PlatformHealthPage` | `organization.tenant.list` |
 | `/vehicules` | `VehiclesPage` | `fleet.vehicle.read` |
@@ -243,14 +245,16 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `billing.plan.create` | 2a | `POST /platform/saas-plans` | `PLATFORM_ADMIN` |
 | `billing.plan.list` | 2a | `GET /platform/saas-plans`<br>`GET /platform/saas-plans/{plan_id}` | `PLATFORM_ADMIN` |
 | `billing.plan.update` | 2a | `PATCH /platform/saas-plans/{plan_id}` | `PLATFORM_ADMIN` |
+| `billing.subscription.manage` | 2a | `POST /platform/tenants/{tenant_id}/subscriptions`<br>`GET /platform/tenants/{tenant_id}/subscriptions`<br>`POST /platform/tenants/{tenant_id}/subscriptions/{subscription_id}/activate`<br>`POST /platform/tenants/{tenant_id}/subscriptions/{subscription_id}/suspend`<br>`POST /platform/tenants/{tenant_id}/subscriptions/{subscription_id}/reactivate`<br>`POST /platform/tenants/{tenant_id}/subscriptions/{subscription_id}/cancel`<br>`POST /platform/tenants/{tenant_id}/subscriptions/{subscription_id}/renew` | `PLATFORM_ADMIN` |
+| `billing.subscription.read` | 2a | `GET /tenant/subscription` | `AUDITOR`, `DIRECTION`, `FINANCE`, `TENANT_ADMIN` |
 
 ## 5. Couverture par rôle
 
 | Rôle | Permissions | Routes API accessibles |
 |---|---:|---:|
-| `PLATFORM_ADMIN` | 9 | 20 |
-| `TENANT_ADMIN` | 65 | 123 |
-| `DIRECTION` | 34 | 91 |
+| `PLATFORM_ADMIN` | 10 | 27 |
+| `TENANT_ADMIN` | 66 | 124 |
+| `DIRECTION` | 35 | 92 |
 | `OPS_MANAGER` | 84 | 176 |
 | `DISPATCHER` | 37 | 81 |
 | `HR` | 16 | 34 |
@@ -260,8 +264,8 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `STOREKEEPER` | 17 | 49 |
 | `FUEL_MANAGER` | 28 | 62 |
 | `HSE` | 33 | 77 |
-| `FINANCE` | 22 | 53 |
-| `AUDITOR` | 37 | 95 |
+| `FINANCE` | 23 | 54 |
+| `AUDITOR` | 38 | 96 |
 
 ## 6. Anomalies détectées mécaniquement
 
