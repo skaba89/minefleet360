@@ -76,7 +76,9 @@ Pages toujours accessibles à tout compte authentifié : Accueil (`/`), Mon comp
 | `/plateforme/societes` | `PlatformTenantsPage` | `organization.tenant.list` |
 | `/plateforme/plans` | `PlatformPlansPage` | détail imbriqué (cf. parent) |
 | `/plateforme/abonnements` | `PlatformSubscriptionsPage` | détail imbriqué (cf. parent) |
+| `/plateforme/facturation` | `PlatformInvoicesPage` | détail imbriqué (cf. parent) |
 | `/abonnement` | `TenantSubscriptionPage` | détail imbriqué (cf. parent) |
+| `/factures` | `TenantInvoicesPage` | détail imbriqué (cf. parent) |
 | `/plateforme/nouvelle-societe` | `PlatformCreateTenantPage` | `organization.tenant.create` |
 | `/plateforme/etat` | `PlatformHealthPage` | `organization.tenant.list` |
 | `/vehicules` | `VehiclesPage` | `fleet.vehicle.read` |
