@@ -4,7 +4,7 @@ import { Link } from "react-router";
 
 import { get, GpsStreamAccessDenied, streamGpsSnapshots, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
-import { DataState } from "../components/common";
+import { AccessDenied, DataState } from "../components/common";
 import { can } from "../lib/permissions";
 import { GPS_SIGNAL_LABEL, gpsSignalState } from "../lib/gpsSignal";
 import { gpsRetryDelayMs } from "../lib/gpsRetry";
@@ -127,7 +127,7 @@ export function LiveFleetPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [shown, now, byId],
   );
-  if (!permitted) return <p>Accès à la flotte non autorisé.</p>;
+  if (!permitted) return <AccessDenied />;
 
   const moving = shown.filter((item) => gpsSignalState(item, now) === "moving").length;
   const offline = shown.filter((item) => gpsSignalState(item, now) === "offline").length;

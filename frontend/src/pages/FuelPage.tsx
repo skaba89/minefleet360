@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
-import { Badge, DataState, ErrorMessage, Pager } from "../components/common";
+import { AccessDenied, Badge, DataState, ErrorMessage, Pager } from "../components/common";
 import { ActionForm, Options } from "../components/forms";
 import { Icon } from "../components/Icon";
 import { can } from "../lib/permissions";
@@ -339,7 +339,7 @@ export function FuelPage() {
   };
 
   if (!canRead && !canManage && !canReceive && !canRequest && !canDecide && !canStocktake && !canThreshold && !canReadPurchases && !canManageSuppliers && !canCreatePurchase && !canDecidePurchase && !canReceivePurchase) {
-    return <p>Vous n'avez pas accès à la gestion du carburant.</p>;
+    return <AccessDenied />;
   }
   return (
     <section>

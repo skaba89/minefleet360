@@ -60,7 +60,7 @@ it("affiche les indicateurs et signale un coût pièces incomplet", async () => 
 it("ne charge rien sans la permission", () => {
   grants = [{ role_code: "DISPATCHER", scope_type: "SITE", site_id: "s1" }];
   const client = show();
-  expect(screen.getByText("Vous n'avez pas accès à ces indicateurs.")).toBeTruthy();
+  expect(screen.getByText("Vous n'avez pas accès à cette page.")).toBeTruthy();
   expect(read).not.toHaveBeenCalled();
   client.clear();
 });

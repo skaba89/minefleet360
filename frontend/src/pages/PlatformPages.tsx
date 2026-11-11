@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router";
 
 import { get, request, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
-import { DataState, ErrorMessage, Pager } from "../components/common";
+import { AccessDenied, DataState, ErrorMessage, Pager } from "../components/common";
 import { ActionForm } from "../components/forms";
 import { can } from "../lib/permissions";
 
@@ -49,7 +49,7 @@ export function PlatformTenantsPage() {
   });
 
   if (!authorized) {
-    return <p className="error" role="alert">Accès réservé à l'administration de la plateforme.</p>;
+    return <AccessDenied />;
   }
 
   const items = tenants.data?.items ?? [];
@@ -118,7 +118,7 @@ export function PlatformOverview() {
     enabled: allowed,
     queryFn: () => get<TenantPage>("/platform/tenants", { page: 1, page_size: 1 }),
   });
-  if (!allowed) return <p className="error" role="alert">Accès plateforme non autorisé.</p>;
+  if (!allowed) return <AccessDenied />;
 
   return (
     <section>
@@ -150,7 +150,7 @@ export function PlatformCreateTenantPage() {
     setForm((current) => ({ ...current, [key]: event.target.value }));
 
   if (!authorized) {
-    return <p className="error" role="alert">Création de sociétés non autorisée.</p>;
+    return <AccessDenied />;
   }
 
   return (
@@ -217,7 +217,7 @@ export function PlatformHealthPage() {
       return { health: health.status === "ok", ready: ready.status === "ok" };
     },
   });
-  if (!authorized) return <p className="error" role="alert">Accès plateforme non autorisé.</p>;
+  if (!authorized) return <AccessDenied />;
   return (
     <section>
       <h1>État des services</h1>

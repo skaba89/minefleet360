@@ -4,7 +4,7 @@ import { Link } from "react-router";
 
 import { read } from "../api/client";
 import { useMe } from "../auth/AuthContext";
-import { Badge, DataState } from "../components/common";
+import { AccessDenied, Badge, DataState } from "../components/common";
 import { Fact } from "../components/forms";
 import { label, VEHICLE_STATUS } from "../lib/labels";
 import { can } from "../lib/permissions";
@@ -54,7 +54,7 @@ export function ReliabilityPage() {
         <h1>Fiabilité du parc</h1>
       </div>
       {!allowed ? (
-        <p className="muted">Vous n'avez pas accès à ces indicateurs.</p>
+        <AccessDenied />
       ) : (
         <>
           <div className="filters">

@@ -57,7 +57,7 @@ it("présente aux administrateurs plateforme les seules métadonnées des socié
 it("n'appelle aucune API plateforme sans la permission correspondante", async () => {
   canMock.mockReturnValue(false);
   mount(<PlatformTenantsPage />);
-  expect(screen.getByRole("alert").textContent).toContain("Accès réservé");
+  expect(screen.getByRole("alert").textContent).toBe("Vous n'avez pas accès à cette page.");
   await waitFor(() => expect(getMock).not.toHaveBeenCalled());
 });
 
@@ -72,7 +72,7 @@ it("affiche le nombre de sociétés depuis l'API autorisée", async () => {
 it("refuse la création d'une société sans permission et n'appelle pas l'API", () => {
   canMock.mockReturnValue(false);
   mount(<PlatformCreateTenantPage />);
-  expect(screen.getByRole("alert").textContent).toContain("non autorisée");
+  expect(screen.getByRole("alert").textContent).toBe("Vous n'avez pas accès à cette page.");
   expect(requestMock).not.toHaveBeenCalled();
 });
 
@@ -130,6 +130,6 @@ it("affiche les sondes de disponibilité quand elles répondent", async () => {
 it("ne consulte pas les sondes depuis un compte non autorisé", () => {
   canMock.mockReturnValue(false);
   mount(<PlatformHealthPage />);
-  expect(screen.getByRole("alert").textContent).toContain("non autorisé");
+  expect(screen.getByRole("alert").textContent).toBe("Vous n'avez pas accès à cette page.");
   expect(getMock).not.toHaveBeenCalled();
 });

@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
-import { Badge, DataState, ErrorMessage, Pager } from "../components/common";
+import { AccessDenied, Badge, DataState, ErrorMessage, Pager } from "../components/common";
 import { can } from "../lib/permissions";
 import { useSites } from "../site/SiteContext";
 import { StorageReconciliationPanel } from "./StorageReconciliationPanel";
@@ -71,7 +71,7 @@ export function LegalRegistriesPage() {
     queryFn: () => read("/insurance-policies/expiring", { query: { within_days: EXPIRING_HORIZON_DAYS, site_id: siteId } }),
   });
   if (!canReadContracts && !canReadPolicies) {
-    return <p className="error" role="alert">Vous n'avez pas accès aux registres juridiques.</p>;
+    return <AccessDenied />;
   }
   const current = activeTab === "contracts" ? contracts : policies;
   const allowed = activeTab === "contracts" ? canReadContracts : canReadPolicies;
@@ -252,7 +252,7 @@ export function LegalRegistriesPage() {
           <p className="muted small">Polices échues ou arrivant à échéance dans l'horizon ; les attestations signées restent à vérifier auprès de l'assureur.</p>
         </section>
       )}
-      {!allowed ? <p className="error" role="alert">Accès non autorisé pour ce registre.</p> : (
+      {!allowed ? <AccessDenied /> : (
         <DataState loading={current.isLoading} error={current.error} empty={!current.data?.items.length}>
           {activeTab === "contracts" ? (
             <table>
