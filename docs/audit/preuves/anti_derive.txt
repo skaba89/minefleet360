@@ -1,0 +1,2 @@
+Commandes : python scripts/generate_role_route_matrix.py --check && python scripts/gen_permissions.py --check
+Statut : « matrice à jour » ×2 (exécution locale 2026-11-11, base e36ab33)

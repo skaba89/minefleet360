@@ -1,8 +1,3 @@
-Commande : pytest -q -x (variables de test synthétiques)
-Statut : code 1, préparation DB impossible. Extraits sans paramètres de connexion sensibles :
-E           psycopg.OperationalError: connection failed: connection to server at "127.0.0.1", port 5432 failed: Connection refused
-E           - host: 'localhost', port: 5432, hostaddr: '::1': connection failed: connection to server at "::1", port 5432 failed: Connection refused
-E           - host: 'localhost', port: 5432, hostaddr: '127.0.0.1': connection failed: connection to server at "127.0.0.1", port 5432 failed: Connection refused
-E           sqlalchemy.exc.OperationalError: (psycopg.OperationalError) connection failed: connection to server at "127.0.0.1", port 5432 failed: Connection refused
-ERROR tests/test_architecture.py::test_only_tenancy_module_sets_tenant_context
-1 warning, 1 error in 0.58s
+Commande : pytest -q -x (MF_ENV=test, base minefleet_test, PostgreSQL 16.10 + PostGIS local)
+Statut : code 0 — 5207 passés, 43 avertissements, 444,72 s (exécution locale 2026-11-11, base e36ab33)
+Nota : première exécution locale complète de la suite intégrée (harnais RLS/authz inclus) ; la révision précédente de l'audit n'avait pu exécuter que les tests unitaires (360).
