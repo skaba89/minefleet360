@@ -65,10 +65,13 @@ async function audit(page: Page, touchTargets: boolean): Promise<Problem[]> {
       }
       return false;
     };
+    // Les marqueurs de la carte flotte vivent dans un canvas panable/zoomable (MapLibre) : selon le
+    // cadrage, un pin peut déborder du viewport sans être un défaut de mise en page.
+    const inPannableMap = (el: Element) => el.closest(".fleet-map-canvas") !== null;
     for (const el of Array.from(document.querySelectorAll("button, a, input, select, textarea"))) {
       const r = el.getBoundingClientRect();
       if (r.width === 0 || r.height === 0 || getComputedStyle(el).visibility === "hidden") continue;
-      if (r.right > width + 1 && !scrollsInside(el)) problems.push({ kind: "hors-écran", detail: describe(el) });
+      if (r.right > width + 1 && !scrollsInside(el) && !inPannableMap(el)) problems.push({ kind: "hors-écran", detail: describe(el) });
       const type = el.getAttribute("type") ?? "";
       const control = ["BUTTON", "SELECT", "TEXTAREA"].includes(el.tagName) ||
         (el.tagName === "INPUT" && !["checkbox", "radio", "file", "hidden"].includes(type));
