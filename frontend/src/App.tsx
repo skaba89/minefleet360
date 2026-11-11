@@ -16,6 +16,8 @@ import { GeofencesPage } from "./pages/GpsHistory";
 import { HomePage } from "./pages/HomePage";
 import { PlatformCreateTenantPage, PlatformHealthPage, PlatformTenantsPage } from "./pages/PlatformPages";
 import { PlatformPlansPage } from "./pages/PlatformPlansPage";
+import { PlatformSubscriptionsPage } from "./pages/PlatformSubscriptionsPage";
+import { TenantSubscriptionPage } from "./pages/TenantSubscriptionPage";
 import { ChecklistTemplatesPage, HseInspectionPage, HseInspectionsPage } from "./pages/HseInspectionsPages";
 import { OfflineFieldPage } from "./pages/HseOffline";
 import { HseIncidentPage, HsePage } from "./pages/HsePages";
@@ -64,6 +66,8 @@ export function App() {
           <Route index element={<HomePage />} />
           <Route path="plateforme/societes" element={<PlatformTenantsPage />} />
           <Route path="plateforme/plans" element={<PlatformPlansPage />} />
+          <Route path="plateforme/abonnements" element={<PlatformSubscriptionsPage />} />
+          <Route path="abonnement" element={<TenantSubscriptionPage />} />
           <Route path="plateforme/nouvelle-societe" element={<PlatformCreateTenantPage />} />
           <Route path="plateforme/etat" element={<PlatformHealthPage />} />
           <Route path="vehicules" element={<VehiclesPage />} />

@@ -2142,6 +2142,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/tenants/{tenant_id}/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Subscriptions */
+        get: operations["list_subscriptions_api_v1_platform_tenants__tenant_id__subscriptions_get"];
+        put?: never;
+        /** Create Subscription */
+        post: operations["create_subscription_api_v1_platform_tenants__tenant_id__subscriptions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{tenant_id}/subscriptions/{subscription_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate Subscription */
+        post: operations["activate_subscription_api_v1_platform_tenants__tenant_id__subscriptions__subscription_id__activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{tenant_id}/subscriptions/{subscription_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Subscription */
+        post: operations["cancel_subscription_api_v1_platform_tenants__tenant_id__subscriptions__subscription_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{tenant_id}/subscriptions/{subscription_id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reactivate Subscription */
+        post: operations["reactivate_subscription_api_v1_platform_tenants__tenant_id__subscriptions__subscription_id__reactivate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{tenant_id}/subscriptions/{subscription_id}/renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Renew Subscription */
+        post: operations["renew_subscription_api_v1_platform_tenants__tenant_id__subscriptions__subscription_id__renew_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{tenant_id}/subscriptions/{subscription_id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Suspend Subscription */
+        post: operations["suspend_subscription_api_v1_platform_tenants__tenant_id__subscriptions__subscription_id__suspend_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/tenants/{tenant_id}/suspend": {
         parameters: {
             query?: never;
@@ -2489,6 +2592,23 @@ export interface paths {
         head?: never;
         /** Update Own Tenant */
         patch: operations["update_own_tenant_api_v1_tenant_patch"];
+        trace?: never;
+    };
+    "/api/v1/tenant/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Own Subscription */
+        get: operations["read_own_subscription_api_v1_tenant_subscription_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/tyres": {
@@ -6663,6 +6783,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[SubscriptionSummary] */
+        Page_SubscriptionSummary_: {
+            /** Items */
+            items: components["schemas"]["SubscriptionSummary"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[TankOut] */
         Page_TankOut_: {
             /** Items */
@@ -8093,6 +8224,123 @@ export interface components {
              */
             spare_part_store_id: string;
         };
+        /**
+         * SubscriptionCreate
+         * @description Création de l'abonnement courant d'une société : essai daté ou activation directe.
+         */
+        SubscriptionCreate: {
+            /** Notes */
+            notes?: string | null;
+            /** Period Ends At */
+            period_ends_at?: string | null;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /** Trial Days */
+            trial_days?: number | null;
+        };
+        /** SubscriptionOut */
+        SubscriptionOut: {
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Notes */
+            notes: string | null;
+            /** Period Ends At */
+            period_ends_at: string | null;
+            /** Plan Code */
+            plan_code: string;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /** Plan Name */
+            plan_name: string;
+            /** Row Version */
+            row_version: number;
+            /** Status */
+            status: string;
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Suspended At */
+            suspended_at: string | null;
+            /** Suspension Reason */
+            suspension_reason: string | null;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Trial Ends At */
+            trial_ends_at: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * SubscriptionRenew
+         * @description Renouvellement manuel de la période (lot 3 apportera la facturation).
+         */
+        SubscriptionRenew: {
+            /**
+             * Period Ends At
+             * Format: date-time
+             */
+            period_ends_at: string;
+        };
+        /** SubscriptionStatusChange */
+        SubscriptionStatusChange: {
+            /** Reason */
+            reason: string;
+        };
+        /** SubscriptionSummary */
+        SubscriptionSummary: {
+            /** Cancelled At */
+            cancelled_at: string | null;
+            /** Period Ends At */
+            period_ends_at: string | null;
+            /** Plan Code */
+            plan_code: string;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /** Plan Name */
+            plan_name: string;
+            /** Row Version */
+            row_version: number;
+            /** Status */
+            status: string;
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Suspended At */
+            suspended_at: string | null;
+            /** Suspension Reason */
+            suspension_reason: string | null;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Trial Ends At */
+            trial_ends_at: string | null;
+        };
         /** SupplierCreate */
         SupplierCreate: {
             /** Code */
@@ -8247,6 +8495,24 @@ export interface components {
         TenantStatusChange: {
             /** Reason */
             reason: string;
+        };
+        /**
+         * TenantSubscriptionOut
+         * @description Vue côté société : SON abonnement et les quotas du plan (aucune donnée commerciale interne).
+         */
+        TenantSubscriptionOut: {
+            /** Period Ends At */
+            period_ends_at: string | null;
+            plan: components["schemas"]["PlanSummary"];
+            /** Status */
+            status: string;
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Trial Ends At */
+            trial_ends_at: string | null;
         };
         /**
          * TenantSummary
@@ -14761,6 +15027,267 @@ export interface operations {
             };
         };
     };
+    list_subscriptions_api_v1_platform_tenants__tenant_id__subscriptions_get: {
+        parameters: {
+            query?: {
+                status?: ("TRIAL" | "ACTIVE" | "SUSPENDED" | "CANCELLED") | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_SubscriptionSummary_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_subscription_api_v1_platform_tenants__tenant_id__subscriptions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscriptionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_subscription_api_v1_platform_tenants__tenant_id__subscriptions__subscription_id__activate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                tenant_id: string;
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_subscription_api_v1_platform_tenants__tenant_id__subscriptions__subscription_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                tenant_id: string;
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscriptionStatusChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reactivate_subscription_api_v1_platform_tenants__tenant_id__subscriptions__subscription_id__reactivate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                tenant_id: string;
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    renew_subscription_api_v1_platform_tenants__tenant_id__subscriptions__subscription_id__renew_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                tenant_id: string;
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscriptionRenew"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suspend_subscription_api_v1_platform_tenants__tenant_id__subscriptions__subscription_id__suspend_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                tenant_id: string;
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscriptionStatusChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     suspend_tenant_api_v1_platform_tenants__tenant_id__suspend_post: {
         parameters: {
             query?: never;
@@ -15663,6 +16190,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenantOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_own_subscription_api_v1_tenant_subscription_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantSubscriptionOut"];
                 };
             };
             /** @description Validation Error */

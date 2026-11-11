@@ -80,6 +80,25 @@ export const GRANTS = {
       "PLATFORM"
     ]
   },
+  "billing.subscription.manage": {
+    "PLATFORM_ADMIN": [
+      "PLATFORM"
+    ]
+  },
+  "billing.subscription.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "cost.labour_rate.manage": {
     "DIRECTION": [
       "TENANT"
