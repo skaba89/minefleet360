@@ -1,9 +1,9 @@
 # Readiness commerciale — état courant
 
-**Base auditée :** `main@e36ab33178f9e8ec8cf2f82f3b09735e5dd10ea6` (PR #411 fusionnée, 2026-11-11).
+**Base auditée :** `main@30de263` (PR #420 fusionnée — lot 3 SaaS facturation, 2026-11-11 au soir).
 **Audit exécuté :** 11 novembre 2026 — exécutions locales complètes (PostgreSQL 16.10 + PostGIS disponibles) **et** CI GitHub vérifiée via API authentifiée.
-**Statut du document :** courant ; remplace la révision du 8–9 novembre 2026 (base `9c69f44`, 68/100) comme référence de décision.
-**Verdict :** **NO-GO commercial maintenu — GO conditionnel pilote maintenu** (aucun prérequis terrain du `GO_NO_GO.md` n'est levé). Score de maturité : **77/100** (grille imposée) — 74 à la base `e36ab33` (#412), 76 après la forme canonique du refus et le runbook staging (#413/#414), 77 avec le harnais documentaire (#417) — en progression de +9 depuis le 9 novembre, entièrement sur des éléments **vérifiés** (remédiations #374–#376, recette R1–R10 #400–#407, socle E2E navigateur #408, écarts UI #409–#411, #415–#417), pas sur une validation terrain ou opérationnelle.
+**Statut du document :** courant ; remplace la révision du 8–9 novembre 2026 (base `9c69f44`, 68/100) et la révision de la journée du 11 novembre (base `e36ab33`, 74/100 ; puis #413–#417, 77/100) comme référence de décision.
+**Verdict :** **NO-GO commercial maintenu — GO conditionnel pilote maintenu** (aucun prérequis terrain du `GO_NO_GO.md` n'est levé). Score de maturité : **80/100** (grille imposée) — 74 à la base `e36ab33` (#412), 76 après la forme canonique du refus et le runbook staging (#413/#414), 77 avec le harnais documentaire (#417), 80 avec les lots SaaS 1→3 (#418 plans/quotas, #419 abonnements, #420 facturation paramétrable) — en progression de +12 depuis le 9 novembre, entièrement sur des éléments **vérifiés**, pas sur une validation terrain ou opérationnelle.
 
 > **Règle de lecture.** Ce document ne mélange jamais preuve statique (le code existe et est testé), preuve d'exécution (testé ici ou en CI sur infrastructure jetable) et preuve d'exploitation (validé sur environnement réel). Un test CI n'est **pas** une preuve de fonctionnement en conditions réelles. Une inconnue reste explicitement inconnue (§6). Le score est un outil de pilotage interne, jamais une promesse commerciale.
 
@@ -65,10 +65,10 @@ Extraits datés : `docs/audit/preuves/` (pytest.txt, vitest.txt, typecheck.txt, 
 | Fonctionnalités métier | 20 | 15 | **17** | Périmètre inchangé (79 tables / 232 routes) mais **profondeur de preuve accrue** : 10 tranches de recette API R1–R10 sur serveur réel (#400–#407), **10 specs E2E navigateur d'actions métier** en CI (correction/annulation de pesée, réappro quatre-yeux, acquittement GPS, zones/politique GPS/notifications, HSE double regard, contrats, tenants plateforme, police d'assurance, taux horaires, **cycle documentaire juridique complet sur harnais S3/ClamAV — dépôt, scan EICAR refusé, vérification, soumission, décision, réconciliation nominale**, #410/#411/#415/#416/#417). Le cycle documentaire n'est plus bloqué côté serveur ; reste l'exposition UI du dépôt/vérification/soumission. Toujours : aucun traceur certifié, offline limité à HSE/OT. |
 | UX/UI et offline | 15 | 11 | **13** | **Nouveau** : socle E2E d'accès direct 34 routes × 13 rôles — « jamais Page introuvable ni Erreur inattendue » (#408), pages 404 dédiées (#374), 2 écarts UI comblés avec tests (échéances d'assurance, commandes d'achat #409), AUDITOR vérifié lecture seule en E2E (#411), Vitest 233. **Révision du 11 nov (base 2bc1b7d)** : les deux formes de refus d'accès direct sont harmonisées en une forme canonique unique testée (`<AccessDenied />`, 17 points / 10 fichiers, écart n°2 résolu #413). Toujours : offline HSE/OT uniquement, Android physique jamais testé, recherche globale absente. |
 | Exploitation DevOps/SRE | 15 | 11 | **14** | **Nouveau** : workflow `release-images` (GHCR + Cosign keyless + provenance SLSA mode=max + SBOM) — le build/push d'images n'est plus manuel (#376) ; **Dependabot actif et démontré** (20+ PR fusionnées : pip groupé, npm groupé, actions ×, caddy, node, gitleaks v3 — #377–#399). **Révision du 11 nov** : runbook SRE de recette staging consolidé et versionné (`docs/ops/RECETTE_STAGING_VALIDATION.md` — audit lecture seule A1–A8, dry-run, protocoles RPO/RTO, éprouvetage des alertes) ; l'exécution sur l'hôte réel reste la preuve attendue. Restent : publication de couverture, métriques/SLO continus, exercice d'alerte réel. |
-| Commercialisation SaaS | 10 | 2 | **2** | Aucun changement : espace PLATFORM_ADMIN (sociétés, suspension, santé) + provisioning tenant transactionnel restent le seul actif. 0 table/endpoint plans, quotas, abonnements, facturation, support, onboarding, réversibilité. |
-| **Total** | **100** | **68** | **77** | Progression entièrement adossée à des preuves vérifiables (§2 et §4) ; aucun point pour une validation terrain ou opérationnelle, toujours absente. |
+| Commercialisation SaaS | 10 | 2 | **5** | **Nouveau (lots 1→3 livrés et testés, sans moyen de paiement ni tarif approuvé)** : référentiel plans/quotas plateforme avec API + UI `/plateforme/plans` (#418) ; cycle de vie abonnement TRIAL→ACTIVE→SUSPENDED↔/CANCELLED avec essai daté, historique plateforme et page société `/abonnement` (#419) ; facturation paramétrable DRAFT→ISSUED→VOIDED en GNF avec taxe en points de base, numérotation plateforme atomique `MF-<année>-<numéro>`, montants figés, lignes immuables, API société en lecture seule, UI `/plateforme/facturation` + `/factures`, statut effectif d'essai expiré calculé à la lecture (#420). 7 permissions `billing.*` (123 permissions / 238 routes au total), 24 tests pytest dédiés + 9 Vitest, suite complète 5 645 pytest / 256 Vitest. **Reste :** tarifs approuvés (arbitrage métier), quotas appliqués au provisionnement (lot 2b), lot 4 support/onboarding, suivi de règlement et export PDF éventuels, aucune validation pilote. |
+| **Total** | **100** | **68** | **80** | Progression entièrement adossée à des preuves vérifiables (§2 et §4) ; aucun point pour une validation terrain ou opérationnelle, toujours absente. |
 
-**Décision correspondante :** le gain +8 (puis +3 cumulés sur les révisions du 11 novembre : #413/#414, #417) mesure la **qualité et la profondeur de vérification du produit**, pas une maturité opérationnelle. Le verdict du `GO_NO_GO.md` est donc inchangé : GO pilote conditionnel (8 prérequis tous non levés), GO commercial impossible avant le chantier SaaS (§4.6) et les validations réelles.
+**Décision correspondante :** le gain +8 (puis +3 sur les révisions du 11 novembre : #413/#414, #417, puis +3 sur les lots SaaS 1→3 : #418–#420) mesure la **qualité et la profondeur de vérification du produit**, pas une maturité opérationnelle. Le verdict du `GO_NO_GO.md` est donc inchangé : GO pilote conditionnel (8 prérequis tous non levés) ; le GO commercial n'est plus structurellement impossible (le socle SaaS existe) mais reste bloqué sur le tarif approuvé, l'application des quotas, le lot 4 (support/onboarding) et les validations réelles (§4.6).
 
 ## 4. Analyse par domaine
 
@@ -98,7 +98,7 @@ Extraits datés : `docs/audit/preuves/` (pytest.txt, vitest.txt, typecheck.txt, 
 
 **Partiel (inchangé) :** GPS temps réel complet (carte, géofences, alertes, SSE) mais registre d'adaptateurs limité à `minefleet-json-v1`, **aucun matériel certifié** (verrouillé par test) ; offline limité à la déclaration HSE + notes d'OT ; **le cycle documentaire juridique est désormais prouvé sur serveur réel** (harnais S3/ClamAV, #417) mais ses actions de dépôt/vérification/soumission restent à exposer dans `/juridique` ; réconciliation stockage légal couverte sur ses deux chemins (dégradé #416, nominal #417), gabarits de checklist, partages téléphone et échéances documents (cas métier) restent sans spec E2E dédiée.
 
-**Absent (inchangé) :** couche SaaS commerciale (§4.6), exports Excel/PDF avancés, IA.
+**Absent (inchangé) :** exports Excel/PDF avancés, IA. *(La couche SaaS commerciale est désormais partiellement couverte — voir §4.6.)*
 
 ### 4.4 UX/UI et offline — 13/15
 
@@ -124,17 +124,22 @@ terrain n'en découle.
 
 **Absent (reste) :** publication de la couverture de tests ; métriques/SLO continus (Prometheus…) ; exécution réelle du runbook (phases A–D) et exercice d'alerte réel.
 
-### 4.6 Commercialisation SaaS — 2/10
+### 4.6 Commercialisation SaaS — 5/10
 
-**Prouvé (inchangé) :** espace PLATFORM_ADMIN distinct (sociétés, suspension/réactivation, santé) ; provisioning tenant transactionnel ; connexion plateforme à MFA ; seeds de démo refusés en production.
+**Prouvé (lots 1→3, vérifiés par tests et anti-dérive) :**
+- **Lot 1 — plans/quotas (#418)** : `saas_plan` (référentiel plateforme, hors RLS), 5 quotas (users, sites, véhicules, traceurs GPS, rétention docs ; NULL = illimité), API `/platform/saas-plans` (POST/GET/ETag/PATCH If-Match, code immuable, RETIRED terminal, 403 garanti pour tout rôle tenant), UI `/plateforme/plans`.
+- **Lot 2 — abonnements (#419)** : `tenant_subscription` RLS, un seul abonnement vivant par société (index unique partiel), TRIAL→ACTIVE→SUSPENDED↔/CANCELLED, souscription plateforme avec bascule de contexte RLS, historique paginé, lecture société `/tenant/subscription` (TENANT_ADMIN/DIRECTION/FINANCE/AUDITOR), UI `/plateforme/abonnements` + `/abonnement`.
+- **Lot 3 — facturation paramétrable (#420)** : `billing_invoice` + `billing_invoice_line` (RLS, lignes immuables, `montant = quantité × prix` vérifié en base), tarif mensuel GNF paramétrable du plan, taxe en points de base, numérotation plateforme atomique `MF-<année>-<numéro>`, cycle DRAFT→ISSUED→VOIDED (terminal), montants figés (un changement de tarif ne modifie pas une facture émise — testé), API société lecture seule (`/tenant/invoices`), UI `/plateforme/facturation` + `/factures`, statut effectif d'essai expiré calculé à la lecture (aucun scheduler) ; 3 nouveaux codes d'erreur au catalogue.
 
-**Absent (0 table, 0 endpoint — inchangé) :** plans et quotas, abonnements (essai/activation/renouvellement/suspension), facturation (factures, avoirs, taxes, exports), tooling support, onboarding guidé, réversibilité client, SLA. Aucun moyen de paiement intégré (conforme à la règle « pas d'intégration non approuvée »).
+**Toujours conforme à la règle « pas d'intégration non approuvée » :** aucun moyen de paiement, aucun provider, aucun encaissement — la facture est un document interne de traçabilité, le règlement se gère hors application.
 
-**Conséquence :** GO commercial structurellement impossible avant les lots SaaS 1→4 de la mission, à lancer après (ou en préparation neutralisée du) GO pilote ; aucun tarif avant coût-servi et entretiens clients.
+**Absent (reste avant GO commercial) :** tarification approuvée (le tarif est un paramètre saisi, pas une offre validée par coût-servi + entretiens clients) ; quotas appliqués au provisionnement (lot 2b) ; lot 4 — support/onboarding (outillage, parcours client guidé, réversibilité/export) ; suivi de règlement (« payé ») et export PDF éventuels ; SLA/contrat ; aucune validation pilote.
+
+**Conséquence :** le socle SaaS existe et est testé (3 lots sur 4) — le GO commercial n'est plus structurellement impossible, mais il exige encore le lot 4, un tarif approuvé, l'application des quotas et les validations réelles du `GO_NO_GO.md`.
 
 ## 5. Matrice comptes/rôles/menus/routes
 
-La matrice (14 rôles × 31 menus × routes UI × 118 permissions × 232 routes API) reste générée mécaniquement (`docs/qa/ROLE_PAGE_ACTION_MATRIX.md`, anti-dérive `--check` vert le 2026-11-11). Le socle E2E #408 vérifie désormais **en navigateur** l'accès direct 34 routes × 13 rôles et l'isolement de PLATFORM_ADMIN. Écart connu assumé : tranches `maintenance.preventive.*` marquées `later` dans le YAML alors qu'implémentées (harmonisation à faire).
+La matrice (14 rôles × menus × routes UI × 123 permissions × 238 routes API) reste générée mécaniquement (`docs/qa/ROLE_PAGE_ACTION_MATRIX.md`, anti-dérive `--check` vert le 2026-11-11 au soir). Le socle E2E #408 vérifie désormais **en navigateur** l'accès direct 34 routes × 13 rôles et l'isolement de PLATFORM_ADMIN. Écart connu assumé : tranches `maintenance.preventive.*` marquées `later` dans le YAML alors qu'implémentées (harmonisation à faire).
 
 ## 6. Inconnues explicites (restent inconnues)
 
@@ -157,13 +162,13 @@ La matrice (14 rôles × 31 menus × routes UI × 118 permissions × 232 routes 
 5. Rejouer `MATURITY_SCORECARD.md`, recalibrer `FUNCTIONAL_COVERAGE.md`, harmoniser les tranches `later` du YAML.
 6. Étendre l'offline aux inspections HSE (après arbitrage produit).
 
-**P2 (préparation SaaS, sans moyen de paiement ni tarif) :** conception plans/quotas (Starter, Business, Mining Pro, Enterprise **candidats**), schéma abonnements, facturation paramétrable (GNF, taxes), support/onboarding — migrations et tests d'abord, PR verticales séparées.
+**P2 (préparation SaaS, sans moyen de paiement ni tarif) :** ~~plans/quotas~~ **fait** (PR #418), ~~schéma abonnements~~ **fait** (PR #419), ~~facturation paramétrable (GNF, taxes)~~ **fait** (PR #420) ; **reste** : application des quotas au provisionnement (lot 2b), support/onboarding (lot 4), suivi de règlement et export PDF éventuels (après arbitrage) — migrations et tests d'abord, PR verticales séparées.
 
 ## 8. Registre des documents exigés
 
 | Document | État |
 |---|---|
-| `docs/audit/COMMERCIAL_READINESS_CURRENT.md` | **mis à jour** (présente révision, base PR #417, score 77/100) |
+| `docs/audit/COMMERCIAL_READINESS_CURRENT.md` | **mis à jour** (présente révision, base PR #420, score 80/100) |
 | `docs/qa/GO_NO_GO.md` | **mis à jour** (11 novembre 2026, verdict inchangé, preuves actualisées) |
 | `docs/ops/RECETTE_STAGING_VALIDATION.md` | **créé** — runbook staging lecture seule + dry-run + protocoles RPO/RTO/éprouvetage ; exécution réelle à faire |
 | `docs/qa/ROLE_PAGE_ACTION_MATRIX.md` | généré, anti-dérive vert |
