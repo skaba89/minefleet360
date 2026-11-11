@@ -630,7 +630,9 @@ export function PartsPage() {
                 <td>{item.supplier_reference}</td>
                 <td>{item.quantity}</td>
                 <td>{({ DRAFT: "Brouillon" } as Record<string, string>)[item.status] ?? item.status}</td>
-                <td className="muted small">{replenLabels.get(item.replenishment_id) ?? item.replenishment_id}</td>
+                <td className="muted small" title={item.replenishment_id}>
+                  {replenLabels.get(item.replenishment_id) ?? `${item.replenishment_id.slice(0, 8)}…`}
+                </td>
               </tr>
             ))}</tbody>
           </table>

@@ -61,7 +61,7 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 | Lancer une mission (cycle 5 événements, If-Match) | DISPATCHER, OPS_MANAGER | `/missions`, `/missions/{id}` | `POST /missions[/events]` | rotations suivies, clôture | ✔ `e2e/missions.spec.ts` |
 | Saisir une pesée pont / dégradée | DISPATCHER, OPS_MANAGER | `/missions/{id}`, `/pesees` | `POST /weighing-tickets` | net_kg, statut VALID / PENDING_APPROVAL | ✔ `e2e/pesees.spec.ts` |
 | Approuver une pesée dégradée (pas par le saisissant) | OPS_MANAGER (2ᵉ) | `/pesees` | `POST /weighing-tickets/{id}/approve` | VALID, décision tracée | ✔ `e2e/pesees.spec.ts` |
-| Corriger / annuler une pesée | DISPATCHER, OPS_MANAGER | `/pesees` | `POST /weighing-tickets/{id}/correct\|/void` | ticket corrigé/annulé, motif | ⏳ non couvert E2E |
+| Corriger / annuler une pesée | DISPATCHER, OPS_MANAGER | `/pesees` | `POST /weighing-tickets/{id}/correct\|/void` | ticket corrigé/annulé, motif | ✔ `e2e/pesees-actions.spec.ts` |
 | Indicateurs de dispatch | OPS_MANAGER, FINANCE, DIRECTION | `/indicateurs` | `GET /dispatch-indicators` | totaux cohérents avec les pesées | ✔ `e2e/pesees.spec.ts` (fin) |
 
 ### Atelier et préventif (scénarios 4-5)
@@ -84,7 +84,7 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 | Action | Rôle(s) | Route UI | API | Résultat attendu | Preuve |
 |---|---|---|---|---|---|
 | Réception valorisée, réservation, consommation | STOREKEEPER, WORKSHOP_CHIEF | `/pieces` | `POST /part-movements/valued-receipts`, `/part-reservations[/consume]` | CMP et soldes exacts | ✔ API (R4/R10 backend) ; E2E ⏳ |
-| Réapprovisionnement (soumission + décision) | STOREKEEPER, OPS_MANAGER | `/pieces` | `POST /part-replenishments[/submit\|/decision]` | cycle complet, jamais auto-décidé | ⏳ non couvert E2E |
+| Réapprovisionnement (soumission + décision) | STOREKEEPER, OPS_MANAGER | `/pieces` | `POST /part-replenishments[/submit\|/decision]` | cycle complet, jamais auto-décidé | ✔ `e2e/parts-replenishment.spec.ts` (bug GRANT 500 corrigé par 0064) |
 | Cycle pneu (montage, usure, démontage, rebut, export) | WORKSHOP_CHIEF, MECHANIC | `/pneus` | `POST /tyres[/{id}/mount\|…]`, `/tyres/stock` | km consommés, alertes, CSV | ✔ `e2e/pneus.spec.ts` |
 | Commandes de pièces (`/parts-purchase-orders`) | STOREKEEPER, OPS_MANAGER | `/pieces` (onglet « Commandes d'achat ») | `GET\|POST /parts-purchase-orders` | brouillon créé depuis une demande APPROVED, quantité reprise de la demande | ✔ `src/pages/PartsPage.test.tsx` (vitest) ; E2E ⏳ |
 
@@ -93,7 +93,7 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 |---|---|---|---|---|---|
 | Déclarer un incident (+ hors-ligne) | DRIVER, DISPATCHER, HSE | `/hse` | `POST /hse/incidents` | idempotent, preuves uploadées | ✔ `e2e-field/hse-offline.spec.ts` |
 | Inspection avec NC → OT depuis non-conformité | HSE, WORKSHOP_CHIEF | `/hse/inspections` | `POST /hse/inspections`, `POST /work-orders` | NC tracée, OT créé | ✔ `e2e/hse-inspections.spec.ts` |
-| Décision d'action corrective + complétion | HSE, OPS_MANAGER | `/hse`, `/hse/{id}` | `POST /hse/corrective-actions/{id}/decision\|/complete` | workflow strict | ⏳ non couvert E2E |
+| Décision d'action corrective + complétion | HSE, OPS_MANAGER | `/hse`, `/hse/{id}` | `POST /hse/corrective-actions/{id}/decision\|/complete` | workflow strict | ✔ `e2e/hse-corrective-actions.spec.ts` |
 | Modèles de checklist | HSE | `/hse/checklists` | `POST\|POST /hse/checklist-templates[/deactivate]` | modèles gérés | ✔ API ; E2E ⏳ |
 
 ### GPS (scénario 9)
@@ -101,14 +101,14 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 |---|---|---|---|---|---|
 | Carte live (SSE) et historique de trajet | OPS_MANAGER, DISPATCHER | `/flotte-gps` | `GET /vehicles/gps/latest\|/stream`, `/vehicles/{id}/gps/track` | données mesurées, jamais un tonnage | ✔ `e2e-demo/parcours-demo.spec.ts` |
 | Zones (géofences) | OPS_MANAGER, HSE | `/flotte-gps/zones` | `POST /geofences`, `POST /geofences/{id}/deactivate` | création puis désactivation | ✔ `e2e-demo/parcours-demo.spec.ts` (lecture) ; E2E ⏳ |
-| Alertes GPS : acquittement | OPS_MANAGER, DISPATCHER, HSE | `/flotte-gps/alertes` | `POST /gps/alerts/{id}/acknowledge` | re-prise en compte refusée (409) | ⏳ non couvert E2E |
+| Alertes GPS : acquittement | OPS_MANAGER, DISPATCHER, HSE | `/flotte-gps/alertes` | `POST /gps/alerts/{id}/acknowledge` | re-prise en compte refusée (409) | ✔ `e2e/gps-alerts.spec.ts` |
 | Politique site + notifications | OPS_MANAGER, TENANT_ADMIN | `/flotte-gps/alertes` | `PUT /sites/{id}/gps-policy`, `/me/alert-notifications` | seuils bornés (422 sinon) | ✔ recette backend R7 ; E2E ⏳ |
 | Partage téléphone | DRIVER, OPS_MANAGER | `/mon-suivi` | `POST /me/gps/shares[/positions\|/stop]` | consentement explicite, arrêt | ✔ recette backend R7 ; E2E ⏳ |
 
 ### Juridique (scénario R9) et coûts (scénario R10)
 | Action | Rôle(s) | Route UI | API | Résultat attendu | Preuve |
 |---|---|---|---|---|---|
-| Contrat brouillon → décision (quatre-yeux) | TENANT_ADMIN (créer), DIRECTION (décider) | `/juridique` | `POST /legal-contracts`, `/{id}/decision` | incomplet non soumis, décision tracée | ⏳ UI créée ; E2E ⏳ |
+| Contrat brouillon → décision (quatre-yeux) | TENANT_ADMIN (créer), DIRECTION (décider) | `/juridique` | `POST /legal-contracts`, `/{id}/decision` | incomplet non soumis, décision tracée | ✔ `e2e/legal-contracts.spec.ts` (brouillon + refus de soumission sans preuve) ; cycle documentaire complet ⏳ (harnais S3/ClamAV requis) |
 | Police d'assurance | FINANCE | `/juridique` | `POST /insurance-policies` | GNF, dates cohérentes | ⏳ non couvert E2E |
 | Échéances d'assurance (nouvel endpoint) | FINANCE, DIRECTION, OPS_MANAGER, HSE, AUDITOR | `/juridique` (onglet assurances) | `GET /insurance-policies/expiring` | polices EXPIRING/EXPIRED avec état traduit | ✔ `src/pages/LegalRegistriesPage.test.tsx` (vitest) ; E2E ⏳ |
 | Réconciliation du stockage légal | DIRECTION, TENANT_ADMIN | `/juridique` | `GET /legal-contracts/storage-reconciliation` | cohérent / orphelin détecté | ⏳ non couvert E2E |
@@ -117,19 +117,23 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 ### Administration et plateforme (scénario 10)
 | Action | Rôle(s) | Route UI | API | Résultat attendu | Preuve |
 |---|---|---|---|---|---|
-| Créer / suspendre / réactiver une société | PLATFORM_ADMIN | `/plateforme/*` | `POST /platform/tenants[...]` | parcours complet | ⏳ UI existante ; E2E ⏳ |
+| Créer / suspendre / réactiver une société | PLATFORM_ADMIN | `/plateforme/*` | `POST /platform/tenants[...]` | parcours complet | ✔ `e2e/platform-tenants.spec.ts` |
 | Créer site, inviter utilisateur, rôles, audit | TENANT_ADMIN | `/administration/*` | `POST /sites`, `/users`, `/role-assignments` ; `GET /audit-events` | parcours complet, 403 pour les autres | ✔ `e2e/administration.spec.ts` |
 | Santé plateforme | PLATFORM_ADMIN | `/plateforme/etat` | `GET /health`, `/ready` | statuts visibles | ⏳ non couvert E2E |
 
 ## 4. Écarts ouverts (prochaines PR)
 
-1. **Specs E2E d'actions à écrire** : correction/annulation de pesée, décision/complétion d'action corrective HSE,
-   décision de réapprovisionnement pièces, acquittement d'alerte GPS, cycle juridique complet, parcours plateforme.
+1. **Specs E2E d'actions restantes** : police d'assurance (`POST /insurance-policies` depuis `/juridique`) et
+   cycle juridique complet (dépôt → vérification → soumission → décision), qui exige un harnais S3 + ClamAV
+   (503 sinon — le harnais backend de R9 repose sur des monkeypatchs inaccessibles à un serveur réel).
 2. **Pages à deux formes de refus** : harmoniser l'accès direct non autorisé (texte dédié vs 403 générique) —
    acceptable aujourd'hui (aucun crash, jamais de donnée), à uniformiser pour l'UX.
 
 *Résolu : l'écart d'UI pour `GET /insurance-policies/expiring` et `GET|POST /parts-purchase-orders` est couvert
-(onglet assurances de `/juridique` et onglet « Commandes d'achat » de `/pieces`, tests vitest inclus).*
+(onglet assurances de `/juridique` et onglet « Commandes d'achat » de `/pieces`, tests vitest inclus).
+Les 6 specs E2E d'actions (`pesees-actions`, `parts-replenishment`, `gps-alerts`, `hse-corrective-actions`,
+`legal-contracts`, `platform-tenants`) sont exécutées par le job CI `e2e-isolation` ; elles ont révélé et
+fait corriger l'absence de GRANT UPDATE sur `spare_part_replenishment` (migration 0064, régression testée).*
 
 ## 5. Exécution
 

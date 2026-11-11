@@ -27,6 +27,26 @@ export function account(role: string, workspace?: string): Account {
   return found;
 }
 
+/** Compte PLATFORM_ADMIN (TSV « e-mail<TAB>mot de passe » éphémère, jamais commité). */
+export function platformAccount(): { email: string; password: string } {
+  const path = process.env.MF_PLATFORM_ACCOUNT;
+  if (!path) throw new Error("MF_PLATFORM_ACCOUNT doit désigner le TSV du compte plateforme.");
+  const [email, password] = readFileSync(path, "utf-8").trim().split(/\t/);
+  if (!email || !password) throw new Error("Fichier du compte plateforme invalide (attendu : e-mail\\tmot de passe).");
+  return { email, password };
+}
+
+/** Connexion UI du PLATFORM_ADMIN (espace « mf-platform », routée vers /auth/platform/login). */
+export async function uiPlatformLogin(page: Page): Promise<void> {
+  const { email, password } = platformAccount();
+  await page.goto("/connexion");
+  await page.getByLabel("Code de l'espace de travail").fill("mf-platform");
+  await page.getByLabel("Adresse e-mail").fill(email);
+  await page.getByLabel("Mot de passe").fill(password);
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await expect(page.getByRole("navigation", { name: "Navigation principale" })).toBeVisible();
+}
+
 export async function apiLogin(request: APIRequestContext, a: Account): Promise<Record<string, string>> {
   const resp = await request.post("/api/v1/auth/login", {
     data: { workspace_code: a.workspace, email: a.email, password: a.password },

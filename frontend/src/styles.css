@@ -58,6 +58,10 @@ body:has(.offline-notice) { padding-bottom:8rem; }
 .page-head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:.8rem; margin-bottom:1.3rem; }.page-head h1,.page-head h2,.page-head p { margin:0; }.page-head p { margin-top:.35rem; font-size:.83rem; }
 .card { background:var(--surface); border:1px solid var(--border); border-radius:7px; padding:1.2rem; margin-bottom:1.2rem; box-shadow:0 2px 10px rgb(36 71 111 / 3%); min-width:0; }.card > h2:first-child { margin-top:0; }
 .filters { display:flex; flex-wrap:wrap; gap:.8rem; align-items:flex-end; padding:.9rem 1rem; background:#fff; border:1px solid var(--border); border-radius:7px 7px 0 0; margin:1rem 0 0; }.filters input,.filters select { background:#fbfdff; }
+/* Un label flex ne rétrécit pas sous sa largeur de contenu (min-width:auto) : les options longues
+   d'un select poussaient la page au-delà du viewport 360 px. min-width:0 autorise le rétrécissement,
+   et le max-width:100% du select devient résoluble contre le label. */
+.filters label { min-width:0; max-width:100%; }
 .toolbar,.row { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; }.toolbar { margin:.75rem 0 1rem; }form.inline { display:flex; flex-wrap:wrap; gap:.7rem; align-items:flex-end; }
 .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:.85rem; }.form-grid h2,.form-grid .row,.form-grid .error,.form-grid .success { grid-column:1 / -1; margin:0; }
 table { width:100%; border-collapse:separate; border-spacing:0; background:#fff; border:1px solid var(--border); border-radius:6px; overflow:hidden; font-size:.84rem; }
@@ -137,7 +141,8 @@ pre { white-space:pre-wrap; word-break:break-word; background:var(--bg); border-
 .gallery figure { margin:0; max-width:min(100%, 320px); }
 /* Carte des engins (MapLibre, fond auto-hébergé) : marqueurs HTML étiquetés, état du signal par couleur. */
 .fleet-map { margin-top:0; padding:.5rem; }.fleet-map-canvas { width:100%; height:clamp(320px,55vh,620px); border-radius:5px; overflow:hidden; }
-.fleet-marker { min-width:24px; min-height:24px; padding:0; border-radius:12px; border:2px solid #fff; font-size:.72rem; font-weight:700; color:#fff; background:#288be5; box-shadow:0 1px 4px rgba(19,35,56,.35); cursor:pointer; white-space:nowrap; }
+/* Zone tactile 44 px (garde-fou responsive) : le marqueur reste un cercle, simplement plus grand. */
+.fleet-marker { min-width:44px; min-height:44px; padding:0; border-radius:22px; border:2px solid #fff; font-size:.72rem; font-weight:700; color:#fff; background:#288be5; box-shadow:0 1px 4px rgba(19,35,56,.35); cursor:pointer; white-space:nowrap; }
 .fleet-marker--moving { background:#1bb47d; }.fleet-marker--stopped { background:#e5a126; color:#132338; }.fleet-marker--unknown { background:#288be5; }
 .fleet-marker--offline { background:#ef5665; opacity:.85; }.fleet-marker--selected { outline:3px solid var(--focus); outline-offset:1px; z-index:2; }
 .fleet-marker:focus-visible { outline:3px solid var(--focus); outline-offset:2px; }
