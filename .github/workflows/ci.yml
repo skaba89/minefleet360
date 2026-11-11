@@ -222,7 +222,8 @@ jobs:
       # Seul le smoke navigateur public et sans authentification est exécuté ci-dessous.
   browser-smoke:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # 20 min : les réessais réseau (apt + CDN) en cas de panne du miroir dépassent 10 min.
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: frontend
