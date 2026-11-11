@@ -100,9 +100,22 @@ jobs:
         run: |
           command -v gpg >/dev/null
           if ! command -v rclone >/dev/null; then
-            sudo apt-get update
-            sudo apt-get install --no-install-recommends --yes rclone
+            # Contournement panne DNS du miroir Azure des runners : bascule sur archive.ubuntu.com.
+            sudo bash -c 'for f in /etc/apt/sources.list /etc/apt/sources.list.d/*; do [ -f "$f" ] && sed -i "s|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu|g" "$f"; done'
+            ok=0
+            for attempt in 1 2 3 4; do
+              if sudo apt-get update && sudo apt-get install --no-install-recommends --yes rclone; then ok=1; break; fi
+              echo "apt-get : tentative $attempt échouée (réseau), nouvelle tentative dans 30 s…"
+              sleep 30
+            done
+            if [ "$ok" != "1" ]; then
+              # apt hors service : repli sur le script d'installation officiel rclone (CDN rclone.org).
+              echo "apt indisponible : repli sur rclone.org"
+              curl -fsSL --retry 4 --retry-delay 30 -o /tmp/rclone-install.sh https://rclone.org/install.sh
+              sudo bash /tmp/rclone-install.sh
+            fi
           fi
+          rclone version
       - name: Chiffrer, transférer, télécharger, restaurer et démarrer l'API
         run: |
           vault="${RUNNER_TEMP}/offsite-vault"
@@ -209,7 +222,8 @@ jobs:
       # Seul le smoke navigateur public et sans authentification est exécuté ci-dessous.
   browser-smoke:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # 20 min : les réessais réseau (apt + CDN) en cas de panne du miroir dépassent 10 min.
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: frontend
@@ -222,6 +236,22 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - name: Installer Chromium Playwright
-        run: npx playwright install --with-deps chromium
+        run: |
+          # Contournement panne DNS du miroir Azure des runners : bascule sur archive.ubuntu.com
+          # avant l'installation des dépendances système par Playwright.
+          sudo bash -c 'for f in /etc/apt/sources.list /etc/apt/sources.list.d/*; do [ -f "$f" ] && sed -i "s|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu|g" "$f"; done'
+          ok=0
+          for attempt in 1 2 3 4; do
+            if [ "$attempt" = "1" ]; then
+              if npx playwright install --with-deps chromium; then ok=1; break; fi
+            else
+              # Le CDN Playwright fonctionne même quand apt est en panne : tentative sans apt
+              # (les bibliothèques système sont préinstallées sur les images ubuntu-latest récentes).
+              if npx playwright install chromium; then ok=1; break; fi
+            fi
+            echo "Tentative $attempt échouée (réseau), nouvelle tentative dans 30 s…"
+            sleep 30
+          done
+          [ "$ok" = "1" ] || { echo "Installation Chromium impossible après 4 tentatives"; exit 1; }
       - name: Smoke navigateur (page de connexion sans API)
         run: npx playwright test --config=playwright.smoke.config.ts

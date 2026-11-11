@@ -419,6 +419,12 @@ def world(api: Api, client: TestClient) -> Iterator[World]:
         content=b"\x89PNG\r\n\x1a\n" + b"\x00" * 16,
     )
     assert evidence.status_code == 201, evidence.text
+    plan = client.post(
+        f"{API}/platform/saas-plans",
+        headers=api.platform(),
+        json={"code": "RBAC_PLAN", "name": "Plan RBAC", "status": "ACTIVE", "max_users": 5},
+    )
+    assert plan.status_code == 201, plan.text
     objects = {
         "template_id": uuid.UUID(template.json()["hse_checklist_template_id"]),
         "hse_inspection_id": uuid.UUID(inspection.json()["hse_inspection_id"]),
@@ -446,6 +452,8 @@ def world(api: Api, client: TestClient) -> Iterator[World]:
         "fuel_tank_id": uuid.UUID(fuel_tank.json()["fuel_tank_id"]),
         "fuel_pump_id": uuid.UUID(fuel_pump.json()["fuel_pump_id"]),
         "fuel_pump_anomaly_case_id": uuid.UUID(anomaly.json()["fuel_pump_anomaly_case_id"]),
+        # Lot 1 SaaS : un plan de la plateforme, cible du GET /platform/saas-plans/{plan_id}.
+        "plan_id": uuid.UUID(plan.json()["plan_id"]),
     }
     yield World(a, b, personas, b_personas, objects)
     patcher.undo()

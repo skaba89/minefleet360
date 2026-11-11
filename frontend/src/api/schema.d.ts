@@ -2054,6 +2054,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/saas-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plans */
+        get: operations["list_plans_api_v1_platform_saas_plans_get"];
+        put?: never;
+        /** Create Plan */
+        post: operations["create_plan_api_v1_platform_saas_plans_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/saas-plans/{plan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Plan */
+        get: operations["get_plan_api_v1_platform_saas_plans__plan_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Plan */
+        patch: operations["update_plan_api_v1_platform_saas_plans__plan_id__patch"];
+        trace?: never;
+    };
     "/api/v1/platform/tenants": {
         parameters: {
             query?: never;
@@ -6561,6 +6597,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[PlanSummary] */
+        Page_PlanSummary_: {
+            /** Items */
+            items: components["schemas"]["PlanSummary"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[PurchaseOrderOut] */
         Page_PurchaseOrderOut_: {
             /** Items */
@@ -6995,6 +7042,116 @@ export interface components {
              * Format: uuid
              */
             vehicle_id: string;
+        };
+        /** PlanCreate */
+        PlanCreate: {
+            /** Code */
+            code: string;
+            /** Description */
+            description?: string | null;
+            /** Document Retention Days */
+            document_retention_days?: number | null;
+            /** Max Gps Trackers */
+            max_gps_trackers?: number | null;
+            /** Max Sites */
+            max_sites?: number | null;
+            /** Max Users */
+            max_users?: number | null;
+            /** Max Vehicles */
+            max_vehicles?: number | null;
+            /** Name */
+            name: string;
+            /**
+             * Status
+             * @default DRAFT
+             */
+            status: string;
+        };
+        /** PlanOut */
+        PlanOut: {
+            /** Code */
+            code: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Description */
+            description: string | null;
+            /** Document Retention Days */
+            document_retention_days: number | null;
+            /** Max Gps Trackers */
+            max_gps_trackers: number | null;
+            /** Max Sites */
+            max_sites: number | null;
+            /** Max Users */
+            max_users: number | null;
+            /** Max Vehicles */
+            max_vehicles: number | null;
+            /** Name */
+            name: string;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /** Row Version */
+            row_version: number;
+            /** Status */
+            status: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** PlanSummary */
+        PlanSummary: {
+            /** Code */
+            code: string;
+            /** Document Retention Days */
+            document_retention_days: number | null;
+            /** Max Gps Trackers */
+            max_gps_trackers: number | null;
+            /** Max Sites */
+            max_sites: number | null;
+            /** Max Users */
+            max_users: number | null;
+            /** Max Vehicles */
+            max_vehicles: number | null;
+            /** Name */
+            name: string;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /** Row Version */
+            row_version: number;
+            /** Status */
+            status: string;
+        };
+        /**
+         * PlanUpdate
+         * @description PATCH partiel : seuls les champs fournis sont modifiés (le code est immuable).
+         */
+        PlanUpdate: {
+            /** Description */
+            description?: string | null;
+            /** Document Retention Days */
+            document_retention_days?: number | null;
+            /** Max Gps Trackers */
+            max_gps_trackers?: number | null;
+            /** Max Sites */
+            max_sites?: number | null;
+            /** Max Users */
+            max_users?: number | null;
+            /** Max Vehicles */
+            max_vehicles?: number | null;
+            /** Name */
+            name?: string | null;
+            /** Status */
+            status?: string | null;
         };
         /** PlatformLoginRequest */
         PlatformLoginRequest: {
@@ -14311,6 +14468,146 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchaseOrderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plans_api_v1_platform_saas_plans_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_PlanSummary_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_plan_api_v1_platform_saas_plans_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plan_api_v1_platform_saas_plans__plan_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_plan_api_v1_platform_saas_plans__plan_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanOut"];
                 };
             };
             /** @description Validation Error */

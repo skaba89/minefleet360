@@ -58,6 +58,7 @@ CATALOG: dict[str, ErrorDef] = {
     "SITE_HAS_ACTIVE_RESOURCES": ErrorDef(409, "Le site possède encore des ressources actives."),
     "STATE_TRANSITION_INVALID": ErrorDef(409, "Cette action n'est pas possible dans l'état actuel."),
     "CONFLICT": ErrorDef(409, "Conflit avec l'état actuel des données."),
+    "DUPLICATE_PLAN_CODE": ErrorDef(409, "Un plan SaaS porte déjà ce code."),
     "DUPLICATE_FLEET_NUMBER": ErrorDef(
         409, "Ce numéro de parc est déjà utilisé (y compris par un véhicule réformé)."
     ),
@@ -112,6 +113,7 @@ CATALOG: dict[str, ErrorDef] = {
     # 422
     "VALIDATION_ERROR": ErrorDef(422, "Les données envoyées sont invalides."),
     "IF_MATCH_REQUIRED": ErrorDef(422, "L'en-tête If-Match est obligatoire pour une modification."),
+    "PLAN_RETIRED": ErrorDef(422, "Ce plan SaaS est retiré du catalogue et ne peut plus être modifié."),
     "REFERENCE_NOT_FOUND": ErrorDef(422, "Une ressource référencée est introuvable."),
     "SELF_ROLE_CHANGE_FORBIDDEN": ErrorDef(
         422, "Vous ne pouvez pas modifier vos propres droits ni désactiver votre propre compte."
