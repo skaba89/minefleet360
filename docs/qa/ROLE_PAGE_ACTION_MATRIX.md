@@ -75,6 +75,8 @@ Pages toujours accessibles à tout compte authentifié : Accueil (`/`), Mon comp
 | `/mot-de-passe-oublie` | `ResetRequestPage` | publique (non authentifié) |
 | `/plateforme/societes` | `PlatformTenantsPage` | `organization.tenant.list` |
 | `/plateforme/plans` | `PlatformPlansPage` | détail imbriqué (cf. parent) |
+| `/plateforme/abonnements` | `PlatformSubscriptionsPage` | détail imbriqué (cf. parent) |
+| `/abonnement` | `TenantSubscriptionPage` | détail imbriqué (cf. parent) |
 | `/plateforme/nouvelle-societe` | `PlatformCreateTenantPage` | `organization.tenant.create` |
 | `/plateforme/etat` | `PlatformHealthPage` | `organization.tenant.list` |
 | `/vehicules` | `VehiclesPage` | `fleet.vehicle.read` |
