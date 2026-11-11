@@ -1442,5 +1442,5 @@ field_policies:
 
 global_tables:
   [role, role_allowed_scope, license_category_ref, vehicle_category_template, vehicle_category_template_license,
-   vehicle_category_document_template]
+   vehicle_category_document_template, saas_plan]
 

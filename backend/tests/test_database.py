@@ -41,6 +41,7 @@ GLOBAL_TABLES = {
     "vehicle_category_template",
     "vehicle_category_template_license",
     "vehicle_category_document_template",
+    "saas_plan",  # référentiel plateforme (lot 1 SaaS) : pas de tenant_id, hors RLS applicative
     "alembic_version",
     "spatial_ref_sys",
 }
