@@ -1,4 +1,4 @@
-# GO / NO-GO — situation au 11 novembre 2026 (base main e36ab33, PR #411)
+# GO / NO-GO — situation au 11 novembre 2026 (base main 2bc1b7d, PR #413)
 
 ## Verdict
 
@@ -9,10 +9,11 @@ Changement depuis le 6 novembre : la **profondeur de vérification** a nettement
 
 ## Preuves positives disponibles
 
-- Base auditée : `main@e36ab33178f9e8ec8cf2f82f3b09735e5dd10ea6` (PR #411). CI `main` vérifiée par API le 2026-11-11 : `ci`, `e2e-isolation`, `security-static` toutes en succès ; PR #400→#411 toutes fusionnées.
+- Base auditée : `main@2bc1b7d` (PR #413) ; CI `main` vérifiée par API le 2026-11-11 : `ci`, `e2e-isolation`, `security-static` toutes en succès ; PR #400→#413 toutes fusionnées (#412 : réévaluation de maturité avec preuves ; #413 : forme canonique du refus d'accès direct — écart n°2 de la recette UI P0).
 - Exécution locale complète le 2026-11-11 (PostgreSQL 16.10 + PostGIS réel, base `minefleet_test`) : **5 207 tests pytest passés** (harnais RLS/authz inclus — première exécution locale intégrale), Vitest **233/233**, `tsc` strict OK, build OK, ruff/mypy OK, anti-dérive matrice+permissions OK (preuves datées : `docs/audit/preuves/`).
 - Recette métier API R1→R10 sur serveur réel, fusionnée en PR vertes (#400–#407) : flotte, habilitations, affectations, missions/pesées, atelier, préventif, carburant, GPS bout en bout, isolation négative (IDOR/429/audit), juridique/assurance, coûts.
-- Recette UI : socle d'accès direct 34 routes × 13 rôles + PLATFORM_ADMIN (#408), écarts UI comblés — échéances d'assurance et commandes de pièces (#409) — et 7 specs E2E d'actions métier en CI : correction/annulation de pesée, réapprovisionnement quatre-yeux, acquittement d'alerte GPS, HSE (double regard), contrats (brouillon + refus sans preuve), tenants plateforme, police d'assurance (#410, #411).
+- Recette UI : socle d'accès direct 34 routes × 13 rôles + PLATFORM_ADMIN (#408), écarts UI comblés — échéances d'assurance et commandes de pièces (#409) — et 7 specs E2E d'actions métier en CI : correction/annulation de pesée, réapprovisionnement quatre-yeux, acquittement d'alerte GPS, HSE (double regard), contrats (brouillon + refus sans preuve), tenants plateforme, police d'assurance (#410, #411). Refus d'accès direct harmonisés en forme canonique unique (`<AccessDenied />`, 17 points de refus / 10 fichiers, #413).
+- Procédure de recette staging consolidée publiée (`docs/ops/RECETTE_STAGING_VALIDATION.md`) : audit en lecture seule A1–A8, dry-run `plan`, protocoles RPO/RTO et d'éprouvetage des alertes — **l'exécution sur l'hôte réel reste à faire et reste soumise à approbation**.
 - Valeur démontrée du dispositif : **2 bugs réels détectés par la recette et corrigés** — RLS post-commit carburant (#403) et `GRANT UPDATE` manquant à `mf_app` sur `spare_part_replenishment` (500 sur submit/decision ; migration additive 0064 + régression, #410).
 - Remédiations de l'audit du 9 novembre fusionnées et testées : écran « Mes sessions » + révocations (#375), OpenAPI/docs fermés en production et clé rate-limit dédiée (#374), publication d'images signées CI (Cosign/SLSA/SBOM) + Dependabot actif (#376, bumps #377–#399).
 - Les migrations, modules métiers, code GPS, tests, scripts de sauvegarde/restauration, sondes et documentation sont présents dans l'arbre ; la matrice rôles/menus/routes reste générée avec anti-dérive verte.
@@ -21,7 +22,7 @@ Changement depuis le 6 novembre : la **profondeur de vérification** a nettement
 
 | Condition | État prouvé au 11 nov | Preuve à fournir avant décision GO |
 |---|---|---|
-| Environnement staging isolé et déploiement reproductible | Procédure + rollback par digest prêts ; **apply jamais exécuté** ; images signées publiées par CI (#376) | capture de version, checklist readiness, test migration/rollback daté sur staging réel |
+| Environnement staging isolé et déploiement reproductible | Procédure + rollback par digest prêts ; **runbook de recette consolidé publié** (`docs/ops/RECETTE_STAGING_VALIDATION.md`) ; images signées publiées par CI (#376) ; **apply jamais exécuté** | exécution des phases A/B du runbook sur l'hôte réel (rapport daté), puis C/D avec approbation : checklist readiness, test migration/rollback daté sur staging réel |
 | Sauvegarde et restore isolé | Round-trip synthétique automatisé en CI (chiffrement, rclone, checksum, restore, gates RLS) ; **coffre externe réel jamais exercé** | restaurer une sauvegarde staging chiffrée depuis le coffre retenu, vérifier l'API, la récupération de clé et mesurer RPO/RTO |
 | Isolation tenant/site dans la configuration de recette | R8 négative (IDOR, 429, audit) verte en CI (#405) ; socle E2E 34 routes × 13 rôles (#408) ; **staging non vérifié** | suite croisée A/B avec rôles et tenant DB applicatif sur la recette réelle |
 | Confidentialité GPS/salariés et consentement | contrôles de code documentés, **revue juridique toujours absente** | notice, finalités, accès, rétention, suppression et validation professionnelle |
@@ -44,4 +45,4 @@ Le statut pourra évoluer vers **GO pilote** à l'issue des preuves ci-dessus, e
 
 ## Score de maturité
 
-Score **74/100** sur la grille de `docs/audit/COMMERCIAL_READINESS_CURRENT.md` (révision du 11 novembre 2026, base `e36ab33` ; +6 vs 68 au 9 novembre — remédiations vérifiées #374–#376, recette R1–R10 #400–#407, socle et actions E2E #408–#411). L'ancienne note interne 70/100 (base `089d801`, grille différente) est retirée au profit de cette grille unique. **Le score mesure les capacités et preuves consultables ; il n'infléchit pas le verdict NO-GO** : aucun des 8 prérequis pilotes n'est validé sur le réel.
+Score **76/100** sur la grille de `docs/audit/COMMERCIAL_READINESS_CURRENT.md` (révision du 11 novembre 2026, base `2bc1b7d` ; +2 vs 74 — forme canonique du refus d'accès direct testée #413, runbook de recette staging publié ; +8 vs 68 au 9 novembre — remédiations vérifiées #374–#376, recette R1–R10 #400–#407, socle et actions E2E #408–#411). L'ancienne note interne 70/100 (base `089d801`, grille différente) est retirée au profit de cette grille unique. **Le score mesure les capacités et preuves consultables ; il n'infléchit pas le verdict NO-GO** : aucun des 8 prérequis pilotes n'est validé sur le réel.
