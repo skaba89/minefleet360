@@ -100,9 +100,9 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 | Action | Rôle(s) | Route UI | API | Résultat attendu | Preuve |
 |---|---|---|---|---|---|
 | Carte live (SSE) et historique de trajet | OPS_MANAGER, DISPATCHER | `/flotte-gps` | `GET /vehicles/gps/latest\|/stream`, `/vehicles/{id}/gps/track` | données mesurées, jamais un tonnage | ✔ `e2e-demo/parcours-demo.spec.ts` |
-| Zones (géofences) | OPS_MANAGER, HSE | `/flotte-gps/zones` | `POST /geofences`, `POST /geofences/{id}/deactivate` | création puis désactivation | ✔ `e2e-demo/parcours-demo.spec.ts` (lecture) ; E2E ⏳ |
+| Zones (géofences) | OPS_MANAGER, HSE | `/flotte-gps/zones` | `POST /geofences`, `POST /geofences/{id}/deactivate` | création puis désactivation | ✔ `e2e/gps-zones-policy.spec.ts` (création OPS_MANAGER, lecture DISPATCHER sans bouton, refus API 403, désactivation conservée via `include_inactive`) |
 | Alertes GPS : acquittement | OPS_MANAGER, DISPATCHER, HSE | `/flotte-gps/alertes` | `POST /gps/alerts/{id}/acknowledge` | re-prise en compte refusée (409) | ✔ `e2e/gps-alerts.spec.ts` |
-| Politique site + notifications | OPS_MANAGER, TENANT_ADMIN | `/flotte-gps/alertes` | `PUT /sites/{id}/gps-policy`, `/me/alert-notifications` | seuils bornés (422 sinon) | ✔ recette backend R7 ; E2E ⏳ |
+| Politique site + notifications | OPS_MANAGER, TENANT_ADMIN | `/flotte-gps/alertes` | `PUT /sites/{id}/gps-policy`, `/me/alert-notifications` | seuils bornés (422 sinon) | ✔ `e2e/gps-zones-policy.spec.ts` (réglages OPS_MANAGER persistés, contrôle croisé API, politique visible mais non modifiable pour DISPATCHER, préférences e-mail) |
 | Partage téléphone | DRIVER, OPS_MANAGER | `/mon-suivi` | `POST /me/gps/shares[/positions\|/stop]` | consentement explicite, arrêt | ✔ recette backend R7 ; E2E ⏳ |
 
 ### Juridique (scénario R9) et coûts (scénario R10)
@@ -133,6 +133,10 @@ Les 6 specs E2E d'actions (`pesees-actions`, `parts-replenishment`, `gps-alerts`
 fait corriger l'absence de GRANT UPDATE sur `spare_part_replenishment` (migration 0064, régression testée).
 La police d'assurance est couverte par `e2e/insurance-policies.spec.ts` : création FINANCE depuis
 `/juridique`, états EXPIRING/EXPIRED traduits, borne d'horizon 45 jours, auditeur en lecture seule.
+Les zones de site (géofences), la politique d'alerte du site et les préférences de notification sont
+couvertes par `e2e/gps-zones-policy.spec.ts` : création puis désactivation d'une zone par l'OPS_MANAGER,
+lecture DISPATCHER sans bouton de gestion (refus 403 en API), politique du site persistée et relu par
+l'API, préférences personnelles de notification enregistrées.
 
 **Écart n°2 (formes de refus) — résolu** : les refus d'accès direct par pré-contrôle utilisent désormais
 une forme canonique unique (`<AccessDenied />` de `components/common.tsx` — « Vous n'avez pas accès à cette

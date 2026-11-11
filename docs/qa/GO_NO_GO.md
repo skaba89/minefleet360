@@ -1,4 +1,4 @@
-# GO / NO-GO — situation au 11 novembre 2026 (base main 2bc1b7d, PR #413)
+# GO / NO-GO — situation au 11 novembre 2026 (base main avec PR #415 — E2E zones/politique GPS)
 
 ## Verdict
 
@@ -9,10 +9,10 @@ Changement depuis le 6 novembre : la **profondeur de vérification** a nettement
 
 ## Preuves positives disponibles
 
-- Base auditée : `main@2bc1b7d` (PR #413) ; CI `main` vérifiée par API le 2026-11-11 : `ci`, `e2e-isolation`, `security-static` toutes en succès ; PR #400→#413 toutes fusionnées (#412 : réévaluation de maturité avec preuves ; #413 : forme canonique du refus d'accès direct — écart n°2 de la recette UI P0).
+- Base auditée : `main` avec la PR #415 (E2E navigateur zones de site, politique GPS et notifications — approfondissement de preuve, aucun code produit modifié) ; CI `main` vérifiée par API le 2026-11-11 : `ci`, `e2e-isolation`, `security-static` toutes en succès ; PR #400→#414 toutes fusionnées (#412 : réévaluation de maturité avec preuves ; #413 : forme canonique du refus d'accès direct — écart n°2 de la recette UI P0 ; #414 : runbook de recette staging en lecture seule + dry-run).
 - Exécution locale complète le 2026-11-11 (PostgreSQL 16.10 + PostGIS réel, base `minefleet_test`) : **5 207 tests pytest passés** (harnais RLS/authz inclus — première exécution locale intégrale), Vitest **233/233**, `tsc` strict OK, build OK, ruff/mypy OK, anti-dérive matrice+permissions OK (preuves datées : `docs/audit/preuves/`).
 - Recette métier API R1→R10 sur serveur réel, fusionnée en PR vertes (#400–#407) : flotte, habilitations, affectations, missions/pesées, atelier, préventif, carburant, GPS bout en bout, isolation négative (IDOR/429/audit), juridique/assurance, coûts.
-- Recette UI : socle d'accès direct 34 routes × 13 rôles + PLATFORM_ADMIN (#408), écarts UI comblés — échéances d'assurance et commandes de pièces (#409) — et 7 specs E2E d'actions métier en CI : correction/annulation de pesée, réapprovisionnement quatre-yeux, acquittement d'alerte GPS, HSE (double regard), contrats (brouillon + refus sans preuve), tenants plateforme, police d'assurance (#410, #411). Refus d'accès direct harmonisés en forme canonique unique (`<AccessDenied />`, 17 points de refus / 10 fichiers, #413).
+- Recette UI : socle d'accès direct 34 routes × 13 rôles + PLATFORM_ADMIN (#408), écarts UI comblés — échéances d'assurance et commandes de pièces (#409) — et 8 specs E2E d'actions métier en CI : correction/annulation de pesée, réapprovisionnement quatre-yeux, acquittement d'alerte GPS, zones de site + politique GPS + notifications (#415), HSE (double regard), contrats (brouillon + refus sans preuve), tenants plateforme, police d'assurance (#410, #411). Refus d'accès direct harmonisés en forme canonique unique (`<AccessDenied />`, 17 points de refus / 10 fichiers, #413).
 - Procédure de recette staging consolidée publiée (`docs/ops/RECETTE_STAGING_VALIDATION.md`) : audit en lecture seule A1–A8, dry-run `plan`, protocoles RPO/RTO et d'éprouvetage des alertes — **l'exécution sur l'hôte réel reste à faire et reste soumise à approbation**.
 - Valeur démontrée du dispositif : **2 bugs réels détectés par la recette et corrigés** — RLS post-commit carburant (#403) et `GRANT UPDATE` manquant à `mf_app` sur `spare_part_replenishment` (500 sur submit/decision ; migration additive 0064 + régression, #410).
 - Remédiations de l'audit du 9 novembre fusionnées et testées : écran « Mes sessions » + révocations (#375), OpenAPI/docs fermés en production et clé rate-limit dédiée (#374), publication d'images signées CI (Cosign/SLSA/SBOM) + Dependabot actif (#376, bumps #377–#399).

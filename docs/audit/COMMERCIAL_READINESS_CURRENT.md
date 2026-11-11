@@ -26,10 +26,11 @@ Différence majeure avec la révision précédente : la suite intégrée backend
 ## 2. Preuves d'exécution locale et CI (audit exécuté sur `e36ab33`, révisé jusqu'à `2bc1b7d`)
 
 **Révisions post-exécution (vérifiées, aucune re-exécution requise — pas de code produit concerné) :** PR #412
-(documentation d'audit et GO/NO-GO) et PR #413 (forme canonique du refus d'accès direct, `<AccessDenied />`,
-17 points de refus / 10 fichiers, Vitest mis à jour) ; CI `main@2bc1b7d` vérifiée par API le 2026-11-11 :
-`ci` 11 min 54 s ✅, `e2e-isolation` 5 min 24 s ✅, `security-static` 18 s ✅. Le runbook de recette staging
-(`docs/ops/RECETTE_STAGING_VALIDATION.md`) est publié après cette exécution : procédure pure, aucune
+(documentation d'audit et GO/NO-GO), PR #413 (forme canonique du refus d'accès direct, `<AccessDenied />`,
+17 points de refus / 10 fichiers, Vitest mis à jour) et PR #415 (extension E2E navigateur : zones de site
+et politique GPS + notifications — spec `e2e/gps-zones-policy.spec.ts`, aucun code produit modifié ; CI
+`main` vérifiée par API au moment de la fusion). Le runbook de recette staging
+(`docs/ops/RECETTE_STAGING_VALIDATION.md`, PR #414) est publié après cette exécution : procédure pure, aucune
 exécution terrain.
 
 | Contrôle | Résultat | Périmètre |
@@ -145,7 +146,7 @@ La matrice (14 rôles × 31 menus × routes UI × 118 permissions × 232 routes 
 
 **P1 (chantiers de code autorisés dans cet environnement, dans l'ordre) :**
 1. ~~Harmoniser les deux formes de refus d'accès direct~~ **fait** — PR #413 (`<AccessDenied />` canonique, 17 points / 10 fichiers, Vitest + socle E2E verts).
-2. Étendre les specs E2E d'actions restantes : réconciliation stockage légal, gabarits de checklist HSE, géofences (création/désactivation), politique GPS + notifications, partages téléphone, échéances documents (cas métier), préventif, fiabilité atelier, commandes de pièces (E2E au-delà de Vitest), actions de coûts.
+2. Étendre les specs E2E d'actions restantes : réconciliation stockage légal, gabarits de checklist HSE, ~~géofences (création/désactivation), politique GPS + notifications~~ **fait** (PR #415, `e2e/gps-zones-policy.spec.ts`), partages téléphone, échéances documents (cas métier), préventif, fiabilité atelier, commandes de pièces (E2E au-delà de Vitest), actions de coûts.
 3. Harnais S3/ClamAV pour le cycle documentaire juridique en E2E (écart n°1, seul écart ouvert de `RECETTE_UI_P0.md` §4).
 4. ~~Procédure de validation staging en lecture seule + dry-run~~ **fait** — `docs/ops/RECETTE_STAGING_VALIDATION.md` (l'exécution des phases A–D sur l'hôte réel exige un accès staging et, pour C/D, une approbation explicite).
 5. Rejouer `MATURITY_SCORECARD.md`, recalibrer `FUNCTIONAL_COVERAGE.md`, harmoniser les tranches `later` du YAML.
