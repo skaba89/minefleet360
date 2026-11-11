@@ -1,11 +1,11 @@
 # Readiness commerciale — état courant
 
-**Base auditée :** `main@9c69f44e0dbf1a10406acfd77711595d04202cd1` (dernier commit : 2026-11-06 08:02 +0100, PR #373).
-**Audit exécuté :** 8–9 novembre 2026, en lecture directe du dépôt + exécutions locales (voir §2).
-**Statut du document :** courant ; remplace les scores historiques (62, 70,3, 81) comme référence de décision jusqu'au prochain audit.
-**Verdict :** NO-GO pour la commercialisation industrialisée — GO conditionnel maintenu pour préparer un pilote fermé (aligné avec `docs/qa/GO_NO_GO.md` à la base `089d801`).
+**Base auditée :** `main@e36ab33178f9e8ec8cf2f82f3b09735e5dd10ea6` (PR #411 fusionnée, 2026-11-11).
+**Audit exécuté :** 11 novembre 2026 — exécutions locales complètes (PostgreSQL 16.10 + PostGIS disponibles) **et** CI GitHub vérifiée via API authentifiée.
+**Statut du document :** courant ; remplace la révision du 8–9 novembre 2026 (base `9c69f44`, 68/100) comme référence de décision.
+**Verdict :** **NO-GO commercial maintenu — GO conditionnel pilote maintenu** (aucun prérequis terrain du `GO_NO_GO.md` n'est levé). Score de maturité : **74/100** (grille imposée), en progression de +6 sur des éléments **vérifiés** (remédiations #374–#376, recette R1–R10 #400–#407, socle E2E navigateur #408, écarts UI #409, actions E2E + correctif GRANT #410–#411) — pas sur une validation terrain ou opérationnelle.
 
-> **Règle de lecture.** Ce document ne mélange jamais preuve statique (le code existe et est testé), preuve d'exécution (testé ici) et preuve d'exploitation (validé sur environnement réel). Une inconnue reste explicitement inconnue (§6). Le score est un outil de pilotage interne, jamais une promesse commerciale.
+> **Règle de lecture.** Ce document ne mélange jamais preuve statique (le code existe et est testé), preuve d'exécution (testé ici ou en CI sur infrastructure jetable) et preuve d'exploitation (validé sur environnement réel). Un test CI n'est **pas** une preuve de fonctionnement en conditions réelles. Une inconnue reste explicitement inconnue (§6). Le score est un outil de pilotage interne, jamais une promesse commerciale.
 
 ---
 
@@ -14,142 +14,137 @@
 | Source | Périmètre | Fiabilité |
 |---|---|---|
 | Lecture de code (backend 221 fichiers `app/`, frontend, `infra/`, `scripts/`, `.github/`) | architecture, sécurité, RBAC, RLS, CI | élevée |
-| Exécution locale (sandbox Linux, Python 3.12 / Node 24) | lint, types, tests unitaires, build | élevée |
-| Documents de gouvernance datés (`docs/qa/`, `docs/audit/`) | historique des audits, verdicts | moyenne (non reproductible ici) |
-| CI GitHub (workflows `ci.yml`, `e2e-isolation.yml`, `gps-benchmark-tests.yml`, `security-static.yml`) | gates de fusion | **non revérifiable depuis cet environnement** (API non authentifiée saturée) — inconnue §6.1 |
+| Exécution locale complète (sandbox Linux, PostgreSQL 16.10 + PostGIS, Python 3.12 / Node 22) | lint, types, **suite intégrée complète (5 207 tests)**, Vitest, build | élevée |
+| CI GitHub (`ci.yml`, `e2e-isolation.yml`, `security-static.yml`, `release-images.yml`, `gps-benchmark-tests.yml`) — vérifiée le 2026-11-11 via API authentifiée | gates de fusion, E2E navigateur sur base éphémère | élevée (infrastructure **jetable** : ne prouve pas l'exploitation réelle) |
+| Documents de gouvernance datés (`docs/qa/`, `docs/audit/`, `docs/ops/`) | historique des audits, verdicts | moyenne (non reproductible ici) |
 | VPS OVHcloud / staging | exploitation réelle | **non accessible** — inconnue §6.2 |
 
 Hors périmètre de cet audit : matériel GPS réel, Android physique, réseau mobile guinéen réel, données de production, exercice de restauration sur coffre externe réel.
 
-## 2. Preuves d'exécution locale (cet audit, commit `9c69f44`)
+Différence majeure avec la révision précédente : la suite intégrée backend (harnais RLS/authz sur PostgreSQL réel) est **désormais exécutée localement de bout en bout** (5 207 tests, contre 360 unitaires seuls au 9 novembre), et l'état CI est **vérifié** (l'inconnue §6.1 de la révision précédente est levée).
+
+## 2. Preuves d'exécution locale et CI (cet audit, commit `e36ab33`)
 
 | Contrôle | Résultat | Périmètre |
 |---|---|---|
-| `ruff check .` | 0 erreur | backend complet |
-| `ruff format --check .` | OK | backend complet |
+| `ruff check .` + `ruff format --check .` | 0 erreur, 469 fichiers formatés | backend complet |
 | `mypy app` | Succès, 221 fichiers | backend |
-| `pytest tests_unit` | **360 passés** (dont 7 nouveaux) | unitaires sans base |
-| `pytest tests/`, `tests_migrations/` | **non exécutés** (PostgreSQL 16/PostGIS requis, absent de l'environnement) | harnais RLS/authz — couvert par la CI du dépôt |
-| `npm run typecheck` | OK (strict) | frontend |
-| `npm test` (Vitest) | **223 passés** (dont 2 nouveaux) | frontend |
-| `npx vite build` | OK | frontend |
-| Playwright (4 configs) | **non exécuté** (pile locale requise) | couvert par la CI `e2e-isolation.yml` |
-| `scripts/generate_role_route_matrix.py --check` | OK, document régénéré | matrice §5 |
+| `pytest -q -x` (MF_ENV=test, base `minefleet_test`) | **5 207 passés**, 43 avertissements, 7 min 25 s | **suite intégrée complète** (RLS, authz, concurrence, migrations) |
+| `npx tsc --noEmit` | OK (strict) | frontend |
+| Vitest | **233/233** (56 fichiers) — +10 depuis la révision précédente (223) | frontend |
+| `npm run build` | OK, bundle 4,9 Mo | frontend |
+| `generate_role_route_matrix.py --check` + `gen_permissions.py --check` | « matrice à jour » ×2 | anti-dérive RBAC/menus |
+| CI `main` sur `e36ab33` | `ci` 7 min 56 s ✅, `e2e-isolation` 5 min 27 s ✅, `security-static` 16 s ✅ | vérifiée par API le 2026-11-11 |
+| PR #400 → #411 | **12/12 fusionnées** (recette R1–R10, socle UI E2E, écarts UI, actions E2E) | chaque PR avec ses 3 workflows verts |
+
+Extraits datés : `docs/audit/preuves/` (pytest.txt, vitest.txt, typecheck.txt, build.txt, anti_derive.txt, ruff.txt, format.txt, mypy.txt).
+
+**Bugs réels trouvés et corrigés par la chaîne de recette depuis le dernier audit** (valeur démontrée du dispositif) :
+1. RLS post-commit sur le cycle carburant — corrigé par PR #403 (tranche R6).
+2. `GRANT UPDATE` manquant à `mf_app` sur `spare_part_replenishment` → **500** sur submit/decision pour tout le monde (régression 0042/0044 jamais couverte par les 403 seuls) — migration additive 0064 + test de régression PR #410 ; les specs E2E navigateur l'ont révélé sur un serveur réel.
 
 ## 3. Tableau de bord de maturité (grille imposée)
 
-| Domaine | Pondération | Score | Justification synthétique |
-|---|---:|---:|---|
-| Sécurité et isolation | 20 | **16** | RLS forcée sur 75 tables, RBAC machine (118 permissions/232 routes) testé, MFA chiffré, refresh rotatif anti-rejeu, journal append-only. Non certifié indépendant ; 4 durcissements traités ici, 1 restant (§4.1). |
-| Fiabilité et résilience | 20 | **13** | Restauration chiffrée testée en CI avec gates RLS fail-closed ; release/rollback par digest immuables ; supervision sondes+SMTP crash-safe. RPO/RTO jamais mesurés sur coffre réel ; alertes jamais éprouvées par incident réel. |
-| Fonctionnalités métier | 20 | **15** | Couverture large et testée : parc, affectations, missions/pesées, GMAO corrective+préventive, pièces, pneus, carburant, HSE, RH, coûts, juridique. GPS avancé mais **aucun traceur certifié** ; offline limité au périmètre HSE/OT. |
-| UX/UI et offline | 15 | **11** | UI française complète, GNF/fuseaux corrects, responsive audité E2E, 0 bouton inerte constaté, offline HSE idempotent éprouvé (build prod + émulation Android). Android physique jamais testé ; inspections non couvertes hors ligne. |
-| Exploitation DevOps/SRE | 15 | **11** | 4 workflows à gates denses (couverture 85 %, migrations peuplées, contrat OpenAPI, audits dépendances, SAST/secrets). Pas de build/push d'images en CI, pas de dependabot, pas de métriques continues. |
-| Commercialisation SaaS | 10 | **2** | Espace PLATFORM_ADMIN livré (sociétés, suspension, santé) et provisioning tenant transactionnel. Aucun plan/quota/abonnement/facturation (0 table), ni support/onboarding/SLA. |
-| **Total** | **100** | **68** | Écart avec le 70/100 interne (grille différente, base `089d801`) : les deux grilles conduisent au même verdict. |
+| Domaine | Pondération | Score (9 nov) | Score (11 nov) | Justification synthétique |
+|---|---:|---:|---:|---|
+| Sécurité et isolation | 20 | 16 | **17** | RLS forcée sur 75 tables, RBAC machine (118 permissions / 232 routes) testé deny-by-default, MFA chiffré, refresh rotatif anti-rejeu, audit append-only. **Nouveau depuis le 9 nov** : écran « Mes sessions » + révocations `identity.session.revoke_own/any` (#375, 7 tests d'intégration + 3 Vitest), OpenAPI/docs fermés en production (#374, +7 tests), clé HMAC rate-limit dédiée du secret JWT (#374, +6 tests), tranche R8 (IDOR, 429, audit) verte. Restent : audit indépendant, avis juridique, rotation de secrets outillée. |
+| Fiabilité et résilience | 20 | 13 | **14** | Restauration chiffrée testée en CI avec gates RLS fail-closed ; release/rollback par digest immuables ; **images de release signées Cosign + SLSA + SBOM publiées par CI** (#376). La recette a **prouvé sa capacité à attraper 2 bugs réels** (#403, #410) — le dispositif de vérification fonctionne. Restent non mesurés : RPO/RTO sur coffre externe réel, exercice release→rollback sur staging, éprouvetage des alertes par incident réel. |
+| Fonctionnalités métier | 20 | 15 | **16** | Périmètre inchangé (79 tables / 232 routes) mais **profondeur de preuve accrue** : 10 tranches de recette API R1–R10 sur serveur réel (#400–#407) et **7 specs E2E navigateur d'actions métier** en CI (correction/annulation de pesée, réappro quatre-yeux, acquittement GPS, HSE double regard, contrats, tenants plateforme, police d'assurance #410/#411). Toujours : aucun traceur certifié, offline limité à HSE/OT, cycle documentaire juridique bloqué par harnais S3/ClamAV. |
+| UX/UI et offline | 15 | 11 | **12** | **Nouveau** : socle E2E d'accès direct 34 routes × 13 rôles — « jamais Page introuvable ni Erreur inattendue » (#408), pages 404 dédiées (#374), 2 écarts UI comblés avec tests (échéances d'assurance, commandes d'achat #409), AUDITOR vérifié lecture seule en E2E (#411), Vitest 233. Toujours : offline HSE/OT uniquement, Android physique jamais testé, recherche globale absente. |
+| Exploitation DevOps/SRE | 15 | 11 | **13** | **Nouveau** : workflow `release-images` (GHCR + Cosign keyless + provenance SLSA mode=max + SBOM) — le build/push d'images n'est plus manuel (#376) ; **Dependabot actif et démontré** (20+ PR fusionnées : pip groupé, npm groupé, actions ×, caddy, node, gitleaks v3 — #377–#399). Restent : publication de couverture, métriques/SLO continus, runbook SRE consolidé. |
+| Commercialisation SaaS | 10 | 2 | **2** | Aucun changement : espace PLATFORM_ADMIN (sociétés, suspension, santé) + provisioning tenant transactionnel restent le seul actif. 0 table/endpoint plans, quotas, abonnements, facturation, support, onboarding, réversibilité. |
+| **Total** | **100** | **68** | **74** | Progression entièrement adossée à des preuves vérifiables (§2 et §4) ; aucun point pour une validation terrain ou opérationnelle, toujours absente. |
 
-**Décision correspondante :** GO technique non revendiqué ; GO pilote conditionné aux 8 prérequis du `GO_NO_GO.md` (tous non levés) ; GO commercial impossible tant que le domaine Commercialisation SaaS n'existe pas (§4.6).
+**Décision correspondante :** le gain +6 mesure la **qualité et la profondeur de vérification du produit**, pas une maturité opérationnelle. Le verdict du `GO_NO_GO.md` est donc inchangé : GO pilote conditionnel (8 prérequis tous non levés), GO commercial impossible avant le chantier SaaS (§4.6) et les validations réelles.
 
 ## 4. Analyse par domaine
 
-### 4.1 Sécurité et isolation — 16/20
+### 4.1 Sécurité et isolation — 17/20
 
-**Prouvé (statique + exécution locale) :** RLS activée **et forcée** sur 75 tables (`0001_foundation.py:57-71`), rôle applicatif `mf_app` non-superuser/non-BYPASSRLS vérifié au démarrage (`main.py:50-57`) et après restauration (`verify-restore.sh`) ; contexte tenant posé en un seul module transactionnel, whitelist d'appelants fermée (`test_architecture.py`) ; RBAC deny-by-default généré du YAML vers les tests (`test_authz_matrix.py` : concordance route↔permission, refus 403 audité, portée site, objets étrangers indiscernables en 404) ; refresh token rotatif avec détection de rejeu et révocation de session ; MFA TOTP chiffré AES-256-GCM avec enrôlement forcé pour les rôles sensibles ; cookies HttpOnly/SameSite=Strict avec vérification d'Origin ; argon2id ; limiteurs d'authentification persistés PostgreSQL ; journal d'audit append-only partitionné mensuellement ; Gitleaks + Bandit (high/high) en CI.
+**Prouvé (statique + exécution locale + CI) :** RLS activée **et forcée** sur 75 tables (`0001_foundation.py`), `mf_app` non-superuser/non-BYPASSRLS vérifié au démarrage et après restauration ; contexte tenant en un seul module transactionnel (whitelist fermée, `test_architecture.py`) ; RBAC deny-by-default généré du YAML vers les tests (concordance route↔permission, refus 403 audité, portée site, objets étrangers en 404) ; refresh rotatif anti-rejeu ; MFA TOTP chiffré AES-256-GCM à enrôlement forcé pour les rôles sensibles ; cookies HttpOnly/SameSite=Strict avec vérification d'Origin ; argon2id ; limiteurs persistés avec clé HMAC dédiée (`MF_RATE_LIMIT_KEY`, #374) ; journal append-only partitionné ; Gitleaks v3 + Bandit (high/high) en CI.
 
-**Corrigé par cet audit :** `/openapi.json` et `/docs` ne sont plus publiés en production (ils cartographiaient `x-permission` par route) — `app/main.py` + 7 tests (`tests_unit/test_production_hardening.py`). La clé HMAC des compteurs de limitation d'authentification est **dédiée du secret JWT** (`MF_RATE_LIMIT_KEY`, obligatoire en recette/production, dérivée en local/test/ci) : la rotation du secret JWT n'invalide plus les verrouillages en cours et une fuite de l'une des deux clés ne compromise pas l'autre mécanisme — `app/core/config.py`, `app/core/ratelimit.py`, compose/verify-restore/preflight/.env prod mis à jour, +6 tests. Les permissions orphelines de session sont **implémentées** : écran « Mes sessions » (`GET /me/sessions`, `POST /me/sessions/revoke-others`, `POST /me/sessions/{id}/revoke`, révocation administrative `POST /users/{user_id}/sessions/revoke` pour `TENANT_ADMIN`), auditées, indiscernabilité 404 hors tenant, +7 tests d'intégration PostgreSQL (`tests/test_sessions.py`, exécutés en CI) et page UI `/mon-compte/sessions` (3 tests Vitest).
+**Corrigés/ajoutés depuis le 9 nov (tous testés, CI verte) :** écran « Mes sessions » avec révocation de ses propres sessions, des autres sessions et révocation administrative TENANT_ADMIN — permissions `identity.session.revoke_own/any` implémentées, indiscernabilité 404 hors tenant (#375) ; `/openapi.json` et `/docs` fermés en production (#374) ; tranche R8 de recette négative (IDOR inter-tenant, 429, traçabilité audit) verte sur serveur réel (#405) ; Dependabot actif sur pip/npm/docker/actions (#376, bumps #377–#399 dont caddy 2.11.9).
 
-**Partiel / à traiter (P1) :** pas de rotation de secrets outillée.
+**Partiel / à traiter (P1) :** rotation de secrets non outillée.
 
-**Absent / risque :** aucun audit de sécurité indépendant (bloquant commercial, SEC-01/02) ; revue juridique géolocalisation/données salariés en Guinée non engagée (bloquant pilote, C-01/C-08/C-09).
+**Absent / risque (inchangé) :** aucun audit de sécurité indépendant (bloquant commercial) ; revue juridique géolocalisation/données salariés en Guinée non engagée (bloquant pilote).
 
-**Tests nécessaires :** suite `tests/` complète sur PostgreSQL (CI), exercice A/B d'isolation en recette réelle (GO_NO_GO §prérequis), vérifier que le démarrage d'un `api` staging sans `MF_RATE_LIMIT_KEY` échoue proprement (couvert par les tests unitaires + exigence compose).
+### 4.2 Fiabilité et résilience — 14/20
 
-**Critères de validation :** 0 finding critique/élevé ouvert ; audit indépendant rendu ; avis juridique écrit ; `--check` matrice vert en CI.
+**Prouvé :** job CI `backup-restore` (dump → GPG → rclone → checksum → restauration isolée → smoke) ; `verify-restore.sh` avec gates RLS fail-closed ; release staging exige une sauvegarde < 1 h et rollback applicatif automatique ; sondes + alertes SMTP crash-safe (11 suites ops) ; **images de release signées et publiées par CI** (Cosign keyless, SLSA mode=max, SBOM — #376) avec manifestes n'acceptant que des digests ; **la recette a détecté et permis de corriger 2 défauts réels** (RLS post-commit #403 ; GRANT UPDATE manquant → 500 sur le réapprovisionnement #410, migration additive 0064 + régression).
 
-### 4.2 Fiabilité et résilience — 13/20
+**Partiel / absent (inchangé, bloquants GO pilote) :** restauration jamais exécutée depuis un coffre **externe réel** ; RPO/RTO jamais mesurés ; alertes jamais éprouvées par incident réel ; pas de métriques continues ; exercice release→rollback non attesté sur staging isolé ; pas de healthcheck Docker `api`/`web` (les sondes applicatives compensent partiellement).
 
-**Prouvé (statique + CI documentée) :** job CI `backup-restore` (dump → GPG AES256/SHA512 → rclone immutable → checksum → restauration isolée → smoke API) ; `verify-restore.sh` avec gates : ≥10 tables, `alembic_version` présente, RLS activée+forcée, test fail-closed (`SET ROLE mf_app` sans contexte → 0 ligne), démarrage API sur base restaurée ; `backup.sh` refuse un dump non validé par `pg_restore --list` ; release staging exige une sauvegarde de <1 h avant déploiement et rollback applicatif automatique en cas d'échec du smoke ; sondes (HTTP, `/ready`, fraîcheur backup, jobs systemd) + orchestrateur d'alertes SMTP at-least-once crash-safe testé par 11 suites ops en CI.
+**Tests nécessaires :** exercice R1 réel avec mesure RPO/RTO ; injection d'incident d'alerte ; `staging-release.sh` dry-run puis apply sur staging (lecture seule d'abord — règle « pas d'apply sans approbation »).
 
-**Partiel / absent (bloquants GO_NO_GO) :** restauration jamais exécutée depuis un coffre **externe réel** ; RPO/RTO jamais mesurés ; alertes jamais éprouvées par injection d'incident réel ; pas de healthcheck Docker sur `api`/`web` (les sondes applicatives le compensent partiellement) ; pas de métriques continues (Prometheus/AI) ; exercice complet release→rollback→vérifications non attesté sur staging isolé (R2 « non validé en recette »).
+### 4.3 Fonctionnalités métier — 16/20
 
-**Tests nécessaires :** exercice R1 (restauration réelle avec mesure RPO/RTO), injection d'incident d'alerte, `staging-release.sh apply` puis rollback sur staging.
+**Prouvé :** 79 tables / 232 routes couvrant parc, affectations, missions/pesées (corrections, annulations, quatre-yeux), GMAO corrective + préventive, pièces (CMP, réservations concurrentes, réappro avec décision séparée, BC depuis demande approuvée), pneus, carburant (double validation, anomalies), HSE (incidents, actions correctives double regard, inspections), RH terrain, coûts complets, contrats/assurances/échéances, indicateurs, fiabilité. La règle « la GPS n'est jamais une preuve de tonnage » reste appliquée et testée.
 
-**Critères de validation :** `docs/ops/DISASTER_RECOVERY_EVIDENCE.md` renseigné avec mesures datées ; sonde d'alerte verte après incident réel ; receipt `release-state/current.json` produit par un apply réel.
+**Nouveau depuis le 9 nov :** recette API R1–R10 sur serveur réel (#400–#407) ; 7 specs E2E navigateur d'actions en CI (#408 socle, #410 actions, #411 assurance) — les actions critiques sont désormais prouvées **depuis l'interface**, pas seulement par l'API ; onglets UI comblés (#409).
 
-### 4.3 Fonctionnalités métier — 15/20
+**Partiel (inchangé) :** GPS temps réel complet (carte, géofences, alertes, SSE) mais registre d'adaptateurs limité à `minefleet-json-v1`, **aucun matériel certifié** (verrouillé par test) ; offline limité à la déclaration HSE + notes d'OT ; cycle documentaire juridique (dépôt→vérification→soumission→décision) impossible en E2E sans harnais S3/ClamAV (écart documenté `RECETTE_UI_P0.md` §4) ; réconciliation stockage légal, gabarits de checklist, géofences (création/désactivation), politique GPS, partages téléphone et actions de coûts restent sans spec E2E dédiée.
 
-**Prouvé :** 79 tables ORM / 232 routes API couvrant : parc (engins, catégories, compteurs km/h, documents réglementaires immuables, échéances), affectations (éligibilité, transitions, conflits D-41), missions et rotations avec pesées (tickets, corrections, approbations — la GPS n'est jamais une preuve de tonnage, règle appliquée), GMAO corrective (déclaration→diagnostic→OT→décision→exécution→clôture, transactionnelle, testée en concurrence) et préventive (plans, échéances, verrous PostgreSQL), pièces (catalogue, magasins, CMP, réservations concurrentes, réappro, BC), pneus (inventaire individuel, montage, inspections, réforme), carburant (cuves, pompes, achats, demandes/décisions séparées, inventaires, seuils, anomalies, rapprochements), HSE (incidents, actions correctives, inspections, checklists), RH terrain (conducteurs, permis E.164 +224, qualifications, échéances), coûts complets, contrats/assurances, indicateurs, fiabilité (MTBF/MTTR). E2E navigateur par rôle exécutés en CI sur base éphémère.
+**Absent (inchangé) :** couche SaaS commerciale (§4.6), exports Excel/PDF avancés, IA.
 
-**Partiel :** GPS temps réel (carte MapLibre auto-hébergée, replay, géofences, alertes, SSE LISTEN/NOTIFY, reprise réseau) mais le registre d'adaptateurs ne contient que `minefleet-json-v1`, **non certifié matériel** et verrouillé par test (`test_gps_payload_adapters.py:41` : aucun Teltonika/Queclink avant essai physique) ; offline limité à la déclaration HSE + notes d'OT.
+### 4.4 UX/UI et offline — 12/15
 
-**Absent :** couche SaaS commerciale (§4.6), exports Excel/PDF avancés, IA (anomalies, prévision).
+**Prouvé :** interface 100 % française, GNF, fuseaux, états standardisés avec `request_id`, pagination/filtres, responsive E2E (360 px, cibles ≥ 44 px), MFA bloquant ; **garde-fou E2E d'accès direct : 34 routes × 13 rôles ne montrent ni « Page introuvable » ni « Erreur inattendue » et jamais de donnée non autorisée** (#408) ; page 404 dédiée (#374) ; échéances d'assurance et commandes d'achat accessibles depuis l'UI avec tests Vitest et E2E (#409, #411) ; AUDITOR vérifié sans formulaire de création (#411) ; offline HSE idempotent éprouvé (build prod, desktop + Pixel 7 émulé).
 
-**Défaillant :** rien de démontré en CI ; les parcours critiques sont testés (concurrence, idempotence, stocks).
+**Partiel / absent (inchangé) :** inspections HSE hors ligne (arbitrage produit en attente) ; tampon GPS téléphone volatile (assumé) ; **Android physique jamais testé** ; deux formes de refus d'accès direct à harmoniser (écart n°2 `RECETTE_UI_P0.md` §4 — aucun crash, jamais de donnée, pure UX) ; recherche globale absente.
 
-**Tests nécessaires :** essais traceur réels (protocole `GPS_FOURNISSEUR_CAHIER.md`), Android physique hors ligne, charge p95/p99 GPS sur staging.
+### 4.5 Exploitation DevOps/SRE — 13/15
 
-### 4.4 UX/UI et offline — 11/15
+**Prouvé :** `ci.yml` (ruff/mypy, migrations peuplées, pytest + RLS `--cov-fail-under=85`, pip-audit, contrat OpenAPI diff, anti-dérive ×2, npm audit, build, smoke) ; `e2e-isolation.yml` (isolation tenant, parcours démo par rôle, actions métier navigateur) ; `security-static.yml` ; **`release-images.yml` : build + push GHCR + Cosign keyless + SLSA mode=max + SBOM** (#376) ; **Dependabot actif et effectif** (groupes pip/npm, actions, caddy, node — 20+ fusions) ; scripts ops durcis ; 5 timers systemd ; images non-root avec labels (commit + tête Alembic).
 
-**Prouvé :** interface 100 % française (D-01), montants GNF via `Intl.NumberFormat`, fuseau du site (`Africa/Conakry` proposé), états chargement/vide/erreur standardisés avec `request_id`, pagination, filtres, responsive audité par E2E DOM (débordement 360 px, cibles ≥44 px, police ≥16 px), enrôlement MFA bloquant, audit « boutons inertes » négatif re-fait aujourd'hui (0 `onClick` vide, 0 `alert`) ; mode hors ligne terrain : déclaration HSE via outbox IndexedDB idempotente (clé `operationId`, Web Locks anti-doublon inter-onglets, backoff borné, purge à la déconnexion, garde-fou anti-secrets dans les payloads), testée en E2E sur build production avec service worker (desktop + Pixel 7 émulé) ; brouillons d'OT transmis manuellement.
-
-**Corrigé par cet audit :** page 404 dédiée (heading, explication, retour accueil) remplaçant le `<p>` nu — +2 tests.
-
-**Partiel / absent :** inspections HSE non couvertes hors ligne (choix produit à arbitrer) ; tampon GPS téléphone en RAM volatile (perte au rechargement — assumé, OFF-01) ; Android physique jamais testé ; recherche globale absente.
-
-**Critères de validation :** E2E `e2e-field` verts en CI ; essai Android réel documenté ; décision arbitrée sur l'offline des inspections.
-
-### 4.5 Exploitation DevOps/SRE — 11/15
-
-**Prouvé :** workflows `ci.yml` (lint/format, mypy, migrations peuplées 0004→head, tests+RLS avec `--cov-fail-under=85`, pip-audit, contrat OpenAPI régénéré-diffé, `gen_permissions.py --check`, npm audit high, build, smoke navigateur), `e2e-isolation.yml` (isolation tenant + parcours démo par rôle, base éphémère, comptes fictifs), `security-static.yml` (Bandit high/high, Gitleaks sur historique), `gps-benchmark-tests.yml` (filtré par chemins) ; scripts ops durcis (config offsite parsée comme données, jamais sourcée shell ; umask 077 ; `O_NOFOLLOW` ; moindre privilège secrets API) ; 5 timers systemd durcis (monitor 5 min, HSE digest, préventif, balayage signal GPS, notifications 1 min) ; images runtime non-root avec labels de traçabilité (commit + tête Alembic).
-
-**Absent :** build/push des images de release dans la CI (les manifests référencent des digests mais le build reste manuel) ; dependabot ; SBOM ; publication de couverture ; métriques/seuils SLO collectés en continu ; runbook SRE consolidé.
-
-**Tests nécessaires :** job CI de build+push signé des images ; ajout dependabot ; drill d'alerte.
+**Absent (reste) :** publication de la couverture de tests ; métriques/SLO continus (Prometheus…) ; runbook SRE consolidé ; exercice d'alerte réel.
 
 ### 4.6 Commercialisation SaaS — 2/10
 
-**Prouvé :** espace PLATFORM_ADMIN distinct (tableau de bord, liste/création/suspension/réactivation des sociétés, état des services) — PR #369-#370 ; provisioning d'un tenant en une transaction (copie du catalogue, invitation du premier TENANT_ADMIN, double audit) ; connexion plateforme dédiée avec MFA ; seeds de démonstration gardés (refus en production et si clients réels présents).
+**Prouvé (inchangé) :** espace PLATFORM_ADMIN distinct (sociétés, suspension/réactivation, santé) ; provisioning tenant transactionnel ; connexion plateforme à MFA ; seeds de démo refusés en production.
 
-**Absent (0 table, 0 endpoint) :** plans et tarifs, quotas par société, abonnements, facturation, échéances/renouvellement, suspension graduée pour impayé, tooling support, onboarding guidé, réversibilité/export client, SLA. Aucun moyen de paiement intégré (conforme à la règle « pas d'intégration non approuvée »).
+**Absent (0 table, 0 endpoint — inchangé) :** plans et quotas, abonnements (essai/activation/renouvellement/suspension), facturation (factures, avoirs, taxes, exports), tooling support, onboarding guidé, réversibilité client, SLA. Aucun moyen de paiement intégré (conforme à la règle « pas d'intégration non approuvée »).
 
-**Conséquence :** le GO commercial est structurellement impossible avant un chantier dédié (Phase 13 de la mission). Aucun prix ne doit être annoncé avant coût-servi et entretiens clients (`COMMERCIAL_LAUNCH_PLAN.md` : « aucun tarif fixé »).
-
-**Tests nécessaires :** conception+migration plans/quotas, tests de plafonnement, tests de facturation, tests de réversibilité.
+**Conséquence :** GO commercial structurellement impossible avant les lots SaaS 1→4 de la mission, à lancer après (ou en préparation neutralisée du) GO pilote ; aucun tarif avant coût-servi et entretiens clients.
 
 ## 5. Matrice comptes/rôles/menus/routes
 
-La matrice complète (14 rôles × 31 entrées de menu × routes UI × 118 permissions × 232 routes API) est générée mécaniquement dans [`docs/qa/ROLE_PAGE_ACTION_MATRIX.md`](../qa/ROLE_PAGE_ACTION_MATRIX.md) avec garde anti-dérive `--check`. Constats associés : aucun rôle attendu n'est absent, `PLATFORM_ADMIN` est bien isolé des données client (aucune field_policy visible), plus aucune permission orpheline (sessions implémentées §4.1), `maintenance.preventive.*` marquées `later` alors qu'implémentées (incohérence de tranche à corriger ou assumer).
+La matrice (14 rôles × 31 menus × routes UI × 118 permissions × 232 routes API) reste générée mécaniquement (`docs/qa/ROLE_PAGE_ACTION_MATRIX.md`, anti-dérive `--check` vert le 2026-11-11). Le socle E2E #408 vérifie désormais **en navigateur** l'accès direct 34 routes × 13 rôles et l'isolement de PLATFORM_ADMIN. Écart connu assumé : tranches `maintenance.preventive.*` marquées `later` dans le YAML alors qu'implémentées (harmonisation à faire).
 
 ## 6. Inconnues explicites (restent inconnues)
 
-1. **État CI du HEAD `9c69f44`** : l'API GitHub non authentifiée est saturée depuis cet environnement ; la dernière preuve documentée est une CI verte sur `089d801` (2 commits avant). À revérifier avant toute fusion.
-2. **Staging OVHcloud** : non accessible (état réel des conteneurs, révision Alembic 0063, volumes, proxy partagé — tout doit être revérifié sur place avant toute opération).
-3. **Matériel GPS** : aucun modèle/firmware certifié ; compatibilités annoncées nulles et interdites par test.
-4. **Android physique et réseau guinéen réel** : jamais testés.
-5. **RPO/RTO réels** : non mesurés.
+1. ~~État CI du HEAD~~ **levée** : CI vérifiée par API le 2026-11-11 — `main@e36ab33` : 3/3 workflows verts ; PR #400→#411 toutes fusionnées.
+2. **Staging OVHcloud** : non accessible depuis cet environnement (état réel des conteneurs, révision Alembic, volumes, proxy partagé à revérifier sur place ; tout `apply` exige une approbation explicite).
+3. **Matériel GPS** : aucun modèle/firmware certifié ; compatibilités annoncées interdites par test.
+4. **Android physique et réseau guinéen réel** : jamais testés (l'émulation Playwright n'est pas une preuve terrain).
+5. **RPO/RTO réels** : non mesurés (coffre externe jamais exercé).
 6. **Conformité juridique** : aucun avis professionnel (juriste guinéen requis).
 
 ## 7. Priorisation des prochains travaux
 
-**P0 (bloquants GO pilote — repris du GO_NO_GO, inchangés) :** coffre de sauvegarde externe réel + RPO/RTO mesurés ; exercice staging release→rollback→vérifications (R2) ; isolation A/B en recette réelle ; revue juridique ; essai traceur physique ; essai Android réel ; SLO GPS p95/p99 ; éprouver les alertes par incident.
+**P0 (bloquants GO pilote — inchangés, exigent l'accès staging/coffre/matériel) :** coffre externe réel + RPO/RTO mesurés ; exercice staging release→rollback→vérifications (R2) ; isolation A/B en recette réelle ; revue juridique ; essai traceur physique (protocole `GPS_FOURNISSEUR_CAHIER.md`) ; essai Android réel ; SLO GPS p95/p99 ; éprouvetage des alertes par incident.
 
-**P1 (découverts/confirmés par cet audit) :** ~~dédier la clé HMAC du rate-limiting~~ (traité — `MF_RATE_LIMIT_KEY`) ; ~~implémenter `identity.session.revoke_own/any`~~ (traité — écran « Mes sessions » + révocation administrative, §4.1) ; ~~build/push d'images signées en CI + dependabot~~ (traité — workflow `release-images` : GHCR + provenance SLSA + SBOM + signature Cosign keyless, `docs/STAGING_RELEASE_ROLLBACK.md` ; dependabot pip/npm/docker/actions) ; étendre l'offline aux inspections HSE (après arbitrage produit) ; rejouer `MATURITY_SCORECARD.md` et recalibrer `FUNCTIONAL_COVERAGE.md` (périmé au 30 oct : décrit HSE/pièces/pneus comme absents, contredit par les migrations 0036-0045 et la CI actuelle) ; harmoniser les tranches `later` du YAML.
+**P1 (chantiers de code autorisés dans cet environnement, dans l'ordre) :**
+1. Harmoniser les deux formes de refus d'accès direct (écart n°2 `RECETTE_UI_P0.md` §4) — code + tests.
+2. Étendre les specs E2E d'actions restantes : réconciliation stockage légal, gabarits de checklist HSE, géofences (création/désactivation), politique GPS + notifications, partages téléphone, échéances documents (cas métier), préventif, fiabilité atelier, commandes de pièces (E2E au-delà de Vitest), actions de coûts.
+3. Harnais S3/ClamAV pour le cycle documentaire juridique en E2E (écart n°1).
+4. Procédure de validation staging **en lecture seule + dry-run** (Phase 4 de la mission : versions, Alembic, images, permissions DB, HTTPS, comptes, logs, sauvegarde/restauration isolée, rollback, rapport) — sans `apply`.
+5. Rejouer `MATURITY_SCORECARD.md`, recalibrer `FUNCTIONAL_COVERAGE.md`, harmoniser les tranches `later` du YAML.
+6. Étendre l'offline aux inspections HSE (après arbitrage produit).
 
-**P2 :** chantier SaaS commercial (plans/quotas/facturation) — à lancer seulement après le GO pilote ; consolidation documentaire (regrouper les preuves DR dans `docs/ops/DISASTER_RECOVERY_EVIDENCE.md` après exercice réel).
-
-*Note : `docs/roadmap/PRIORITIZED_DELIVERY_PLAN.md` n'est pas créé ici pour éviter le doublon avec `ROADMAP_85_TO_95.md` (backlog P0/P1/P2 existant) et le présent §7 ; consolidation à arbitrer.*
+**P2 (préparation SaaS, sans moyen de paiement ni tarif) :** conception plans/quotas (Starter, Business, Mining Pro, Enterprise **candidats**), schéma abonnements, facturation paramétrable (GNF, taxes), support/onboarding — migrations et tests d'abord, PR verticales séparées.
 
 ## 8. Registre des documents exigés
 
 | Document | État |
 |---|---|
-| `docs/audit/COMMERCIAL_READINESS_CURRENT.md` | **créé** (le présent document) |
-| `docs/qa/ROLE_PAGE_ACTION_MATRIX.md` | **créé** (généré, `--check` anti-dérive) |
-| `docs/qa/GO_NO_GO.md` | existant, cohérent (NO-GO commercial / GO conditionnel pilote) — à réévaluer après P0 |
-| `docs/qa/REGRESSION_EVIDENCE.md` | absent — preuves brutes dans `docs/audit/preuves/` + §2 ici ; à créer lors du premier exercice de non-régression formel |
-| `docs/security/OPEN_RISKS.md` | absent — risques ouverts dispersés (SEC-01/02, REL-01, GPS-01/02, OFF-01, OPS-01/02) ; à consolider |
-| `docs/ops/RELEASE_READINESS.md` | absent — couvert par `STAGING_RELEASE_ROLLBACK.md` + `INDUSTRIAL_READINESS_2026.md` |
-| `docs/ops/DISASTER_RECOVERY_EVIDENCE.md` | absent — à créer après l'exercice R1 réel |
-| `docs/product/COMMERCIAL_OFFERS.md` | absent — `COMMERCIAL_LAUNCH_PLAN.md` liste 4 offres candidates sans tarifs |
+| `docs/audit/COMMERCIAL_READINESS_CURRENT.md` | **mis à jour** (présente révision, base `e36ab33`) |
+| `docs/qa/GO_NO_GO.md` | **mis à jour** (11 novembre 2026, verdict inchangé, preuves actualisées) |
+| `docs/qa/ROLE_PAGE_ACTION_MATRIX.md` | généré, anti-dérive vert |
+| `docs/qa/RECETTE_UI_P0.md` | à jour (2 écarts ouverts documentés) |
+| `docs/audit/preuves/` | **rafraîchi** (pytest 5 207, vitest 233, tsc, build, anti-dérive, ruff, format, mypy — datés 2026-11-11) |
+| `docs/qa/REGRESSION_EVIDENCE.md` | absent — à créer lors du premier exercice de non-régression formel sur staging |
+| `docs/security/OPEN_RISKS.md` | absent — risques dispersés (SEC-01/02, REL-01, GPS-01/02, OFF-01, OPS-01/02) |
+| `docs/ops/DISASTER_RECOVERY_EVIDENCE.md` | absent — après exercice R1 réel |
+| `docs/product/COMMERCIAL_OFFERS.md` | absent — offres candidates sans tarifs (`COMMERCIAL_LAUNCH_PLAN.md`) |
 | `docs/product/PILOT_ACCEPTANCE.md` | absent — `CRITERES_GO_PILOTE.md` + `INDUSTRIAL_ACCEPTANCE_TESTS.md` (scénarios non exécutés) |
-| `docs/roadmap/PRIORITIZED_DELIVERY_PLAN.md` | volontairement non dupliqué (§7) |

@@ -1,0 +1,2 @@
+Commande : npx tsc --noEmit
+Statut : OK (exécution locale 2026-11-11, base e36ab33)

@@ -1,0 +1,2 @@
+Commande : npm run build (tsc + vite build)
+Statut : OK, bundle 4,9 Mo (exécution locale 2026-11-11, base e36ab33)

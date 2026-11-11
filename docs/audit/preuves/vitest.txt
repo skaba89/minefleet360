@@ -1,0 +1,2 @@
+Commande : npx vitest run (frontend)
+Statut : 233/233 passés, 56 fichiers (exécution locale 2026-11-11, base e36ab33)
