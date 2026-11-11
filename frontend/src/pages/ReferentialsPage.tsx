@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
-import { Badge, DataState, ErrorMessage } from "../components/common";
+import { AccessDenied, Badge, DataState, ErrorMessage } from "../components/common";
 import { ActionForm, Options } from "../components/forms";
 import { label, LOCATION_KINDS } from "../lib/labels";
 import { can } from "../lib/permissions";
@@ -15,11 +15,7 @@ type LocationKind = Schemas["LocationCreate"]["kind"];
 export function ReferentialsPage() {
   const me = useMe();
   if (!can(me.grants, "dispatch.location.manage") && !can(me.grants, "dispatch.material.manage")) {
-    return (
-      <p className="error" role="alert">
-        Vous n'avez pas accès à cette partie de l'administration.
-      </p>
-    );
+    return <AccessDenied />;
   }
   return (
     <>

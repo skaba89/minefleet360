@@ -4,7 +4,7 @@ import { Link } from "react-router";
 
 import { call, read } from "../api/client";
 import { useMe } from "../auth/AuthContext";
-import { DataState, ErrorMessage, Pager } from "../components/common";
+import { AccessDenied, DataState, ErrorMessage, Pager } from "../components/common";
 import { can } from "../lib/permissions";
 import { replenishmentCsv } from "../lib/replenishmentCsv";
 import { useSites } from "../site/SiteContext";
@@ -109,7 +109,7 @@ export function PartsPage() {
   );
   const current = tab === "stocks" ? balances : tab === "movements" ? movements :
     tab === "reservations" ? reservations : tab === "orders" ? orders : replenishments;
-  if (!permitted) return <p role="alert">Vous n'avez pas accès au magasin de pièces.</p>;
+  if (!permitted) return <AccessDenied />;
 
   return (
     <section>

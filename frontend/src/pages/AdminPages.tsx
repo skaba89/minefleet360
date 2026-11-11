@@ -4,7 +4,7 @@ import { Navigate, NavLink, Outlet } from "react-router";
 
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
-import { Badge, DataState, ErrorMessage, Pager } from "../components/common";
+import { AccessDenied, Badge, DataState, ErrorMessage, Pager } from "../components/common";
 import { ActionForm, Options, orNull } from "../components/forms";
 import { label } from "../lib/labels";
 import { can } from "../lib/permissions";
@@ -38,17 +38,9 @@ export function AdminIndex() {
   return <Navigate to={target} replace />;
 }
 
-function Denied() {
-  return (
-    <p className="error" role="alert">
-      Vous n'avez pas accès à cette partie de l'administration.
-    </p>
-  );
-}
-
 export function AdminLayout() {
   const me = useMe();
-  if (!canAdminister(me.grants)) return <Denied />;
+  if (!canAdminister(me.grants)) return <AccessDenied />;
   const tabs = [
     { to: "sites", text: "Sites", show: can(me.grants, "organization.site.create") },
     {
@@ -93,7 +85,7 @@ type Site = Schemas["SiteOut"];
 
 export function SitesAdminPage() {
   const me = useMe();
-  if (!can(me.grants, "organization.site.create")) return <Denied />;
+  if (!can(me.grants, "organization.site.create")) return <AccessDenied />;
   return <SitesAdmin />;
 }
 
@@ -257,7 +249,7 @@ function useRoles() {
 
 export function UsersAdminPage() {
   const me = useMe();
-  if (!can(me.grants, "identity.user.read")) return <Denied />;
+  if (!can(me.grants, "identity.user.read")) return <AccessDenied />;
   return <UsersAdmin />;
 }
 
@@ -675,7 +667,7 @@ const ENTITY_TYPES: Record<string, string> = {
 
 export function AuditAdminPage() {
   const me = useMe();
-  if (!can(me.grants, "audit.event.read")) return <Denied />;
+  if (!can(me.grants, "audit.event.read")) return <AccessDenied />;
   return <AuditAdmin />;
 }
 

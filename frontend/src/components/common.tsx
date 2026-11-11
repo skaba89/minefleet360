@@ -59,6 +59,20 @@ export function Badge({ tone, children }: { tone: "ok" | "warn" | "bad" | "neutr
   return <span className={`badge badge-${tone}`}>{children}</span>;
 }
 
+/**
+ * Refus d'accès canonique d'une page pré-contrôlée : une seule forme (visuelle, sémantique et
+ * textuelle) pour toute l'application. La zone de données d'une page autorisée reste, elle,
+ * couverte par ErrorMessage (403 serveur = défense en profondeur) : deux situations distinctes,
+ * deux messages stables — « …cette page » pour l'accès direct, « …cette information » pour la donnée.
+ */
+export function AccessDenied() {
+  return (
+    <div className="error" role="alert">
+      <p>Vous n'avez pas accès à cette page.</p>
+    </div>
+  );
+}
+
 export function Pager({
   page,
   pageSize,

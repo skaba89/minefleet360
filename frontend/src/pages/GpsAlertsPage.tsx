@@ -4,7 +4,7 @@ import { Link } from "react-router";
 
 import { get, request, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
-import { DataState, ErrorMessage } from "../components/common";
+import { AccessDenied, DataState, ErrorMessage } from "../components/common";
 import { can } from "../lib/permissions";
 import { formatDateTime } from "../lib/time";
 import { useSites } from "../site/SiteContext";
@@ -167,7 +167,7 @@ export function GpsAlertsPage() {
     enabled: allowed,
     refetchInterval: 30_000,
   });
-  if (!allowed) return <p>Accès aux alertes GPS non autorisé.</p>;
+  if (!allowed) return <AccessDenied />;
 
   async function acknowledge(id: string) {
     const note = window.prompt("Remarque (facultative) : action menée, conducteur prévenu…") ?? null;

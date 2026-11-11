@@ -125,8 +125,6 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 
 1. **Cycle juridique documentaire complet** (dépôt → vérification → soumission → décision) : exige un harnais
    S3 + ClamAV (503 sinon — le harnais backend de R9 repose sur des monkeypatchs inaccessibles à un serveur réel).
-2. **Pages à deux formes de refus** : harmoniser l'accès direct non autorisé (texte dédié vs 403 générique) —
-   acceptable aujourd'hui (aucun crash, jamais de donnée), à uniformiser pour l'UX.
 
 *Résolu : l'écart d'UI pour `GET /insurance-policies/expiring` et `GET|POST /parts-purchase-orders` est couvert
 (onglet assurances de `/juridique` et onglet « Commandes d'achat » de `/pieces`, tests vitest inclus).
@@ -134,7 +132,16 @@ Les 6 specs E2E d'actions (`pesees-actions`, `parts-replenishment`, `gps-alerts`
 `legal-contracts`, `platform-tenants`) sont exécutées par le job CI `e2e-isolation` ; elles ont révélé et
 fait corriger l'absence de GRANT UPDATE sur `spare_part_replenishment` (migration 0064, régression testée).
 La police d'assurance est couverte par `e2e/insurance-policies.spec.ts` : création FINANCE depuis
-`/juridique`, états EXPIRING/EXPIRED traduits, borne d'horizon 45 jours, auditeur en lecture seule.*
+`/juridique`, états EXPIRING/EXPIRED traduits, borne d'horizon 45 jours, auditeur en lecture seule.
+
+**Écart n°2 (formes de refus) — résolu** : les refus d'accès direct par pré-contrôle utilisent désormais
+une forme canonique unique (`<AccessDenied />` de `components/common.tsx` — « Vous n'avez pas accès à cette
+page. », `div.error` + `role="alert"`), appliquée aux 17 points de refus de 10 fichiers de pages qui
+pré-contrôlaient avec des variantes hétérogènes (administration ×4, plateforme ×4, juridique ×2,
+référentiels, pièces, préventif, fiabilité, alertes GPS, flotte GPS, carburant). Convention documentée :
+une page que le rôle ne couvre pas → « …cette page » (`AccessDenied`) ; une donnée d'une page par ailleurs
+autorisée → « …cette information » (`ErrorMessage` sur 403 serveur, défense en profondeur). Le socle E2E
+d'accès direct continue de garantir qu'aucun accès direct ne montre « Page introuvable. » ni « Erreur inattendue. ».*
 
 ## 5. Exécution
 
