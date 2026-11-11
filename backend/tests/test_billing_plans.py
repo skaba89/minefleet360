@@ -150,9 +150,9 @@ def test_tenant_roles_have_no_access_to_saas_plans(client: TestClient, api: Api)
             ).status_code
             == 403
         ), label
-        assert (
-            client.get(f"{API}/platform/saas-plans/{uuid.uuid4()}", headers=headers).status_code == 403
-        ), label
+        assert client.get(f"{API}/platform/saas-plans/{uuid.uuid4()}", headers=headers).status_code == 403, (
+            label
+        )
         assert (
             client.patch(
                 f"{API}/platform/saas-plans/{uuid.uuid4()}", headers={**headers, "If-Match": '"1"'}, json={}
