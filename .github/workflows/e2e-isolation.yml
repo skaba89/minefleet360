@@ -132,7 +132,13 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
-          npx playwright install --with-deps chromium
+          ok=0
+          for attempt in 1 2 3 4; do
+            if npx playwright install --with-deps chromium; then ok=1; break; fi
+            echo "Attempt $attempt failed (network), retrying in 30 s…"
+            sleep 30
+          done
+          [ "$ok" = "1" ] || { echo "Chromium install failed after 4 attempts"; exit 1; }
 
       - name: Test assignments, missions, workshop, vehicle documents and fuel
         working-directory: frontend
@@ -245,7 +251,13 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
-          npx playwright install --with-deps chromium
+          ok=0
+          for attempt in 1 2 3 4; do
+            if npx playwright install --with-deps chromium; then ok=1; break; fi
+            echo "Attempt $attempt failed (network), retrying in 30 s…"
+            sleep 30
+          done
+          [ "$ok" = "1" ] || { echo "Chromium install failed after 4 attempts"; exit 1; }
 
       - name: Role journeys on DEMO data
         working-directory: frontend

@@ -100,7 +100,13 @@ jobs:
         run: |
           command -v gpg >/dev/null
           if ! command -v rclone >/dev/null; then
-            sudo apt-get update
+            ok=0
+            for attempt in 1 2 3 4; do
+              if sudo apt-get update; then ok=1; break; fi
+              echo "apt-get update : tentative $attempt échouée (réseau), nouvelle tentative dans 30 s…"
+              sleep 30
+            done
+            [ "$ok" = "1" ] || { echo "apt-get update impossible après 4 tentatives"; exit 1; }
             sudo apt-get install --no-install-recommends --yes rclone
           fi
       - name: Chiffrer, transférer, télécharger, restaurer et démarrer l'API
@@ -222,6 +228,13 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - name: Installer Chromium Playwright
-        run: npx playwright install --with-deps chromium
+        run: |
+          ok=0
+          for attempt in 1 2 3 4; do
+            if npx playwright install --with-deps chromium; then ok=1; break; fi
+            echo "Tentative $attempt échouée (réseau), nouvelle tentative dans 30 s…"
+            sleep 30
+          done
+          [ "$ok" = "1" ] || { echo "Installation Chromium impossible après 4 tentatives"; exit 1; }
       - name: Smoke navigateur (page de connexion sans API)
         run: npx playwright test --config=playwright.smoke.config.ts
