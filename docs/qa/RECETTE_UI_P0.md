@@ -109,8 +109,8 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 | Action | Rôle(s) | Route UI | API | Résultat attendu | Preuve |
 |---|---|---|---|---|---|
 | Contrat brouillon → décision (quatre-yeux) | TENANT_ADMIN (créer), DIRECTION (décider) | `/juridique` | `POST /legal-contracts`, `/{id}/decision` | incomplet non soumis, décision tracée | ✔ `e2e/legal-contracts.spec.ts` (brouillon + refus de soumission sans preuve) ; cycle documentaire complet ⏳ (harnais S3/ClamAV requis) |
-| Police d'assurance | FINANCE | `/juridique` | `POST /insurance-policies` | GNF, dates cohérentes | ⏳ non couvert E2E |
-| Échéances d'assurance (nouvel endpoint) | FINANCE, DIRECTION, OPS_MANAGER, HSE, AUDITOR | `/juridique` (onglet assurances) | `GET /insurance-policies/expiring` | polices EXPIRING/EXPIRED avec état traduit | ✔ `src/pages/LegalRegistriesPage.test.tsx` (vitest) ; E2E ⏳ |
+| Police d'assurance | FINANCE | `/juridique` | `POST /insurance-policies` | GNF, dates cohérentes | ✔ `e2e/insurance-policies.spec.ts` |
+| Échéances d'assurance (nouvel endpoint) | FINANCE, DIRECTION, OPS_MANAGER, HSE, AUDITOR | `/juridique` (onglet assurances) | `GET /insurance-policies/expiring` | polices EXPIRING/EXPIRED avec état traduit | ✔ `src/pages/LegalRegistriesPage.test.tsx` (vitest) ; ✔ `e2e/insurance-policies.spec.ts` |
 | Réconciliation du stockage légal | DIRECTION, TENANT_ADMIN | `/juridique` | `GET /legal-contracts/storage-reconciliation` | cohérent / orphelin détecté | ⏳ non couvert E2E |
 | Coût complet par engin + taux horaires | FINANCE, OPS_MANAGER, DIRECTION, AUDITOR | `/couts` | `GET /costs/vehicles[/{id}/history]`, `POST /costs/labour-rates` | GNF, totaux = somme des lignes | ✔ `e2e-demo/parcours-demo.spec.ts` (lecture) ; actions ⏳ |
 
@@ -123,9 +123,8 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 
 ## 4. Écarts ouverts (prochaines PR)
 
-1. **Specs E2E d'actions restantes** : police d'assurance (`POST /insurance-policies` depuis `/juridique`) et
-   cycle juridique complet (dépôt → vérification → soumission → décision), qui exige un harnais S3 + ClamAV
-   (503 sinon — le harnais backend de R9 repose sur des monkeypatchs inaccessibles à un serveur réel).
+1. **Cycle juridique documentaire complet** (dépôt → vérification → soumission → décision) : exige un harnais
+   S3 + ClamAV (503 sinon — le harnais backend de R9 repose sur des monkeypatchs inaccessibles à un serveur réel).
 2. **Pages à deux formes de refus** : harmoniser l'accès direct non autorisé (texte dédié vs 403 générique) —
    acceptable aujourd'hui (aucun crash, jamais de donnée), à uniformiser pour l'UX.
 
@@ -133,7 +132,9 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 (onglet assurances de `/juridique` et onglet « Commandes d'achat » de `/pieces`, tests vitest inclus).
 Les 6 specs E2E d'actions (`pesees-actions`, `parts-replenishment`, `gps-alerts`, `hse-corrective-actions`,
 `legal-contracts`, `platform-tenants`) sont exécutées par le job CI `e2e-isolation` ; elles ont révélé et
-fait corriger l'absence de GRANT UPDATE sur `spare_part_replenishment` (migration 0064, régression testée).*
+fait corriger l'absence de GRANT UPDATE sur `spare_part_replenishment` (migration 0064, régression testée).
+La police d'assurance est couverte par `e2e/insurance-policies.spec.ts` : création FINANCE depuis
+`/juridique`, états EXPIRING/EXPIRED traduits, borne d'horizon 45 jours, auditeur en lecture seule.*
 
 ## 5. Exécution
 
