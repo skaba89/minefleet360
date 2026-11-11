@@ -137,7 +137,13 @@ jobs:
           sudo bash -c 'for f in /etc/apt/sources.list /etc/apt/sources.list.d/*; do [ -f "$f" ] && sed -i "s|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu|g" "$f"; done'
           ok=0
           for attempt in 1 2 3 4; do
-            if npx playwright install --with-deps chromium; then ok=1; break; fi
+            if [ "$attempt" = "1" ]; then
+              if npx playwright install --with-deps chromium; then ok=1; break; fi
+            else
+              # Playwright CDN works even when apt is down: retry without system deps
+              # (ubuntu-latest images already ship the required shared libraries).
+              if npx playwright install chromium; then ok=1; break; fi
+            fi
             echo "Attempt $attempt failed (network), retrying in 30 s…"
             sleep 30
           done
@@ -259,7 +265,13 @@ jobs:
           sudo bash -c 'for f in /etc/apt/sources.list /etc/apt/sources.list.d/*; do [ -f "$f" ] && sed -i "s|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu|g" "$f"; done'
           ok=0
           for attempt in 1 2 3 4; do
-            if npx playwright install --with-deps chromium; then ok=1; break; fi
+            if [ "$attempt" = "1" ]; then
+              if npx playwright install --with-deps chromium; then ok=1; break; fi
+            else
+              # Playwright CDN works even when apt is down: retry without system deps
+              # (ubuntu-latest images already ship the required shared libraries).
+              if npx playwright install chromium; then ok=1; break; fi
+            fi
             echo "Attempt $attempt failed (network), retrying in 30 s…"
             sleep 30
           done
