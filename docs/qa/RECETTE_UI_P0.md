@@ -108,10 +108,10 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 ### Juridique (scénario R9) et coûts (scénario R10)
 | Action | Rôle(s) | Route UI | API | Résultat attendu | Preuve |
 |---|---|---|---|---|---|
-| Contrat brouillon → décision (quatre-yeux) | TENANT_ADMIN (créer), DIRECTION (décider) | `/juridique` | `POST /legal-contracts`, `/{id}/decision` | incomplet non soumis, décision tracée | ✔ `e2e/legal-contracts.spec.ts` (brouillon + refus de soumission sans preuve) ; cycle documentaire complet ⏳ (harnais S3/ClamAV requis) |
+| Contrat brouillon → décision (quatre-yeux) | TENANT_ADMIN (créer), DIRECTION (décider) | `/juridique` | `POST /legal-contracts`, `/{id}/decision` | incomplet non soumis, décision tracée | ✔ `e2e/legal-contracts.spec.ts` (brouillon + refus de soumission sans preuve) ; cycle documentaire complet ✔ `e2e/legal-document-cycle.spec.ts` (harnais S3/ClamAV : dépôt, scan EICAR refusé, vérification DIRECTION, soumission, décision UI, réconciliation nominale UI) |
 | Police d'assurance | FINANCE | `/juridique` | `POST /insurance-policies` | GNF, dates cohérentes | ✔ `e2e/insurance-policies.spec.ts` |
 | Échéances d'assurance (nouvel endpoint) | FINANCE, DIRECTION, OPS_MANAGER, HSE, AUDITOR | `/juridique` (onglet assurances) | `GET /insurance-policies/expiring` | polices EXPIRING/EXPIRED avec état traduit | ✔ `src/pages/LegalRegistriesPage.test.tsx` (vitest) ; ✔ `e2e/insurance-policies.spec.ts` |
-| Réconciliation du stockage légal | DIRECTION, TENANT_ADMIN | `/juridique` | `GET /legal-contracts/storage-reconciliation` | cohérent / orphelin détecté | ✔ `e2e/costs-reconciliation.spec.ts` (chemin dégradé : 503 SERVICE_BUSY annoncé sans stockage privé, panneau réservé à la revue tenant, 403 pour l'AUDITOR ; chemin nominal = harnais S3, écart n°1) |
+| Réconciliation du stockage légal | DIRECTION, TENANT_ADMIN | `/juridique` | `GET /legal-contracts/storage-reconciliation` | cohérent / orphelin détecté | ✔ chemin dégradé : `e2e/costs-reconciliation.spec.ts` (503 SERVICE_BUSY annoncé sans stockage privé, panneau réservé à la revue tenant, 403 pour l'AUDITOR) ; ✔ chemin nominal : `e2e/legal-document-cycle.spec.ts` (harnais S3/ClamAV, cohérence annoncée depuis l'UI) |
 | Coût complet par engin + taux horaires | FINANCE, OPS_MANAGER, DIRECTION, AUDITOR | `/couts` | `GET /costs/vehicles[/{id}/history]`, `POST /costs/labour-rates` | GNF, totaux = somme des lignes | ✔ `e2e-demo/parcours-demo.spec.ts` (lecture) ; taux horaires ✔ `e2e/costs-reconciliation.spec.ts` (création FINANCE, AUDITOR sans section, DISPATCHER refusé) |
 
 ### Administration et plateforme (scénario 10)
@@ -123,8 +123,12 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 
 ## 4. Écarts ouverts (prochaines PR)
 
-1. **Cycle juridique documentaire complet** (dépôt → vérification → soumission → décision) : exige un harnais
-   S3 + ClamAV (503 sinon — le harnais backend de R9 repose sur des monkeypatchs inaccessibles à un serveur réel).
+1. **UI du cycle documentaire juridique** : les actions dépôt (`POST .../documents`), vérification
+   (`POST .../documents/{id}/verify`) et soumission (`POST .../{id}/submit`) ne sont pas encore exposées
+   dans `/juridique` — le cycle complet est joué par `e2e/legal-document-cycle.spec.ts` (dépôt, scan,
+   vérification et soumission par l'API sur serveur réel avec le harnais S3/ClamAV ; décision et
+   réconciliation depuis l'UI). Une PR UI dédiée doit ajouter le dépôt de justificatif (empreinte
+   calculée au client), les états PENDING/VERIFIED et le bouton de soumission.
 
 *Résolu : l'écart d'UI pour `GET /insurance-policies/expiring` et `GET|POST /parts-purchase-orders` est couvert
 (onglet assurances de `/juridique` et onglet « Commandes d'achat » de `/pieces`, tests vitest inclus).
@@ -140,8 +144,9 @@ l'API, préférences personnelles de notification enregistrées. Les actions de 
 réconciliation du stockage documentaire sont couvertes par `e2e/costs-reconciliation.spec.ts` : création
 d'un taux par la FINANCE avec contrôle croisé API, AUDITOR sans section de gestion, DISPATCHER refusé
 (403 serveur) ; réconciliation prouvée sur son chemin dégradé (503 SERVICE_BUSY annoncé en français
-sans stockage privé, panneau limité à la revue tenant) — le chemin nominal reste lié au harnais
-S3/ClamAV (écart n°1).
+sans stockage privé, panneau limité à la revue tenant). Le chemin nominal est couvert par
+`e2e/legal-document-cycle.spec.ts` avec le harnais S3/ClamAV (voir §5) : cohérence annoncée depuis l'UI
+après un cycle complet (dépôt, scan, vérification, soumission, décision).
 
 **Écart n°2 (formes de refus) — résolu** : les refus d'accès direct par pré-contrôle utilisent désormais
 une forme canonique unique (`<AccessDenied />` de `components/common.tsx` — « Vous n'avez pas accès à cette
@@ -161,6 +166,23 @@ minefleet create-platform-admin --email platform-admin@example.com --name "Admin
 minefleet seed-fictif > /tmp/e2e-accounts.txt
 minefleet demo seed --profile qa --seed 42 --credentials-out /tmp/demo-accounts.tsv
 uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+# Cycle documentaire juridique : harnais S3/ClamAV + API dédiée :8001 (étape
+# « Start legal documentary harness » du workflow e2e-isolation ; l'API :8000 reste sans
+# stockage privé pour préserver le chemin dégradé 503 testé par costs-reconciliation).
+openssl req -x509 -newkey rsa:2048 -nodes -days 2 -keyout /tmp/legal-harness/s3.key \
+  -out /tmp/legal-harness/s3.crt -subj "/CN=127.0.0.1" \
+  -addext "subjectAltName=IP:127.0.0.1,DNS:localhost"
+FAKE_S3_DATA_DIR=/tmp/legal-harness/objects python scripts/dev/fake_s3.py \
+  --port 9443 --bucket legal-private --cert /tmp/legal-harness/s3.crt --key /tmp/legal-harness/s3.key &
+python scripts/dev/fake_clamd.py --port 3310 &
+MF_LEGAL_OBJECT_STORAGE_ENABLED=true MF_LEGAL_OBJECT_STORAGE_ENDPOINT=https://127.0.0.1:9443 \
+MF_LEGAL_OBJECT_STORAGE_BUCKET=legal-private MF_LEGAL_OBJECT_STORAGE_ACCESS_KEY=<ephemere> \
+MF_LEGAL_OBJECT_STORAGE_SECRET_KEY=<ephemere> MF_LEGAL_MALWARE_SCAN_ENABLED=true \
+MF_LEGAL_MALWARE_SCAN_HOST=127.0.0.1 MF_LEGAL_MALWARE_SCAN_PORT=3310 \
+MF_ALLOWED_ORIGINS=http://localhost:5173 MF_COOKIE_SECURE=false MF_MFA_ENFORCEMENT=off \
+AWS_CA_BUNDLE=/tmp/legal-harness/s3.crt uvicorn app.main:app --host 127.0.0.1 --port 8001 &
+# puis : MF_API_URL=http://localhost:8001 npx playwright test e2e/legal-document-cycle.spec.ts
 
 # Navigateur
 cd frontend && npm ci && npx playwright install --with-deps chromium

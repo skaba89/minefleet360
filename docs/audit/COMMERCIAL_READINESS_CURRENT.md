@@ -3,7 +3,7 @@
 **Base auditée :** `main@e36ab33178f9e8ec8cf2f82f3b09735e5dd10ea6` (PR #411 fusionnée, 2026-11-11).
 **Audit exécuté :** 11 novembre 2026 — exécutions locales complètes (PostgreSQL 16.10 + PostGIS disponibles) **et** CI GitHub vérifiée via API authentifiée.
 **Statut du document :** courant ; remplace la révision du 8–9 novembre 2026 (base `9c69f44`, 68/100) comme référence de décision.
-**Verdict :** **NO-GO commercial maintenu — GO conditionnel pilote maintenu** (aucun prérequis terrain du `GO_NO_GO.md` n'est levé). Score de maturité : **74/100** (grille imposée), en progression de +6 sur des éléments **vérifiés** (remédiations #374–#376, recette R1–R10 #400–#407, socle E2E navigateur #408, écarts UI #409, actions E2E + correctif GRANT #410–#411) — pas sur une validation terrain ou opérationnelle.
+**Verdict :** **NO-GO commercial maintenu — GO conditionnel pilote maintenu** (aucun prérequis terrain du `GO_NO_GO.md` n'est levé). Score de maturité : **77/100** (grille imposée) — 74 à la base `e36ab33` (#412), 76 après la forme canonique du refus et le runbook staging (#413/#414), 77 avec le harnais documentaire (#417) — en progression de +9 depuis le 9 novembre, entièrement sur des éléments **vérifiés** (remédiations #374–#376, recette R1–R10 #400–#407, socle E2E navigateur #408, écarts UI #409–#411, #415–#417), pas sur une validation terrain ou opérationnelle.
 
 > **Règle de lecture.** Ce document ne mélange jamais preuve statique (le code existe et est testé), preuve d'exécution (testé ici ou en CI sur infrastructure jetable) et preuve d'exploitation (validé sur environnement réel). Un test CI n'est **pas** une preuve de fonctionnement en conditions réelles. Une inconnue reste explicitement inconnue (§6). Le score est un outil de pilotage interne, jamais une promesse commerciale.
 
@@ -23,17 +23,20 @@ Hors périmètre de cet audit : matériel GPS réel, Android physique, réseau m
 
 Différence majeure avec la révision précédente : la suite intégrée backend (harnais RLS/authz sur PostgreSQL réel) est **désormais exécutée localement de bout en bout** (5 207 tests, contre 360 unitaires seuls au 9 novembre), et l'état CI est **vérifié** (l'inconnue §6.1 de la révision précédente est levée).
 
-## 2. Preuves d'exécution locale et CI (audit exécuté sur `e36ab33`, révisé jusqu'à `2bc1b7d`)
+## 2. Preuves d'exécution locale et CI (audit exécuté sur `e36ab33`, révisé jusqu'à la PR #417)
 
 **Révisions post-exécution (vérifiées, aucune re-exécution requise — pas de code produit concerné) :** PR #412
 (documentation d'audit et GO/NO-GO), PR #413 (forme canonique du refus d'accès direct, `<AccessDenied />`,
 17 points de refus / 10 fichiers, Vitest mis à jour), PR #415 (extension E2E navigateur : zones de site
-et politique GPS + notifications — spec `e2e/gps-zones-policy.spec.ts`) et PR #416 (extension E2E navigateur :
+et politique GPS + notifications — spec `e2e/gps-zones-policy.spec.ts`), PR #416 (extension E2E navigateur :
 taux horaires de main-d'œuvre et réconciliation du stockage documentaire en chemin dégradé — spec
-`e2e/costs-reconciliation.spec.ts`), aucune modification de code produit ; CI `main` vérifiée par API au
-moment de la fusion. Le runbook de recette staging
-(`docs/ops/RECETTE_STAGING_VALIDATION.md`, PR #414) est publié après cette exécution : procédure pure, aucune
-exécution terrain.
+`e2e/costs-reconciliation.spec.ts`) et PR #417 (harnais E2E S3/ClamAV — faux serveur S3 HTTPS et faux clamd
+INSTREAM dans `scripts/dev/` + API éphémère dédiée dans `e2e-isolation.yml` + spec
+`e2e/legal-document-cycle.spec.ts` qui joue le cycle documentaire complet sur serveur réel : dépôt, scan
+EICAR refusé, vérification DIRECTION, soumission, décision UI, réconciliation nominale — aucune
+modification du code produit) ; CI `main` vérifiée par API au moment des fusions. Le runbook de recette
+staging (`docs/ops/RECETTE_STAGING_VALIDATION.md`, PR #414) est publié après cette exécution : procédure pure,
+aucune exécution terrain.
 
 | Contrôle | Résultat | Périmètre |
 |---|---|---|
@@ -59,13 +62,13 @@ Extraits datés : `docs/audit/preuves/` (pytest.txt, vitest.txt, typecheck.txt, 
 |---|---:|---:|---:|---|
 | Sécurité et isolation | 20 | 16 | **17** | RLS forcée sur 75 tables, RBAC machine (118 permissions / 232 routes) testé deny-by-default, MFA chiffré, refresh rotatif anti-rejeu, audit append-only. **Nouveau depuis le 9 nov** : écran « Mes sessions » + révocations `identity.session.revoke_own/any` (#375, 7 tests d'intégration + 3 Vitest), OpenAPI/docs fermés en production (#374, +7 tests), clé HMAC rate-limit dédiée du secret JWT (#374, +6 tests), tranche R8 (IDOR, 429, audit) verte. Restent : audit indépendant, avis juridique, rotation de secrets outillée. |
 | Fiabilité et résilience | 20 | 13 | **14** | Restauration chiffrée testée en CI avec gates RLS fail-closed ; release/rollback par digest immuables ; **images de release signées Cosign + SLSA + SBOM publiées par CI** (#376). La recette a **prouvé sa capacité à attraper 2 bugs réels** (#403, #410) — le dispositif de vérification fonctionne. Restent non mesurés : RPO/RTO sur coffre externe réel, exercice release→rollback sur staging, éprouvetage des alertes par incident réel. |
-| Fonctionnalités métier | 20 | 15 | **16** | Périmètre inchangé (79 tables / 232 routes) mais **profondeur de preuve accrue** : 10 tranches de recette API R1–R10 sur serveur réel (#400–#407) et **7 specs E2E navigateur d'actions métier** en CI (correction/annulation de pesée, réappro quatre-yeux, acquittement GPS, HSE double regard, contrats, tenants plateforme, police d'assurance #410/#411). Toujours : aucun traceur certifié, offline limité à HSE/OT, cycle documentaire juridique bloqué par harnais S3/ClamAV. |
+| Fonctionnalités métier | 20 | 15 | **17** | Périmètre inchangé (79 tables / 232 routes) mais **profondeur de preuve accrue** : 10 tranches de recette API R1–R10 sur serveur réel (#400–#407), **10 specs E2E navigateur d'actions métier** en CI (correction/annulation de pesée, réappro quatre-yeux, acquittement GPS, zones/politique GPS/notifications, HSE double regard, contrats, tenants plateforme, police d'assurance, taux horaires, **cycle documentaire juridique complet sur harnais S3/ClamAV — dépôt, scan EICAR refusé, vérification, soumission, décision, réconciliation nominale**, #410/#411/#415/#416/#417). Le cycle documentaire n'est plus bloqué côté serveur ; reste l'exposition UI du dépôt/vérification/soumission. Toujours : aucun traceur certifié, offline limité à HSE/OT. |
 | UX/UI et offline | 15 | 11 | **13** | **Nouveau** : socle E2E d'accès direct 34 routes × 13 rôles — « jamais Page introuvable ni Erreur inattendue » (#408), pages 404 dédiées (#374), 2 écarts UI comblés avec tests (échéances d'assurance, commandes d'achat #409), AUDITOR vérifié lecture seule en E2E (#411), Vitest 233. **Révision du 11 nov (base 2bc1b7d)** : les deux formes de refus d'accès direct sont harmonisées en une forme canonique unique testée (`<AccessDenied />`, 17 points / 10 fichiers, écart n°2 résolu #413). Toujours : offline HSE/OT uniquement, Android physique jamais testé, recherche globale absente. |
 | Exploitation DevOps/SRE | 15 | 11 | **14** | **Nouveau** : workflow `release-images` (GHCR + Cosign keyless + provenance SLSA mode=max + SBOM) — le build/push d'images n'est plus manuel (#376) ; **Dependabot actif et démontré** (20+ PR fusionnées : pip groupé, npm groupé, actions ×, caddy, node, gitleaks v3 — #377–#399). **Révision du 11 nov** : runbook SRE de recette staging consolidé et versionné (`docs/ops/RECETTE_STAGING_VALIDATION.md` — audit lecture seule A1–A8, dry-run, protocoles RPO/RTO, éprouvetage des alertes) ; l'exécution sur l'hôte réel reste la preuve attendue. Restent : publication de couverture, métriques/SLO continus, exercice d'alerte réel. |
 | Commercialisation SaaS | 10 | 2 | **2** | Aucun changement : espace PLATFORM_ADMIN (sociétés, suspension, santé) + provisioning tenant transactionnel restent le seul actif. 0 table/endpoint plans, quotas, abonnements, facturation, support, onboarding, réversibilité. |
-| **Total** | **100** | **68** | **76** | Progression entièrement adossée à des preuves vérifiables (§2 et §4) ; aucun point pour une validation terrain ou opérationnelle, toujours absente. |
+| **Total** | **100** | **68** | **77** | Progression entièrement adossée à des preuves vérifiables (§2 et §4) ; aucun point pour une validation terrain ou opérationnelle, toujours absente. |
 
-**Décision correspondante :** le gain +8 (puis +2 sur la révision `2bc1b7d`) mesure la **qualité et la profondeur de vérification du produit**, pas une maturité opérationnelle. Le verdict du `GO_NO_GO.md` est donc inchangé : GO pilote conditionnel (8 prérequis tous non levés), GO commercial impossible avant le chantier SaaS (§4.6) et les validations réelles.
+**Décision correspondante :** le gain +8 (puis +3 cumulés sur les révisions du 11 novembre : #413/#414, #417) mesure la **qualité et la profondeur de vérification du produit**, pas une maturité opérationnelle. Le verdict du `GO_NO_GO.md` est donc inchangé : GO pilote conditionnel (8 prérequis tous non levés), GO commercial impossible avant le chantier SaaS (§4.6) et les validations réelles.
 
 ## 4. Analyse par domaine
 
@@ -87,13 +90,13 @@ Extraits datés : `docs/audit/preuves/` (pytest.txt, vitest.txt, typecheck.txt, 
 
 **Tests nécessaires :** exercice R1 réel avec mesure RPO/RTO ; injection d'incident d'alerte ; `staging-release.sh` dry-run puis apply sur staging (lecture seule d'abord — règle « pas d'apply sans approbation »).
 
-### 4.3 Fonctionnalités métier — 16/20
+### 4.3 Fonctionnalités métier — 17/20
 
 **Prouvé :** 79 tables / 232 routes couvrant parc, affectations, missions/pesées (corrections, annulations, quatre-yeux), GMAO corrective + préventive, pièces (CMP, réservations concurrentes, réappro avec décision séparée, BC depuis demande approuvée), pneus, carburant (double validation, anomalies), HSE (incidents, actions correctives double regard, inspections), RH terrain, coûts complets, contrats/assurances/échéances, indicateurs, fiabilité. La règle « la GPS n'est jamais une preuve de tonnage » reste appliquée et testée.
 
-**Nouveau depuis le 9 nov :** recette API R1–R10 sur serveur réel (#400–#407) ; 7 specs E2E navigateur d'actions en CI (#408 socle, #410 actions, #411 assurance) — les actions critiques sont désormais prouvées **depuis l'interface**, pas seulement par l'API ; onglets UI comblés (#409).
+**Nouveau depuis le 9 nov :** recette API R1–R10 sur serveur réel (#400–#407) ; 10 specs E2E navigateur d'actions en CI (#408 socle, #410 actions, #411 assurance, #415 zones/politique/notifications, #416 coûts/réconciliation dégradée, #417 cycle documentaire complet sur harnais) — les actions critiques sont désormais prouvées **depuis l'interface**, pas seulement par l'API ; onglets UI comblés (#409).
 
-**Partiel (inchangé) :** GPS temps réel complet (carte, géofences, alertes, SSE) mais registre d'adaptateurs limité à `minefleet-json-v1`, **aucun matériel certifié** (verrouillé par test) ; offline limité à la déclaration HSE + notes d'OT ; cycle documentaire juridique (dépôt→vérification→soumission→décision) impossible en E2E sans harnais S3/ClamAV (écart documenté `RECETTE_UI_P0.md` §4) ; réconciliation stockage légal, gabarits de checklist, géofences (création/désactivation), politique GPS, partages téléphone et actions de coûts restent sans spec E2E dédiée.
+**Partiel (inchangé) :** GPS temps réel complet (carte, géofences, alertes, SSE) mais registre d'adaptateurs limité à `minefleet-json-v1`, **aucun matériel certifié** (verrouillé par test) ; offline limité à la déclaration HSE + notes d'OT ; **le cycle documentaire juridique est désormais prouvé sur serveur réel** (harnais S3/ClamAV, #417) mais ses actions de dépôt/vérification/soumission restent à exposer dans `/juridique` ; réconciliation stockage légal couverte sur ses deux chemins (dégradé #416, nominal #417), gabarits de checklist, partages téléphone et échéances documents (cas métier) restent sans spec E2E dédiée.
 
 **Absent (inchangé) :** couche SaaS commerciale (§4.6), exports Excel/PDF avancés, IA.
 
@@ -149,7 +152,7 @@ La matrice (14 rôles × 31 menus × routes UI × 118 permissions × 232 routes 
 **P1 (chantiers de code autorisés dans cet environnement, dans l'ordre) :**
 1. ~~Harmoniser les deux formes de refus d'accès direct~~ **fait** — PR #413 (`<AccessDenied />` canonique, 17 points / 10 fichiers, Vitest + socle E2E verts).
 2. Étendre les specs E2E d'actions restantes : ~~réconciliation stockage légal~~ **fait en chemin dégradé** (PR #416, `e2e/costs-reconciliation.spec.ts` — 503 annoncé sans stockage privé ; le chemin nominal dépend du harnais S3, item 3), gabarits de checklist HSE, ~~géofences (création/désactivation), politique GPS + notifications~~ **fait** (PR #415, `e2e/gps-zones-policy.spec.ts`), partages téléphone, échéances documents (cas métier), préventif, fiabilité atelier, commandes de pièces (E2E au-delà de Vitest), ~~actions de coûts~~ **fait** (PR #416 — taux horaires, seule action en écriture de `/couts`).
-3. Harnais S3/ClamAV pour le cycle documentaire juridique en E2E (écart n°1, seul écart ouvert de `RECETTE_UI_P0.md` §4).
+3. ~~Harnais S3/ClamAV pour le cycle documentaire juridique en E2E~~ **fait** — PR #417 (`scripts/dev/fake_s3.py` + `fake_clamd.py`, API :8001 dédiée dans `e2e-isolation.yml`, spec `e2e/legal-document-cycle.spec.ts` verte localement) ; **reste l'exposition UI** du dépôt/vérification/soumission dans `/juridique` (écart restant de `RECETTE_UI_P0.md` §4).
 4. ~~Procédure de validation staging en lecture seule + dry-run~~ **fait** — `docs/ops/RECETTE_STAGING_VALIDATION.md` (l'exécution des phases A–D sur l'hôte réel exige un accès staging et, pour C/D, une approbation explicite).
 5. Rejouer `MATURITY_SCORECARD.md`, recalibrer `FUNCTIONAL_COVERAGE.md`, harmoniser les tranches `later` du YAML.
 6. Étendre l'offline aux inspections HSE (après arbitrage produit).
@@ -160,11 +163,11 @@ La matrice (14 rôles × 31 menus × routes UI × 118 permissions × 232 routes 
 
 | Document | État |
 |---|---|
-| `docs/audit/COMMERCIAL_READINESS_CURRENT.md` | **mis à jour** (présente révision, base `2bc1b7d`, score 76/100) |
+| `docs/audit/COMMERCIAL_READINESS_CURRENT.md` | **mis à jour** (présente révision, base PR #417, score 77/100) |
 | `docs/qa/GO_NO_GO.md` | **mis à jour** (11 novembre 2026, verdict inchangé, preuves actualisées) |
 | `docs/ops/RECETTE_STAGING_VALIDATION.md` | **créé** — runbook staging lecture seule + dry-run + protocoles RPO/RTO/éprouvetage ; exécution réelle à faire |
 | `docs/qa/ROLE_PAGE_ACTION_MATRIX.md` | généré, anti-dérive vert |
-| `docs/qa/RECETTE_UI_P0.md` | à jour (écart n°2 résolu par #413 ; reste l'écart n°1 : harnais S3/ClamAV) |
+| `docs/qa/RECETTE_UI_P0.md` | à jour (écart n°1 reformulé : cycle documentaire prouvé sur harnais #417, reste l'UI du dépôt/vérification/soumission ; écart n°2 résolu par #413) |
 | `docs/audit/preuves/` | **rafraîchi** (pytest 5 207, vitest 233, tsc, build, anti-dérive, ruff, format, mypy — datés 2026-11-11) |
 | `docs/qa/REGRESSION_EVIDENCE.md` | absent — à créer lors du premier exercice de non-régression formel sur staging |
 | `docs/security/OPEN_RISKS.md` | absent — risques dispersés (SEC-01/02, REL-01, GPS-01/02, OFF-01, OPS-01/02) |
