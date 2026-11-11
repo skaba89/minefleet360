@@ -1,7 +1,7 @@
-"""Schémas API du catalogue de plans SaaS (lot 1)."""
+"""Schémas API du catalogue de plans SaaS (lot 1) et de la facturation (lot 3)."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
@@ -20,6 +20,9 @@ class PlanCreate(StrictModel):
     max_vehicles: int | None = Field(default=None, ge=1, le=100_000)
     max_gps_trackers: int | None = Field(default=None, ge=1, le=100_000)
     document_retention_days: int | None = Field(default=None, ge=30, le=3650)
+    # Lot 3 : tarif mensuel paramétrable en GNF (NULL = plan non tarifé) et période indicative.
+    price_monthly_gnf: int | None = Field(default=None, ge=0)
+    billing_period: str | None = Field(default=None, pattern=r"^(MONTHLY|ANNUAL)$")
 
 
 class PlanUpdate(StrictModel):
@@ -33,6 +36,8 @@ class PlanUpdate(StrictModel):
     max_vehicles: int | None = Field(default=None, ge=1, le=100_000)
     max_gps_trackers: int | None = Field(default=None, ge=1, le=100_000)
     document_retention_days: int | None = Field(default=None, ge=30, le=3650)
+    price_monthly_gnf: int | None = Field(default=None, ge=0)
+    billing_period: str | None = Field(default=None, pattern=r"^(MONTHLY|ANNUAL)$")
 
 
 class PlanSummary(BaseModel):
@@ -45,6 +50,8 @@ class PlanSummary(BaseModel):
     max_vehicles: int | None
     max_gps_trackers: int | None
     document_retention_days: int | None
+    price_monthly_gnf: int | None
+    billing_period: str | None
     row_version: int
 
 
@@ -68,7 +75,7 @@ class SubscriptionStatusChange(StrictModel):
 
 
 class SubscriptionRenew(StrictModel):
-    """Renouvellement manuel de la période (lot 3 apportera la facturation)."""
+    """Renouvellement de la période : la facture correspondante est émise via le lot 3."""
 
     period_ends_at: datetime
 
@@ -80,6 +87,8 @@ class SubscriptionSummary(BaseModel):
     plan_code: str
     plan_name: str
     status: str
+    # Statut effectif calculé à la lecture (lot 3) : « EXPIRED » si l'essai daté est échu.
+    effective_status: str
     trial_ends_at: datetime | None
     period_ends_at: datetime | None
     suspended_at: datetime | None
@@ -99,6 +108,69 @@ class TenantSubscriptionOut(BaseModel):
 
     subscription_id: uuid.UUID
     status: str
+    effective_status: str
     trial_ends_at: datetime | None
     period_ends_at: datetime | None
     plan: PlanSummary
+
+
+# --- Facturation (lot 3) : document interne, sans encaissement applicatif -----------------------------
+
+
+class InvoiceLineIn(StrictModel):
+    description: str = Field(min_length=1, max_length=200)
+    quantity: int = Field(ge=1, le=100_000)
+    unit_price_gnf: int = Field(ge=0)
+
+
+class InvoiceCreate(StrictModel):
+    """Création d'une facture DRAFT pour une société.
+
+    Avec `subscription_id` et aucune ligne : une ligne est préremplie depuis le tarif du
+    plan (422 PLAN_NOT_PRICED si le plan n'a pas de tarif). Sinon les lignes sont fournies.
+    """
+
+    subscription_id: uuid.UUID | None = None
+    tax_rate_bp: int = Field(default=0, ge=0, le=10_000)
+    period_start: date | None = None
+    period_end: date | None = None
+    notes: str | None = Field(default=None, max_length=500)
+    lines: list[InvoiceLineIn] = Field(default_factory=list, max_length=50)
+
+
+class InvoiceLineOut(BaseModel):
+    line_id: uuid.UUID
+    description: str
+    quantity: int
+    unit_price_gnf: int
+    amount_gnf: int
+
+
+class InvoiceSummary(BaseModel):
+    invoice_id: uuid.UUID
+    tenant_id: uuid.UUID
+    subscription_id: uuid.UUID | None
+    number: str
+    status: str
+    currency: str
+    tax_rate_bp: int
+    period_start: date | None
+    period_end: date | None
+    subtotal_gnf: int
+    tax_gnf: int
+    total_gnf: int
+    row_version: int
+
+
+class InvoiceOut(InvoiceSummary):
+    issued_at: datetime | None
+    voided_at: datetime | None
+    void_reason: str | None
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+    lines: list[InvoiceLineOut]
+
+
+class InvoiceVoid(StrictModel):
+    reason: str = Field(min_length=3, max_length=500)

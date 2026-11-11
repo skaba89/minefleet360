@@ -15,8 +15,10 @@ import { GpsAlertsPage } from "./pages/GpsAlertsPage";
 import { GeofencesPage } from "./pages/GpsHistory";
 import { HomePage } from "./pages/HomePage";
 import { PlatformCreateTenantPage, PlatformHealthPage, PlatformTenantsPage } from "./pages/PlatformPages";
+import { PlatformInvoicesPage } from "./pages/PlatformInvoicesPage";
 import { PlatformPlansPage } from "./pages/PlatformPlansPage";
 import { PlatformSubscriptionsPage } from "./pages/PlatformSubscriptionsPage";
+import { TenantInvoicesPage } from "./pages/TenantInvoicesPage";
 import { TenantSubscriptionPage } from "./pages/TenantSubscriptionPage";
 import { ChecklistTemplatesPage, HseInspectionPage, HseInspectionsPage } from "./pages/HseInspectionsPages";
 import { OfflineFieldPage } from "./pages/HseOffline";
@@ -67,7 +69,9 @@ export function App() {
           <Route path="plateforme/societes" element={<PlatformTenantsPage />} />
           <Route path="plateforme/plans" element={<PlatformPlansPage />} />
           <Route path="plateforme/abonnements" element={<PlatformSubscriptionsPage />} />
+          <Route path="plateforme/facturation" element={<PlatformInvoicesPage />} />
           <Route path="abonnement" element={<TenantSubscriptionPage />} />
+          <Route path="factures" element={<TenantInvoicesPage />} />
           <Route path="plateforme/nouvelle-societe" element={<PlatformCreateTenantPage />} />
           <Route path="plateforme/etat" element={<PlatformHealthPage />} />
           <Route path="vehicules" element={<VehiclesPage />} />

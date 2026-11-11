@@ -65,6 +65,25 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "billing.invoice.manage": {
+    "PLATFORM_ADMIN": [
+      "PLATFORM"
+    ]
+  },
+  "billing.invoice.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "billing.plan.create": {
     "PLATFORM_ADMIN": [
       "PLATFORM"

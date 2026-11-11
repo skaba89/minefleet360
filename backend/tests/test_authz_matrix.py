@@ -433,8 +433,22 @@ def world(api: Api, client: TestClient) -> Iterator[World]:
         json={"plan_id": plan.json()["plan_id"], "notes": "Abonnement RBAC"},
     )
     assert subscription.status_code == 201, subscription.text
+    # Lot 3 SaaS : une facture DRAFT de la société A, cible des GET plateforme et société (ST02)
+    # et de la route de détail (isolation inter-tenant indiscernable d'un 404).
+    invoice = client.post(
+        f"{API}/platform/tenants/{a.tenant_id}/invoices",
+        headers=api.platform(),
+        json={
+            "tax_rate_bp": 1800,
+            "lines": [
+                {"description": "Abonnement MineFleet 360 — RBAC", "quantity": 1, "unit_price_gnf": 12000000}
+            ],
+        },
+    )
+    assert invoice.status_code == 201, invoice.text
     objects = {
         "subscription_id": uuid.UUID(subscription.json()["subscription_id"]),
+        "invoice_id": uuid.UUID(invoice.json()["invoice_id"]),
         "template_id": uuid.UUID(template.json()["hse_checklist_template_id"]),
         "hse_inspection_id": uuid.UUID(inspection.json()["hse_inspection_id"]),
         "hse_evidence_id": uuid.UUID(evidence.json()["hse_evidence_id"]),

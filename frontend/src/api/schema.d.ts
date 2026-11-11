@@ -2125,6 +2125,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/tenants/{tenant_id}/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Invoices */
+        get: operations["list_invoices_api_v1_platform_tenants__tenant_id__invoices_get"];
+        put?: never;
+        /** Create Invoice */
+        post: operations["create_invoice_api_v1_platform_tenants__tenant_id__invoices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{tenant_id}/invoices/{invoice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Invoice */
+        get: operations["get_invoice_api_v1_platform_tenants__tenant_id__invoices__invoice_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{tenant_id}/invoices/{invoice_id}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue Invoice */
+        post: operations["issue_invoice_api_v1_platform_tenants__tenant_id__invoices__invoice_id__issue_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{tenant_id}/invoices/{invoice_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void Invoice */
+        post: operations["void_invoice_api_v1_platform_tenants__tenant_id__invoices__invoice_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/tenants/{tenant_id}/reactivate": {
         parameters: {
             query?: never;
@@ -2592,6 +2661,40 @@ export interface paths {
         head?: never;
         /** Update Own Tenant */
         patch: operations["update_own_tenant_api_v1_tenant_patch"];
+        trace?: never;
+    };
+    "/api/v1/tenant/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Own Invoices */
+        get: operations["list_own_invoices_api_v1_tenant_invoices_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/invoices/{invoice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Own Invoice */
+        get: operations["get_own_invoice_api_v1_tenant_invoices__invoice_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/tenant/subscription": {
@@ -5800,6 +5903,150 @@ export interface components {
             site_id: string;
         };
         /**
+         * InvoiceCreate
+         * @description Création d'une facture DRAFT pour une société.
+         *
+         *     Avec `subscription_id` et aucune ligne : une ligne est préremplie depuis le tarif du
+         *     plan (422 PLAN_NOT_PRICED si le plan n'a pas de tarif). Sinon les lignes sont fournies.
+         */
+        InvoiceCreate: {
+            /** Lines */
+            lines?: components["schemas"]["InvoiceLineIn"][];
+            /** Notes */
+            notes?: string | null;
+            /** Period End */
+            period_end?: string | null;
+            /** Period Start */
+            period_start?: string | null;
+            /** Subscription Id */
+            subscription_id?: string | null;
+            /**
+             * Tax Rate Bp
+             * @default 0
+             */
+            tax_rate_bp: number;
+        };
+        /** InvoiceLineIn */
+        InvoiceLineIn: {
+            /** Description */
+            description: string;
+            /** Quantity */
+            quantity: number;
+            /** Unit Price Gnf */
+            unit_price_gnf: number;
+        };
+        /** InvoiceLineOut */
+        InvoiceLineOut: {
+            /** Amount Gnf */
+            amount_gnf: number;
+            /** Description */
+            description: string;
+            /**
+             * Line Id
+             * Format: uuid
+             */
+            line_id: string;
+            /** Quantity */
+            quantity: number;
+            /** Unit Price Gnf */
+            unit_price_gnf: number;
+        };
+        /** InvoiceOut */
+        InvoiceOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /** Issued At */
+            issued_at: string | null;
+            /** Lines */
+            lines: components["schemas"]["InvoiceLineOut"][];
+            /** Notes */
+            notes: string | null;
+            /** Number */
+            number: string;
+            /** Period End */
+            period_end: string | null;
+            /** Period Start */
+            period_start: string | null;
+            /** Row Version */
+            row_version: number;
+            /** Status */
+            status: string;
+            /** Subscription Id */
+            subscription_id: string | null;
+            /** Subtotal Gnf */
+            subtotal_gnf: number;
+            /** Tax Gnf */
+            tax_gnf: number;
+            /** Tax Rate Bp */
+            tax_rate_bp: number;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Total Gnf */
+            total_gnf: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Void Reason */
+            void_reason: string | null;
+            /** Voided At */
+            voided_at: string | null;
+        };
+        /** InvoiceSummary */
+        InvoiceSummary: {
+            /** Currency */
+            currency: string;
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /** Number */
+            number: string;
+            /** Period End */
+            period_end: string | null;
+            /** Period Start */
+            period_start: string | null;
+            /** Row Version */
+            row_version: number;
+            /** Status */
+            status: string;
+            /** Subscription Id */
+            subscription_id: string | null;
+            /** Subtotal Gnf */
+            subtotal_gnf: number;
+            /** Tax Gnf */
+            tax_gnf: number;
+            /** Tax Rate Bp */
+            tax_rate_bp: number;
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+            /** Total Gnf */
+            total_gnf: number;
+        };
+        /** InvoiceVoid */
+        InvoiceVoid: {
+            /** Reason */
+            reason: string;
+        };
+        /**
          * Issue
          * @description Motif d'inéligibilité, de non-conformité ou avertissement ; `date` = échéance concernée.
          */
@@ -6662,6 +6909,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[InvoiceSummary] */
+        Page_InvoiceSummary_: {
+            /** Items */
+            items: components["schemas"]["InvoiceSummary"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[MeterReadingOut] */
         Page_MeterReadingOut_: {
             /** Items */
@@ -7176,6 +7434,8 @@ export interface components {
         };
         /** PlanCreate */
         PlanCreate: {
+            /** Billing Period */
+            billing_period?: string | null;
             /** Code */
             code: string;
             /** Description */
@@ -7192,6 +7452,8 @@ export interface components {
             max_vehicles?: number | null;
             /** Name */
             name: string;
+            /** Price Monthly Gnf */
+            price_monthly_gnf?: number | null;
             /**
              * Status
              * @default DRAFT
@@ -7200,6 +7462,8 @@ export interface components {
         };
         /** PlanOut */
         PlanOut: {
+            /** Billing Period */
+            billing_period: string | null;
             /** Code */
             code: string;
             /**
@@ -7226,6 +7490,8 @@ export interface components {
              * Format: uuid
              */
             plan_id: string;
+            /** Price Monthly Gnf */
+            price_monthly_gnf: number | null;
             /** Row Version */
             row_version: number;
             /** Status */
@@ -7238,6 +7504,8 @@ export interface components {
         };
         /** PlanSummary */
         PlanSummary: {
+            /** Billing Period */
+            billing_period: string | null;
             /** Code */
             code: string;
             /** Document Retention Days */
@@ -7257,6 +7525,8 @@ export interface components {
              * Format: uuid
              */
             plan_id: string;
+            /** Price Monthly Gnf */
+            price_monthly_gnf: number | null;
             /** Row Version */
             row_version: number;
             /** Status */
@@ -7267,6 +7537,8 @@ export interface components {
          * @description PATCH partiel : seuls les champs fournis sont modifiés (le code est immuable).
          */
         PlanUpdate: {
+            /** Billing Period */
+            billing_period?: string | null;
             /** Description */
             description?: string | null;
             /** Document Retention Days */
@@ -7281,6 +7553,8 @@ export interface components {
             max_vehicles?: number | null;
             /** Name */
             name?: string | null;
+            /** Price Monthly Gnf */
+            price_monthly_gnf?: number | null;
             /** Status */
             status?: string | null;
         };
@@ -8250,6 +8524,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Effective Status */
+            effective_status: string;
             /** Notes */
             notes: string | null;
             /** Period Ends At */
@@ -8291,7 +8567,7 @@ export interface components {
         };
         /**
          * SubscriptionRenew
-         * @description Renouvellement manuel de la période (lot 3 apportera la facturation).
+         * @description Renouvellement de la période : la facture correspondante est émise via le lot 3.
          */
         SubscriptionRenew: {
             /**
@@ -8309,6 +8585,8 @@ export interface components {
         SubscriptionSummary: {
             /** Cancelled At */
             cancelled_at: string | null;
+            /** Effective Status */
+            effective_status: string;
             /** Period Ends At */
             period_ends_at: string | null;
             /** Plan Code */
@@ -8501,6 +8779,8 @@ export interface components {
          * @description Vue côté société : SON abonnement et les quotas du plan (aucune donnée commerciale interne).
          */
         TenantSubscriptionOut: {
+            /** Effective Status */
+            effective_status: string;
             /** Period Ends At */
             period_ends_at: string | null;
             plan: components["schemas"]["PlanSummary"];
@@ -14989,6 +15269,188 @@ export interface operations {
             };
         };
     };
+    list_invoices_api_v1_platform_tenants__tenant_id__invoices_get: {
+        parameters: {
+            query?: {
+                status?: ("DRAFT" | "ISSUED" | "VOIDED") | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_InvoiceSummary_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_invoice_api_v1_platform_tenants__tenant_id__invoices_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_invoice_api_v1_platform_tenants__tenant_id__invoices__invoice_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                tenant_id: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    issue_invoice_api_v1_platform_tenants__tenant_id__invoices__invoice_id__issue_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                tenant_id: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    void_invoice_api_v1_platform_tenants__tenant_id__invoices__invoice_id__void_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                tenant_id: string;
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoiceVoid"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     reactivate_tenant_api_v1_platform_tenants__tenant_id__reactivate_post: {
         parameters: {
             query?: never;
@@ -16190,6 +16652,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenantOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_own_invoices_api_v1_tenant_invoices_get: {
+        parameters: {
+            query?: {
+                status?: ("DRAFT" | "ISSUED" | "VOIDED") | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_InvoiceSummary_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_own_invoice_api_v1_tenant_invoices__invoice_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceOut"];
                 };
             };
             /** @description Validation Error */

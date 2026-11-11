@@ -1427,6 +1427,31 @@ permissions:
     grants:
       { TENANT_ADMIN: [TENANT], DIRECTION: [TENANT], FINANCE: [TENANT], AUDITOR: [TENANT] }
 
+  # --- commercialisation SaaS (lot 3 : facturation paramétrable, sans encaissement) -------------------
+  # Document interne de traçabilité (DRAFT → ISSUED → VOIDED) ; aucun moyen de paiement modélisé.
+  # La numérotation et l'émission sont plateforme ; la société lit SES factures (RLS applicative).
+  billing.invoice.manage:
+    tranche: 2a
+    kind: create
+    site_bound: false
+    routes:
+      - { method: POST, path: "/platform/tenants/{tenant_id}/invoices", shape: collection, success: 201 }
+      - { method: GET, path: "/platform/tenants/{tenant_id}/invoices", shape: collection, success: 200 }
+      - { method: GET, path: "/platform/tenants/{tenant_id}/invoices/{invoice_id}", shape: item, success: 200 }
+      - { method: POST, path: "/platform/tenants/{tenant_id}/invoices/{invoice_id}/issue", shape: item, success: 200 }
+      - { method: POST, path: "/platform/tenants/{tenant_id}/invoices/{invoice_id}/void", shape: item, success: 200 }
+    audit: { action: billing.invoice.manage }
+    grants: { PLATFORM_ADMIN: [PLATFORM] }
+  billing.invoice.read:
+    tranche: 2a
+    kind: read
+    site_bound: false
+    routes:
+      - { method: GET, path: /tenant/invoices, shape: collection, success: 200 }
+      - { method: GET, path: "/tenant/invoices/{invoice_id}", shape: item, success: 200 }
+    grants:
+      { TENANT_ADMIN: [TENANT], DIRECTION: [TENANT], FINANCE: [TENANT], AUDITOR: [TENANT] }
+
 public_routes:
   # Authentification machine obligatoire dans la route ; aucun accès anonyme aux données.
   - { method: POST, path: /gps/telemetry }

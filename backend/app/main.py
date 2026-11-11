@@ -15,6 +15,8 @@ from app.assignment.router import router as assignment_router
 from app.audit.router import router as audit_router
 from app.authz.routing import SecuredRoute
 from app.billing.router import (
+    invoice_router,
+    own_invoice_router,
     own_subscription_router,
     subscription_router,
 )
@@ -160,8 +162,10 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         platform_router,
         billing_plans_router,
         subscription_router,
+        invoice_router,
         tenant_router,
         own_subscription_router,
+        own_invoice_router,
         site_router,
         user_router,
         role_router,

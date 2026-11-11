@@ -33,6 +33,9 @@ TENANT_TABLES = (
     "work_order",
     "work_order_event",
     "work_order_labour",
+    "tenant_subscription",
+    "billing_invoice",
+    "billing_invoice_line",
 )
 GLOBAL_TABLES = {
     "role",
@@ -42,6 +45,7 @@ GLOBAL_TABLES = {
     "vehicle_category_template_license",
     "vehicle_category_document_template",
     "saas_plan",  # référentiel plateforme (lot 1 SaaS) : pas de tenant_id, hors RLS applicative
+    "billing_invoice_sequence",  # compteur de numérotation plateforme (lot 3 SaaS)
     "alembic_version",
     "spatial_ref_sys",
 }

@@ -1,4 +1,4 @@
-"""Services du catalogue de plans SaaS (lot 1) et des abonnements (lot 2).
+"""Services du catalogue de plans SaaS (lot 1), abonnements (lot 2) et facturation (lot 3).
 
 Règles clés (plans) :
 - le code est immuable et unique (409 DUPLICATE_PLAN_CODE) ;
@@ -7,19 +7,36 @@ Règles clés (plans) :
 Règles clés (abonnements) :
 - un seul abonnement vivant par société (index unique partiel en base) ;
 - écriture sous contexte RLS de la société cible, chaque transition audité.
-L'application effective des quotas arrive avec le lot 2b ; ce lot livre le cycle de vie.
+- l'expiration d'un essai daté est un statut EFFECTIF calculé à la lecture (EXPIRED) : aucun
+  scheduler n'altère le statut stocké (décision lot 3, voir LIVRAISON_SAAS_FACTURATION.md).
+Règles clés (facturation) :
+- document interne de traçabilité : DRAFT → ISSUED → VOIDED (terminal), aucun encaissement ;
+- numérotation plateforme atomique par année (MF-<année>-<numéro>) ;
+- montants GNF figés à la création, lignes immuables, taxe en points de base.
+L'application effective des quotas au provisionnement reste au lot 2b.
 """
 
 import uuid
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
-from app.billing.models import SaaSPlan, TenantSubscription
-from app.billing.schemas import PlanCreate, PlanUpdate, SubscriptionCreate
+from app.billing.models import (
+    BillingInvoice,
+    BillingInvoiceLine,
+    SaaSPlan,
+    TenantSubscription,
+)
+from app.billing.schemas import (
+    InvoiceCreate,
+    InvoiceLineIn,
+    PlanCreate,
+    PlanUpdate,
+    SubscriptionCreate,
+)
 from app.core.errors import AppError
 from app.core.http import PageParams, check_version
 from app.core.tenancy import PLATFORM_TENANT_ID, set_tenant_context
@@ -32,6 +49,7 @@ PLAN_QUOTA_FIELDS = (
     "max_gps_trackers",
     "document_retention_days",
 )
+PLAN_PRICING_FIELDS = ("price_monthly_gnf", "billing_period")
 
 
 def _snapshot(plan: SaaSPlan) -> dict[str, object]:
@@ -40,6 +58,7 @@ def _snapshot(plan: SaaSPlan) -> dict[str, object]:
         "name": plan.name,
         "status": plan.status,
         **{field: getattr(plan, field) for field in PLAN_QUOTA_FIELDS},
+        **{field: getattr(plan, field) for field in PLAN_PRICING_FIELDS},
     }
 
 
@@ -58,6 +77,7 @@ def create_plan(auth: Authorized, body: PlanCreate) -> SaaSPlan:
         created_by=auth.user_id,
         updated_by=auth.user_id,
         **{field: getattr(body, field) for field in PLAN_QUOTA_FIELDS},
+        **{field: getattr(body, field) for field in PLAN_PRICING_FIELDS},
     )
     db.add(plan)
     db.flush()
@@ -102,9 +122,14 @@ def update_plan(auth: Authorized, plan_id: uuid.UUID, body: PlanUpdate, expected
         for field in PLAN_QUOTA_FIELDS
         if field in body.model_fields_set and getattr(body, field) is None
     }
+    clear_pricing = {
+        field
+        for field in PLAN_PRICING_FIELDS
+        if field in body.model_fields_set and getattr(body, field) is None
+    }
     for field, value in changes.items():
         setattr(plan, field, value)
-    for field in clear_quotas:  # explicite : quota remis à NULL = illimité
+    for field in clear_quotas | clear_pricing:  # explicite : remis à NULL (illimité / non tarifé)
         setattr(plan, field, None)
     plan.updated_by = auth.user_id
     db.flush()
@@ -251,6 +276,7 @@ def change_subscription_status(
     reason: str | None,
 ) -> TenantSubscription:
     """Transitions : TRIAL/ACTIVE → SUSPENDED (motif), SUSPENDED → ACTIVE, vivant → CANCELLED."""
+    # NOTE (lot 3) : un essai EXPIRED (statut effectif) reste transitionnable : le statut stocké TRIAL.
     db, now = auth.db, auth.clock.now()
     set_tenant_context(db, tenant_id)
     subscription = _get_subscription_in_tenant(db, tenant_id, subscription_id)
@@ -331,3 +357,222 @@ def read_own_subscription(db: Session, tenant_id: uuid.UUID) -> TenantSubscripti
     if subscription is None:
         raise AppError("NOT_FOUND")
     return subscription
+
+
+# --- Statut effectif de l'abonnement (lot 3) ----------------------------------------------------------
+
+
+def effective_status(subscription: TenantSubscription, now: datetime) -> str:
+    """Statut calculé à la lecture : un essai daté échue s'affiche EXPIRED sans écrire en base.
+
+    Le statut stocké reste TRIAL (aucun scheduler, aucune écriture implicite) : la plateforme
+    décide de la transition (activation, suspension, annulation). CANCELLED reste terminal.
+    """
+    if (
+        subscription.status == "TRIAL"
+        and subscription.trial_ends_at is not None
+        and subscription.trial_ends_at < now
+    ):
+        return "EXPIRED"
+    return subscription.status
+
+
+# --- Facturation (lot 3) ------------------------------------------------------------------------------
+
+
+def _next_invoice_number(db: Session, year: int) -> str:
+    """Numéro lisible MF-<année>-<numéro> : incrémentation atomique en base (upsert + RETURNING)."""
+    number = db.execute(
+        text(
+            "INSERT INTO billing_invoice_sequence (year, last_number) VALUES (:year, 1)"
+            " ON CONFLICT (year) DO UPDATE SET last_number = billing_invoice_sequence.last_number + 1"
+            " RETURNING last_number"
+        ),
+        {"year": year},
+    ).scalar_one()
+    return f"MF-{year}-{number:05d}"
+
+
+def _invoice_amounts(lines: list[InvoiceLineIn], tax_rate_bp: int) -> tuple[int, int, int]:
+    subtotal = sum(line.quantity * line.unit_price_gnf for line in lines)
+    # GNF : pas de subdivision ; arrondi à l'unité la plus proche (taxe en points de base).
+    tax = (subtotal * tax_rate_bp + 5_000) // 10_000
+    return subtotal, tax, subtotal + tax
+
+
+def _get_invoice_in_tenant(db: Session, tenant_id: uuid.UUID, invoice_id: uuid.UUID) -> BillingInvoice:
+    """Lit une facture APRÈS bascule du contexte RLS (404 identique pour cross-tenant et inconnu)."""
+    invoice = db.execute(
+        select(BillingInvoice).where(
+            BillingInvoice.invoice_id == invoice_id, BillingInvoice.tenant_id == tenant_id
+        )
+    ).scalar_one_or_none()
+    if invoice is None:
+        raise AppError("NOT_FOUND")
+    return invoice
+
+
+def create_invoice(auth: Authorized, tenant_id: uuid.UUID, body: InvoiceCreate) -> BillingInvoice:
+    """Crée une facture DRAFT (lignes fournies ou préremplies depuis le tarif du plan)."""
+    db, now = auth.db, auth.clock.now()
+    target_tenant = db.get(Tenant, tenant_id)
+    if target_tenant is None or target_tenant.kind != "CUSTOMER":
+        raise AppError("NOT_FOUND")
+    lines = list(body.lines)
+    if body.subscription_id is not None:
+        set_tenant_context(db, tenant_id)
+        subscription = _get_subscription_in_tenant(db, tenant_id, body.subscription_id)
+        if subscription.status == "CANCELLED":
+            raise AppError("SUBSCRIPTION_CANCELLED")
+        plan = get_plan(db, subscription.plan_id)
+        if not lines:
+            if plan.price_monthly_gnf is None:
+                raise AppError("PLAN_NOT_PRICED")
+            lines = [
+                InvoiceLineIn(
+                    description=f"Abonnement MineFleet 360 — plan {plan.name} ({plan.code})",
+                    quantity=1,
+                    unit_price_gnf=plan.price_monthly_gnf,
+                )
+            ]
+    if not lines:
+        raise AppError("INVOICE_LINES_REQUIRED")
+    set_tenant_context(db, tenant_id)
+    subtotal, tax, total = _invoice_amounts(lines, body.tax_rate_bp)
+    invoice = BillingInvoice(
+        tenant_id=tenant_id,
+        subscription_id=body.subscription_id,
+        number=_next_invoice_number(db, now.year),
+        status="DRAFT",
+        tax_rate_bp=body.tax_rate_bp,
+        period_start=body.period_start,
+        period_end=body.period_end,
+        notes=body.notes,
+        created_by=auth.user_id,
+        updated_by=auth.user_id,
+        subtotal_gnf=subtotal,
+        tax_gnf=tax,
+        total_gnf=total,
+    )
+    db.add(invoice)
+    db.flush()
+    db.add_all(
+        BillingInvoiceLine(
+            invoice_id=invoice.invoice_id,
+            tenant_id=tenant_id,
+            line_number=position,
+            description=line.description,
+            quantity=line.quantity,
+            unit_price_gnf=line.unit_price_gnf,
+            amount_gnf=line.quantity * line.unit_price_gnf,
+            created_by=auth.user_id,
+        )
+        for position, line in enumerate(lines, start=1)
+    )
+    db.flush()
+    record(
+        db,
+        tenant_id=tenant_id,
+        action="billing.invoice.create",
+        entity_type="billing_invoice",
+        entity_id=invoice.invoice_id,
+        actor_user_id=auth.user_id,
+        after={"number": invoice.number, "total_gnf": invoice.total_gnf, "status": "DRAFT"},
+    )
+    db.commit()
+    return invoice
+
+
+def list_invoices(
+    db: Session, tenant_id: uuid.UUID, page: PageParams, status_filter: str | None
+) -> tuple[list[BillingInvoice], int]:
+    set_tenant_context(db, tenant_id)
+    base = select(BillingInvoice).where(BillingInvoice.tenant_id == tenant_id)
+    if status_filter:
+        base = base.where(BillingInvoice.status == status_filter)
+    total = db.execute(select(func.count()).select_from(base.subquery())).scalar_one()
+    rows = db.execute(
+        base.order_by(BillingInvoice.created_at.desc(), BillingInvoice.invoice_id)
+        .offset(page.offset)
+        .limit(page.page_size)
+    )
+    return list(rows.scalars()), total
+
+
+def get_invoice(db: Session, tenant_id: uuid.UUID, invoice_id: uuid.UUID) -> BillingInvoice:
+    set_tenant_context(db, tenant_id)
+    return _get_invoice_in_tenant(db, tenant_id, invoice_id)
+
+
+def list_invoice_lines(db: Session, invoice: BillingInvoice) -> list[BillingInvoiceLine]:
+    rows = db.execute(
+        select(BillingInvoiceLine)
+        .where(BillingInvoiceLine.invoice_id == invoice.invoice_id)
+        .order_by(BillingInvoiceLine.line_number)
+    )
+    return list(rows.scalars())
+
+
+def issue_invoice(
+    auth: Authorized, tenant_id: uuid.UUID, invoice_id: uuid.UUID, expected_version: int
+) -> BillingInvoice:
+    """DRAFT → ISSUED : la facture est figée et son numéro devient opposable (document interne)."""
+    db = auth.db
+    set_tenant_context(db, tenant_id)
+    invoice = _get_invoice_in_tenant(db, tenant_id, invoice_id)
+    check_version(expected_version, invoice.row_version)
+    if invoice.status != "DRAFT":
+        raise AppError("STATE_TRANSITION_INVALID")
+    invoice.status = "ISSUED"
+    invoice.issued_at = auth.clock.now()
+    invoice.updated_by = auth.user_id
+    db.flush()
+    record(
+        db,
+        tenant_id=tenant_id,
+        action="billing.invoice.issue",
+        entity_type="billing_invoice",
+        entity_id=invoice.invoice_id,
+        actor_user_id=auth.user_id,
+        before={"status": "DRAFT"},
+        after={"status": "ISSUED", "total_gnf": invoice.total_gnf},
+        changed_fields=["status", "issued_at"],
+    )
+    db.commit()
+    return invoice
+
+
+def void_invoice(
+    auth: Authorized,
+    tenant_id: uuid.UUID,
+    invoice_id: uuid.UUID,
+    expected_version: int,
+    reason: str,
+) -> BillingInvoice:
+    """DRAFT/ISSUED → VOIDED (terminal) : annulation motivée, document conservé pour l'audit."""
+    db = auth.db
+    set_tenant_context(db, tenant_id)
+    invoice = _get_invoice_in_tenant(db, tenant_id, invoice_id)
+    check_version(expected_version, invoice.row_version)
+    if invoice.status == "VOIDED":
+        raise AppError("STATE_TRANSITION_INVALID")
+    previous_status = invoice.status
+    invoice.status = "VOIDED"
+    invoice.voided_at = auth.clock.now()
+    invoice.void_reason = reason
+    invoice.updated_by = auth.user_id
+    db.flush()
+    record(
+        db,
+        tenant_id=tenant_id,
+        action="billing.invoice.void",
+        entity_type="billing_invoice",
+        entity_id=invoice.invoice_id,
+        actor_user_id=auth.user_id,
+        reason=reason,
+        before={"status": previous_status},
+        after={"status": "VOIDED"},
+        changed_fields=["status", "voided_at"],
+    )
+    db.commit()
+    return invoice
