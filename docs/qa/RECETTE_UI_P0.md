@@ -111,8 +111,8 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 | Contrat brouillon → décision (quatre-yeux) | TENANT_ADMIN (créer), DIRECTION (décider) | `/juridique` | `POST /legal-contracts`, `/{id}/decision` | incomplet non soumis, décision tracée | ✔ `e2e/legal-contracts.spec.ts` (brouillon + refus de soumission sans preuve) ; cycle documentaire complet ⏳ (harnais S3/ClamAV requis) |
 | Police d'assurance | FINANCE | `/juridique` | `POST /insurance-policies` | GNF, dates cohérentes | ✔ `e2e/insurance-policies.spec.ts` |
 | Échéances d'assurance (nouvel endpoint) | FINANCE, DIRECTION, OPS_MANAGER, HSE, AUDITOR | `/juridique` (onglet assurances) | `GET /insurance-policies/expiring` | polices EXPIRING/EXPIRED avec état traduit | ✔ `src/pages/LegalRegistriesPage.test.tsx` (vitest) ; ✔ `e2e/insurance-policies.spec.ts` |
-| Réconciliation du stockage légal | DIRECTION, TENANT_ADMIN | `/juridique` | `GET /legal-contracts/storage-reconciliation` | cohérent / orphelin détecté | ⏳ non couvert E2E |
-| Coût complet par engin + taux horaires | FINANCE, OPS_MANAGER, DIRECTION, AUDITOR | `/couts` | `GET /costs/vehicles[/{id}/history]`, `POST /costs/labour-rates` | GNF, totaux = somme des lignes | ✔ `e2e-demo/parcours-demo.spec.ts` (lecture) ; actions ⏳ |
+| Réconciliation du stockage légal | DIRECTION, TENANT_ADMIN | `/juridique` | `GET /legal-contracts/storage-reconciliation` | cohérent / orphelin détecté | ✔ `e2e/costs-reconciliation.spec.ts` (chemin dégradé : 503 SERVICE_BUSY annoncé sans stockage privé, panneau réservé à la revue tenant, 403 pour l'AUDITOR ; chemin nominal = harnais S3, écart n°1) |
+| Coût complet par engin + taux horaires | FINANCE, OPS_MANAGER, DIRECTION, AUDITOR | `/couts` | `GET /costs/vehicles[/{id}/history]`, `POST /costs/labour-rates` | GNF, totaux = somme des lignes | ✔ `e2e-demo/parcours-demo.spec.ts` (lecture) ; taux horaires ✔ `e2e/costs-reconciliation.spec.ts` (création FINANCE, AUDITOR sans section, DISPATCHER refusé) |
 
 ### Administration et plateforme (scénario 10)
 | Action | Rôle(s) | Route UI | API | Résultat attendu | Preuve |
@@ -136,7 +136,12 @@ La police d'assurance est couverte par `e2e/insurance-policies.spec.ts` : créat
 Les zones de site (géofences), la politique d'alerte du site et les préférences de notification sont
 couvertes par `e2e/gps-zones-policy.spec.ts` : création puis désactivation d'une zone par l'OPS_MANAGER,
 lecture DISPATCHER sans bouton de gestion (refus 403 en API), politique du site persistée et relu par
-l'API, préférences personnelles de notification enregistrées.
+l'API, préférences personnelles de notification enregistrées. Les actions de coûts (taux horaires) et la
+réconciliation du stockage documentaire sont couvertes par `e2e/costs-reconciliation.spec.ts` : création
+d'un taux par la FINANCE avec contrôle croisé API, AUDITOR sans section de gestion, DISPATCHER refusé
+(403 serveur) ; réconciliation prouvée sur son chemin dégradé (503 SERVICE_BUSY annoncé en français
+sans stockage privé, panneau limité à la revue tenant) — le chemin nominal reste lié au harnais
+S3/ClamAV (écart n°1).
 
 **Écart n°2 (formes de refus) — résolu** : les refus d'accès direct par pré-contrôle utilisent désormais
 une forme canonique unique (`<AccessDenied />` de `components/common.tsx` — « Vous n'avez pas accès à cette
