@@ -12,6 +12,7 @@ const STATUS_LABEL: Record<string, string> = {
   TRIAL: "Essai",
   ACTIVE: "Actif",
   SUSPENDED: "Suspendu",
+  EXPIRED: "Essai expiré",
 };
 
 function quotaText(value: number | null | undefined): string {
@@ -51,7 +52,11 @@ export function TenantSubscriptionPage() {
         {subscription.data ? (
           <dl className="card">
             <Fact label="Formule">{subscription.data.plan.name} ({subscription.data.plan.code})</Fact>
-            <Fact label="Statut">{STATUS_LABEL[subscription.data.status] ?? subscription.data.status}</Fact>
+            <Fact label="Statut">
+              {STATUS_LABEL[subscription.data.effective_status] ?? subscription.data.effective_status}
+              {subscription.data.effective_status !== subscription.data.status && " (statut enregistré : "
+                + (STATUS_LABEL[subscription.data.status] ?? subscription.data.status) + ")"}
+            </Fact>
             <Fact label="Fin de l'essai">{formatDate(subscription.data.trial_ends_at)}</Fact>
             <Fact label="Fin de la période">{formatDate(subscription.data.period_ends_at)}</Fact>
             <Fact label="Utilisateurs">{quotaText(subscription.data.plan.max_users)}</Fact>

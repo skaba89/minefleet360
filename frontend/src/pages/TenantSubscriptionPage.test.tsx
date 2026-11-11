@@ -39,7 +39,7 @@ it("affiche la formule, les échéances et les quotas de la société", async ()
   canMock.mockReturnValue(true);
   getMock.mockResolvedValue({
     subscription_id: "33333333-3333-4333-8333-333333333333",
-    status: "ACTIVE",
+    status: "ACTIVE", effective_status: "ACTIVE",
     trial_ends_at: null,
     period_ends_at: "2027-01-15T00:00:00Z",
     plan: {

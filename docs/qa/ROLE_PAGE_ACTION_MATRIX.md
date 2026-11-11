@@ -247,14 +247,16 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `billing.plan.update` | 2a | `PATCH /platform/saas-plans/{plan_id}` | `PLATFORM_ADMIN` |
 | `billing.subscription.manage` | 2a | `POST /platform/tenants/{tenant_id}/subscriptions`<br>`GET /platform/tenants/{tenant_id}/subscriptions`<br>`POST /platform/tenants/{tenant_id}/subscriptions/{subscription_id}/activate`<br>`POST /platform/tenants/{tenant_id}/subscriptions/{subscription_id}/suspend`<br>`POST /platform/tenants/{tenant_id}/subscriptions/{subscription_id}/reactivate`<br>`POST /platform/tenants/{tenant_id}/subscriptions/{subscription_id}/cancel`<br>`POST /platform/tenants/{tenant_id}/subscriptions/{subscription_id}/renew` | `PLATFORM_ADMIN` |
 | `billing.subscription.read` | 2a | `GET /tenant/subscription` | `AUDITOR`, `DIRECTION`, `FINANCE`, `TENANT_ADMIN` |
+| `billing.invoice.manage` | 2a | `POST /platform/tenants/{tenant_id}/invoices`<br>`GET /platform/tenants/{tenant_id}/invoices`<br>`GET /platform/tenants/{tenant_id}/invoices/{invoice_id}`<br>`POST /platform/tenants/{tenant_id}/invoices/{invoice_id}/issue`<br>`POST /platform/tenants/{tenant_id}/invoices/{invoice_id}/void` | `PLATFORM_ADMIN` |
+| `billing.invoice.read` | 2a | `GET /tenant/invoices`<br>`GET /tenant/invoices/{invoice_id}` | `AUDITOR`, `DIRECTION`, `FINANCE`, `TENANT_ADMIN` |
 
 ## 5. Couverture par rôle
 
 | Rôle | Permissions | Routes API accessibles |
 |---|---:|---:|
-| `PLATFORM_ADMIN` | 10 | 27 |
-| `TENANT_ADMIN` | 66 | 124 |
-| `DIRECTION` | 35 | 92 |
+| `PLATFORM_ADMIN` | 11 | 32 |
+| `TENANT_ADMIN` | 67 | 126 |
+| `DIRECTION` | 36 | 94 |
 | `OPS_MANAGER` | 84 | 176 |
 | `DISPATCHER` | 37 | 81 |
 | `HR` | 16 | 34 |
@@ -264,8 +266,8 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `STOREKEEPER` | 17 | 49 |
 | `FUEL_MANAGER` | 28 | 62 |
 | `HSE` | 33 | 77 |
-| `FINANCE` | 23 | 54 |
-| `AUDITOR` | 38 | 96 |
+| `FINANCE` | 24 | 56 |
+| `AUDITOR` | 39 | 98 |
 
 ## 6. Anomalies détectées mécaniquement
 

@@ -115,6 +115,13 @@ CATALOG: dict[str, ErrorDef] = {
     "IF_MATCH_REQUIRED": ErrorDef(422, "L'en-tête If-Match est obligatoire pour une modification."),
     "PLAN_RETIRED": ErrorDef(422, "Ce plan SaaS est retiré du catalogue et ne peut plus être modifié."),
     "PLAN_NOT_ACTIVE": ErrorDef(422, "Ce plan SaaS n'est pas actif : il ne peut pas être souscrit."),
+    "PLAN_NOT_PRICED": ErrorDef(422, "Ce plan SaaS n'a pas de tarif : fournissez les lignes de la facture."),
+    "SUBSCRIPTION_CANCELLED": ErrorDef(
+        422, "L'abonnement visé est annulé : aucune facture ne peut y être rattachée."
+    ),
+    "INVOICE_LINES_REQUIRED": ErrorDef(
+        422, "Une facture exige au moins une ligne : fournissez les lignes ou un abonnement à un plan tarifé."
+    ),
     "REFERENCE_NOT_FOUND": ErrorDef(422, "Une ressource référencée est introuvable."),
     "SELF_ROLE_CHANGE_FORBIDDEN": ErrorDef(
         422, "Vous ne pouvez pas modifier vos propres droits ni désactiver votre propre compte."

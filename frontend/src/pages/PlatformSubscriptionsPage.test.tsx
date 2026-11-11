@@ -46,7 +46,7 @@ const SUBS = {
   page: 1, page_size: 20, total: 1,
   items: [{
     subscription_id: SUB_ID, tenant_id: TENANT_ID, plan_id: PLAN_ID,
-    plan_code: "BUSINESS", plan_name: "Business", status: "TRIAL",
+    plan_code: "BUSINESS", plan_name: "Business", status: "TRIAL", effective_status: "TRIAL",
     trial_ends_at: "2026-12-01T00:00:00Z", period_ends_at: null,
     suspended_at: null, cancelled_at: null, suspension_reason: null, row_version: 1,
   }],
@@ -61,7 +61,8 @@ it("affiche l'historique d'abonnement d'une société sélectionnée", async () 
   await screen.findByRole("option", { name: /mine-a/ }); // attendre le chargement des options
   fireEvent.change(screen.getByLabelText("Société"), { target: { value: TENANT_ID } });
   expect(await screen.findByText(/BUSINESS/)).toBeTruthy();
-  expect(screen.getByText("Essai")).toBeTruthy();
+  // Deux colonnes de statut (effectif + enregistré) : les deux valent « Essai » ici.
+  expect(screen.getAllByText("Essai").length).toBeGreaterThanOrEqual(1);
   await waitFor(() =>
     expect(getMock).toHaveBeenCalledWith(`/platform/tenants/${TENANT_ID}/subscriptions`, { page: 1, page_size: 20 }),
   );

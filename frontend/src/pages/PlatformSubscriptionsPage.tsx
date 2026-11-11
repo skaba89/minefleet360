@@ -16,6 +16,7 @@ const STATUS_LABEL: Record<string, string> = {
   ACTIVE: "Actif",
   SUSPENDED: "Suspendu",
   CANCELLED: "Annulé",
+  EXPIRED: "Essai expiré",
 };
 
 function formatDate(value: string | null | undefined): string {
@@ -225,6 +226,7 @@ export function PlatformSubscriptionsPage() {
               <tr>
                 <th scope="col">Plan</th>
                 <th scope="col">Statut</th>
+                <th scope="col">Statut enregistré</th>
                 <th scope="col">Fin d'essai</th>
                 <th scope="col">Fin de période</th>
                 <th scope="col">Motif de suspension</th>
@@ -235,6 +237,7 @@ export function PlatformSubscriptionsPage() {
               {items.map((subscription) => (
                 <tr key={subscription.subscription_id}>
                   <td>{subscription.plan_code} — {subscription.plan_name}</td>
+                  <td>{STATUS_LABEL[subscription.effective_status] ?? subscription.effective_status}</td>
                   <td>{STATUS_LABEL[subscription.status] ?? subscription.status}</td>
                   <td>{formatDate(subscription.trial_ends_at)}</td>
                   <td>{formatDate(subscription.period_ends_at)}</td>
