@@ -100,6 +100,8 @@ jobs:
         run: |
           command -v gpg >/dev/null
           if ! command -v rclone >/dev/null; then
+            # Contournement panne DNS du miroir Azure des runners : bascule sur archive.ubuntu.com.
+            sudo bash -c 'for f in /etc/apt/sources.list /etc/apt/sources.list.d/*; do [ -f "$f" ] && sed -i "s|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu|g" "$f"; done'
             ok=0
             for attempt in 1 2 3 4; do
               if sudo apt-get update; then ok=1; break; fi
@@ -229,6 +231,9 @@ jobs:
       - run: npm ci
       - name: Installer Chromium Playwright
         run: |
+          # Contournement panne DNS du miroir Azure des runners : bascule sur archive.ubuntu.com
+          # avant l'installation des dépendances système par Playwright.
+          sudo bash -c 'for f in /etc/apt/sources.list /etc/apt/sources.list.d/*; do [ -f "$f" ] && sed -i "s|mirror+file:/etc/apt/apt-mirrors.txt|http://archive.ubuntu.com/ubuntu|g" "$f"; done'
           ok=0
           for attempt in 1 2 3 4; do
             if npx playwright install --with-deps chromium; then ok=1; break; fi
