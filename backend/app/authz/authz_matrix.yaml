@@ -1377,6 +1377,31 @@ permissions:
     audit: { action: fleet.gps.track.read }
     grants: { OPS_MANAGER: [TENANT, SITE], HSE: [TENANT, SITE], AUDITOR: [TENANT] }
 
+  # --- commercialisation SaaS (lot 1 : catalogue plans/quotas) ---------------------------------------
+  # Référentiel plateforme : aucun rôle tenant n'y accède (méta-données commerciales, pas de donnée métier).
+  billing.plan.create:
+    tranche: 2a
+    kind: create
+    site_bound: false
+    routes: [{ method: POST, path: /platform/saas-plans, shape: collection, success: 201 }]
+    audit: { action: billing.plan.create }
+    grants: { PLATFORM_ADMIN: [PLATFORM] }
+  billing.plan.list:
+    tranche: 2a
+    kind: read
+    site_bound: false
+    routes:
+      - { method: GET, path: /platform/saas-plans, shape: collection, success: 200 }
+      - { method: GET, path: "/platform/saas-plans/{plan_id}", shape: item, success: 200 }
+    grants: { PLATFORM_ADMIN: [PLATFORM] }
+  billing.plan.update:
+    tranche: 2a
+    kind: update
+    site_bound: false
+    routes: [{ method: PATCH, path: "/platform/saas-plans/{plan_id}", shape: item, success: 200 }]
+    audit: { action: billing.plan.update }
+    grants: { PLATFORM_ADMIN: [PLATFORM] }
+
 public_routes:
   # Authentification machine obligatoire dans la route ; aucun accès anonyme aux données.
   - { method: POST, path: /gps/telemetry }

@@ -14,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.assignment.router import router as assignment_router
 from app.audit.router import router as audit_router
 from app.authz.routing import SecuredRoute
+from app.billing.router import router as billing_plans_router
 from app.core.clock import Clock, SystemClock
 from app.core.config import get_settings
 from app.core.db import get_engine
@@ -151,6 +152,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         auth_router,
         me_router,
         platform_router,
+        billing_plans_router,
         tenant_router,
         site_router,
         user_router,

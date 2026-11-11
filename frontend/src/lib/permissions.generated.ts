@@ -65,6 +65,21 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "billing.plan.create": {
+    "PLATFORM_ADMIN": [
+      "PLATFORM"
+    ]
+  },
+  "billing.plan.list": {
+    "PLATFORM_ADMIN": [
+      "PLATFORM"
+    ]
+  },
+  "billing.plan.update": {
+    "PLATFORM_ADMIN": [
+      "PLATFORM"
+    ]
+  },
   "cost.labour_rate.manage": {
     "DIRECTION": [
       "TENANT"

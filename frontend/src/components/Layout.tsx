@@ -28,6 +28,7 @@ export function Layout() {
   const links = [
     { to: "/plateforme/societes", text: "Sociétés clientes", show: can(me.grants, "organization.tenant.list") },
     { to: "/plateforme/nouvelle-societe", text: "Nouvelle société", show: can(me.grants, "organization.tenant.create") },
+    { to: "/plateforme/plans", text: "Plans SaaS", show: can(me.grants, "billing.plan.list") },
     { to: "/plateforme/etat", text: "État des services", show: can(me.grants, "organization.tenant.list") },
     { to: "/vehicules", text: "Véhicules", show: can(me.grants, "fleet.vehicle.read") },
     { to: "/vehicules/echeances", text: "Échéances documents", show: can(me.grants, "fleet.document.read") },

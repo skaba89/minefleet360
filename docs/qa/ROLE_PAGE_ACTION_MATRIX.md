@@ -74,6 +74,7 @@ Pages toujours accessibles à tout compte authentifié : Accueil (`/`), Mon comp
 | `/reinitialisation` | `ResetConfirmPage` | publique (non authentifié) |
 | `/mot-de-passe-oublie` | `ResetRequestPage` | publique (non authentifié) |
 | `/plateforme/societes` | `PlatformTenantsPage` | `organization.tenant.list` |
+| `/plateforme/plans` | `PlatformPlansPage` | détail imbriqué (cf. parent) |
 | `/plateforme/nouvelle-societe` | `PlatformCreateTenantPage` | `organization.tenant.create` |
 | `/plateforme/etat` | `PlatformHealthPage` | `organization.tenant.list` |
 | `/vehicules` | `VehiclesPage` | `fleet.vehicle.read` |
@@ -239,12 +240,15 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `fleet.gps_alert.manage` | 1c | `POST /gps/alerts/{gps_alert_id}/acknowledge` | `DISPATCHER`, `HSE`, `OPS_MANAGER` |
 | `fleet.gps_policy.manage` | 1c | `PUT /sites/{site_id}/gps-policy` | `OPS_MANAGER`, `TENANT_ADMIN` |
 | `fleet.gps.history` | 1c | `GET /vehicles/{vehicle_id}/gps/track`<br>`GET /gps/geofence-events` | `AUDITOR`, `HSE`, `OPS_MANAGER` |
+| `billing.plan.create` | 2a | `POST /platform/saas-plans` | `PLATFORM_ADMIN` |
+| `billing.plan.list` | 2a | `GET /platform/saas-plans`<br>`GET /platform/saas-plans/{plan_id}` | `PLATFORM_ADMIN` |
+| `billing.plan.update` | 2a | `PATCH /platform/saas-plans/{plan_id}` | `PLATFORM_ADMIN` |
 
 ## 5. Couverture par rôle
 
 | Rôle | Permissions | Routes API accessibles |
 |---|---:|---:|
-| `PLATFORM_ADMIN` | 6 | 16 |
+| `PLATFORM_ADMIN` | 9 | 20 |
 | `TENANT_ADMIN` | 65 | 123 |
 | `DIRECTION` | 34 | 91 |
 | `OPS_MANAGER` | 84 | 176 |

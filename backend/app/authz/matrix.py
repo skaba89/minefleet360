@@ -10,7 +10,7 @@ import yaml
 
 MATRIX_PATH = Path(__file__).with_name("authz_matrix.yaml")
 SCOPES = ("PLATFORM", "TENANT", "SITE")
-TRANCHES = ("1a", "1b", "1c", "later")
+TRANCHES = ("1a", "1b", "1c", "2a", "later")
 _PERMISSION_NAME = re.compile(r"^[a-z]+\.[a-z_]+\.[a-z_]+$")
 _ACTION_NAME = re.compile(r"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$")
 
