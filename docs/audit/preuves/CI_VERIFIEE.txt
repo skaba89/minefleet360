@@ -37,3 +37,12 @@ Exécutions locales sur la branche (API + PostgreSQL + seed fictif) : 5 758 pyte
 route GET documents), 264 Vitest (4 nouveaux), ruff/mypy propres ; E2E legal-document-cycle 2/2 sur harnais
 S3/ClamAV local réel (faux S3 HTTPS + faux clamd + API :8001) : cycle API existant + « cycle documentaire
 depuis l'UI » (empreinte client → dépôt → vérification DIRECTION → soumission).
+
+---
+PR #434 (fix/hse-offline-flake -> main, fusion squash 3fbedf7)
+Contrôles vérifiés via API authentifiée le 2026-11-12 — 9/9 pass, dont tenant-isolation vert avec le
+correctif (le même test avait échoué deux fois dans la journée sur code identique : 980b713, de99ebc).
+Local : 265/265 Vitest (1 nouveau — cadence de rejeu à 5 s avec faux minuteurs), tsc strict, build prod ;
+hse-offline chromium 24/24 en série après correctif (1 échec sur 6 avant, reproduit puis diagnostiqué par
+trace Playwright) ; émulation Pixel 7 locale : 3 échecs identiques sur le code d'origine (écart d'émulation
+local, verts en CI).
