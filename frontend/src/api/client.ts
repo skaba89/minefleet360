@@ -146,12 +146,13 @@ export async function request<T>(path: string, options: RequestOptions = {}, ret
  */
 export async function binaryRequest(
   path: string,
-  options: { method?: "GET" | "POST"; body?: Blob; contentType?: string } = {},
+  options: { method?: "GET" | "POST"; body?: Blob; contentType?: string; filename?: string } = {},
   retried = false,
 ): Promise<Response> {
   const headers: Record<string, string> = {};
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   if (options.contentType) headers["Content-Type"] = options.contentType;
+  if (options.filename) headers["X-Filename"] = options.filename;
   let response: Response;
   try {
     response = await fetch(`${API_PREFIX}${path}`, {

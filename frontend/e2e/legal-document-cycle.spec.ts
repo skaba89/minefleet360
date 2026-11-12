@@ -144,3 +144,60 @@ test("cycle juridique documentaire complet : dépôt, scan, vérification, soumi
   await expect(page.getByText("Fichiers orphelins :")).toContainText("0");
   await expect(page.getByText("Fichiers manquants :")).toContainText("0");
 });
+
+test("cycle documentaire depuis l'UI : empreinte calculée au client, dépôt, vérification, soumission", async ({ page, browser, request }) => {
+  test.setTimeout(120_000);
+  const admin = account("TENANT_ADMIN");
+  const adminHeaders = await apiLogin(request, admin);
+  const site = await dispatcherSite(request, await apiLogin(request, account("DISPATCHER", admin.workspace)));
+  const sites = await (await request.get("/api/v1/sites", { headers: adminHeaders })).json();
+  const siteInfo = sites.items.find((s: { site_id: string }) => s.site_id === site);
+  expect(siteInfo, "site introuvable pour l'admin").toBeTruthy();
+  const suffix = Math.random().toString(36).slice(2, 7).toUpperCase();
+  const reference = `CTR-UI-${suffix}`;
+  const pdf = buildPdf("Contrat E2E déposé depuis l'UI — document de test sans contenu réel");
+  const file = { name: `contrat-ui-${suffix}.pdf`, mimeType: "application/pdf", buffer: pdf };
+
+  // 1. Création du brouillon depuis l'UI : l'empreinte SHA-256 est calculée au client et transmise.
+  await uiLogin(page, admin);
+  await page.goto("/juridique");
+  await page.getByRole("combobox", { name: "Site" }).selectOption({ label: `${siteInfo.code} — ${siteInfo.name}` });
+  await page.getByLabel("Référence").fill(reference);
+  await page.getByLabel("Intitulé").fill(`Contrat documentaire UI ${suffix}`);
+  await page.getByLabel("Contrepartie").fill(`Contrepartie UI ${suffix}`);
+  await page.getByLabel(/Justificatif au format PDF/).setInputFiles(file);
+  await expect(page.getByText(/Empreinte SHA-256 du justificatif/)).toBeVisible();
+  await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
+  const row = page.getByRole("row", { name: new RegExp(reference) });
+  await expect(row).toBeVisible();
+
+  // 2. Dépôt du justificatif depuis l'UI : les octets partent avec X-Filename, l'état est PENDING.
+  await row.getByRole("button", { name: "Documents" }).click();
+  const panel = page.getByRole("region", { name: new RegExp(`Justificatifs du contrat ${reference}`) });
+  await panel.getByLabel(/Justificatif au format PDF/).setInputFiles(file);
+  await expect(panel.getByText(/Empreinte calculée au client/)).toBeVisible();
+  await panel.getByRole("button", { name: "Déposer le justificatif" }).click();
+  await expect(panel.getByText("En attente de vérification", { exact: true })).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Soumettre pour examen" })).toBeDisabled();
+
+  // 3. Vérification par la DIRECTION (quatre-yeux) : relecture des octets stockés puis VERIFIED.
+  const directionContext = await browser.newContext();
+  const directionPage = await directionContext.newPage();
+  await uiLogin(directionPage, account("DIRECTION", admin.workspace));
+  await directionPage.goto("/juridique");
+  await directionPage.getByRole("combobox", { name: "Site" }).selectOption({ label: `${siteInfo.code} — ${siteInfo.name}` });
+  await directionPage.getByRole("row", { name: new RegExp(reference) }).getByRole("button", { name: "Documents" }).click();
+  const directionPanel = directionPage.getByRole("region", { name: new RegExp(`Justificatifs du contrat ${reference}`) });
+  await directionPanel.getByRole("button", { name: "Vérifier" }).click();
+  await expect(directionPanel.getByText("Vérifié", { exact: true })).toBeVisible();
+  await directionContext.close();
+
+  // 4. Soumission depuis l'UI (panneau rechargé pour relire les états) : DRAFT -> PENDING_REVIEW.
+  await page.reload();
+  await page.getByRole("row", { name: new RegExp(reference) }).getByRole("button", { name: "Documents" }).click();
+  const reloadedPanel = page.getByRole("region", { name: new RegExp(`Justificatifs du contrat ${reference}`) });
+  await expect(reloadedPanel.getByText("Vérifié", { exact: true })).toBeVisible();
+  await reloadedPanel.getByRole("button", { name: "Soumettre pour examen" }).click();
+  await expect(reloadedPanel.getByText(/Contrat soumis pour examen/)).toBeVisible();
+  await expect(page.getByRole("row", { name: new RegExp(reference) })).toContainText("PENDING_REVIEW");
+});

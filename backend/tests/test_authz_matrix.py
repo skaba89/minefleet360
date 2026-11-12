@@ -433,6 +433,20 @@ def world(api: Api, client: TestClient) -> Iterator[World]:
         json={"plan_id": plan.json()["plan_id"], "notes": "Abonnement RBAC"},
     )
     assert subscription.status_code == 201, subscription.text
+    # Cycle documentaire juridique : un contrat brouillon de la société A, cible du
+    # GET /legal-contracts/{contract_id}/documents (états des justificatifs exposés à l'UI).
+    contract = client.post(
+        f"{API}/legal-contracts",
+        headers=a.admin.headers,
+        json={
+            "site_id": str(a.sites["S1"]),
+            "reference": "CTR-RBAC-1",
+            "title": "Contrat RBAC",
+            "contract_type": "SUPPLIER",
+            "counterparty_name": "Contrepartie RBAC",
+        },
+    )
+    assert contract.status_code == 201, contract.text
     # Lot 3 SaaS : une facture DRAFT de la société A, cible des GET plateforme et société (ST02)
     # et de la route de détail (isolation inter-tenant indiscernable d'un 404).
     invoice = client.post(
@@ -477,6 +491,8 @@ def world(api: Api, client: TestClient) -> Iterator[World]:
         "fuel_pump_anomaly_case_id": uuid.UUID(anomaly.json()["fuel_pump_anomaly_case_id"]),
         # Lot 1 SaaS : un plan de la plateforme, cible du GET /platform/saas-plans/{plan_id}.
         "plan_id": uuid.UUID(plan.json()["plan_id"]),
+        # Cycle documentaire juridique : le contrat de la société A (liste des justificatifs).
+        "contract_id": uuid.UUID(contract.json()["contract_id"]),
     }
     yield World(a, b, personas, b_personas, objects)
     patcher.undo()

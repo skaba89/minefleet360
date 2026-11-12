@@ -1,7 +1,7 @@
 """Read-only legal and insurance registries, constrained by RBAC and site scope."""
 
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Literal
 
@@ -108,6 +108,48 @@ class ReconciliationSummaryOut(BaseModel):
     orphan_count: int
     missing_count: int
     consistent: bool
+
+
+class ContractDocumentOut(BaseModel):
+    document_id: uuid.UUID
+    original_filename: str
+    sha256: str
+    byte_size: int
+    status: Literal["PENDING", "VERIFIED"]
+    created_at: datetime
+
+
+@router.get("/legal-contracts/{contract_id}/documents", response_model=list[ContractDocumentOut])
+def list_contract_documents(contract_id: uuid.UUID, auth: ContractRead) -> list[ContractDocumentOut]:
+    """Consultation des justificatifs déposés (états PENDING/VERIFIED exposés à l'UI)."""
+    contract = auth.db.scalar(
+        select(LegalContract).where(
+            LegalContract.tenant_id == auth.tenant_id,
+            LegalContract.contract_id == contract_id,
+        )
+    )
+    if contract is None or not auth.scope.covers_site(contract.site_id):
+        raise AppError("NOT_FOUND")
+    rows = auth.db.execute(
+        text(
+            "SELECT document_id, original_filename, sha256, byte_size, status, created_at "
+            "FROM legal_contract_document "
+            "WHERE tenant_id = :tenant AND contract_id = :contract "
+            "ORDER BY created_at, document_id"
+        ),
+        {"tenant": auth.tenant_id, "contract": contract_id},
+    ).all()
+    return [
+        ContractDocumentOut(
+            document_id=row.document_id,
+            original_filename=row.original_filename,
+            sha256=row.sha256,
+            byte_size=row.byte_size,
+            status=row.status,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
 
 
 @router.post("/legal-contracts/{contract_id}/documents/{document_id}/verify", status_code=200)
