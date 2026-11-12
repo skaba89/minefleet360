@@ -206,10 +206,10 @@ Lecture : la colonne CI/E2E mesure la profondeur de preuve **logicielle** ; aucu
 | `docs/audit/COMMERCIAL_READINESS_CURRENT.md` | **mis à jour** (présente révision, base PR #426, score 82/100, matrice des écarts §5bis) |
 | `docs/qa/GO_NO_GO.md` | **mis à jour** (12 novembre 2026, verdict inchangé, preuves actualisées, classement des blocants) |
 | `docs/ops/RECETTE_STAGING_VALIDATION.md` | à jour (runbook staging lecture seule + dry-run + protocoles RPO/RTO/éprouvetage) ; exécution réelle à faire |
-| `docs/ops/PLAN_EXECUTION_STAGING.md` | **créé** (présente PR) — plan d'exécution séquencé des phases A/B lecture seule (S0–S10, artefacts, critères d'interruption) |
-| `docs/ops/PROTOCOLE_RESTAURATION_EXTERNE.md` | **créé** (présente PR) — protocole d'exercice R1 (14 contrôles, incidents simulés, preuve datée) |
-| `docs/qa/PROTOCOLE_ESSAI_GPS_PHYSIQUE.md` | **créé** (présente PR) — banc L1–L9, terrain T1–T10, matrice de qualification par modèle |
-| `docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md` | **créé** (présente PR) — 2 appareils × 10 scénarios, mesures et limites consignées |
+| `docs/ops/PLAN_EXECUTION_STAGING.md` | **créé** (#427) — plan d'exécution séquencé des phases A/B lecture seule (S0–S10, artefacts, critères d'interruption) |
+| `docs/ops/PROTOCOLE_RESTAURATION_EXTERNE.md` | **créé** (#427) — protocole d'exercice R1 (14 contrôles, incidents simulés, preuve datée) |
+| `docs/qa/PROTOCOLE_ESSAI_GPS_PHYSIQUE.md` | **créé** (#427) — banc L1–L9, terrain T1–T10, matrice de qualification par modèle |
+| `docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md` | **créé** (#427) — 2 appareils × 10 scénarios, mesures et limites consignées |
 | `docs/ops/PROTOCOLE_PILOTE.md` | à jour (2026-11-12) — exécution conditionnée aux 8 prérequis terrain |
 | `docs/qa/ROLE_PAGE_ACTION_MATRIX.md` | généré, anti-dérive vert |
 | `docs/qa/RECETTE_UI_P0.md` | à jour (écart n°1 reformulé : cycle documentaire prouvé sur harnais #417, reste l'UI du dépôt/vérification/soumission ; écart n°2 résolu par #413) |
