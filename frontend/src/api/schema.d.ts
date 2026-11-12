@@ -1285,6 +1285,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/legal-contracts/storage-reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Contract Storage Reconciliation
+         * @description Tenant-wide reviewers only; expose counts, not private object keys.
+         */
+        get: operations["get_contract_storage_reconciliation_api_v1_legal_contracts_storage_reconciliation_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/legal-contracts/{contract_id}/decision": {
         parameters: {
             query?: never;
@@ -1329,26 +1349,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/legal-contracts/{contract_id}/documents/{document_id}/verify": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Verify Contract Document
-         * @description Reverify private bytes before recording a document as VERIFIED.
-         */
-        post: operations["verify_contract_document_api_v1_legal_contracts__contract_id__documents__document_id__verify_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/legal-contracts/{contract_id}/documents/preflight": {
         parameters: {
             query?: never;
@@ -1369,6 +1369,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/legal-contracts/{contract_id}/documents/{document_id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify Contract Document
+         * @description Reverify private bytes before recording a document as VERIFIED.
+         */
+        post: operations["verify_contract_document_api_v1_legal_contracts__contract_id__documents__document_id__verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/legal-contracts/{contract_id}/submit": {
         parameters: {
             query?: never;
@@ -1383,26 +1403,6 @@ export interface paths {
          * @description Atomically submit a document-backed draft without approving or signing.
          */
         post: operations["submit_contract_api_v1_legal_contracts__contract_id__submit_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/legal-contracts/storage-reconciliation": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Contract Storage Reconciliation
-         * @description Tenant-wide reviewers only; expose counts, not private object keys.
-         */
-        get: operations["get_contract_storage_reconciliation_api_v1_legal_contracts_storage_reconciliation_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1706,26 +1706,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/me/sessions/{session_id}/revoke": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Revoke My Session
-         * @description Ferme une session précise ; une session étrangère ou déjà fermée est indiscernable (404).
-         */
-        post: operations["revoke_my_session_api_v1_me_sessions__session_id__revoke_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/me/sessions/revoke-others": {
         parameters: {
             query?: never;
@@ -1740,6 +1720,26 @@ export interface paths {
          * @description Ferme toutes les autres sessions de l'utilisateur (présomption de session oubliée ou volée).
          */
         post: operations["revoke_my_other_sessions_api_v1_me_sessions_revoke_others_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/sessions/{session_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke My Session
+         * @description Ferme une session précise ; une session étrangère ou déjà fermée est indiscernable (404).
+         */
+        post: operations["revoke_my_session_api_v1_me_sessions__session_id__revoke_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2406,6 +2406,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/preventive-dues/evaluate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Evaluate Preventive Dues */
+        post: operations["evaluate_preventive_dues_api_v1_preventive_dues_evaluate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/preventive-dues/{due_id}/schedule": {
         parameters: {
             query?: never;
@@ -2420,23 +2437,6 @@ export interface paths {
          * @description Planifier une échéance éligible ; rejouer retourne le même ordre de travail.
          */
         post: operations["schedule_preventive_due_api_v1_preventive_dues__due_id__schedule_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/preventive-dues/evaluate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Evaluate Preventive Dues */
-        post: operations["evaluate_preventive_dues_api_v1_preventive_dues_evaluate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2796,6 +2796,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tyres/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tyre Stock */
+        get: operations["tyre_stock_api_v1_tyres_stock_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tyres/{tyre_id}": {
         parameters: {
             query?: never;
@@ -2892,23 +2909,6 @@ export interface paths {
         put?: never;
         /** Scrap Tyre */
         post: operations["scrap_tyre_api_v1_tyres__tyre_id__scrap_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/tyres/stock": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Tyre Stock */
-        get: operations["tyre_stock_api_v1_tyres_stock_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3283,6 +3283,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/vehicles/gps/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Latest Vehicle Gps
+         * @description Dernier point connu par camion, filtré par tenant et périmètre autorisé.
+         */
+        get: operations["latest_vehicle_gps_api_v1_vehicles_gps_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/vehicles/{vehicle_id}": {
         parameters: {
             query?: never;
@@ -3534,26 +3554,6 @@ export interface paths {
         };
         /** Vehicle Status History */
         get: operations["vehicle_status_history_api_v1_vehicles__vehicle_id__status_history_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/vehicles/gps/latest": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Latest Vehicle Gps
-         * @description Dernier point connu par camion, filtré par tenant et périmètre autorisé.
-         */
-        get: operations["latest_vehicle_gps_api_v1_vehicles_gps_latest_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4045,86 +4045,6 @@ export interface components {
              * @enum {string}
              */
             result: "COMPLIANT" | "NON_COMPLIANT" | "NOT_APPLICABLE";
-        };
-        /** EventOut */
-        app__dispatch__schemas__EventOut: {
-            /** Event Type */
-            event_type: string;
-            /** From Status */
-            from_status: string | null;
-            /**
-             * Mission Event Id
-             * Format: uuid
-             */
-            mission_event_id: string;
-            /**
-             * Occurred At
-             * Format: date-time
-             */
-            occurred_at: string;
-            /** Reason */
-            reason: string | null;
-            /**
-             * Recorded At
-             * Format: date-time
-             */
-            recorded_at: string;
-            /** Source */
-            source: string;
-            /** To Status */
-            to_status: string;
-            /**
-             * Vehicle Assignment Id
-             * Format: uuid
-             */
-            vehicle_assignment_id: string;
-        };
-        /** EventOut */
-        app__hse__schemas__EventOut: {
-            /** Actor Name */
-            actor_name: string | null;
-            /**
-             * Actor User Id
-             * Format: uuid
-             */
-            actor_user_id: string;
-            /** Event Type */
-            event_type: string;
-            /** From Status */
-            from_status: string | null;
-            /**
-             * Occurred At
-             * Format: date-time
-             */
-            occurred_at: string;
-            /** Reason */
-            reason: string | null;
-            /** To Status */
-            to_status: string;
-        };
-        /** EventOut */
-        app__maintenance__schemas__EventOut: {
-            /** Actor Name */
-            actor_name: string | null;
-            /** Actor User Id */
-            actor_user_id: string | null;
-            /** Event Type */
-            event_type: string;
-            /** From Status */
-            from_status: string | null;
-            /**
-             * Occurred At
-             * Format: date-time
-             */
-            occurred_at: string;
-            /** Reason */
-            reason: string | null;
-            /** Subject Name */
-            subject_name: string | null;
-            /** Subject User Id */
-            subject_user_id: string | null;
-            /** To Status */
-            to_status: string;
         };
         /** AssignmentCancel */
         AssignmentCancel: {
@@ -5612,6 +5532,11 @@ export interface components {
             /** Site Id */
             site_id: string | null;
         };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
         /**
          * HseSummaryOut
          * @description Indicateurs HSE de la portée lue (période glissante bornée par `since`).
@@ -5646,11 +5571,6 @@ export interface components {
              * Format: date
              */
             since: string;
-        };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
         };
         /** IncidentCreate */
         IncidentCreate: {
@@ -6509,16 +6429,6 @@ export interface components {
             /** Status */
             status?: ("ACTIVE" | "INACTIVE") | null;
         };
-        /** MechanicOut */
-        MechanicOut: {
-            /** Display Name */
-            display_name: string;
-            /**
-             * User Account Id
-             * Format: uuid
-             */
-            user_account_id: string;
-        };
         /** MeOut */
         MeOut: {
             /** Display Name */
@@ -6544,6 +6454,16 @@ export interface components {
             user_account_id: string;
             /** Workspace Code */
             workspace_code: string;
+        };
+        /** MechanicOut */
+        MechanicOut: {
+            /** Display Name */
+            display_name: string;
+            /**
+             * User Account Id
+             * Format: uuid
+             */
+            user_account_id: string;
         };
         /** MeterReadingCreate */
         MeterReadingCreate: {
@@ -8521,11 +8441,6 @@ export interface components {
             /** User Agent */
             user_agent: string | null;
         };
-        /** SessionsRevokedOut */
-        SessionsRevokedOut: {
-            /** Revoked */
-            revoked: number;
-        };
         /** SessionUser */
         SessionUser: {
             /** Display Name */
@@ -8537,6 +8452,11 @@ export interface components {
             user_account_id: string;
             /** Workspace Code */
             workspace_code: string;
+        };
+        /** SessionsRevokedOut */
+        SessionsRevokedOut: {
+            /** Revoked */
+            revoked: number;
         };
         /** SiteCost */
         SiteCost: {
@@ -9108,47 +9028,6 @@ export interface components {
             token_type: "bearer";
             user: components["schemas"]["SessionUser"];
         };
-        /** TrackerCreateIn */
-        TrackerCreateIn: {
-            /** Device Id */
-            device_id: string;
-        };
-        /** TrackerOut */
-        TrackerOut: {
-            /**
-             * Active From
-             * Format: date-time
-             */
-            active_from: string;
-            /** Device Id */
-            device_id: string;
-            /**
-             * Gps Device Binding Id
-             * Format: uuid
-             */
-            gps_device_binding_id: string;
-            /** Revoked At */
-            revoked_at: string | null;
-        };
-        /** TrackerProvisionOut */
-        TrackerProvisionOut: {
-            /**
-             * Active From
-             * Format: date-time
-             */
-            active_from: string;
-            /** Device Id */
-            device_id: string;
-            /**
-             * Gps Device Binding Id
-             * Format: uuid
-             */
-            gps_device_binding_id: string;
-            /** Revoked At */
-            revoked_at: string | null;
-            /** Token */
-            token: string;
-        };
         /** TrackOut */
         TrackOut: {
             /** Distance Km */
@@ -9216,6 +9095,47 @@ export interface components {
             source: string;
             /** Speed Kmh */
             speed_kmh: number | null;
+        };
+        /** TrackerCreateIn */
+        TrackerCreateIn: {
+            /** Device Id */
+            device_id: string;
+        };
+        /** TrackerOut */
+        TrackerOut: {
+            /**
+             * Active From
+             * Format: date-time
+             */
+            active_from: string;
+            /** Device Id */
+            device_id: string;
+            /**
+             * Gps Device Binding Id
+             * Format: uuid
+             */
+            gps_device_binding_id: string;
+            /** Revoked At */
+            revoked_at: string | null;
+        };
+        /** TrackerProvisionOut */
+        TrackerProvisionOut: {
+            /**
+             * Active From
+             * Format: date-time
+             */
+            active_from: string;
+            /** Device Id */
+            device_id: string;
+            /**
+             * Gps Device Binding Id
+             * Format: uuid
+             */
+            gps_device_binding_id: string;
+            /** Revoked At */
+            revoked_at: string | null;
+            /** Token */
+            token: string;
         };
         /** TyreCreate */
         TyreCreate: {
@@ -10212,6 +10132,86 @@ export interface components {
             /** Work Done */
             work_done?: string | null;
         };
+        /** EventOut */
+        app__dispatch__schemas__EventOut: {
+            /** Event Type */
+            event_type: string;
+            /** From Status */
+            from_status: string | null;
+            /**
+             * Mission Event Id
+             * Format: uuid
+             */
+            mission_event_id: string;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Reason */
+            reason: string | null;
+            /**
+             * Recorded At
+             * Format: date-time
+             */
+            recorded_at: string;
+            /** Source */
+            source: string;
+            /** To Status */
+            to_status: string;
+            /**
+             * Vehicle Assignment Id
+             * Format: uuid
+             */
+            vehicle_assignment_id: string;
+        };
+        /** EventOut */
+        app__hse__schemas__EventOut: {
+            /** Actor Name */
+            actor_name: string | null;
+            /**
+             * Actor User Id
+             * Format: uuid
+             */
+            actor_user_id: string;
+            /** Event Type */
+            event_type: string;
+            /** From Status */
+            from_status: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Reason */
+            reason: string | null;
+            /** To Status */
+            to_status: string;
+        };
+        /** EventOut */
+        app__maintenance__schemas__EventOut: {
+            /** Actor Name */
+            actor_name: string | null;
+            /** Actor User Id */
+            actor_user_id: string | null;
+            /** Event Type */
+            event_type: string;
+            /** From Status */
+            from_status: string | null;
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Reason */
+            reason: string | null;
+            /** Subject Name */
+            subject_name: string | null;
+            /** Subject User Id */
+            subject_user_id: string | null;
+            /** To Status */
+            to_status: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -10224,15 +10224,15 @@ export interface operations {
     list_events_api_v1_audit_events_get: {
         parameters: {
             query?: {
-                action?: string | null;
-                actor_user_id?: string | null;
-                entity_id?: string | null;
-                entity_type?: string | null;
                 occurred_from?: string | null;
                 occurred_to?: string | null;
+                actor_user_id?: string | null;
+                action?: string | null;
+                entity_type?: string | null;
+                entity_id?: string | null;
+                site_id?: string | null;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -10624,8 +10624,8 @@ export interface operations {
     list_vehicle_costs_api_v1_costs_vehicles_get: {
         parameters: {
             query?: {
-                from?: string | null;
                 site_id?: string | null;
+                from?: string | null;
                 to?: string | null;
             };
             header?: {
@@ -10694,9 +10694,9 @@ export interface operations {
     dispatch_indicators_api_v1_dispatch_indicators_get: {
         parameters: {
             query?: {
-                period_end?: string | null;
-                period_start?: string | null;
                 site_id?: string | null;
+                period_start?: string | null;
+                period_end?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -10805,11 +10805,11 @@ export interface operations {
     list_drivers_api_v1_drivers_get: {
         parameters: {
             query?: {
-                page?: number;
-                page_size?: number | null;
-                q?: string | null;
                 site_id?: string | null;
                 status?: ("ACTIVE" | "UNAVAILABLE" | "SUSPENDED" | "INACTIVE") | null;
+                q?: string | null;
+                page?: number;
+                page_size?: number | null;
             };
             header?: {
                 authorization?: string | null;
@@ -11232,10 +11232,10 @@ export interface operations {
     list_stock_alerts_api_v1_fuel_alerts_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
                 active_only?: boolean;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -11301,10 +11301,10 @@ export interface operations {
     list_anomaly_cases_api_v1_fuel_anomaly_cases_get: {
         parameters: {
             query?: {
-                page?: number;
-                page_size?: number | null;
                 site_id?: string | null;
                 status?: ("OPEN" | "ACKNOWLEDGED" | "JUSTIFIED" | "CLOSED") | null;
+                page?: number;
+                page_size?: number | null;
             };
             header?: {
                 authorization?: string | null;
@@ -11410,8 +11410,8 @@ export interface operations {
     get_fuel_dashboard_api_v1_fuel_dashboard_get: {
         parameters: {
             query?: {
-                from?: string | null;
                 site_id?: string | null;
+                from?: string | null;
                 to?: string | null;
             };
             header?: {
@@ -11445,10 +11445,10 @@ export interface operations {
     list_issues_api_v1_fuel_issues_get: {
         parameters: {
             query?: {
-                page?: number;
-                page_size?: number | null;
                 site_id?: string | null;
                 status?: ("PENDING_APPROVAL" | "APPROVED" | "REJECTED") | null;
+                page?: number;
+                page_size?: number | null;
             };
             header?: {
                 authorization?: string | null;
@@ -11553,9 +11553,9 @@ export interface operations {
     list_pumps_api_v1_fuel_pumps_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -11806,10 +11806,10 @@ export interface operations {
     list_purchases_api_v1_fuel_purchases_get: {
         parameters: {
             query?: {
-                page?: number;
-                page_size?: number | null;
                 site_id?: string | null;
                 status?: ("PENDING_APPROVAL" | "REJECTED" | "APPROVED" | "PARTIALLY_RECEIVED" | "RECEIVED") | null;
+                page?: number;
+                page_size?: number | null;
             };
             header?: {
                 authorization?: string | null;
@@ -11951,9 +11951,9 @@ export interface operations {
     list_stocktakes_api_v1_fuel_stocktakes_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -11986,9 +11986,9 @@ export interface operations {
     list_suppliers_api_v1_fuel_suppliers_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -12056,9 +12056,9 @@ export interface operations {
     list_tanks_api_v1_fuel_tanks_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -12274,8 +12274,8 @@ export interface operations {
     list_geofences_api_v1_geofences_get: {
         parameters: {
             query?: {
-                include_inactive?: boolean;
                 site_id?: string | null;
+                include_inactive?: boolean;
             };
             header?: {
                 authorization?: string | null;
@@ -12376,11 +12376,11 @@ export interface operations {
     list_gps_alerts_api_v1_gps_alerts_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
                 kind?: ("OVERSPEED" | "RESTRICTED_ZONE_ENTRY" | "SITE_BOUNDARY_EXIT" | "SIGNAL_LOST") | null;
+                unacknowledged?: boolean;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
-                unacknowledged?: boolean;
             };
             header?: {
                 authorization?: string | null;
@@ -12450,9 +12450,9 @@ export interface operations {
     geofence_events_api_v1_gps_geofence_events_get: {
         parameters: {
             query: {
-                from?: string | null;
-                purpose: "OPERATIONS_REVIEW" | "INCIDENT_INVESTIGATION" | "MAINTENANCE_DIAGNOSIS" | "SECURITY" | "CLIENT_DISPUTE";
                 site_id: string;
+                purpose: "OPERATIONS_REVIEW" | "INCIDENT_INVESTIGATION" | "MAINTENANCE_DIAGNOSIS" | "SECURITY" | "CLIENT_DISPUTE";
+                from?: string | null;
                 to?: string | null;
             };
             header?: {
@@ -12537,8 +12537,8 @@ export interface operations {
     list_templates_api_v1_hse_checklist_templates_get: {
         parameters: {
             query?: {
-                include_inactive?: boolean;
                 target_type?: ("PRE_SHIFT" | "VEHICLE" | "WORK_AREA") | null;
+                include_inactive?: boolean;
             };
             header?: {
                 authorization?: string | null;
@@ -12639,12 +12639,12 @@ export interface operations {
     list_actions_api_v1_hse_corrective_actions_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
+                status?: ("OPEN" | "DONE" | "VERIFIED" | "CANCELLED") | null;
                 mine?: boolean;
                 open_only?: boolean;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
-                status?: ("OPEN" | "DONE" | "VERIFIED" | "CANCELLED") | null;
             };
             header?: {
                 authorization?: string | null;
@@ -12784,13 +12784,13 @@ export interface operations {
     list_incidents_api_v1_hse_incidents_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
+                status?: ("REPORTED" | "INVESTIGATING" | "CLOSED" | "CANCELLED") | null;
+                severity?: ("LOW" | "MEDIUM" | "HIGH" | "CRITICAL") | null;
                 category?: ("INJURY" | "NEAR_MISS" | "VEHICLE_COLLISION" | "PROPERTY_DAMAGE" | "ENVIRONMENT" | "SPILL" | "FIRE" | "UNSAFE_CONDITION" | "OTHER") | null;
                 open_only?: boolean;
                 page?: number;
                 page_size?: number | null;
-                severity?: ("LOW" | "MEDIUM" | "HIGH" | "CRITICAL") | null;
-                site_id?: string | null;
-                status?: ("REPORTED" | "INVESTIGATING" | "CLOSED" | "CANCELLED") | null;
             };
             header?: {
                 authorization?: string | null;
@@ -13033,12 +13033,12 @@ export interface operations {
     list_inspections_api_v1_hse_inspections_get: {
         parameters: {
             query?: {
-                page?: number;
-                page_size?: number | null;
-                result?: ("PASS" | "FAIL") | null;
                 site_id?: string | null;
+                result?: ("PASS" | "FAIL") | null;
                 target_type?: ("PRE_SHIFT" | "VEHICLE" | "WORK_AREA") | null;
                 vehicle_id?: string | null;
+                page?: number;
+                page_size?: number | null;
             };
             header?: {
                 authorization?: string | null;
@@ -13242,8 +13242,8 @@ export interface operations {
     hse_summary_api_v1_hse_summary_get: {
         parameters: {
             query?: {
-                days?: number;
                 site_id?: string | null;
+                days?: number;
             };
             header?: {
                 authorization?: string | null;
@@ -13276,9 +13276,9 @@ export interface operations {
     list_insurance_api_v1_insurance_policies_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -13346,8 +13346,8 @@ export interface operations {
     expiring_insurance_api_v1_insurance_policies_expiring_get: {
         parameters: {
             query?: {
-                site_id?: string | null;
                 within_days?: number;
+                site_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -13380,9 +13380,9 @@ export interface operations {
     list_contracts_api_v1_legal_contracts_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -13434,6 +13434,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContractOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_contract_storage_reconciliation_api_v1_legal_contracts_storage_reconciliation_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconciliationSummaryOut"];
                 };
             };
             /** @description Validation Error */
@@ -13521,8 +13552,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                authorization?: string | null;
                 "X-Filename"?: string | null;
+                authorization?: string | null;
             };
             path: {
                 contract_id: string;
@@ -13533,42 +13564,6 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    verify_contract_document_api_v1_legal_contracts__contract_id__documents__document_id__verify_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                contract_id: string;
-                document_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13624,6 +13619,42 @@ export interface operations {
             };
         };
     };
+    verify_contract_document_api_v1_legal_contracts__contract_id__documents__document_id__verify_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                contract_id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     submit_contract_api_v1_legal_contracts__contract_id__submit_post: {
         parameters: {
             query?: never;
@@ -13644,37 +13675,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContractOut"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_contract_storage_reconciliation_api_v1_legal_contracts_storage_reconciliation_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReconciliationSummaryOut"];
                 };
             };
             /** @description Validation Error */
@@ -13724,8 +13724,8 @@ export interface operations {
     reliability_api_v1_maintenance_reliability_get: {
         parameters: {
             query?: {
-                from?: string | null;
                 site_id?: string | null;
+                from?: string | null;
                 to?: string | null;
             };
             header?: {
@@ -14327,37 +14327,6 @@ export interface operations {
             };
         };
     };
-    revoke_my_session_api_v1_me_sessions__session_id__revoke_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                session_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     revoke_my_other_sessions_api_v1_me_sessions_revoke_others_post: {
         parameters: {
             query?: never;
@@ -14389,15 +14358,46 @@ export interface operations {
             };
         };
     };
+    revoke_my_session_api_v1_me_sessions__session_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_missions_api_v1_missions_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
+                vehicle_id?: string | null;
+                status?: ("PLANNED" | "ASSIGNED" | "EN_ROUTE_EMPTY" | "LOADING" | "EN_ROUTE_LOADED" | "UNLOADING" | "SUSPENDED" | "COMPLETED" | "CANCELLED") | null;
                 open_only?: boolean;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
-                status?: ("PLANNED" | "ASSIGNED" | "EN_ROUTE_EMPTY" | "LOADING" | "EN_ROUTE_LOADED" | "UNLOADING" | "SUSPENDED" | "COMPLETED" | "CANCELLED") | null;
-                vehicle_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -14536,10 +14536,10 @@ export interface operations {
     list_part_balances_api_v1_part_balances_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
                 critical_only?: boolean;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -14572,11 +14572,11 @@ export interface operations {
     list_part_movements_api_v1_part_movements_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
+                spare_part_store_id?: string | null;
+                spare_part_id?: string | null;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
-                spare_part_id?: string | null;
-                spare_part_store_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -14749,10 +14749,10 @@ export interface operations {
     list_drafts_api_v1_part_replenishments_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
+                request_status?: string | null;
                 page?: number;
                 page_size?: number | null;
-                request_status?: string | null;
-                site_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -14890,12 +14890,12 @@ export interface operations {
     list_part_reservations_api_v1_part_reservations_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
+                work_order_id?: string | null;
+                spare_part_store_id?: string | null;
+                reservation_status?: string | null;
                 page?: number;
                 page_size?: number | null;
-                reservation_status?: string | null;
-                site_id?: string | null;
-                spare_part_store_id?: string | null;
-                work_order_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -15029,9 +15029,9 @@ export interface operations {
     list_part_stores_api_v1_part_stores_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -15168,9 +15168,9 @@ export interface operations {
     list_purchase_drafts_api_v1_parts_purchase_orders_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -15480,9 +15480,9 @@ export interface operations {
     list_invoices_api_v1_platform_tenants__tenant_id__invoices_get: {
         parameters: {
             query?: {
+                status?: ("DRAFT" | "ISSUED" | "VOIDED") | null;
                 page?: number;
                 page_size?: number | null;
-                status?: ("DRAFT" | "ISSUED" | "VOIDED") | null;
             };
             header?: {
                 authorization?: string | null;
@@ -15558,8 +15558,8 @@ export interface operations {
                 authorization?: string | null;
             };
             path: {
-                invoice_id: string;
                 tenant_id: string;
+                invoice_id: string;
             };
             cookie?: never;
         };
@@ -15593,8 +15593,8 @@ export interface operations {
                 "if-match"?: string | null;
             };
             path: {
-                invoice_id: string;
                 tenant_id: string;
+                invoice_id: string;
             };
             cookie?: never;
         };
@@ -15628,8 +15628,8 @@ export interface operations {
                 "if-match"?: string | null;
             };
             path: {
-                invoice_id: string;
                 tenant_id: string;
+                invoice_id: string;
             };
             cookie?: never;
         };
@@ -15733,9 +15733,9 @@ export interface operations {
     list_subscriptions_api_v1_platform_tenants__tenant_id__subscriptions_get: {
         parameters: {
             query?: {
+                status?: ("TRIAL" | "ACTIVE" | "SUSPENDED" | "CANCELLED") | null;
                 page?: number;
                 page_size?: number | null;
-                status?: ("TRIAL" | "ACTIVE" | "SUSPENDED" | "CANCELLED") | null;
             };
             header?: {
                 authorization?: string | null;
@@ -15812,8 +15812,8 @@ export interface operations {
                 "if-match"?: string | null;
             };
             path: {
-                subscription_id: string;
                 tenant_id: string;
+                subscription_id: string;
             };
             cookie?: never;
         };
@@ -15847,8 +15847,8 @@ export interface operations {
                 "if-match"?: string | null;
             };
             path: {
-                subscription_id: string;
                 tenant_id: string;
+                subscription_id: string;
             };
             cookie?: never;
         };
@@ -15886,8 +15886,8 @@ export interface operations {
                 "if-match"?: string | null;
             };
             path: {
-                subscription_id: string;
                 tenant_id: string;
+                subscription_id: string;
             };
             cookie?: never;
         };
@@ -15921,8 +15921,8 @@ export interface operations {
                 "if-match"?: string | null;
             };
             path: {
-                subscription_id: string;
                 tenant_id: string;
+                subscription_id: string;
             };
             cookie?: never;
         };
@@ -15960,8 +15960,8 @@ export interface operations {
                 "if-match"?: string | null;
             };
             path: {
-                subscription_id: string;
                 tenant_id: string;
+                subscription_id: string;
             };
             cookie?: never;
         };
@@ -16104,11 +16104,11 @@ export interface operations {
     list_preventive_dues_api_v1_preventive_dues_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
+                status?: ("DUE" | "SCHEDULED" | "COMPLETED" | "CANCELLED") | null;
                 open_only?: boolean;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
-                status?: ("DUE" | "SCHEDULED" | "COMPLETED" | "CANCELLED") | null;
             };
             header?: {
                 authorization?: string | null;
@@ -16125,39 +16125,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Page_SiteDueOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    schedule_preventive_due_api_v1_preventive_dues__due_id__schedule_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                due_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PreventiveScheduledOrderOut"];
                 };
             };
             /** @description Validation Error */
@@ -16193,6 +16160,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PreventiveEvaluationOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    schedule_preventive_due_api_v1_preventive_dues__due_id__schedule_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                due_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreventiveScheduledOrderOut"];
                 };
             };
             /** @description Validation Error */
@@ -16320,10 +16320,10 @@ export interface operations {
     list_assignments_api_v1_role_assignments_get: {
         parameters: {
             query?: {
+                user_id?: string | null;
                 include_revoked?: boolean;
                 page?: number;
                 page_size?: number | null;
-                user_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -16456,8 +16456,8 @@ export interface operations {
     list_locations_api_v1_site_locations_get: {
         parameters: {
             query?: {
-                include_inactive?: boolean;
                 site_id?: string | null;
+                include_inactive?: boolean;
             };
             header?: {
                 authorization?: string | null;
@@ -16563,9 +16563,9 @@ export interface operations {
     list_sites_api_v1_sites_get: {
         parameters: {
             query?: {
+                status?: ("ACTIVE" | "INACTIVE") | null;
                 page?: number;
                 page_size?: number | null;
-                status?: ("ACTIVE" | "INACTIVE") | null;
             };
             header?: {
                 authorization?: string | null;
@@ -16940,9 +16940,9 @@ export interface operations {
     list_own_invoices_api_v1_tenant_invoices_get: {
         parameters: {
             query?: {
+                status?: ("DRAFT" | "ISSUED" | "VOIDED") | null;
                 page?: number;
                 page_size?: number | null;
-                status?: ("DRAFT" | "ISSUED" | "VOIDED") | null;
             };
             header?: {
                 authorization?: string | null;
@@ -17070,12 +17070,12 @@ export interface operations {
     list_tyres_api_v1_tyres_get: {
         parameters: {
             query?: {
-                alert_only?: boolean;
-                page?: number;
-                page_size?: number | null;
                 site_id?: string | null;
                 status?: ("IN_STOCK" | "MOUNTED" | "IN_REPAIR" | "SCRAPPED") | null;
                 vehicle_id?: string | null;
+                alert_only?: boolean;
+                page?: number;
+                page_size?: number | null;
             };
             header?: {
                 authorization?: string | null;
@@ -17127,6 +17127,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TyreOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tyre_stock_api_v1_tyres_stock_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TyreStockRow"][];
                 };
             };
             /** @description Validation Error */
@@ -17363,45 +17396,12 @@ export interface operations {
             };
         };
     };
-    tyre_stock_api_v1_tyres_stock_get: {
-        parameters: {
-            query?: {
-                site_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TyreStockRow"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_users_api_v1_users_get: {
         parameters: {
             query?: {
+                status?: ("INVITED" | "ACTIVE" | "DISABLED") | null;
                 page?: number;
                 page_size?: number | null;
-                status?: ("INVITED" | "ACTIVE" | "DISABLED") | null;
             };
             header?: {
                 authorization?: string | null;
@@ -17745,14 +17745,14 @@ export interface operations {
     list_assignments_api_v1_vehicle_assignments_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
+                vehicle_id?: string | null;
+                driver_id?: string | null;
+                status?: ("PLANNED" | "ACTIVE" | "SUSPENDED" | "COMPLETED" | "CANCELLED") | null;
                 at?: string | null;
                 compliance?: ("COMPLIANT" | "NON_COMPLIANT") | null;
-                driver_id?: string | null;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
-                status?: ("PLANNED" | "ACTIVE" | "SUSPENDED" | "COMPLETED" | "CANCELLED") | null;
-                vehicle_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -18241,14 +18241,14 @@ export interface operations {
     list_vehicles_api_v1_vehicles_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
+                vehicle_category_id?: string | null;
+                status?: ("AVAILABLE" | "IN_MAINTENANCE" | "IMMOBILIZED" | "OUT_OF_SERVICE" | "RETIRED") | null;
+                registration_number?: string | null;
                 fleet_number?: string | null;
                 include_retired?: boolean;
                 page?: number;
                 page_size?: number | null;
-                registration_number?: string | null;
-                site_id?: string | null;
-                status?: ("AVAILABLE" | "IN_MAINTENANCE" | "IMMOBILIZED" | "OUT_OF_SERVICE" | "RETIRED") | null;
-                vehicle_category_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -18300,6 +18300,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VehicleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    latest_vehicle_gps_api_v1_vehicles_gps_latest_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GpsLatestPositionOut"][];
                 };
             };
             /** @description Validation Error */
@@ -18493,8 +18526,8 @@ export interface operations {
     vehicle_track_api_v1_vehicles__vehicle_id__gps_track_get: {
         parameters: {
             query: {
-                from?: string | null;
                 purpose: "OPERATIONS_REVIEW" | "INCIDENT_INVESTIGATION" | "MAINTENANCE_DIAGNOSIS" | "SECURITY" | "CLIENT_DISPUTE";
+                from?: string | null;
                 to?: string | null;
             };
             header?: {
@@ -18982,51 +19015,18 @@ export interface operations {
             };
         };
     };
-    latest_vehicle_gps_api_v1_vehicles_gps_latest_get: {
-        parameters: {
-            query?: {
-                site_id?: string | null;
-            };
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GpsLatestPositionOut"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_weighing_tickets_api_v1_weighing_tickets_get: {
         parameters: {
             query?: {
-                live_only?: boolean;
+                site_id?: string | null;
                 mission_id?: string | null;
+                status?: ("VALID" | "PENDING_APPROVAL" | "VOIDED") | null;
                 overload?: boolean | null;
+                live_only?: boolean;
+                period_start?: string | null;
+                period_end?: string | null;
                 page?: number;
                 page_size?: number | null;
-                period_end?: string | null;
-                period_start?: string | null;
-                site_id?: string | null;
-                status?: ("VALID" | "PENDING_APPROVAL" | "VOIDED") | null;
             };
             header?: {
                 authorization?: string | null;
@@ -19234,12 +19234,12 @@ export interface operations {
     list_work_orders_api_v1_work_orders_get: {
         parameters: {
             query?: {
+                site_id?: string | null;
+                vehicle_id?: string | null;
+                status?: ("REQUESTED" | "APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "AWAITING_PARTS" | "QUALITY_CHECK" | "CLOSED" | "REJECTED" | "CANCELLED") | null;
                 open_only?: boolean;
                 page?: number;
                 page_size?: number | null;
-                site_id?: string | null;
-                status?: ("REQUESTED" | "APPROVED" | "ASSIGNED" | "IN_PROGRESS" | "AWAITING_PARTS" | "QUALITY_CHECK" | "CLOSED" | "REJECTED" | "CANCELLED") | null;
-                vehicle_id?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -19487,8 +19487,8 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
-                "Idempotency-Key"?: string | null;
                 "if-match"?: string | null;
+                "Idempotency-Key"?: string | null;
             };
             path: {
                 work_order_id: string;
