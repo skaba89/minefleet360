@@ -10,6 +10,7 @@ from app.audit.contracts import record
 from app.authz.dependencies import Authorized, security_denial
 from app.authz.matrix import load_matrix
 from app.authz.principal import PermissionScope, masked_fields
+from app.billing.quotas import ensure_quota
 from app.core.config import Settings
 from app.core.email import EmailMessage
 from app.core.errors import AppError
@@ -153,8 +154,13 @@ def get_user(auth: Authorized, user_id: uuid.UUID) -> UserAccount:
 
 
 def invite_user(auth: Authorized, body: UserInvite, settings: Settings) -> tuple[UserAccount, EmailMessage]:
-    """US-1.04 : compte INVITED + attribution + jeton ; une seule opération métier auditée."""
+    """US-1.04 : compte INVITED + attribution + jeton ; une seule opération métier auditée.
+
+    Lot 2b : la création est refusée (422 QUOTA_EXCEEDED) si la borne `max_users` de la
+    formule vivante est atteinte (les comptes désactivés libèrent la place).
+    """
     db = auth.db
+    ensure_quota(auth, "max_users")
     _check_role_and_scope(auth, body.role_code, body.scope_type, body.site_id)
     user, assignment, token = create_invited_user(
         db,

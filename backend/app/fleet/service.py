@@ -14,6 +14,7 @@ from app.assignment.contracts import (
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.authz.principal import mask
+from app.billing.quotas import ensure_quota
 from app.core.errors import AppError
 from app.core.http import PageParams, check_version
 from app.core.logging import security_logger
@@ -198,7 +199,12 @@ def status_history(auth: Authorized, vehicle_id: uuid.UUID) -> list[StatusHistor
 
 
 def create_vehicle(auth: Authorized, body: VehicleCreate) -> Vehicle:
-    """US-1.12 : site et catégorie doivent appartenir au tenant ET à la portée (422 sinon)."""
+    """US-1.12 : site et catégorie doivent appartenir au tenant ET à la portée (422 sinon).
+
+    Lot 2b : refus (422 QUOTA_EXCEEDED) si la borne `max_vehicles` de la formule vivante
+    est atteinte (les véhicules réformés ne consomment pas de quota).
+    """
+    ensure_quota(auth, "max_vehicles")
     db = auth.db
     if active_site_in_scope(db, auth.scope, body.site_id) is None:
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])

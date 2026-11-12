@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
+from app.billing.quotas import ensure_quota
 from app.core.config import Settings, get_settings
 from app.core.email import EmailMessage
 from app.core.errors import AppError
@@ -232,6 +233,8 @@ def get_site(auth: Authorized, site_id: uuid.UUID) -> Site:
 
 
 def create_site(auth: Authorized, body: SiteCreate) -> Site:
+    """Lot 2b : refus (422 QUOTA_EXCEEDED) si la borne `max_sites` de la formule vivante est atteinte."""
+    ensure_quota(auth, "max_sites")
     db = auth.db
     site = Site(
         tenant_id=auth.tenant_id,

@@ -116,6 +116,10 @@ CATALOG: dict[str, ErrorDef] = {
     "PLAN_RETIRED": ErrorDef(422, "Ce plan SaaS est retiré du catalogue et ne peut plus être modifié."),
     "PLAN_NOT_ACTIVE": ErrorDef(422, "Ce plan SaaS n'est pas actif : il ne peut pas être souscrit."),
     "PLAN_NOT_PRICED": ErrorDef(422, "Ce plan SaaS n'a pas de tarif : fournissez les lignes de la facture."),
+    "QUOTA_EXCEEDED": ErrorDef(
+        422,
+        "La limite de votre formule est atteinte : changez de formule ou libérez de la place.",
+    ),
     "SUBSCRIPTION_CANCELLED": ErrorDef(
         422, "L'abonnement visé est annulé : aucune facture ne peut y être rattachée."
     ),
