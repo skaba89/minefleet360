@@ -1,7 +1,7 @@
 # Matrice RBAC — MINEFLEET 360 (Lot 1)
 
 > Statut : **cadrage (phase 0), révisé après revue croisée** le 2026-10-25. Rien ici n'est implémenté ni testé : le dépôt ne contient aucun code (voir `00_SOCLE_CADRAGE.md` §1).
-> Préséance : `DECISIONS_A_ARBITRER.md` > `MODELE_PHYSIQUE_LOT1.md` > ce document. Décisions appliquées ici : **D-01** (énumérations en anglais), **D-05** (codes HTTP), **D-06/D-07** (connexion, tenant plateforme), **D-09** (source de vérité YAML), **D-10** (arbitrages RBAC), **D-11/D-13** (cycle de vie, même site), **D-15** (minimisation), **D-16** (hors lot 1), **D-18** (référentiels), **D-21** (tranches 1a/1b/1c).
+> Préséance : `DECISIONS_A_ARBITRER.md` > `MODELE_PHYSIQUE_LOT1.md` > ce document. Décisions appliquées ici : **D-01** (énumérations en anglais), **D-05** (codes HTTP), **D-06/D-07** (connexion, tenant plateforme), **D-09** (source de vérité YAML), **D-10** (arbitrages RBAC), **D-11/D-13** (cycle de vie, même site), **D-15** (minimisation), **D-16** (hors lot 1), **D-18** (référentiels), **D-21** (tranches 1a/1b/1c, puis 2a — commercialisation SaaS).
 > Conventions reprises du socle : hypothèses **H1-H10**, 14 codes de rôles (§3 du socle), modules et entités (§4-5).
 > Distinction : **[Fait]** = issu des documents du dépôt ou d'une décision tranchée ; **[Proposé]** = choix de conception de ce document ; **[À valider]** = dépend du client ou d'un juriste (défauts provisoires C-01..C-17).
 
@@ -60,7 +60,7 @@ Colonnes (ordre fixe, codes du socle) : **PA** `PLATFORM_ADMIN` · **TA** `TENAN
 ## 2. Matrice détaillée — Lot 1
 
 > Source de vérité machine : `authz_matrix.yaml` (créé au lot 1a, format au §7). Ce tableau en est la **vue humaine** ; les tests d'autorisation (ST-02) sont **générés** depuis le YAML. Un test de cohérence compare les deux (§7.4).
-> Tranche (D-21) : §2.1, §2.2, §2.6 = **1a** ; §2.3, §2.4 = **1b** ; §2.5 = **1c**.
+> Tranche (D-21) : §2.1, §2.2, §2.6 = **1a** ; §2.3, §2.4 = **1b** ; §2.5 = **1c** ; commercialisation SaaS (lots 1 à 4 : `billing.*`, `organization.tenant.support/export`) = **2a**.
 
 ### 2.1 `organization` (1a)
 | Permission | PA | TA | DIR | OPS | DISP | HR | DRV | WSC | MEC | STK | FUEL | HSE | FIN | AUD |
@@ -347,7 +347,7 @@ roles:                               # catalogue global (D-18) ; miroir de la ta
 
 permissions:
   fleet.vehicle.read:
-    tranche: 1b                      # 1a | 1b | 1c | later  (D-21)
+    tranche: 1b                      # 1a | 1b | 1c | 2a | later  (D-21)
     resource: vehicle
     kind: read                       # read | create | update | action
     site_bound: true                 # la ressource porte site_id -> étape 3 (404) applicable
