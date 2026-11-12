@@ -63,9 +63,7 @@ def _overview(client: TestClient, api: Api, tenant_id: str) -> dict:
 def test_platform_overview_aggregates(client: TestClient, api: Api) -> None:
     t = api.tenant()
     platform = api.platform()
-    plan_id = _plan_with_quota(
-        client, api, max_users=10, max_sites=5, max_vehicles=8, max_gps_trackers=4
-    )
+    plan_id = _plan_with_quota(client, api, max_users=10, max_sites=5, max_vehicles=8, max_gps_trackers=4)
     created_sub = client.post(
         f"{API}/platform/tenants/{t.tenant_id}/subscriptions", headers=platform, json={"plan_id": plan_id}
     )
