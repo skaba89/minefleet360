@@ -1,9 +1,9 @@
 # Readiness commerciale — état courant
 
-**Base auditée :** `main@980b713` (PR #428 fusionnée — fix(saas) : anti-dépassement de quota sous concurrence + tests du cycle de vie quotas/factures, 2026-11-12).
+**Base auditée :** `main@6c87f4c` (PR #430 fusionnée — test(e2e) : préventif, fiabilité du parc et commandes de pièces depuis l'UI, 2026-11-12).
 **Audit exécuté :** 12 novembre 2026 — exécutions locales complètes (PostgreSQL 16.10 + PostGIS disponibles) **et** CI GitHub vérifiée via API authentifiée.
-**Statut du document :** courant ; remplace la révision du 12 novembre 2026 (base `8d7301b`/PR #426, 82/100) et les révisions antérieures comme référence de décision.
-**Verdict :** **NO-GO commercial maintenu — GO conditionnel pilote maintenu** (aucun prérequis terrain du `GO_NO_GO.md` n'est levé ; le tarif n'est pas approuvé). Score de maturité : **83/100** (grille imposée) — 74 à la base `e36ab33` (#412), 77 avec le harnais documentaire (#417), 80 avec les lots SaaS 1→3 (#418–#420), 81 avec les 4 lots complets (#422, #423), 82 avec la preuve navigateur du cycle commercial de bout en bout et 4 défauts d'interface corrigés (#426), **83 avec le défaut réel de course sur les bornes de quota trouvé par l'audit et corrigé + 7 parcours de cycle de vie prouvés (#428)** — en progression de +15 depuis le 9 novembre, entièrement sur des éléments **vérifiés** (code, tests, CI), jamais sur une validation terrain ou opérationnelle.
+**Statut du document :** courant ; remplace la révision du 12 novembre 2026 soir (base `980b713`/PR #428) et les révisions antérieures comme référence de décision.
+**Verdict :** **NO-GO commercial maintenu — GO conditionnel pilote maintenu** (aucun prérequis terrain du `GO_NO_GO.md` n'est levé ; le tarif n'est pas approuvé). Score de maturité : **83/100** (grille imposée) — 74 à la base `e36ab33` (#412), 77 avec le harnais documentaire (#417), 80 avec les lots SaaS 1→3 (#418–#420), 81 avec les 4 lots complets (#422, #423), 82 avec la preuve navigateur du cycle commercial de bout en bout et 4 défauts d'interface corrigés (#426), **83 avec le défaut réel de course sur les bornes de quota trouvé par l'audit et corrigé + 7 parcours de cycle de vie prouvés (#428)** — **inchangé à la PR #430** (trois parcours supplémentaires prouvés depuis le navigateur : preuve approfondie d'une capacité existante, aucun défaut corrigé, aucune capacité nouvelle) — en progression de +15 depuis le 9 novembre, entièrement sur des éléments **vérifiés** (code, tests, CI), jamais sur une validation terrain ou opérationnelle.
 
 > **Règle de lecture.** Ce document ne mélange jamais preuve statique (le code existe et est testé), preuve d'exécution (testé ici ou en CI sur infrastructure jetable) et preuve d'exploitation (validé sur environnement réel). Un test CI n'est **pas** une preuve de fonctionnement en conditions réelles. Une inconnue reste explicitement inconnue (§6). Le score est un outil de pilotage interne, jamais une promesse commerciale.
 
@@ -67,6 +67,20 @@ concurrentes, borne 1 → exactement `[201, 422]`), numérotation de factures so
 route de modification, `VOIDED` terminal). Suite intégrée complète rejouée localement : **5 733 passés** en
 8 min 05 s ; CI de la PR **9/9 verte** (`backend` 11 min 29 s avec couverture ≥ 85, `tenant-isolation`
 5 min 13 s, `demo-journeys` 7 min 53 s). Aucune migration, aucun changement de contrat d'API.
+
+**Révision du 12 novembre (suite, base `6c87f4c`, PR #430) — preuve d'exécution nouvelle :** trois parcours
+métier jusqu'ici prouvés uniquement par la suite pytest et Vitest sont désormais **prouvés depuis le
+navigateur** : préventif (plan créé depuis `/maintenance`, évaluation réelle des échéances, révision v2 avec
+historique conservé, suspension motivée), fiabilité du parc (`/atelier/fiabilite` — OT immobilisant clôturé
+avec 120 min de main-d'œuvre préparé par l'API, indicateurs alimentés, période 30 jours, refus canonique du
+DISPATCHER sans `maintenance.reliability.read`) et commandes de pièces (brouillon créé depuis une demande
+approuvée quatre-yeux, quantité reprise). Exécution locale **3/3 passées** (pile réelle : API + PostgreSQL +
+seed fictif, chromium — 3,8 s / 3,6 s / 5,9 s, `tsc --noEmit` propre) et CI **9/9 verte** (job
+`tenant-isolation` : **25 specs E2E**, désormais avec ces trois-là). Aucun code produit (`src/` inchangé).
+Recalibrage de l'item 2 du §7 : les gabarits de checklist HSE et les échéances de documents étaient déjà
+couverts en E2E ; le téléphone partagé (US-4.09/C-12) n'a aucune implémentation backend (chantier de
+fonctionnalité séparé). Score inchangé (83) : preuve approfondie d'une capacité existante, ni défaut corrigé
+ni capacité nouvelle.
 
 | Contrôle | Résultat | Périmètre |
 |---|---|---|
@@ -210,7 +224,7 @@ Lecture : la colonne CI/E2E mesure la profondeur de preuve **logicielle** ; aucu
 
 **P1 (chantiers de code autorisés dans cet environnement, dans l'ordre) :**
 1. ~~Harmoniser les deux formes de refus d'accès direct~~ **fait** — PR #413 (`<AccessDenied />` canonique, 17 points / 10 fichiers, Vitest + socle E2E verts).
-2. Étendre les specs E2E d'actions restantes : ~~réconciliation stockage légal~~ **fait en chemin dégradé** (PR #416, `e2e/costs-reconciliation.spec.ts` — 503 annoncé sans stockage privé ; le chemin nominal dépend du harnais S3, item 3), gabarits de checklist HSE, ~~géofences (création/désactivation), politique GPS + notifications~~ **fait** (PR #415, `e2e/gps-zones-policy.spec.ts`), partages téléphone, échéances documents (cas métier), préventif, fiabilité atelier, commandes de pièces (E2E au-delà de Vitest), ~~actions de coûts~~ **fait** (PR #416 — taux horaires, seule action en écriture de `/couts`).
+2. Étendre les specs E2E d'actions restantes : ~~réconciliation stockage légal~~ **fait en chemin dégradé** (PR #416, `e2e/costs-reconciliation.spec.ts` — 503 annoncé sans stockage privé ; le chemin nominal dépend du harnais S3, item 3), ~~gabarits de checklist HSE~~ **déjà couvert** (`e2e/hse-inspections.spec.ts` — recalibrage de la présente liste), ~~géofences (création/désactivation), politique GPS + notifications~~ **fait** (PR #415, `e2e/gps-zones-policy.spec.ts`), ~~partages téléphone~~ **recalibré : non implémenté côté backend** (US-4.09/C-12, authentification PIN/QR — chantier de fonctionnalité séparé, pas une spec), ~~échéances documents~~ **déjà couvert** (`e2e/vehicule-documents.spec.ts`), ~~préventif, fiabilité atelier, commandes de pièces~~ **fait** (PR #430 : `e2e/preventive.spec.ts` — plan créé, échéances évaluées, révision v2 avec historique conservé, suspension motivée ; `e2e/reliability.spec.ts` — OT immobilisant clôturé alimentant les indicateurs, période 30 jours, refus canonique du DISPATCHER ; `e2e/parts-purchase-orders.spec.ts` — brouillon de commande depuis une demande approuvée quatre-yeux ; toutes trois dans le job `tenant-isolation`).
 3. ~~Harnais S3/ClamAV pour le cycle documentaire juridique en E2E~~ **fait** — PR #417 (`scripts/dev/fake_s3.py` + `fake_clamd.py`, API :8001 dédiée dans `e2e-isolation.yml`, spec `e2e/legal-document-cycle.spec.ts` verte localement) ; **reste l'exposition UI** du dépôt/vérification/soumission dans `/juridique` (écart restant de `RECETTE_UI_P0.md` §4).
 4. ~~Procédure de validation staging en lecture seule + dry-run~~ **fait** — `docs/ops/RECETTE_STAGING_VALIDATION.md` (l'exécution des phases A–D sur l'hôte réel exige un accès staging et, pour C/D, une approbation explicite).
 5. Rejouer `MATURITY_SCORECARD.md`, recalibrer `FUNCTIONAL_COVERAGE.md`, harmoniser les tranches `later` du YAML.
@@ -223,7 +237,7 @@ Lecture : la colonne CI/E2E mesure la profondeur de preuve **logicielle** ; aucu
 
 | Document | État |
 |---|---|
-| `docs/audit/COMMERCIAL_READINESS_CURRENT.md` | **mis à jour** (présente révision, base PR #428, score 83/100, matrice des écarts §5bis) |
+| `docs/audit/COMMERCIAL_READINESS_CURRENT.md` | **mis à jour** (présente révision, base PR #430, score 83/100 inchangé, matrice des écarts §5bis) |
 | `docs/qa/GO_NO_GO.md` | **mis à jour** (12 novembre 2026 soir — verdict inchangé, preuves PR #428, classement des blocants inchangé) |
 | `docs/ops/RECETTE_STAGING_VALIDATION.md` | à jour (runbook staging lecture seule + dry-run + protocoles RPO/RTO/éprouvetage) ; exécution réelle à faire |
 | `docs/ops/PLAN_EXECUTION_STAGING.md` | **créé** (#427) — plan d'exécution séquencé des phases A/B lecture seule (S0–S10, artefacts, critères d'interruption) |
