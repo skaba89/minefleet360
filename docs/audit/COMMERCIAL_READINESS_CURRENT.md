@@ -1,6 +1,6 @@
 # Readiness commerciale — état courant
 
-**Base auditée :** `main@985e073` (PR #432 fusionnée — feat(juridique) : cycle documentaire exposé dans /juridique — empreinte client, états, vérification, soumission, 2026-11-12).
+**Base auditée :** `main@3fbedf7` (PR #434 fusionnée — fix(hse) : fiabilise la synchronisation hors ligne après une réponse perdue + rejeu rapide à 5 s, 2026-11-12).
 **Audit exécuté :** 12 novembre 2026 — exécutions locales complètes (PostgreSQL 16.10 + PostGIS disponibles) **et** CI GitHub vérifiée via API authentifiée.
 **Statut du document :** courant ; remplace les révisions du 12 novembre 2026 (bases `980b713`/PR #428 et `6c87f4c`/PR #430) et les révisions antérieures comme référence de décision.
 **Verdict :** **NO-GO commercial maintenu — GO conditionnel pilote maintenu** (aucun prérequis terrain du `GO_NO_GO.md` n'est levé ; le tarif n'est pas approuvé). Score de maturité : **84/100** (grille imposée) — 74 à la base `e36ab33` (#412), 77 avec le harnais documentaire (#417), 80 avec les lots SaaS 1→3 (#418–#420), 81 avec les 4 lots complets (#422, #423), 82 avec la preuve navigateur du cycle commercial de bout en bout et 4 défauts d'interface corrigés (#426), **83 avec le défaut réel de course sur les bornes de quota trouvé par l'audit et corrigé + 7 parcours de cycle de vie prouvés (#428)** — inchangé à la PR #430 (trois parcours supplémentaires prouvés depuis le navigateur : preuve approfondie d'une capacité existante, aucune capacité nouvelle), **84 avec la fermeture du dernier écart de recette UI P0 : le cycle documentaire juridique est exposé dans /juridique (empreinte calculée au client, états, vérification quatre-yeux, soumission) et prouvé depuis le navigateur sur le harnais S3/ClamAV (#432)** — en progression de +16 depuis le 9 novembre, entièrement sur des éléments **vérifiés** (code, tests, CI), jamais sur une validation terrain ou opérationnelle.
@@ -93,6 +93,22 @@ pytest localement (2 nouveaux), 264 Vitest (4 nouveaux), et le **parcours comple
 navigateur** sur le harnais S3/ClamAV réel (`e2e/legal-document-cycle.spec.ts` : empreinte à la création →
 dépôt → vérification DIRECTION → soumission) — 2/2 localement, CI 9/9. `RECETTE_UI_P0.md` §4 : **aucun
 écart ouvert**. Score **84** (+1) : capacité utilisateur nouvelle prouvée sur serveur réel, pas un document
+
+**Révision du 12 novembre (fin, base `3fbedf7`, PR #434) — flakiness CI diagnostiquée et corrigée :**
+le job `tenant-isolation` a échoué deux fois dans la journée sur code identique (`980b713` sur main,
+`de99ebc` sur une PR de documentation) avec le test « réponse perdue : l'incident créé n'est pas
+dupliqué au rejeu ». Trace Playwright du run en échec : le clic d'envoi peut tomber pendant une
+re-renderisation React et ne jamais déclencher la soumission (bouton jamais « occupé », aucun appel
+réseau, aucune erreur, page réactive). Correctifs : garde `declareUntilClosed` dans les deux tests
+concernés (la fermeture du formulaire prouve la prise en compte ; sinon rejeu — la clé d'idempotence
+garantit l'unicité) et, côté application, **rejeu de synchronisation à 5 s après un échec transitoire**
+au lieu du palier plat de 30 s (backoff interne court : 1 s puis exponentiel plafonné à 60 s).
+Preuves : 265/265 Vitest (1 nouveau, cadence de rejeu avec faux minuteurs), 24/24 `hse-offline`
+chromium en série après correctif contre 1 échec sur 6 avant ; émulation Pixel 7 locale : les 3
+échecs existent à l'identique sur le code d'origine (écart d'émulation local, verts en CI). CI de
+la PR vérifiée par API : **9/9**, `tenant-isolation` vert avec le correctif. Score inchangé (84) :
+durcissement de l'outil de preuve + amélioration mineure de reprise après échec, aucune capacité
+nouvelle ni parcours supplémentaire prouvé.
 de plus.
 
 | Contrôle | Résultat | Périmètre |
@@ -112,6 +128,10 @@ Extraits datés : `docs/audit/preuves/` (pytest.txt, vitest.txt, typecheck.txt, 
 **Bugs réels trouvés et corrigés par la chaîne de recette depuis le dernier audit** (valeur démontrée du dispositif) :
 1. RLS post-commit sur le cycle carburant — corrigé par PR #403 (tranche R6).
 2. `GRANT UPDATE` manquant à `mf_app` sur `spare_part_replenishment` → **500** sur submit/decision pour tout le monde (régression 0042/0044 jamais couverte par les 403 seuls) — migration additive 0064 + test de régression PR #410 ; les specs E2E navigateur l'ont révélé sur un serveur réel.
+4. Test terrain instable (« réponse perdue » HSE) : clic d'envoi tombé pendant une re-renderisation React —
+   l'événement n'atteint jamais le gestionnaire de soumission ; révélé par deux échecs CI sur code identique,
+   diagnostiqué par trace Playwright et corrigé par garde sur la fermeture du formulaire (PR #434) ; l'app
+   gagne au passage un rejeu de synchronisation à 5 s après échec transitoire.
 3. Défaut de course « lire puis écrire » sur l'application des quotas — deux provisionnements concurrents pouvaient franchir la borne du plan (jamais couvert par les tests existants, tous séquentiels) — trouvé par l'audit du code, corrigé par verrou consultatif de transaction (société, champ) + test de régression par course PostgreSQL réelle (PR #428).
 
 ## 3. Tableau de bord de maturité (grille imposée)

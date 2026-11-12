@@ -1,4 +1,4 @@
-# GO / NO-GO — situation au 12 novembre 2026 (base main avec PR #432 — cycle documentaire juridique exposé dans /juridique, dernier écart UI P0 fermé)
+# GO / NO-GO — situation au 12 novembre 2026 (base main avec PR #434 — flakiness CI « réponse perdue » HSE diagnostiquée et corrigée ; rejeu de synchro à 5 s)
 
 ## Verdict
 
@@ -9,7 +9,7 @@ Changement depuis la révision de l'après-midi : **l'audit du code a révélé 
 
 ## Preuves positives disponibles
 
-- Base auditée : `main` avec la PR #432 (feat(juridique) : cycle documentaire exposé dans /juridique — empreinte SHA-256 calculée au client, route GET des états des justificatifs, vérification quatre-yeux, soumission conditionnée à un justificatif vérifié) ; CI de la PR vérifiée par API le 2026-11-12 : **9/9 contrôles verts**, fusion en squash `985e073`. Preuves antérieures du lot : PR #430 (3 specs E2E d'actions métier, `tenant-isolation` à 25 specs, fusion `6c87f4c`) et PR #428 (verrou consultatif anti-dépassement de quota + 7 tests de cycle de vie, fusion `980b713`).
+- Base auditée : `main` avec la PR #432 (feat(juridique) : cycle documentaire exposé dans /juridique — empreinte SHA-256 calculée au client, route GET des états des justificatifs, vérification quatre-yeux, soumission conditionnée à un justificatif vérifié) ; CI de la PR vérifiée par API le 2026-11-12 : **9/9 contrôles verts**, fusion en squash `985e073`. Preuves antérieures du lot : PR #434 (fiabilisation hors ligne + rejeu 5 s, CI 9/9 vérifiée par API, fusion `3fbedf7`), PR #430 (3 specs E2E d'actions métier, `tenant-isolation` à 25 specs, fusion `6c87f4c`) et PR #428 (verrou consultatif anti-dépassement de quota + 7 tests de cycle de vie, fusion `980b713`).
 - Produit SaaS complet côté logiciel (4 lots sur 4 : plans/quotas #418, abonnements #419, facturation paramétrable sans activation de paiement #420, support/onboarding/réversibilité #423 — plus le lot 2b quotas appliqués au provisionnement #422, désormais **contraignant même sous concurrence** #428 ; aucun moyen de paiement, conformément à la règle « pas d'intégration non approuvée ») — 127 permissions / 255 routes, anti-dérive verte.
 - Exécution locale et CI le 2026-11-12 (PostgreSQL 16.10 + PostGIS réel, base `minefleet_test`) : **5 733 tests pytest passés** en 8 min 05 s localement (suite intégrée complète, course concurrente incluse), Vitest **260/260**, `tsc` strict OK, build OK, ruff/mypy OK, anti-dérive matrice+permissions OK.
 - Recette métier API R1→R10 sur serveur réel, fusionnée en PR vertes (#400–#407) : flotte, habilitations, affectations, missions/pesées, atelier, préventif, carburant, GPS bout en bout, isolation négative (IDOR/429/audit), juridique/assurance, coûts.
