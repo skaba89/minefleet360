@@ -228,7 +228,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `fuel.issue.request` | 1c | `POST /fuel/issues` | `FUEL_MANAGER`, `OPS_MANAGER`, `TENANT_ADMIN` |
 | `fuel.issue.decide` | 1c | `POST /fuel/issues/{fuel_issue_id}/decision` | `FUEL_MANAGER`, `OPS_MANAGER`, `TENANT_ADMIN` |
 | `legal.contract.create` | 1c | `POST /legal-contracts`<br>`POST /legal-contracts/{contract_id}/documents/preflight`<br>`POST /legal-contracts/{contract_id}/documents` | `OPS_MANAGER`, `TENANT_ADMIN` |
-| `legal.contract.read` | 1c | `GET /legal-contracts` | `AUDITOR`, `DIRECTION`, `OPS_MANAGER`, `TENANT_ADMIN` |
+| `legal.contract.read` | 1c | `GET /legal-contracts`<br>`GET /legal-contracts/{contract_id}/documents` | `AUDITOR`, `DIRECTION`, `OPS_MANAGER`, `TENANT_ADMIN` |
 | `legal.contract.submit` | 1c | `POST /legal-contracts/{contract_id}/submit` | `OPS_MANAGER`, `TENANT_ADMIN` |
 | `legal.contract.review` | 1c | `POST /legal-contracts/{contract_id}/decision`<br>`POST /legal-contracts/{contract_id}/documents/{document_id}/verify`<br>`GET /legal-contracts/storage-reconciliation` | `DIRECTION`, `TENANT_ADMIN` |
 | `legal.insurance.create` | 1c | `POST /insurance-policies` | `FINANCE`, `OPS_MANAGER`, `TENANT_ADMIN` |
@@ -261,9 +261,9 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | Rôle | Permissions | Routes API accessibles |
 |---|---:|---:|
 | `PLATFORM_ADMIN` | 12 | 33 |
-| `TENANT_ADMIN` | 68 | 128 |
-| `DIRECTION` | 36 | 95 |
-| `OPS_MANAGER` | 84 | 177 |
+| `TENANT_ADMIN` | 68 | 129 |
+| `DIRECTION` | 36 | 96 |
+| `OPS_MANAGER` | 84 | 178 |
 | `DISPATCHER` | 37 | 82 |
 | `HR` | 16 | 35 |
 | `DRIVER` | 4 | 16 |
@@ -273,7 +273,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `FUEL_MANAGER` | 28 | 63 |
 | `HSE` | 33 | 78 |
 | `FINANCE` | 24 | 57 |
-| `AUDITOR` | 39 | 99 |
+| `AUDITOR` | 39 | 100 |
 
 ## 6. Anomalies détectées mécaniquement
 

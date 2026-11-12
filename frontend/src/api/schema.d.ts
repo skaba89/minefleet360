@@ -1332,7 +1332,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Contract Documents
+         * @description Consultation des justificatifs déposés (états PENDING/VERIFIED exposés à l'UI).
+         */
+        get: operations["list_contract_documents_api_v1_legal_contracts__contract_id__documents_get"];
         put?: never;
         /**
          * Upload Contract Document
@@ -4293,6 +4297,30 @@ export interface components {
             action: string;
             /** Note */
             note: string;
+        };
+        /** ContractDocumentOut */
+        ContractDocumentOut: {
+            /** Byte Size */
+            byte_size: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Original Filename */
+            original_filename: string;
+            /** Sha256 */
+            sha256: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "PENDING" | "VERIFIED";
         };
         /** ContractDraftInput */
         ContractDraftInput: {
@@ -13474,6 +13502,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContractOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_contract_documents_api_v1_legal_contracts__contract_id__documents_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                contract_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractDocumentOut"][];
                 };
             };
             /** @description Validation Error */

@@ -4,8 +4,10 @@ import { useState } from "react";
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { AccessDenied, Badge, DataState, ErrorMessage, Pager } from "../components/common";
+import { sha256Hex } from "../lib/hash";
 import { can } from "../lib/permissions";
 import { useSites } from "../site/SiteContext";
+import { ContractDocumentsPanel } from "./ContractDocumentsPanel";
 import { StorageReconciliationPanel } from "./StorageReconciliationPanel";
 
 const PAGE_SIZE = 25;
@@ -29,9 +31,11 @@ export function LegalRegistriesPage() {
   const [title, setTitle] = useState("");
   const [counterparty, setCounterparty] = useState("");
   const [contractType, setContractType] = useState<Schemas["ContractDraftInput"]["contract_type"]>("SUPPLIER");
+  const [empreinte, setEmpreinte] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [reviewId, setReviewId] = useState<string | null>(null);
   const [reviewAction, setReviewAction] = useState<"APPROVE" | "REJECT">("APPROVE");
   const [reviewNote, setReviewNote] = useState("");
@@ -99,14 +103,18 @@ export function LegalRegistriesPage() {
                 title: title.trim(),
                 counterparty_name: counterparty.trim(),
                 contract_type: contractType,
+                document_sha256: empreinte || undefined,
               },
             });
             setReference("");
             setTitle("");
             setCounterparty("");
+            setEmpreinte("");
             setPage(1);
             await queryClient.invalidateQueries({ queryKey: ["legal-contracts"] });
-            setNotice("Contrat enregistré comme brouillon. Aucune signature n'a été effectuée.");
+            setNotice(empreinte
+              ? "Contrat enregistré comme brouillon, avec l'empreinte du justificatif calculée au client. Aucune signature n'a été effectuée."
+              : "Contrat enregistré comme brouillon. Aucune signature n'a été effectuée.");
           } catch (error) {
             setSaveError(error);
           } finally {
@@ -127,6 +135,18 @@ export function LegalRegistriesPage() {
               <option value="OTHER">Autre</option>
             </select>
           </label>
+          <label>Justificatif au format PDF (optionnel — l'empreinte est calculée au client)
+            <input
+              type="file"
+              accept="application/pdf,.pdf"
+              onChange={(event) => {
+                const selected = event.target.files?.[0] ?? null;
+                setEmpreinte("");
+                if (selected) void sha256Hex(selected).then(setEmpreinte);
+              }}
+            />
+          </label>
+          {empreinte && <p className="muted small">Empreinte SHA-256 du justificatif : <code>{empreinte}</code></p>}
           <button type="submit" disabled={saving || !reference.trim() || !title.trim() || !counterparty.trim()}>
             {saving ? "Enregistrement…" : "Enregistrer le brouillon"}
           </button>
@@ -229,6 +249,12 @@ export function LegalRegistriesPage() {
         </form>
       )}
       {activeTab === "contracts" && reviewNotice && <p role="status">{reviewNotice}</p>}
+      {activeTab === "contracts" && selectedContract && (
+        <ContractDocumentsPanel
+          contract={selectedContract}
+          onSubmitted={() => void queryClient.invalidateQueries({ queryKey: ["legal-contracts"] })}
+        />
+      )}
       {activeTab === "insurance" && canReadPolicies && (
         <section aria-label="Échéances d'assurance">
           <h2>Échéances d'assurance — horizon {EXPIRING_HORIZON_DAYS} jours</h2>
@@ -256,9 +282,9 @@ export function LegalRegistriesPage() {
         <DataState loading={current.isLoading} error={current.error} empty={!current.data?.items.length}>
           {activeTab === "contracts" ? (
             <table>
-              <thead><tr><th>Référence</th><th>Intitulé</th><th>Type</th><th>Contrepartie</th><th>Statut</th>{canReviewContract && <th>Décision</th>}</tr></thead>
+              <thead><tr><th>Référence</th><th>Intitulé</th><th>Type</th><th>Contrepartie</th><th>Statut</th><th>Justificatifs</th>{canReviewContract && <th>Décision</th>}</tr></thead>
               <tbody>{(contracts.data?.items ?? []).map((item: Contract) => (
-                <tr key={item.contract_id}><td>{item.reference}</td><td>{item.title}</td><td>{item.contract_type}</td><td>{item.counterparty_name}</td><td>{item.status}</td>{canReviewContract && <td>{item.status === "PENDING_REVIEW" && <button type="button" onClick={() => { setReviewId(item.contract_id); setReviewAction("APPROVE"); setReviewNote(""); setReviewError(null); setReviewNotice(""); }}>Examiner</button>}</td>}</tr>
+                <tr key={item.contract_id}><td>{item.reference}</td><td>{item.title}</td><td>{item.contract_type}</td><td>{item.counterparty_name}</td><td>{item.status}</td><td><button type="button" onClick={() => { setSelectedContract(item); setReviewId(null); }}>Documents</button></td>{canReviewContract && <td>{item.status === "PENDING_REVIEW" && <button type="button" onClick={() => { setReviewId(item.contract_id); setReviewAction("APPROVE"); setReviewNote(""); setReviewError(null); setReviewNotice(""); }}>Examiner</button>}</td>}</tr>
               ))}</tbody>
             </table>
           ) : (

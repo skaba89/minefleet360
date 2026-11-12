@@ -1150,7 +1150,10 @@ permissions:
     tranche: 1c
     kind: read
     site_bound: true
-    routes: [{ method: GET, path: /legal-contracts, shape: collection, success: 200 }]
+    routes: [
+      { method: GET, path: /legal-contracts, shape: collection, success: 200 },
+      { method: GET, path: "/legal-contracts/{contract_id}/documents", shape: collection, success: 200 },
+    ]
     grants:
       TENANT_ADMIN: [TENANT]
       DIRECTION: [TENANT]

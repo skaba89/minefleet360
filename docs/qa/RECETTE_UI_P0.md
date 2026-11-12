@@ -123,12 +123,15 @@ Légende : ✔ = couvert par un spec Playwright cité ; ⏳ = écart ouvert (voi
 
 ## 4. Écarts ouverts (prochaines PR)
 
-1. **UI du cycle documentaire juridique** : les actions dépôt (`POST .../documents`), vérification
-   (`POST .../documents/{id}/verify`) et soumission (`POST .../{id}/submit`) ne sont pas encore exposées
-   dans `/juridique` — le cycle complet est joué par `e2e/legal-document-cycle.spec.ts` (dépôt, scan,
-   vérification et soumission par l'API sur serveur réel avec le harnais S3/ClamAV ; décision et
-   réconciliation depuis l'UI). Une PR UI dédiée doit ajouter le dépôt de justificatif (empreinte
-   calculée au client), les états PENDING/VERIFIED et le bouton de soumission.
+*Aucun écart ouvert.* L'écart n°1 (UI du cycle documentaire juridique) est **résolu** : le dépôt de
+justificatif (empreinte SHA-256 calculée au client, contrôle de concordance avec l'empreinte attendue,
+envoi des octets bruts avec `X-Filename`), les états PENDING/VERIFIED traduits (nouvelle route
+`GET /legal-contracts/{contract_id}/documents`, matrice `legal.contract.read`), la vérification
+quatre-yeux (`legal.contract.review`) et la soumission (`legal.contract.submit`, exige un justificatif
+vérifié) sont exposés dans `/juridique` — panneau « Documents » par contrat
+(`ContractDocumentsPanel.tsx`, tests Vitest inclus). Le parcours complet est prouvé depuis le navigateur
+par `e2e/legal-document-cycle.spec.ts` (test « cycle documentaire depuis l'UI ») sur le harnais
+S3/ClamAV : empreinte à la création, dépôt, vérification DIRECTION, soumission.
 
 *Résolu : l'écart d'UI pour `GET /insurance-policies/expiring` et `GET|POST /parts-purchase-orders` est couvert
 (onglet assurances de `/juridique` et onglet « Commandes d'achat » de `/pieces`, tests vitest inclus).
