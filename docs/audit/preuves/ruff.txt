@@ -1,3 +1,8 @@
 Commande : python3 -m ruff check .
 Statut : 0 erreur (exécution locale 2026-11-11, base e36ab33)
 All checks passed!
+
+---
+Commande : ruff check .
+Statut : 0 erreur (exécution locale 2026-11-12, base 980b713, PR #428)
+All checks passed!

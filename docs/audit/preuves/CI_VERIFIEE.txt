@@ -8,3 +8,16 @@ Extraits des journaux lus via le connecteur GitHub (pas une exécution locale):
 2026-10-26T02:53:56.7087091Z TOTAL 2878 160 484 83 92%
 2026-10-26T02:53:56.7089002Z 1162 passed in 67.02s (0:01:07)
 2026-10-26T02:53:58.8089710Z No known vulnerabilities found
+
+---
+PR #428 (feature/saas-quota-lifecycle-race → main, fusion squash 980b713e777d05229a09128646a86930794d368d)
+Contrôles vérifiés via API authentifiée le 2026-11-12 — 9/9 pass :
+backend (run 43218412156, job 131183462762, 11 min 29 s, couverture >= 85),
+demo-journeys (run 43218411815, job 131183461724, 7 min 53 s),
+tenant-isolation (run 43218411815, job 131183461336, 5 min 13 s),
+backup-restore (run 43218412156, job 131189498555, 1 min 07 s),
+browser-smoke (run 43218412156, job 131183463017, 55 s),
+frontend (run 43218412156, job 131183463021, 48 s),
+ops-monitoring (run 43218412156, job 131183463271, 9 s),
+SAST Python high/high (run 43218411666, 14 s),
+Secret scanning history (run 43218411666, 15 s).
