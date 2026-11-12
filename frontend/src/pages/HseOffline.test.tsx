@@ -160,3 +160,29 @@ it("mode hors ligne au démarrage : déclaration seule, sans synchronisation ni 
   expect(retrySession).toHaveBeenCalledOnce();
   client.clear();
 });
+
+it("après une tentative en échec, la resynchronisation repart à 5 s plutôt qu'à la cadence de 30 s", async () => {
+  const pendingEntry = {
+    operationId: "op-1", tenantId: "espace-fictif", userId: "user-1", siteId: "site-1", endpoint: "/hse/incidents",
+    payload: { title: "En attente", category: "SPILL" }, createdAt: "2026-11-02T08:10:00Z",
+    status: "pending" as const, attempts: 1, errorCode: "NETWORK_ERROR",
+  };
+  vi.useFakeTimers();
+  try {
+    vi.mocked(listForAccount).mockResolvedValue([pendingEntry]);
+    // syncAccount laisse l'opération en attente : échec transitoire (réponse perdue).
+    vi.mocked(syncAccount).mockResolvedValue({ kind: "done", synchronized: 0, rejected: 0, waiting: 1 });
+    const client = show(<HsePage />);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(syncAccount).toHaveBeenCalledTimes(1); // synchronisation immédiate à l'entrée en attente
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(syncAccount).toHaveBeenCalledTimes(2); // rejeu rapide après l'échec, pas d'attente de 30 s
+    await vi.advanceTimersByTimeAsync(20_000);
+    expect(syncAccount).toHaveBeenCalledTimes(6); // rejeu maintenu toutes les 5 s tant que l'envoi échoue
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(syncAccount).toHaveBeenCalledTimes(7);
+    client.clear();
+  } finally {
+    vi.useRealTimers();
+  }
+});

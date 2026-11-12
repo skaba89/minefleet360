@@ -17,6 +17,8 @@ export interface DeclarationSite {
 }
 
 const SYNC_INTERVAL_MS = 30_000;
+/** Après un échec transitoire (réseau instable, réponse perdue), nouvelle tentative rapide au lieu d'attendre la cadence. */
+const RETRY_FAST_MS = 5_000;
 
 const REJECTION_TEXT: Record<string, string> = {
   PERMISSION_DENIED: "Vous n'avez plus le droit de déclarer sur ce site.",
@@ -179,13 +181,17 @@ export function OfflineIncidentQueue({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const running = useRef(false);
+  const lastAttemptFailed = useRef(false);
   const notify = useRef(onSynchronized);
   notify.current = onSynchronized;
   const { tenantId, userId } = account;
 
   const reload = useCallback(async () => {
     try {
-      setEntries(await listForAccount({ tenantId, userId }));
+      const list = await listForAccount({ tenantId, userId });
+      setEntries(list);
+      // Une opération encore en attente (échec transitoire, backoff serveur court) demande un rejeu rapide.
+      lastAttemptFailed.current = list.some((e) => e.status === "pending" || e.status === "syncing");
     } catch (err) {
       // Navigateur sans IndexedDB : pas de file locale à afficher (la saisie hors ligne y sera refusée).
       if (typeof indexedDB === "undefined") setEntries([]);
@@ -221,8 +227,17 @@ export function OfflineIncidentQueue({
   useEffect(() => {
     if (!online || !canSync || !pending) return;
     void sync();
-    const timer = window.setInterval(() => void sync(), SYNC_INTERVAL_MS);
-    return () => window.clearInterval(timer);
+    // Cadence normale de 30 s ; après une tentative en échec (backoff interne court), rejeu à 5 s pour
+    // que l'accusé de réception arrive sans que l'agent de terrain attende une demi-minute en le regardant.
+    let timer = 0;
+    const schedule = () => {
+      timer = window.setTimeout(() => {
+        void sync();
+        schedule();
+      }, lastAttemptFailed.current ? RETRY_FAST_MS : SYNC_INTERVAL_MS);
+    };
+    schedule();
+    return () => window.clearTimeout(timer);
   }, [online, canSync, pending, sync]);
 
   if (entries.length === 0 && !error) return null;
