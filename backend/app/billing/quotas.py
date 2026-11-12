@@ -11,7 +11,7 @@ Non couvert en 2b : `document_retention_days` (appliqué par la purge GPS, chant
 
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.authz.dependencies import Authorized
@@ -22,6 +22,15 @@ from app.identity.models import UserAccount
 from app.organization.models import Site
 
 QUOTA_FIELDS = ("max_users", "max_sites", "max_vehicles", "max_gps_trackers")
+
+# Emplacements stables pour les verrous consultatifs (un champ = un emplacement).
+_FIELD_LOCK_SLOTS = {field: slot for slot, field in enumerate(QUOTA_FIELDS, start=1)}
+
+
+def _quota_lock(tenant_id: uuid.UUID, field: str) -> tuple[int, int]:
+    """Clé de verrou consultatif déterministe (société, champ) : deux sociétés concurrentes
+    ne se sérialisent pas, deux champs d'une même société non plus."""
+    return (int.from_bytes(tenant_id.bytes[:4], "big", signed=True), _FIELD_LOCK_SLOTS[field])
 
 
 def usage_counts(db: Session, tenant_id: uuid.UUID) -> dict[str, int]:
@@ -93,9 +102,19 @@ def _limit_for_live_subscription(db: Session, tenant_id: uuid.UUID, field: str) 
 
 
 def ensure_quota(auth: Authorized, field: str) -> None:
-    """Refuse (422 QUOTA_EXCEEDED) si la borne du plan vivant est atteinte — sinon n'écrit rien."""
+    """Refuse (422 QUOTA_EXCEEDED) si la borne du plan vivant est atteinte — sinon n'écrit rien.
+
+    Le contrôle « lire puis écrire » est sérialisé par un verrou consultatif de transaction
+    (société, champ) : deux provisionnements concurrents ne peuvent pas franchir la borne
+    ensemble. Le verrou est libéré au commit/rollback avec l'écriture qu'il protège.
+    """
     if field not in QUOTA_FIELDS:
         raise ValueError(f"Quota inconnu : {field}")
+    lock_key_1, lock_key_2 = _quota_lock(auth.tenant_id, field)
+    auth.db.execute(
+        text("SELECT pg_advisory_xact_lock(:key_1, :key_2)"),
+        {"key_1": lock_key_1, "key_2": lock_key_2},
+    )
     limit = _limit_for_live_subscription(auth.db, auth.tenant_id, field)
     if limit is None:  # pas d'abonnement vivant ou quota illimité
         return
