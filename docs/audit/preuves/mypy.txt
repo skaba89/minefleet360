@@ -1,3 +1,8 @@
 Commande : python3 -m mypy app (types-PyYAML installé)
 Statut : succès (exécution locale 2026-11-11, base e36ab33)
 Success: no issues found in 221 source files
+
+---
+Commande : mypy app
+Statut : succès (exécution locale 2026-11-12, base 980b713, PR #428)
+Success: no issues found in 227 source files

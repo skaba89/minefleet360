@@ -1,3 +1,8 @@
 Commande : pytest -q -x (MF_ENV=test, base minefleet_test, PostgreSQL 16.10 + PostGIS local)
 Statut : code 0 — 5207 passés, 43 avertissements, 444,72 s (exécution locale 2026-11-11, base e36ab33)
 Nota : première exécution locale complète de la suite intégrée (harnais RLS/authz inclus) ; la révision précédente de l'audit n'avait pu exécuter que les tests unitaires (360).
+
+---
+Commande : pytest -q -x --no-header (MF_ENV=test, base minefleet_test, PostgreSQL 16.10 + PostGIS local)
+Statut : code 0 — 5733 passés, 43 avertissements, 485,63 s (exécution locale 2026-11-12, branche feature/saas-quota-lifecycle-race = contenu fusionné 980b713, PR #428)
+Nota : inclut les 7 tests nouveaux test_billing_lifecycle.py (downgrade sans suppression automatique, suspension/réactivation, essai expiré, course PostgreSQL réelle [201, 422], numérotation concurrente unique, arrondi de taxe, immutabilité facture finalisée).
