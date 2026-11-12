@@ -8,6 +8,7 @@ from sqlalchemy import Select, func, or_, select
 from app.assignment.models import VehicleAssignment
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
+from app.billing.quotas import ensure_quota
 from app.core.errors import AppError
 from app.core.http import PageParams
 from app.core.security import CompositeToken
@@ -248,6 +249,9 @@ def tracker_for_vehicle(auth: Authorized, vehicle_id: uuid.UUID) -> FleetGpsDevi
 
 
 def provision_tracker(auth: Authorized, vehicle_id: uuid.UUID, body: TrackerCreateIn) -> TrackerProvisionOut:
+    """Lot 2b : refus (422 QUOTA_EXCEEDED) si la borne `max_gps_trackers` de la formule
+    vivante est atteinte (les liaisons révoquées libèrent la place)."""
+    ensure_quota(auth, "max_gps_trackers")
     vehicle = _vehicle(auth, vehicle_id)
     if tracker_for_vehicle(auth, vehicle_id) is not None:
         raise AppError("CONFLICT", message_fr="Révoquez le traceur actuel avant d'en associer un autre.")

@@ -68,8 +68,9 @@ export function TenantSubscriptionPage() {
         ) : null}
       </DataState>
       <p className="muted">
-        Les limites s'appliqueront au provisionnement (utilisateurs, sites, véhicules, traceurs GPS) à mesure de
-        leur mise en service technique.
+        Ces limites sont appliquées au provisionnement : au-delà, la création d'un utilisateur, d'un site, d'un
+        véhicule ou d'un traceur GPS est refusée avec un message dédié (les comptes désactivés, véhicules réformés
+        et traceurs révoqués libèrent leur place). La rétention des documents s'applique aux purges automatiques.
       </p>
     </section>
   );
