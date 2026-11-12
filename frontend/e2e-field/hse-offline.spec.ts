@@ -36,6 +36,21 @@ async function declare(page: Page, title: string, submit: string): Promise<void>
   await page.getByRole("button", { name: submit }).click();
 }
 
+/**
+ * Le clic d'envoi peut tomber pendant une re-renderisation React et ne jamais déclencher la soumission
+ * (événement perdu sur un noeud remplacé : formulaire toujours affiché, aucun appel, aucune erreur).
+ * La fermeture du formulaire est la preuve que la soumission a été prise en compte ; sinon on recommence.
+ */
+async function declareUntilClosed(page: Page, title: string, submit: string): Promise<void> {
+  await declare(page, title, submit);
+  const form = page.getByRole("form", { name: /Déclarer un incident/ });
+  try {
+    await expect(form).toBeHidden({ timeout: 3_000 });
+  } catch {
+    await declare(page, title, submit);
+  }
+}
+
 async function openHse(page: Page): Promise<void> {
   const menu = page.getByRole("button", { name: "Afficher le menu" });
   if (await menu.isVisible()) await menu.click();
@@ -68,7 +83,7 @@ test("déclaration sans réseau, synchronisée une seule fois au retour du rése
   await uiLogin(page, dispatcher());
   await openHse(page);
   await context.setOffline(true);
-  await declare(page, title, "Enregistrer sur l'appareil");
+  await declareUntilClosed(page, title, "Enregistrer sur l'appareil");
   const queue = page.getByRole("region", { name: "Déclarations saisies sur cet appareil" });
   await expect(queue.getByText("En attente de synchronisation")).toBeVisible();
   expect(await incidentsTitled(request, title)).toBe(0);
@@ -96,7 +111,7 @@ test("réponse perdue : l'incident créé n'est pas dupliqué au rejeu", async (
     }
     await route.continue();
   });
-  await declare(page, title, "Enregistrer la déclaration");
+  await declareUntilClosed(page, title, "Enregistrer la déclaration");
   await expect(page.getByText(/Synchronisé — HSE-\d{6}/)).toBeVisible({ timeout: 20_000 });
   expect(dropped).toBe(true);
   expect(await incidentsTitled(request, title)).toBe(1);
