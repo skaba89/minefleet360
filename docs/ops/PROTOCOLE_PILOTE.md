@@ -27,9 +27,10 @@ saisies via l'application ou l'API ; le lot 5 du plan initial reste séparé).
 ## 2. Conditions préalables (toutes avec preuve datée avant J0)
 
 1. **Staging isolé** : phases A/B du runbook `docs/ops/RECETTE_STAGING_VALIDATION.md`
-   exécutées et consignées (checklist readiness, migration+rollback), puis C/D avec
-   approbation explicite du propriétaire.
-2. **Sauvegarde/restauration** : round-trip réel depuis le coffre retenu avec RPO/RTO mesurés.
+   exécutées et consignées (checklist readiness, migration+rollback), séquencées par le plan
+   `docs/ops/PLAN_EXECUTION_STAGING.md`, puis C/D avec approbation explicite du propriétaire.
+2. **Sauvegarde/restauration** : round-trip réel depuis le coffre retenu avec RPO/RTO mesurés, selon
+   `docs/ops/PROTOCOLE_RESTAURATION_EXTERNE.md` (14 contrôles, incidents simulés, preuve R1 datée).
 3. **Isolation** : suite croisée A/B (2 sociétés fictives + 1 société pilote) sur la recette
    réelle — le refus 404 neutre vérifié sur les routes cross-tenant, y compris les nouvelles
    routes SaaS (`overview`, `export`).
@@ -37,9 +38,10 @@ saisies via l'application ou l'API ; le lot 5 du plan initial reste séparé).
    professionnel du droit guinéen ; consentement des conducteurs tracé (document signé
    archivé hors application, référence notée dans le journal).
 5. **Traceur physique** : essai daté du modèle/firmware exact selon
-   `docs/GPS_FOURNISSEUR_CAHIER.md` (adaptateur `minefleet-json-v1` seul admis).
+   `docs/GPS_FOURNISSEUR_CAHIER.md` (adaptateur `minefleet-json-v1` seul admis) et le protocole
+   `docs/qa/PROTOCOLE_ESSAI_GPS_PHYSIQUE.md` (banc L1–L9, terrain T1–T10, rapport de qualification).
 6. **Android réel** : matrice d'appareils exécutée (au moins 2 appareils Android physiques,
-   arrière-plan, réseau faible).
+   arrière-plan, réseau faible) selon `docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md` (10 scénarios).
 7. **SLO GPS** : benchmark sur staging avec seuils métier signés (p95/p99, taux d'erreur).
 8. **Supervision** : un incident injecté sur staging, alerte reçue et acquittée, exercice
    consigné.

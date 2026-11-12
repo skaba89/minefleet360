@@ -1,9 +1,9 @@
 # Readiness commerciale — état courant
 
-**Base auditée :** `main@07278b1` (PR #423 fusionnée — lot 4 SaaS support/onboarding/réversibilité, 2026-11-12).
-**Audit exécuté :** 11–12 novembre 2026 — exécutions locales complètes (PostgreSQL 16.10 + PostGIS disponibles) **et** CI GitHub vérifiée via API authentifiée.
-**Statut du document :** courant ; remplace la révision du 8–9 novembre 2026 (base `9c69f44`, 68/100) et les révisions de la journée du 11 novembre (base `e36ab33`, 74/100 ; puis #413–#417, 77/100 ; puis lots SaaS 1→3, 80/100) comme référence de décision.
-**Verdict :** **NO-GO commercial maintenu — GO conditionnel pilote maintenu** (aucun prérequis terrain du `GO_NO_GO.md` n'est levé ; le tarif n'est pas approuvé). Score de maturité : **81/100** (grille imposée) — 74 à la base `e36ab33` (#412), 76 après la forme canonique du refus et le runbook staging (#413/#414), 77 avec le harnais documentaire (#417), 80 avec les lots SaaS 1→3 (#418 plans/quotas, #419 abonnements, #420 facturation paramétrable), 81 avec les **4 lots complets de commercialisation** (lot 2b quotas appliqués au provisionnement #422, lot 4 support/onboarding/réversibilité #423) — en progression de +13 depuis le 9 novembre, entièrement sur des éléments **vérifiés**, pas sur une validation terrain ou opérationnelle.
+**Base auditée :** `main@8d7301b` (PR #426 fusionnée — E2E du cycle SaaS complet + correctifs UI révélés par la recette, 2026-11-12).
+**Audit exécuté :** 12 novembre 2026 — exécutions locales complètes (PostgreSQL 16.10 + PostGIS disponibles) **et** CI GitHub vérifiée via API authentifiée.
+**Statut du document :** courant ; remplace la révision du 12 novembre 2026 (base `07278b1`/`404056c`, 81/100) et les révisions antérieures comme référence de décision.
+**Verdict :** **NO-GO commercial maintenu — GO conditionnel pilote maintenu** (aucun prérequis terrain du `GO_NO_GO.md` n'est levé ; le tarif n'est pas approuvé). Score de maturité : **82/100** (grille imposée) — 74 à la base `e36ab33` (#412), 77 avec le harnais documentaire (#417), 80 avec les lots SaaS 1→3 (#418–#420), 81 avec les 4 lots complets (#422, #423), **82 avec la preuve navigateur du cycle commercial de bout en bout et 4 défauts d'interface corrigés (#426)** — en progression de +14 depuis le 9 novembre, entièrement sur des éléments **vérifiés** (code, tests, CI), jamais sur une validation terrain ou opérationnelle.
 
 > **Règle de lecture.** Ce document ne mélange jamais preuve statique (le code existe et est testé), preuve d'exécution (testé ici ou en CI sur infrastructure jetable) et preuve d'exploitation (validé sur environnement réel). Un test CI n'est **pas** une preuve de fonctionnement en conditions réelles. Une inconnue reste explicitement inconnue (§6). Le score est un outil de pilotage interne, jamais une promesse commerciale.
 
@@ -36,7 +36,20 @@ INSTREAM dans `scripts/dev/` + API éphémère dédiée dans `e2e-isolation.yml`
 EICAR refusé, vérification DIRECTION, soumission, décision UI, réconciliation nominale — aucune
 modification du code produit) ; CI `main` vérifiée par API au moment des fusions. Le runbook de recette
 staging (`docs/ops/RECETTE_STAGING_VALIDATION.md`, PR #414) est publié après cette exécution : procédure pure,
-aucune exécution terrain.
+aucune exécution terrain. PR #425 : protocole de pilote fermé documenté (aucun code).
+
+**Révision du 12 novembre après midi (base `8d7301b`, PR #426) — preuve d'exécution nouvelle :** la spec
+E2E `frontend/e2e/saas-lifecycle.spec.ts` joue **depuis le navigateur** le cycle commercial complet — plan
+tarifé et borné créé en UI, société provisionnée, abonnement essai puis activation, facture préremplie
+depuis le tarif du plan puis émission (détail figé vérifié), vue support plateforme, checklist de
+démarrage vérifiée aux jalons **1/5 → 2/5 → 5/5**, refus `QUOTA_EXCEEDED` affiché à la borne `max_sites`,
+lecture société `/abonnement` + `/factures`, **export réversibilité téléchargé et vérifié en contenu**
+(aucun attribut d'authentification). Exécutée localement (1/1, 19,8 s) **et en CI** (job `tenant-isolation`,
+4 min 59 s). La recette a **révélé et permis de corriger 4 défauts d'interface réels** : le formulaire des
+plans n'exposait ni tarif mensuel GNF ni période (le cycle « plan tarifé → facture préremplie » était
+impossible depuis l'UI) ; libellés d'état anglais ou d'accord faux sur le formulaire de facture (`ACTIVE`
+brut) et la vue support (statuts d'abonnement au féminin, statuts de facture bruts). Vitest 260/260,
+`tsc` strict OK, build OK, anti-dérive ×2 verte.
 
 | Contrôle | Résultat | Périmètre |
 |---|---|---|
@@ -58,17 +71,17 @@ Extraits datés : `docs/audit/preuves/` (pytest.txt, vitest.txt, typecheck.txt, 
 
 ## 3. Tableau de bord de maturité (grille imposée)
 
-| Domaine | Pondération | Score (9 nov) | Score (11 nov) | Justification synthétique |
+| Domaine | Pondération | Score (9 nov) | Score (12 nov) | Justification synthétique |
 |---|---:|---:|---:|---|
 | Sécurité et isolation | 20 | 16 | **17** | RLS forcée sur 75 tables, RBAC machine (118 permissions / 232 routes) testé deny-by-default, MFA chiffré, refresh rotatif anti-rejeu, audit append-only. **Nouveau depuis le 9 nov** : écran « Mes sessions » + révocations `identity.session.revoke_own/any` (#375, 7 tests d'intégration + 3 Vitest), OpenAPI/docs fermés en production (#374, +7 tests), clé HMAC rate-limit dédiée du secret JWT (#374, +6 tests), tranche R8 (IDOR, 429, audit) verte. Restent : audit indépendant, avis juridique, rotation de secrets outillée. |
 | Fiabilité et résilience | 20 | 13 | **14** | Restauration chiffrée testée en CI avec gates RLS fail-closed ; release/rollback par digest immuables ; **images de release signées Cosign + SLSA + SBOM publiées par CI** (#376). La recette a **prouvé sa capacité à attraper 2 bugs réels** (#403, #410) — le dispositif de vérification fonctionne. Restent non mesurés : RPO/RTO sur coffre externe réel, exercice release→rollback sur staging, éprouvetage des alertes par incident réel. |
 | Fonctionnalités métier | 20 | 15 | **17** | Périmètre inchangé (79 tables / 232 routes) mais **profondeur de preuve accrue** : 10 tranches de recette API R1–R10 sur serveur réel (#400–#407), **10 specs E2E navigateur d'actions métier** en CI (correction/annulation de pesée, réappro quatre-yeux, acquittement GPS, zones/politique GPS/notifications, HSE double regard, contrats, tenants plateforme, police d'assurance, taux horaires, **cycle documentaire juridique complet sur harnais S3/ClamAV — dépôt, scan EICAR refusé, vérification, soumission, décision, réconciliation nominale**, #410/#411/#415/#416/#417). Le cycle documentaire n'est plus bloqué côté serveur ; reste l'exposition UI du dépôt/vérification/soumission. Toujours : aucun traceur certifié, offline limité à HSE/OT. |
 | UX/UI et offline | 15 | 11 | **13** | **Nouveau** : socle E2E d'accès direct 34 routes × 13 rôles — « jamais Page introuvable ni Erreur inattendue » (#408), pages 404 dédiées (#374), 2 écarts UI comblés avec tests (échéances d'assurance, commandes d'achat #409), AUDITOR vérifié lecture seule en E2E (#411), Vitest 233. **Révision du 11 nov (base 2bc1b7d)** : les deux formes de refus d'accès direct sont harmonisées en une forme canonique unique testée (`<AccessDenied />`, 17 points / 10 fichiers, écart n°2 résolu #413). Toujours : offline HSE/OT uniquement, Android physique jamais testé, recherche globale absente. |
 | Exploitation DevOps/SRE | 15 | 11 | **14** | **Nouveau** : workflow `release-images` (GHCR + Cosign keyless + provenance SLSA mode=max + SBOM) — le build/push d'images n'est plus manuel (#376) ; **Dependabot actif et démontré** (20+ PR fusionnées : pip groupé, npm groupé, actions ×, caddy, node, gitleaks v3 — #377–#399). **Révision du 11 nov** : runbook SRE de recette staging consolidé et versionné (`docs/ops/RECETTE_STAGING_VALIDATION.md` — audit lecture seule A1–A8, dry-run, protocoles RPO/RTO, éprouvetage des alertes) ; l'exécution sur l'hôte réel reste la preuve attendue. Restent : publication de couverture, métriques/SLO continus, exercice d'alerte réel. |
-| Commercialisation SaaS | 10 | 2 | **6** | **Produit SaaS complet (4 lots sur 4 + lot 2b), sans moyen de paiement ni tarif approuvé** : référentiel plans/quotas plateforme avec API + UI `/plateforme/plans` (#418) ; cycle de vie abonnement TRIAL→ACTIVE→SUSPENDED↔/CANCELLED avec essai daté, historique plateforme et page société `/abonnement` (#419) ; facturation paramétrable DRAFT→ISSUED→VOIDED en GNF avec taxe en points de base, numérotation plateforme atomique `MF-<année>-<numéro>`, montants figés, lignes immuables, API société en lecture seule, UI `/plateforme/facturation` + `/factures`, statut effectif d'essai expiré calculé à la lecture (#420) ; **quotas appliqués au provisionnement** — 4 points de contrôle `POST /users|sites|vehicles|gps/tracker`, refus 422 `QUOTA_EXCEEDED` détaillé, désactivation/réforme/révocation libèrent la place (#422) ; **outillage support** — vue consolidée d'exploitation d'un compte (`/platform/tenants/{id}/overview` : usage vs limites, abonnement avec statut effectif, comptes utilisateurs, factures récentes, UI `/plateforme/support`) ; **parcours client guidé** — checklist de démarrage calculée depuis l'état réel (aucune persistance), UI `/demarrage` ; **réversibilité** — export JSON journalisé sans aucun secret, réservé TENANT_ADMIN, bouton sur `/abonnement` (#423). 127 permissions / 255 routes, 19 tests pytest dédiés lots 2b+4 + 13 Vitest, suite complète 5 726 pytest / 260 Vitest. **Reste (aucun code) :** tarif approuvé (arbitrage métier coût-servi + entretiens), suivi de règlement « payé » et export PDF éventuels (arbitrage expert-comptable), SLA/contrat (juridique), validations réelles. |
-| **Total** | **100** | **68** | **81** | Progression entièrement adossée à des preuves vérifiables (§2 et §4) ; aucun point pour une validation terrain ou opérationnelle, toujours absente. |
+| Commercialisation SaaS | 10 | 2 | **7** | **Produit SaaS complet (4 lots sur 4 + lot 2b), sans moyen de paiement ni tarif approuvé** : référentiel plans/quotas plateforme avec API + UI `/plateforme/plans` (#418) ; cycle de vie abonnement TRIAL→ACTIVE→SUSPENDED↔/CANCELLED avec essai daté, historique plateforme et page société `/abonnement` (#419) ; facturation paramétrable DRAFT→ISSUED→VOIDED en GNF avec taxe en points de base, numérotation plateforme atomique `MF-<année>-<numéro>`, montants figés, lignes immuables, API société en lecture seule, UI `/plateforme/facturation` + `/factures`, statut effectif d'essai expiré calculé à la lecture (#420) ; **quotas appliqués au provisionnement** — 4 points de contrôle `POST /users|sites|vehicles|gps/tracker`, refus 422 `QUOTA_EXCEEDED` détaillé, désactivation/réforme/révocation libèrent la place (#422) ; **outillage support** — vue consolidée d'exploitation d'un compte (`/platform/tenants/{id}/overview` : usage vs limites, abonnement avec statut effectif, comptes utilisateurs, factures récentes, UI `/plateforme/support`) ; **parcours client guidé** — checklist de démarrage calculée depuis l'état réel (aucune persistance), UI `/demarrage` ; **réversibilité** — export JSON journalisé sans aucun secret, réservé TENANT_ADMIN, bouton sur `/abonnement` (#423). **Nouveau (#426) : le cycle commercial est prouvé de bout en bout depuis le navigateur** (plan tarifé → société → abonnement → facture émise → support → onboarding 5/5 → quota appliqué à la borne → export réversibilité vérifié en contenu), exécuté en CI, avec **4 défauts d'interface révélés et corrigés** (dont l'absence de saisie du tarif du plan, bloquante du cycle depuis l'UI). 127 permissions / 255 routes, suite 5 726 pytest / 260 Vitest. **Reste (aucun code) :** tarif approuvé (arbitrage métier coût-servi + entretiens), suivi de règlement « payé » et export PDF éventuels (arbitrage expert-comptable), SLA/contrat (juridique), validations réelles. |
+| **Total** | **100** | **68** | **82** | Progression entièrement adossée à des preuves vérifiables (§2 et §4) ; aucun point pour une validation terrain ou opérationnelle, toujours absente. Le +1 du 12 novembre après midi (#426) récompense la profondeur de preuve (cycle commercial navigateur en CI) et 4 défauts réels corrigés — pas un document de plus. |
 
-**Décision correspondante :** le gain +8 (puis +3 sur les révisions du 11 novembre : #413/#414, #417, puis +3 sur les lots SaaS 1→3 : #418–#420, puis +1 sur la clôture des 4 lots : #422, #423) mesure la **qualité et la profondeur de vérification du produit**, pas une maturité opérationnelle. Le verdict du `GO_NO_GO.md` est donc inchangé : GO pilote conditionnel (8 prérequis tous non levés) ; le GO commercial n'est plus structurellement impossible (le produit SaaS est complet côté logiciel) mais reste bloqué sur le tarif approuvé, le contrat/SLA et les validations réelles (§4.6) — aucun de ces trois restes n'est un chantier de code.
+**Décision correspondante :** le gain +8 (puis +3 sur les révisions du 11 novembre : #413/#414, #417, puis +3 sur les lots SaaS 1→3 : #418–#420, puis +1 sur la clôture des 4 lots : #422, #423, puis +1 sur la preuve navigateur du cycle commercial : #426) mesure la **qualité et la profondeur de vérification du produit**, pas une maturité opérationnelle. Le verdict du `GO_NO_GO.md` est donc inchangé : GO pilote conditionnel (8 prérequis tous non levés) ; le GO commercial n'est plus structurellement impossible (le produit SaaS est complet côté logiciel) mais reste bloqué sur le tarif approuvé, le contrat/SLA et les validations réelles (§4.6) — aucun de ces trois restes n'est un chantier de code.
 
 ## 4. Analyse par domaine
 
@@ -137,24 +150,43 @@ terrain n'en découle.
 
 **Absent (reste avant GO commercial — aucun des trois restes n'est un chantier de code) :** tarification approuvée (le tarif est un paramètre saisi, pas une offre validée par coût-servi + entretiens clients) ; suivi de règlement (« payé ») et export PDF éventuels (arbitrage expert-comptable) ; SLA/contrat (juridique) ; aucune validation pilote.
 
-**Conséquence :** le produit SaaS est **complet côté logiciel** (4 lots sur 4, quotas réellement appliqués, outillage support, onboarding et réversibilité livrés et testés) — le GO commercial n'est plus structurellement impossible et n'attend plus de fonctionnalité, mais trois décisions non techniques (tarif approuvé, contrat/SLA, arbitrage règlement/PDF) et les validations réelles du `GO_NO_GO.md`.
+**Conséquence :** le produit SaaS est **complet côté logiciel** (4 lots sur 4, quotas réellement appliqués, outillage support, onboarding et réversibilité livrés et testés) et **le cycle complet est désormais prouvé depuis l'interface navigateur en CI** (#426) — le GO commercial n'est plus structurellement impossible et n'attend plus de fonctionnalité, mais trois décisions non techniques (tarif approuvé, contrat/SLA, arbitrage règlement/PDF) et les validations réelles du `GO_NO_GO.md`.
 
 ## 5. Matrice comptes/rôles/menus/routes
 
 La matrice (14 rôles × menus × routes UI × 127 permissions × 255 routes API) reste générée mécaniquement (`docs/qa/ROLE_PAGE_ACTION_MATRIX.md`, anti-dérive `--check` vert le 2026-11-12). Le socle E2E #408 vérifie désormais **en navigateur** l'accès direct 34 routes × 13 rôles et l'isolement de PLATFORM_ADMIN. Écart connu assumé : tranches `maintenance.preventive.*` marquées `later` dans le YAML alors qu'implémentées (harmonisation à faire).
 
+## 5bis. Matrice des écarts de validation (phase 1 de la feuille de route)
+
+Statuts : ✅ prouvé ; ⚠️ partiel ; ❌ absent ; INCONNU non évaluable depuis cet environnement. « Staging » désigne le VPS OVHcloud (jamais accessible) ; « Terrain » désigne matériel réel Guinée ; « Commercial » désigne l'offre validée (tarif, contrat, SLA).
+
+| Fonctionnalité | Code présent | CI | E2E | Staging | Terrain | Commercial | Risque | Action suivante |
+|---|---|---|---|---|---|---|---|---|
+| Cycle SaaS complet (plan→société→abonnement→facture→support→onboarding→quota→export) | ✅ | ✅ | ✅ navigateur (#426) | ❌ | ❌ | ❌ tarif/contrat | faible (logiciel) ; élevé (offre) | exécuter la même séquence sur staging avec données fictives (après phases A/B) |
+| Quotas appliqués au provisionnement | ✅ | ✅ | ✅ refus UI à la borne (#426) | ❌ | ❌ | ❌ | faible | constat terrain au pilote (protocole §3) |
+| Isolation multi-tenant (RLS/RBAC/IDOR) | ✅ | ✅ (5 726 pytest + E2E 34×13) | ✅ | ❌ | ❌ | ✅ (exigence produit) | élevé si dérive | suite croisée A/B sur la recette réelle (GO n° 3) |
+| GPS temps réel (carte, SSE, zones, alertes) | ✅ | ✅ (recette GPS bout en bout) | ✅ | ❌ | ❌ INCONNU (aucun traceur) | ❌ | élevé | essai traceur physique (`docs/qa/PROTOCOLE_ESSAI_GPS_PHYSIQUE.md`) puis SLO p95/p99 |
+| Offline-first (HSE/OT) | ✅ | ✅ (build prod émulé) | ⚠️ émulateur | ❌ | ❌ INCONNU | — | moyen | essai Android réel (`docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md`) ; extension offline inspections (arbitrage produit) |
+| Sauvegarde/restauration | ✅ | ✅ round-trip synthétique | — | ❌ INCONNU (coffre externe jamais exercé) | — | ❌ SLA | élevé | exercice R1 (`docs/ops/PROTOCOLE_RESTAURATION_EXTERNE.md`) avec RPO/RTO |
+| Release/rollback staging | ✅ | ✅ (plan + images signées) | — | ❌ INCONNU (apply jamais exécuté) | — | — | élevé | phases A/B lecture seule (`docs/ops/PLAN_EXECUTION_STAGING.md`) puis C/D avec approbation |
+| Supervision/alertes | ✅ | ✅ (11 suites ops) | — | ❌ INCONNU | — | ❌ SLA | moyen | éprouvetage par incident réel (runbook §Alerte) |
+| Juridique GPS/salariés | ⚠️ contrôles de code | — | — | ❌ | ❌ | ❌ | **bloquant pilote** | revue par un professionnel du droit guinéen (hors code) |
+| Tarification/contrat/SLA | ⚠️ tarif = paramètre | — | — | — | — | ❌ | **bloquant commercial** | coût-servi + entretiens + validation juridique (hors code) |
+
+Lecture : la colonne CI/E2E mesure la profondeur de preuve **logicielle** ; aucune validation staging/terrain n'est comptabilisée car jamais exécutée — les verdicts du `GO_NO_GO.md` en découlent inchangés.
+
 ## 6. Inconnues explicites (restent inconnues)
 
 1. ~~État CI du HEAD~~ **levée** : CI vérifiée par API le 2026-11-11 — `main@e36ab33` : 3/3 workflows verts ; PR #400→#411 toutes fusionnées.
-2. **Staging OVHcloud** : non accessible depuis cet environnement (état réel des conteneurs, révision Alembic, volumes, proxy partagé à revérifier sur place ; tout `apply` exige une approbation explicite).
-3. **Matériel GPS** : aucun modèle/firmware certifié ; compatibilités annoncées interdites par test.
-4. **Android physique et réseau guinéen réel** : jamais testés (l'émulation Playwright n'est pas une preuve terrain).
-5. **RPO/RTO réels** : non mesurés (coffre externe jamais exercé).
+2. **Staging OVHcloud** : non accessible depuis cet environnement (état réel des conteneurs, révision Alembic, volumes, proxy partagé à revérifier sur place ; tout `apply` exige une approbation explicite). Le **plan d'exécution lecture seule** est publié (`docs/ops/PLAN_EXECUTION_STAGING.md`) : il séquence les phases A/B, artefacts et critères d'interruption — l'exécution reste à faire.
+3. **Matériel GPS** : aucun modèle/firmware certifié ; compatibilités annoncées interdites par test. Le **protocole d'essai physique** est publié (`docs/qa/PROTOCOLE_ESSAI_GPS_PHYSIQUE.md`) : banc L1–L9, mesures terrain T1–T10, matrice de qualification par modèle.
+4. **Android physique et réseau guinéen réel** : jamais testés (l'émulation Playwright n'est pas une preuve terrain). Le **protocole d'essai Android** est publié (`docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md`) : matrice 2 appareils × 10 scénarios.
+5. **RPO/RTO réels** : non mesurés (coffre externe jamais exercé). Le **protocole de restauration externe** est publié (`docs/ops/PROTOCOLE_RESTAURATION_EXTERNE.md`) : 14 contrôles, incidents simulés, modèle de preuve R1.
 6. **Conformité juridique** : aucun avis professionnel (juriste guinéen requis).
 
 ## 7. Priorisation des prochains travaux
 
-**P0 (bloquants GO pilote — inchangés, exigent l'accès staging/coffre/matériel) :** coffre externe réel + RPO/RTO mesurés ; exercice staging release→rollback→vérifications (R2) ; isolation A/B en recette réelle ; revue juridique ; essai traceur physique (protocole `GPS_FOURNISSEUR_CAHIER.md`) ; essai Android réel ; SLO GPS p95/p99 ; éprouvetage des alertes par incident.
+**P0 (bloquants GO pilote — inchangés, exigent l'accès staging/coffre/matériel ; protocoles désormais prêts) :** coffre externe réel + RPO/RTO mesurés (`docs/ops/PROTOCOLE_RESTAURATION_EXTERNE.md`) ; exercice staging release→rollback→vérifications (R2) — phases A/B préparées par `docs/ops/PLAN_EXECUTION_STAGING.md` ; isolation A/B en recette réelle ; revue juridique ; essai traceur physique (`docs/qa/PROTOCOLE_ESSAI_GPS_PHYSIQUE.md`) ; essai Android réel (`docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md`) ; SLO GPS p95/p99 ; éprouvetage des alertes par incident (runbook staging §Alerte).
 
 **P1 (chantiers de code autorisés dans cet environnement, dans l'ordre) :**
 1. ~~Harmoniser les deux formes de refus d'accès direct~~ **fait** — PR #413 (`<AccessDenied />` canonique, 17 points / 10 fichiers, Vitest + socle E2E verts).
@@ -163,6 +195,7 @@ La matrice (14 rôles × menus × routes UI × 127 permissions × 255 routes API
 4. ~~Procédure de validation staging en lecture seule + dry-run~~ **fait** — `docs/ops/RECETTE_STAGING_VALIDATION.md` (l'exécution des phases A–D sur l'hôte réel exige un accès staging et, pour C/D, une approbation explicite).
 5. Rejouer `MATURITY_SCORECARD.md`, recalibrer `FUNCTIONAL_COVERAGE.md`, harmoniser les tranches `later` du YAML.
 6. Étendre l'offline aux inspections HSE (après arbitrage produit).
+7. **Parcours plateforme restants sans E2E dédié** : changement d'abonnement (upgrade/downgrade avec ressources existantes supérieures au nouveau quota), suspension/réactivation d'abonnement, avoirs éventuels — la spec `saas-lifecycle.spec.ts` couvre le chemin nominal complet ; ces variants restent couverts par les tests pytest backend uniquement.
 
 **P2 (préparation SaaS, sans moyen de paiement ni tarif) :** ~~plans/quotas~~ **fait** (PR #418), ~~schéma abonnements~~ **fait** (PR #419), ~~facturation paramétrable (GNF, taxes)~~ **fait** (PR #420), ~~application des quotas au provisionnement (lot 2b)~~ **fait** (PR #422), ~~support/onboarding/réversibilité (lot 4)~~ **fait** (PR #423) ; **reste** : suivi de règlement et export PDF éventuels (après arbitrage) — PR verticales séparées.
 
@@ -170,11 +203,15 @@ La matrice (14 rôles × menus × routes UI × 127 permissions × 255 routes API
 
 | Document | État |
 |---|---|
-| `docs/audit/COMMERCIAL_READINESS_CURRENT.md` | **mis à jour** (présente révision, base PR #423, score 81/100) |
-| `docs/qa/GO_NO_GO.md` | **mis à jour** (11 novembre 2026, verdict inchangé, preuves actualisées) |
-| `docs/ops/RECETTE_STAGING_VALIDATION.md` | **créé** — runbook staging lecture seule + dry-run + protocoles RPO/RTO/éprouvetage ; exécution réelle à faire |
+| `docs/audit/COMMERCIAL_READINESS_CURRENT.md` | **mis à jour** (présente révision, base PR #426, score 82/100, matrice des écarts §5bis) |
+| `docs/qa/GO_NO_GO.md` | **mis à jour** (12 novembre 2026, verdict inchangé, preuves actualisées, classement des blocants) |
+| `docs/ops/RECETTE_STAGING_VALIDATION.md` | à jour (runbook staging lecture seule + dry-run + protocoles RPO/RTO/éprouvetage) ; exécution réelle à faire |
+| `docs/ops/PLAN_EXECUTION_STAGING.md` | **créé** (#427) — plan d'exécution séquencé des phases A/B lecture seule (S0–S10, artefacts, critères d'interruption) |
+| `docs/ops/PROTOCOLE_RESTAURATION_EXTERNE.md` | **créé** (#427) — protocole d'exercice R1 (14 contrôles, incidents simulés, preuve datée) |
+| `docs/qa/PROTOCOLE_ESSAI_GPS_PHYSIQUE.md` | **créé** (#427) — banc L1–L9, terrain T1–T10, matrice de qualification par modèle |
+| `docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md` | **créé** (#427) — 2 appareils × 10 scénarios, mesures et limites consignées |
+| `docs/ops/PROTOCOLE_PILOTE.md` | à jour (2026-11-12) — exécution conditionnée aux 8 prérequis terrain |
 | `docs/qa/ROLE_PAGE_ACTION_MATRIX.md` | généré, anti-dérive vert |
-| `docs/ops/PROTOCOLE_PILOTE.md` | **créé** (2026-11-12, phase 7) — protocole de pilote fermé prêt, exécution conditionnée aux 8 prérequis terrain du `GO_NO_GO.md` |
 | `docs/qa/RECETTE_UI_P0.md` | à jour (écart n°1 reformulé : cycle documentaire prouvé sur harnais #417, reste l'UI du dépôt/vérification/soumission ; écart n°2 résolu par #413) |
 | `docs/audit/preuves/` | **rafraîchi** (pytest 5 207, vitest 233, tsc, build, anti-dérive, ruff, format, mypy — datés 2026-11-11) |
 | `docs/qa/REGRESSION_EVIDENCE.md` | absent — à créer lors du premier exercice de non-régression formel sur staging |
