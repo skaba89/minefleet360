@@ -19,6 +19,26 @@ const STATUS_LABEL: Record<string, string> = {
   CANCELLED: "Annulé",
 };
 
+/** Libellés du cycle de vie d'abonnement (masculin — distinct du statut de la société). */
+const SUBSCRIPTION_STATUS_LABEL: Record<string, string> = {
+  TRIAL: "Essai",
+  ACTIVE: "Actif",
+  SUSPENDED: "Suspendu",
+  CANCELLED: "Annulé",
+  EXPIRED: "Essai expiré",
+};
+
+/** Libellés du statut de facture (la page mélange trois référentiels d'états). */
+const INVOICE_STATUS_LABEL: Record<string, string> = {
+  DRAFT: "Brouillon",
+  ISSUED: "Émise",
+  VOIDED: "Annulée",
+};
+
+function subscriptionStatus(status: string): string {
+  return SUBSCRIPTION_STATUS_LABEL[status] ?? STATUS_LABEL[status] ?? status;
+}
+
 function formatDate(value: string | null | undefined): string {
   return value ? new Date(value).toLocaleDateString("fr-FR") : "—";
 }
@@ -90,9 +110,9 @@ function OverviewView({ overview }: { overview: Overview }) {
         <dt>Abonnement</dt>
         <dd>
           {subscription
-            ? `${subscription.plan.name} — ${STATUS_LABEL[subscription.effective_status] ?? subscription.effective_status}` +
+            ? `${subscription.plan.name} — ${subscriptionStatus(subscription.effective_status)}` +
               (subscription.effective_status !== subscription.status
-                ? ` (statut enregistré : ${STATUS_LABEL[subscription.status] ?? subscription.status})`
+                ? ` (statut enregistré : ${subscriptionStatus(subscription.status)})`
                 : "")
             : "Aucun abonnement"}
         </dd>
@@ -140,7 +160,7 @@ function OverviewView({ overview }: { overview: Overview }) {
             {overview.invoices.map((invoice) => (
               <tr key={invoice.invoice_id}>
                 <td>{invoice.number}</td>
-                <td>{STATUS_LABEL[invoice.status] ?? invoice.status}</td>
+                <td>{INVOICE_STATUS_LABEL[invoice.status] ?? invoice.status}</td>
                 <td>{formatGnf(invoice.total_gnf)}</td>
                 <td>{formatDate(invoice.created_at)}</td>
               </tr>

@@ -19,6 +19,15 @@ const STATUS_LABEL: Record<string, string> = {
   VOIDED: "Annulée",
 };
 
+/** Libellés du cycle de vie d'abonnement (TRIAL/ACTIVE/… distinct du statut des factures). */
+const SUBSCRIPTION_STATUS_LABEL: Record<string, string> = {
+  TRIAL: "Essai",
+  ACTIVE: "Actif",
+  SUSPENDED: "Suspendu",
+  CANCELLED: "Annulé",
+  EXPIRED: "Essai expiré",
+};
+
 /** Format GNF : séparateur de milliers + suffixe (le franc guinéen n'a pas de subdivision). */
 export function formatGnf(value: number): string {
   return `${value.toLocaleString("fr-FR")} GNF`;
@@ -98,7 +107,7 @@ function CreateInvoiceForm({ onDone }: { onDone: () => void }) {
           <option value="">— aucune (saisie libre) —</option>
           {liveSubscriptions.map((subscription) => (
             <option key={subscription.subscription_id} value={subscription.subscription_id}>
-              {subscription.plan_code} — {STATUS_LABEL[subscription.status] ?? subscription.status}
+              {subscription.plan_code} — {SUBSCRIPTION_STATUS_LABEL[subscription.status] ?? subscription.status}
             </option>
           ))}
         </select>

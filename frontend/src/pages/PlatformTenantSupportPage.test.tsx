@@ -84,6 +84,7 @@ it("affiche la vue consolidée du compte sélectionné", async () => {
   expect(screen.getByText("6")).toBeTruthy(); // usage traceurs GPS
   expect(screen.getByText("4 actifs, 1 en attente, 2 désactivés")).toBeTruthy();
   expect(screen.getByText("MF-2026-00012")).toBeTruthy();
+  expect(screen.getByText("Émise")).toBeTruthy(); // statut de facture libellé en français
   expect(screen.getByText("14 160 000 GNF")).toBeTruthy();
 });
 

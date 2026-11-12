@@ -44,18 +44,20 @@ const PLAN_PAGE = {
       plan_id: "22222222-2222-4222-8222-222222222222",
       code: "STARTER", name: "Starter", status: "ACTIVE",
       max_users: 5, max_sites: 1, max_vehicles: 5, max_gps_trackers: 5,
-      document_retention_days: 90, row_version: 1,
+      document_retention_days: 90, price_monthly_gnf: 1_500_000, billing_period: "MONTHLY",
+      row_version: 1,
     },
     {
       plan_id: "33333333-3333-4333-8333-333333333333",
       code: "ENTERPRISE", name: "Enterprise", status: "RETIRED",
       max_users: null, max_sites: null, max_vehicles: null, max_gps_trackers: null,
-      document_retention_days: null, row_version: 3,
+      document_retention_days: null, price_monthly_gnf: null, billing_period: null,
+      row_version: 3,
     },
   ],
 };
 
-it("affiche le catalogue de plans avec quotas et illimités", async () => {
+it("affiche le catalogue de plans avec quotas, illimités et tarifs", async () => {
   canMock.mockImplementation((_grants: unknown, permission: string) => permission === "billing.plan.list");
   getMock.mockResolvedValue(PLAN_PAGE);
   mount(<PlatformPlansPage />);
@@ -63,6 +65,9 @@ it("affiche le catalogue de plans avec quotas et illimités", async () => {
   expect(screen.getByText("ENTERPRISE")).toBeTruthy();
   expect(screen.getAllByText("Illimité").length).toBeGreaterThanOrEqual(5);
   expect(screen.getByText("Retiré")).toBeTruthy();
+  // Tarif : GNF + période pour STARTER, « Non tarifé » pour ENTERPRISE (le séparateur fr-FR varie selon l'ICU).
+  expect(screen.getByText(/1[\s\u00a0\u202f]*500[\s\u00a0\u202f]*000[\s\u00a0\u202f]*GNF \/ mois/)).toBeTruthy();
+  expect(screen.getByText("Non tarifé")).toBeTruthy();
   expect(getMock).toHaveBeenCalledWith("/platform/saas-plans", { page: 1, page_size: 20 });
 });
 
@@ -83,7 +88,7 @@ it("refuse la page sans la permission de lecture", async () => {
   await waitFor(() => expect(getMock).not.toHaveBeenCalled());
 });
 
-it("crée un plan avec quotas convertis (vide = null)", async () => {
+it("crée un plan avec quotas convertis (vide = null) et tarif", async () => {
   canMock.mockImplementation(
     (_grants: unknown, permission: string) => permission === "billing.plan.list" || permission === "billing.plan.create",
   );
@@ -94,13 +99,15 @@ it("crée un plan avec quotas convertis (vide = null)", async () => {
   fireEvent.change(screen.getByLabelText(/Code \(majuscules/), { target: { value: "BUSINESS_TEST" } });
   fireEvent.change(screen.getByLabelText("Nom affiché"), { target: { value: "Business Test" } });
   fireEvent.change(screen.getByLabelText(/Quota utilisateurs/), { target: { value: "25" } });
+  fireEvent.change(screen.getByLabelText(/Tarif mensuel en GNF/), { target: { value: "1500000" } });
+  fireEvent.change(screen.getByLabelText(/Période de facturation/), { target: { value: "MONTHLY" } });
   fireEvent.click(screen.getByRole("button", { name: "Créer" }));
   await waitFor(() => expect(requestMock).toHaveBeenCalledWith("/platform/saas-plans", {
     method: "POST",
     body: {
       code: "BUSINESS_TEST", name: "Business Test", description: null, status: "DRAFT",
       max_users: 25, max_sites: null, max_vehicles: null, max_gps_trackers: null,
-      document_retention_days: null,
+      document_retention_days: null, price_monthly_gnf: 1_500_000, billing_period: "MONTHLY",
     },
   }));
 });
@@ -123,6 +130,7 @@ it("modifie un plan en transmettant If-Match et retire un quota", async () => {
       body: {
         name: "Starter", status: "ACTIVE", max_users: 5, max_sites: 1, max_vehicles: 5,
         max_gps_trackers: null, document_retention_days: 90,
+        price_monthly_gnf: 1_500_000, billing_period: "MONTHLY",
       },
       ifMatch: '"1"',
     },
