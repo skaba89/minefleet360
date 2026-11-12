@@ -24,6 +24,15 @@ from app.organization.models import Site
 QUOTA_FIELDS = ("max_users", "max_sites", "max_vehicles", "max_gps_trackers")
 
 
+def usage_counts(db: Session, tenant_id: uuid.UUID) -> dict[str, int]:
+    """Compteurs d'usage réels de la société (lot 4 : vue support plateforme, checklist d'onboarding).
+
+    Le contexte RLS du tenant doit être posé avant l'appel (routes plateforme) — les requêtes
+    filtrent déjà explicitement par tenant_id.
+    """
+    return {field: _usage(db, tenant_id, field) for field in QUOTA_FIELDS}
+
+
 def _usage(db: Session, tenant_id: uuid.UUID, field: str) -> int:
     if field == "max_users":
         # Utilisateurs réellement consommés : INVITED + ACTIVE (les désactivés libèrent la place).

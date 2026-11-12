@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
-import { get, type Schemas } from "../api/client";
+import { binaryRequest, get, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { AccessDenied, DataState } from "../components/common";
 import { Fact } from "../components/forms";
@@ -72,6 +73,53 @@ export function TenantSubscriptionPage() {
         véhicule ou d'un traceur GPS est refusée avec un message dédié (les comptes désactivés, véhicules réformés
         et traceurs révoqués libèrent leur place). La rétention des documents s'applique aux purges automatiques.
       </p>
+      <ReversibilitySection />
     </section>
+  );
+}
+
+/** Réversibilité (lot 4) : export JSON des données de la société, réservé à l'administrateur. */
+function ReversibilitySection() {
+  const me = useMe();
+  const authorized = can(me.grants, "organization.tenant.export");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  if (!authorized) {
+    return null;
+  }
+  const download = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await binaryRequest("/tenant/export");
+      const disposition = response.headers.get("Content-Disposition") ?? "";
+      const match = /filename="([^"]+)"/.exec(disposition);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = match?.[1] ?? "export-minefleet.json";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Téléchargement impossible.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div style={{ marginTop: 24 }}>
+      <h2>Réversibilité</h2>
+      <p className="muted">
+        Téléchargez les données de votre société (sites, utilisateurs, véhicules, abonnements, factures) dans un
+        fichier JSON lisible par un outil tiers. L'export ne contient aucun secret d'authentification et il est
+        journalisé.
+      </p>
+      <button type="button" onClick={download} disabled={busy}>
+        {busy ? "Export en cours…" : "Exporter les données (JSON)"}
+      </button>
+      {error && <p role="alert">{error}</p>}
+    </div>
   );
 }

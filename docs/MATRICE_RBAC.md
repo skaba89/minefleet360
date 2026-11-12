@@ -69,12 +69,16 @@ Colonnes (ordre fixe, codes du socle) : **PA** `PLATFORM_ADMIN` · **TA** `TENAN
 | `organization.tenant.suspend` | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `organization.tenant.read` (nom, fuseau, langue) | 👁¹ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `organization.tenant.update` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `organization.tenant.support` (vue consolidée d'exploitation, lot 4) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `organization.tenant.export` (export JSON réversibilité, lot 4) | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `organization.site.read` | ❌ | ✅ | ✅ | ✅ | 🔶 | ✅ | 🔶 | 🔶 | 🔶 | 🔶 | 🔶 | ✅ | ✅ | ✅ |
 | `organization.site.create` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `organization.site.update` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `organization.site.deactivate` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ¹ `PLATFORM_ADMIN` : `tenant.create` inclut, dans la même transaction auditée, la création du premier `TENANT_ADMIN` invité, des sites initiaux et la **copie des catégories de véhicule et de permis** du référentiel global vers le tenant (D-18) ; il n'y a donc pas de permission `identity.user.create` pour `PA` (QA-18). `tenant.read` pour `PA` : métadonnées de gestion uniquement (identifiant, code, statut, dates, volumétrie agrégée) ; jamais de donnée métier.
+
+Lot 4 (commercialisation) : `organization.tenant.read` documente aussi `GET /tenant/onboarding` (checklist de démarrage calculée à la lecture — tous les rôles tenant peuvent la consulter, elle n'expose que des compteurs agrégés de leur propre société) ; `organization.tenant.support` donne à `PLATFORM_ADMIN` la vue consolidée d'exploitation d'un compte (`GET /platform/tenants/{tenant_id}/overview` : usage vs limites du plan, abonnement courant, comptes utilisateurs, factures récentes) ; `organization.tenant.export` réserve à `TENANT_ADMIN` l'export JSON de réversibilité (`GET /tenant/export`, journalisé, sans aucun attribut d'authentification).
 
 ### 2.2 `identity` (1a)
 | Permission | PA | TA | DIR | OPS | DISP | HR | DRV | WSC | MEC | STK | FUEL | HSE | FIN | AUD |

@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.billing.schemas import TenantSubscriptionOut as TenantSubscriptionOut  # ré-export explicite
 from app.core.http import StrictModel
 from app.core.timezones import is_valid_timezone
 
@@ -89,3 +90,61 @@ class SiteOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     row_version: int
+
+
+# --- Lot 4 commercialisation : support plateforme, onboarding, réversibilité ---------------------------
+
+
+class OverviewUsage(BaseModel):
+    """Usage réel d'une ressource plafonnée par le plan (limite None = illimité)."""
+
+    field: str
+    label: str
+    usage: int
+    limit: int | None
+
+
+class OverviewUsers(BaseModel):
+    active: int
+    invited: int
+    disabled: int
+
+
+class OverviewInvoice(BaseModel):
+    invoice_id: uuid.UUID
+    number: str
+    status: str
+    total_gnf: int
+    created_at: datetime
+
+
+class TenantOverviewOut(BaseModel):
+    """Vue consolidée d'exploitation d'un compte client (outillage support plateforme, lot 4).
+
+    Calculée à la lecture, aucune persistance : société, abonnement courant (statut effectif),
+    usage vs limites du plan, comptes utilisateurs, factures récentes.
+    """
+
+    tenant: TenantSummary
+    subscription: TenantSubscriptionOut | None
+    usage: list[OverviewUsage]
+    users: OverviewUsers
+    invoices: list[OverviewInvoice]
+
+
+class OnboardingStepOut(BaseModel):
+    """Étape de démarrage calculée depuis l'état réel de la société (aucune persistance)."""
+
+    key: str
+    label: str
+    hint: str
+    count: int
+    target: int
+    done: bool
+
+
+class OnboardingChecklistOut(BaseModel):
+    steps: list[OnboardingStepOut]
+    done_count: int
+    total: int
+    progress_percent: int

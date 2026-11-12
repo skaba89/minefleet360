@@ -77,8 +77,10 @@ Pages toujours accessibles à tout compte authentifié : Accueil (`/`), Mon comp
 | `/plateforme/plans` | `PlatformPlansPage` | détail imbriqué (cf. parent) |
 | `/plateforme/abonnements` | `PlatformSubscriptionsPage` | détail imbriqué (cf. parent) |
 | `/plateforme/facturation` | `PlatformInvoicesPage` | détail imbriqué (cf. parent) |
+| `/plateforme/support` | `PlatformTenantSupportPage` | détail imbriqué (cf. parent) |
 | `/abonnement` | `TenantSubscriptionPage` | détail imbriqué (cf. parent) |
 | `/factures` | `TenantInvoicesPage` | détail imbriqué (cf. parent) |
+| `/demarrage` | `TenantOnboardingPage` | détail imbriqué (cf. parent) |
 | `/plateforme/nouvelle-societe` | `PlatformCreateTenantPage` | `organization.tenant.create` |
 | `/plateforme/etat` | `PlatformHealthPage` | `organization.tenant.list` |
 | `/vehicules` | `VehiclesPage` | `fleet.vehicle.read` |
@@ -129,8 +131,10 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `organization.tenant.create` | 1a | `POST /platform/tenants` | `PLATFORM_ADMIN` |
 | `organization.tenant.suspend` | 1a | `POST /platform/tenants/{tenant_id}/suspend`<br>`POST /platform/tenants/{tenant_id}/reactivate` | `PLATFORM_ADMIN` |
 | `organization.tenant.list` | 1a | `GET /platform/tenants`<br>`GET /platform/tenants/{tenant_id}` | `PLATFORM_ADMIN` |
-| `organization.tenant.read` | 1a | `GET /tenant` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `DRIVER`, `FINANCE`, `FUEL_MANAGER`, `HR`, `HSE`, `MECHANIC`, `OPS_MANAGER`, `STOREKEEPER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
+| `organization.tenant.read` | 1a | `GET /tenant`<br>`GET /tenant/onboarding` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `DRIVER`, `FINANCE`, `FUEL_MANAGER`, `HR`, `HSE`, `MECHANIC`, `OPS_MANAGER`, `STOREKEEPER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
 | `organization.tenant.update` | 1a | `PATCH /tenant` | `TENANT_ADMIN` |
+| `organization.tenant.support` | 2a | `GET /platform/tenants/{tenant_id}/overview` | `PLATFORM_ADMIN` |
+| `organization.tenant.export` | 2a | `GET /tenant/export` | `TENANT_ADMIN` |
 | `organization.site.read` | 1a | `GET /sites`<br>`GET /sites/{site_id}` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `FUEL_MANAGER`, `HR`, `HSE`, `MECHANIC`, `OPS_MANAGER`, `STOREKEEPER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
 | `organization.site.create` | 1a | `POST /sites` | `TENANT_ADMIN` |
 | `organization.site.update` | 1a | `PATCH /sites/{site_id}` | `TENANT_ADMIN` |
@@ -256,20 +260,20 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 
 | Rôle | Permissions | Routes API accessibles |
 |---|---:|---:|
-| `PLATFORM_ADMIN` | 11 | 32 |
-| `TENANT_ADMIN` | 67 | 126 |
-| `DIRECTION` | 36 | 94 |
-| `OPS_MANAGER` | 84 | 176 |
-| `DISPATCHER` | 37 | 81 |
-| `HR` | 16 | 34 |
-| `DRIVER` | 4 | 15 |
-| `WORKSHOP_CHIEF` | 40 | 103 |
-| `MECHANIC` | 17 | 45 |
-| `STOREKEEPER` | 17 | 49 |
-| `FUEL_MANAGER` | 28 | 62 |
-| `HSE` | 33 | 77 |
-| `FINANCE` | 24 | 56 |
-| `AUDITOR` | 39 | 98 |
+| `PLATFORM_ADMIN` | 12 | 33 |
+| `TENANT_ADMIN` | 68 | 128 |
+| `DIRECTION` | 36 | 95 |
+| `OPS_MANAGER` | 84 | 177 |
+| `DISPATCHER` | 37 | 82 |
+| `HR` | 16 | 35 |
+| `DRIVER` | 4 | 16 |
+| `WORKSHOP_CHIEF` | 40 | 104 |
+| `MECHANIC` | 17 | 46 |
+| `STOREKEEPER` | 17 | 50 |
+| `FUEL_MANAGER` | 28 | 63 |
+| `HSE` | 33 | 78 |
+| `FINANCE` | 24 | 57 |
+| `AUDITOR` | 39 | 99 |
 
 ## 6. Anomalies détectées mécaniquement
 

@@ -41,8 +41,9 @@ def test_set_tenant_context_callers_are_known() -> None:
     callers = {p.name for p, src in _sources() if "set_tenant_context(" in src and p.name != "tenancy.py"}
     assert callers <= allowed, callers - allowed
     organization = (APP / "organization" / "service.py").read_text(encoding="utf-8")
-    # Seuls le provisioning et la suspension de tenant changent de contexte (MODELE_PHYSIQUE §6.2).
-    assert organization.count("set_tenant_context(") == 2
+    # Le provisioning, la suspension de tenant (MODELE_PHYSIQUE §6.2) et la vue support consolidée
+    # (lot 4 : lecture cross-tenant d'exploitation, côté plateforme uniquement) changent de contexte.
+    assert organization.count("set_tenant_context(") == 3
 
 
 def test_business_code_uses_injectable_clock() -> None:
