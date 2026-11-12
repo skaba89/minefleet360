@@ -28,3 +28,12 @@ Contrôles vérifiés via API authentifiée le 2026-11-12 — 9/9 pass, dont ten
 (préventif, fiabilité du parc, commandes de pièces ajoutées au job).
 Exécution locale des 3 nouvelles specs sur pile réelle (API + PostgreSQL + seed fictif, chromium, branche 60c511e) :
 preventive.spec.ts 1/1 (3,8 s), parts-purchase-orders.spec.ts 1/1 (3,6 s), reliability.spec.ts 1/1 (5,9 s) ; tsc --noEmit propre.
+
+---
+PR #432 (feature/juridique-cycle-documentaire-ui → main, fusion squash 985e073800e9ce0ac1eb655643f404c48976e5e2)
+Contrôles vérifiés via API authentifiée le 2026-11-12 — 9/9 pass (job frontend incluant le contrôle
+anti-dérive OpenAPI régénéré ; matrice rôle/route régénérée après la route GET documents juridique).
+Exécutions locales sur la branche (API + PostgreSQL + seed fictif) : 5 758 pytest (2 nouveaux tests de la
+route GET documents), 264 Vitest (4 nouveaux), ruff/mypy propres ; E2E legal-document-cycle 2/2 sur harnais
+S3/ClamAV local réel (faux S3 HTTPS + faux clamd + API :8001) : cycle API existant + « cycle documentaire
+depuis l'UI » (empreinte client → dépôt → vérification DIRECTION → soumission).
