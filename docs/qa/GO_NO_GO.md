@@ -41,7 +41,7 @@ Changement depuis le 11 novembre au soir : **le produit SaaS est complet côté 
 
 ## Décision à réévaluer
 
-Le statut pourra évoluer vers **GO pilote** à l'issue des preuves ci-dessus, en consignant qui a approuvé, client/site concernés, durée, limites, données collectées, responsables d'incident, critères d'arrêt et plan de suppression. La vente avec engagement de disponibilité nécessite ensuite des mesures réelles et des termes contractuels validés.
+Le statut pourra évoluer vers **GO pilote** à l'issue des preuves ci-dessus, en consignant qui a approuvé, client/site concernés, durée, limites, données collectées, responsables d'incident, critères d'arrêt et plan de suppression — le **protocole de pilote fermé** (`docs/ops/PROTOCOLE_PILOTE.md`, 2026-11-12) structure désormais ces consignations : scénarios obligatoires, RACI, critères de succès mesurables, critères d'arrêt et plan de suppression. La vente avec engagement de disponibilité nécessite ensuite des mesures réelles et des termes contractuels validés.
 
 ## Score de maturité
 

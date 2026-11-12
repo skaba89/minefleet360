@@ -174,6 +174,7 @@ La matrice (14 rôles × menus × routes UI × 127 permissions × 255 routes API
 | `docs/qa/GO_NO_GO.md` | **mis à jour** (11 novembre 2026, verdict inchangé, preuves actualisées) |
 | `docs/ops/RECETTE_STAGING_VALIDATION.md` | **créé** — runbook staging lecture seule + dry-run + protocoles RPO/RTO/éprouvetage ; exécution réelle à faire |
 | `docs/qa/ROLE_PAGE_ACTION_MATRIX.md` | généré, anti-dérive vert |
+| `docs/ops/PROTOCOLE_PILOTE.md` | **créé** (2026-11-12, phase 7) — protocole de pilote fermé prêt, exécution conditionnée aux 8 prérequis terrain du `GO_NO_GO.md` |
 | `docs/qa/RECETTE_UI_P0.md` | à jour (écart n°1 reformulé : cycle documentaire prouvé sur harnais #417, reste l'UI du dépôt/vérification/soumission ; écart n°2 résolu par #413) |
 | `docs/audit/preuves/` | **rafraîchi** (pytest 5 207, vitest 233, tsc, build, anti-dérive, ruff, format, mypy — datés 2026-11-11) |
 | `docs/qa/REGRESSION_EVIDENCE.md` | absent — à créer lors du premier exercice de non-régression formel sur staging |
