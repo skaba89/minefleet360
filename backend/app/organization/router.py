@@ -1,3 +1,4 @@
+import json
 import uuid
 from typing import Annotated, Literal
 
@@ -10,11 +11,13 @@ from app.core.http import IfMatch, Page, Pagination, etag
 from app.organization import service
 from app.organization.models import Site, Tenant
 from app.organization.schemas import (
+    OnboardingChecklistOut,
     SiteCreate,
     SiteOut,
     SiteUpdate,
     TenantCreate,
     TenantOut,
+    TenantOverviewOut,
     TenantStatusChange,
     TenantSummary,
     TenantUpdate,
@@ -84,6 +87,15 @@ def get_tenant(
     return _tenant_summary(tenant)
 
 
+@platform_router.get("/{tenant_id}/overview", response_model=TenantOverviewOut)
+def get_tenant_overview(
+    tenant_id: uuid.UUID,
+    auth: Annotated[Authorized, Depends(Require("organization.tenant.support"))],
+) -> TenantOverviewOut:
+    """Vue consolidée d'exploitation d'un compte (lot 4 : outillage support plateforme)."""
+    return service.tenant_overview(auth, tenant_id)
+
+
 @platform_router.post("/{tenant_id}/suspend", response_model=TenantSummary)
 def suspend_tenant(
     tenant_id: uuid.UUID,
@@ -122,6 +134,33 @@ def update_own_tenant(
     response: Response,
 ) -> TenantOut:
     return _tenant_out(service.update_own_tenant(auth, body, version), response)
+
+
+@tenant_router.get("/onboarding", response_model=OnboardingChecklistOut)
+def read_onboarding_checklist(
+    auth: Annotated[Authorized, Depends(Require("organization.tenant.read"))],
+) -> OnboardingChecklistOut:
+    """Parcours de démarrage : étapes calculées depuis l'état réel de la société (lot 4)."""
+    return service.onboarding_checklist(auth)
+
+
+@tenant_router.get("/export")
+def export_own_tenant_data(
+    auth: Annotated[Authorized, Depends(Require("organization.tenant.export"))],
+) -> Response:
+    """Réversibilité : export JSON des données de la société (journalisé, sans aucun secret)."""
+    payload = service.export_tenant_data(auth)
+    auth.db.commit()
+    stamp = auth.clock.now().strftime("%Y%m%d")
+    return Response(
+        json.dumps(payload, ensure_ascii=False, indent=2, default=str),
+        media_type="application/json",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="export-minefleet-{payload["tenant"]["code"]}-{stamp}.json"'
+            )
+        },
+    )
 
 
 # --- Sites --------------------------------------------------------------------------------------------

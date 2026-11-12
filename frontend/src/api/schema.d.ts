@@ -2194,6 +2194,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/tenants/{tenant_id}/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tenant Overview
+         * @description Vue consolidée d'exploitation d'un compte (lot 4 : outillage support plateforme).
+         */
+        get: operations["get_tenant_overview_api_v1_platform_tenants__tenant_id__overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/platform/tenants/{tenant_id}/reactivate": {
         parameters: {
             query?: never;
@@ -2663,6 +2683,26 @@ export interface paths {
         patch: operations["update_own_tenant_api_v1_tenant_patch"];
         trace?: never;
     };
+    "/api/v1/tenant/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Own Tenant Data
+         * @description Réversibilité : export JSON des données de la société (journalisé, sans aucun secret).
+         */
+        get: operations["export_own_tenant_data_api_v1_tenant_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenant/invoices": {
         parameters: {
             query?: never;
@@ -2689,6 +2729,26 @@ export interface paths {
         };
         /** Get Own Invoice */
         get: operations["get_own_invoice_api_v1_tenant_invoices__invoice_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Onboarding Checklist
+         * @description Parcours de démarrage : étapes calculées depuis l'état réel de la société (lot 4).
+         */
+        get: operations["read_onboarding_checklist_api_v1_tenant_onboarding_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6656,6 +6716,77 @@ export interface components {
             /** Month */
             month: string;
         };
+        /** OnboardingChecklistOut */
+        OnboardingChecklistOut: {
+            /** Done Count */
+            done_count: number;
+            /** Progress Percent */
+            progress_percent: number;
+            /** Steps */
+            steps: components["schemas"]["OnboardingStepOut"][];
+            /** Total */
+            total: number;
+        };
+        /**
+         * OnboardingStepOut
+         * @description Étape de démarrage calculée depuis l'état réel de la société (aucune persistance).
+         */
+        OnboardingStepOut: {
+            /** Count */
+            count: number;
+            /** Done */
+            done: boolean;
+            /** Hint */
+            hint: string;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Target */
+            target: number;
+        };
+        /** OverviewInvoice */
+        OverviewInvoice: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /** Number */
+            number: string;
+            /** Status */
+            status: string;
+            /** Total Gnf */
+            total_gnf: number;
+        };
+        /**
+         * OverviewUsage
+         * @description Usage réel d'une ressource plafonnée par le plan (limite None = illimité).
+         */
+        OverviewUsage: {
+            /** Field */
+            field: string;
+            /** Label */
+            label: string;
+            /** Limit */
+            limit: number | null;
+            /** Usage */
+            usage: number;
+        };
+        /** OverviewUsers */
+        OverviewUsers: {
+            /** Active */
+            active: number;
+            /** Disabled */
+            disabled: number;
+            /** Invited */
+            invited: number;
+        };
         /** Page[ActionOut] */
         Page_ActionOut_: {
             /** Items */
@@ -8768,6 +8899,22 @@ export interface components {
              * Format: uuid
              */
             tenant_id: string;
+        };
+        /**
+         * TenantOverviewOut
+         * @description Vue consolidée d'exploitation d'un compte client (outillage support plateforme, lot 4).
+         *
+         *     Calculée à la lecture, aucune persistance : société, abonnement courant (statut effectif),
+         *     usage vs limites du plan, comptes utilisateurs, factures récentes.
+         */
+        TenantOverviewOut: {
+            /** Invoices */
+            invoices: components["schemas"]["OverviewInvoice"][];
+            subscription: components["schemas"]["TenantSubscriptionOut"] | null;
+            tenant: components["schemas"]["TenantSummary"];
+            /** Usage */
+            usage: components["schemas"]["OverviewUsage"][];
+            users: components["schemas"]["OverviewUsers"];
         };
         /** TenantStatusChange */
         TenantStatusChange: {
@@ -15451,6 +15598,39 @@ export interface operations {
             };
         };
     };
+    get_tenant_overview_api_v1_platform_tenants__tenant_id__overview_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantOverviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     reactivate_tenant_api_v1_platform_tenants__tenant_id__reactivate_post: {
         parameters: {
             query?: never;
@@ -16665,6 +16845,37 @@ export interface operations {
             };
         };
     };
+    export_own_tenant_data_api_v1_tenant_export_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_own_invoices_api_v1_tenant_invoices_get: {
         parameters: {
             query?: {
@@ -16720,6 +16931,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InvoiceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_onboarding_checklist_api_v1_tenant_onboarding_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnboardingChecklistOut"];
                 };
             };
             /** @description Validation Error */

@@ -57,7 +57,9 @@ permissions:
     tranche: 1a
     kind: read
     site_bound: false
-    routes: [{ method: GET, path: /tenant, shape: singleton, success: 200 }]
+    routes:
+      - { method: GET, path: /tenant, shape: singleton, success: 200 }
+      - { method: GET, path: /tenant/onboarding, shape: singleton, success: 200 }
     grants:
       TENANT_ADMIN: [TENANT]
       DIRECTION: [TENANT]
@@ -78,6 +80,24 @@ permissions:
     site_bound: false
     routes: [{ method: PATCH, path: /tenant, shape: singleton, success: 200 }]
     audit: { action: tenant.update }
+    grants: { TENANT_ADMIN: [TENANT] }
+  # --- commercialisation SaaS (lot 4 : support, onboarding, réversibilité) ------------------------
+  organization.tenant.support:
+    tranche: 2a
+    kind: read
+    site_bound: false
+    routes:
+      - { method: GET, path: "/platform/tenants/{tenant_id}/overview", shape: item, success: 200 }
+    # Vue consolidée d'exploitation d'un compte client (usage vs quotas, abonnement, factures).
+    grants: { PLATFORM_ADMIN: [PLATFORM] }
+  organization.tenant.export:
+    tranche: 2a
+    kind: export
+    site_bound: false
+    routes: [{ method: GET, path: /tenant/export, shape: singleton, success: 200 }]
+    # Réversibilité : export JSON des données de la société (aucun secret, aucune donnée
+    # d'authentification) — décision réservée à l'administrateur de la société.
+    audit: { action: tenant.export }
     grants: { TENANT_ADMIN: [TENANT] }
   organization.site.read:
     tranche: 1a

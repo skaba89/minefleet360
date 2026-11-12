@@ -1648,6 +1648,11 @@ export const GRANTS = {
       "PLATFORM"
     ]
   },
+  "organization.tenant.export": {
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "organization.tenant.list": {
     "PLATFORM_ADMIN": [
       "PLATFORM"
@@ -1700,6 +1705,11 @@ export const GRANTS = {
     "WORKSHOP_CHIEF": [
       "TENANT",
       "SITE"
+    ]
+  },
+  "organization.tenant.support": {
+    "PLATFORM_ADMIN": [
+      "PLATFORM"
     ]
   },
   "organization.tenant.suspend": {
