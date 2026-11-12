@@ -6,6 +6,7 @@ import { useMe } from "../auth/AuthContext";
 import { AccessDenied, DataState, Pager } from "../components/common";
 import { ActionForm } from "../components/forms";
 import { can } from "../lib/permissions";
+import { formatGnf } from "./PlatformInvoicesPage";
 
 type Plan = Schemas["PlanSummary"];
 type PlanPage = { items: Plan[]; page: number; page_size: number; total: number };
@@ -27,6 +28,8 @@ type PlanFormState = {
   max_vehicles: string;
   max_gps_trackers: string;
   document_retention_days: string;
+  price_monthly_gnf: string;
+  billing_period: string;
   status: string;
 };
 
@@ -37,6 +40,8 @@ const EMPTY_FORM: PlanFormState = {
   max_vehicles: "",
   max_gps_trackers: "",
   document_retention_days: "",
+  price_monthly_gnf: "",
+  billing_period: "",
   status: "DRAFT",
 };
 
@@ -48,14 +53,28 @@ function formFromPlan(plan: Plan): PlanFormState {
     max_vehicles: plan.max_vehicles?.toString() ?? "",
     max_gps_trackers: plan.max_gps_trackers?.toString() ?? "",
     document_retention_days: plan.document_retention_days?.toString() ?? "",
+    price_monthly_gnf: plan.price_monthly_gnf?.toString() ?? "",
+    billing_period: plan.billing_period ?? "",
     status: plan.status,
   };
 }
 
-/** Quota saisi vide = NULL côté API = illimité. */
+/** Quota ou tarif saisi vide = NULL côté API (illimité / non tarifé). */
 function quotaValue(value: string): number | null {
   const trimmed = value.trim();
   return trimmed === "" ? null : Number(trimmed);
+}
+
+/** Période vide = NULL côté API. */
+function periodValue(value: string): string | null {
+  return value === "" ? null : value;
+}
+
+/** Tarif affiché : montant GNF + période indicative, ou « Non tarifé ». */
+function tariffText(plan: Plan): string {
+  if (plan.price_monthly_gnf === null || plan.price_monthly_gnf === undefined) return "Non tarifé";
+  const suffix = plan.billing_period === "ANNUAL" ? " / an" : " / mois";
+  return formatGnf(plan.price_monthly_gnf) + suffix;
 }
 
 function PlanEditForm({ plan, onDone }: { plan: Plan; onDone: () => void }) {
@@ -81,6 +100,8 @@ function PlanEditForm({ plan, onDone }: { plan: Plan; onDone: () => void }) {
             max_vehicles: quotaValue(form.max_vehicles),
             max_gps_trackers: quotaValue(form.max_gps_trackers),
             document_retention_days: quotaValue(form.document_retention_days),
+            price_monthly_gnf: quotaValue(form.price_monthly_gnf),
+            billing_period: periodValue(form.billing_period),
           },
           ifMatch: `"${plan.row_version}"`,
         });
@@ -106,6 +127,17 @@ function PlanEditForm({ plan, onDone }: { plan: Plan; onDone: () => void }) {
           type="number" min={30} max={3650} value={form.document_retention_days}
           onChange={change("document_retention_days")}
         />
+      </label>
+      <label>Tarif mensuel en GNF (vide = non tarifé)
+        <input type="number" min={0} max={1000000000} value={form.price_monthly_gnf}
+          onChange={change("price_monthly_gnf")} />
+      </label>
+      <label>Période de facturation (indicative)
+        <select value={form.billing_period} onChange={change("billing_period")}>
+          <option value="">Non tarifé</option>
+          <option value="MONTHLY">Mensuelle</option>
+          <option value="ANNUAL">Annuelle</option>
+        </select>
       </label>
       <label>Statut
         <select value={form.status} onChange={change("status")}>
@@ -145,6 +177,8 @@ function CreatePlanForm({ onDone }: { onDone: () => void }) {
             max_vehicles: quotaValue(form.max_vehicles),
             max_gps_trackers: quotaValue(form.max_gps_trackers),
             document_retention_days: quotaValue(form.document_retention_days),
+            price_monthly_gnf: quotaValue(form.price_monthly_gnf),
+            billing_period: periodValue(form.billing_period),
           },
         });
         await queryClient.invalidateQueries({ queryKey: ["saas-plans"] });
@@ -179,6 +213,17 @@ function CreatePlanForm({ onDone }: { onDone: () => void }) {
           onChange={change("document_retention_days")}
         />
       </label>
+      <label>Tarif mensuel en GNF (vide = non tarifé)
+        <input type="number" min={0} max={1000000000} value={form.price_monthly_gnf}
+          onChange={change("price_monthly_gnf")} />
+      </label>
+      <label>Période de facturation (indicative)
+        <select value={form.billing_period} onChange={change("billing_period")}>
+          <option value="">Non tarifé</option>
+          <option value="MONTHLY">Mensuelle</option>
+          <option value="ANNUAL">Annuelle</option>
+        </select>
+      </label>
       <label>Statut
         <select value={form.status} onChange={change("status")}>
           <option value="DRAFT">Brouillon</option>
@@ -189,7 +234,7 @@ function CreatePlanForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-/** Catalogue des plans SaaS — lot 1 commercialisation (référentiel plateforme, pas de tarif). */
+/** Catalogue des plans SaaS — lot 1 commercialisation, tarif mensuel GNF exposé (lot 3). */
 export function PlatformPlansPage() {
   const me = useMe();
   const authorized = can(me.grants, "billing.plan.list");
@@ -213,8 +258,9 @@ export function PlatformPlansPage() {
     <section>
       <h1>Plans SaaS</h1>
       <p className="muted">
-        Catalogue de l'offre et quotas associés (référentiel plateforme). L'abonnement des sociétés et la
-        facturation sont des lots ultérieurs : aucun tarif ni moyen de paiement n'est géré ici.
+        Catalogue de l'offre, quotas associés et tarif mensuel paramétrable en GNF (référentiel plateforme).
+        Le tarif est un paramètre de facturation saisi ici — son approbation commerciale reste une décision
+        métier distincte. Aucun moyen de paiement n'est intégré : la facturation crée des documents internes.
       </p>
       {canCreate && (
         <p>
@@ -241,6 +287,7 @@ export function PlatformPlansPage() {
               <th scope="col">Véhicules</th>
               <th scope="col">Traceurs GPS</th>
               <th scope="col">Rétention (j)</th>
+              <th scope="col">Tarif mensuel</th>
               {canUpdate && <th scope="col">Gestion</th>}
             </tr>
           </thead>
@@ -255,6 +302,7 @@ export function PlatformPlansPage() {
                 <td>{quotaText(plan.max_vehicles)}</td>
                 <td>{quotaText(plan.max_gps_trackers)}</td>
                 <td>{quotaText(plan.document_retention_days)}</td>
+                <td>{tariffText(plan)}</td>
                 {canUpdate && (
                   <td>
                     <button
