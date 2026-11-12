@@ -153,6 +153,15 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
     ("POST", "/tyres/{tyre_id}/inspections"): {"tread_mm": "50.0"},
     ("POST", "/tyres/{tyre_id}/scrap"): {"reason_code": "AGE"},
     ("POST", "/tyres/{tyre_id}/repair"): {"action": "SEND"},
+    ("POST", "/preventive-plans/{plan_id}/suspend"): {"reason": "Suspension fictive du plan"},
+    ("POST", "/preventive-plans/{plan_id}/revise"): {
+        "vehicle_id": "00000000-0000-0000-0000-0000000000aa",
+        "code": "PLAN-RBAC-V2",
+        "days_interval": 30,
+    },
+    ("POST", "/preventive-declarations/{declaration_id}/decide"): {"decision": "APPROVE"},
+    # Les approbations de compteurs sont optionnelles : corps minimal valable.
+    ("POST", "/work-orders/{work_order_id}/complete-preventive"): {},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/approve"): {},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/void"): {"reason_code": "ENTRY_ERROR"},
     ("POST", "/weighing-tickets/{weighing_ticket_id}/correct"): {
@@ -287,12 +296,83 @@ def world(api: Api, client: TestClient) -> Iterator[World]:
         json={"doc_type": "ROAD_PERMIT", "reference": "RP-FICTIF-1", "valid_until": "2030-01-01"},
     )
     assert document.status_code == 201, document.text
-    work_order = client.post(
-        f"{API}/work-orders",
+    # Chaîne préventive complète (P1 item 5 — les routes préventives sont couvertes par ST-02) :
+    # plan → déclaration approuvée quatre-yeux → échéance due → OT préventif planifié → APPROVE
+    # → ASSIGN → START → SUBMIT → QC_PASS par un non-exécutant (RM-114). L'OT clôturé alimente
+    # le GET de contexte de finalisation ; les échéances et l'OT servent aux tests d'isolation.
+    chief = next(p for p in personas if p.role == "WORKSHOP_CHIEF" and p.scope == "TENANT")
+    mechanic = api.user(a, "MECHANIC", "SITE", "S1")
+    preventive_plan = client.post(
+        f"{API}/preventive-plans",
         headers=ops.headers,
-        json={"vehicle_id": vehicle, "symptom_code": "OTHER", "priority": "LOW"},
+        json={"vehicle_id": vehicle, "code": "RBAC-PREV", "days_interval": 30},
     )
-    assert work_order.status_code == 201, work_order.text
+    assert preventive_plan.status_code == 201, preventive_plan.text
+    declared = client.post(
+        f"{API}/preventive-declarations",
+        headers=ops.headers,
+        json={
+            "vehicle_id": vehicle,
+            "plan_code": "RBAC-PREV",
+            "knowledge": "KNOWN",
+            "serviced_at": (datetime.now(UTC) - timedelta(days=40)).isoformat(),
+        },
+    )
+    assert declared.status_code == 201, declared.text
+    decided = client.post(
+        f"{API}/preventive-declarations/{declared.json()['service_declaration_id']}/decide",
+        headers=chief.headers,
+        json={"decision": "APPROVE"},
+    )
+    assert decided.status_code == 200, decided.text
+    evaluated = client.post(
+        f"{API}/preventive-dues/evaluate",
+        headers=chief.headers,
+        json={"site_id": str(a.sites["S1"])},
+    )
+    assert evaluated.status_code == 200, evaluated.text
+    due = next(
+        item
+        for item in client.get(
+            f"{API}/preventive-dues", headers=chief.headers, params={"status": "DUE"}
+        ).json()["items"]
+        if item["vehicle_id"] == vehicle
+    )
+    scheduled = client.post(
+        f"{API}/preventive-dues/{due['maintenance_due_id']}/schedule", headers=chief.headers
+    )
+    assert scheduled.status_code == 200, scheduled.text
+    work_order_id = uuid.UUID(scheduled.json()["work_order_id"])
+    work_order_url = f"{API}/work-orders/{work_order_id}"
+    for action, extra in (
+        ("APPROVE", {}),
+        ("ASSIGN", {"assigned_to": str(mechanic.user_id)}),
+    ):
+        version = client.get(work_order_url, headers=chief.headers).headers["ETag"]
+        decided_ot = client.post(
+            f"{work_order_url}/decision",
+            headers={**ops.headers, "If-Match": version},
+            json={"action": action, **extra},
+        )
+        assert decided_ot.status_code == 200, decided_ot.text
+    for action, extra in (
+        ("START", {}),
+        ("SUBMIT", {"work_done": "Entretien préventif fictif réalisé et vérifié"}),
+    ):
+        version = client.get(work_order_url, headers=chief.headers).headers["ETag"]
+        progressed = client.post(
+            f"{work_order_url}/progress",
+            headers={**chief.headers, "If-Match": version},
+            json={"action": action, **extra},
+        )
+        assert progressed.status_code == 200, progressed.text
+    version = client.get(work_order_url, headers=chief.headers).headers["ETag"]
+    released = client.post(
+        f"{work_order_url}/decision",
+        headers={**ops.headers, "If-Match": version},
+        json={"action": "QC_PASS"},
+    )
+    assert released.status_code == 200, released.text
     fuel_tank = client.post(
         f"{API}/fuel/tanks",
         headers=a.admin.headers,
@@ -469,7 +549,7 @@ def world(api: Api, client: TestClient) -> Iterator[World]:
         "tyre_id": uuid.UUID(tyre.json()["tyre_id"]),
         "hse_incident_id": uuid.UUID(incident_id),
         "hse_corrective_action_id": uuid.UUID(corrective.json()["hse_corrective_action_id"]),
-        "work_order_id": uuid.UUID(work_order.json()["work_order_id"]),
+        "work_order_id": work_order_id,
         "vehicle_document_id": uuid.UUID(document.json()["vehicle_document_id"]),
         "weighing_ticket_id": weighing_ticket,
         "site_location_id": uuid.UUID(places[0]),

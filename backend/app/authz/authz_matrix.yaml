@@ -9,7 +9,8 @@
 #  - DRIVER sans fleet.vehicle_category.read au lot 1 (D-25). workforce.*.read_sensitive / read_number :
 #    exprimés par field_policies (HR seul), sans route propre.
 version: 1
-tranche_courante: 1c
+# P1 item 5 : 2a (commercialisation SaaS, lots 1-4) est livrée et appliquée — la vague courante reflète l'état réel.
+tranche_courante: 2a
 
 roles:
   PLATFORM_ADMIN: { allowed_scopes: [PLATFORM], tenant_kind: PLATFORM, assignable_by_tenant: false }
@@ -651,8 +652,10 @@ permissions:
       AUDITOR: [TENANT]
 
   # --- maintenance (lot 3a, docs/PLAN_LOT3.md §5) ------------------------------------------------------
+  # P1 item 5 : préventif livré (plans/échéances/déclarations, pytest + E2E #430) — sorti de « later »
+  # pour retrouver la couverture ST-02 générée (la règle « later n'a ni routes ni grants » est rétablie).
   maintenance.preventive.manage:
-    tranche: later
+    tranche: 1c
     kind: create
     site_bound: true
     routes:
@@ -671,7 +674,7 @@ permissions:
       OPS_MANAGER: [TENANT, SITE]
       WORKSHOP_CHIEF: [TENANT, SITE]
   maintenance.preventive.read:
-    tranche: later
+    tranche: 1c
     kind: read
     site_bound: true
     routes:

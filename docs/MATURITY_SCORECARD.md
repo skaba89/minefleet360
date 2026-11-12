@@ -1,72 +1,77 @@
 # Score de maturité
 
-Audit indépendant du 30 octobre 2026, basé sur `main@3c4bb02`.
+Audit indépendant du 30 octobre 2026, basé sur `main@3c4bb02` (70,3/100), **rejoué le 12 novembre 2026 sur `main@c34d322` (PR #435)** avec la grille, la méthode et les poids inchangés. Le calcul du rejeu est reproductible : `python3 scripts/replay_maturity_scorecard.py` vérifie que la colonne du 30 octobre retombe exactement sur 73,4 / 56,7 / 76,5 → 70,3 avant d'imprimer les agrégats courants.
 
-## Méthode
+## Méthode (inchangée)
 
 Chaque capacité est notée de 0 à 100 à partir des preuves dans le code, les migrations, l'UI et les tests exécutés. Les moyennes de catégorie sont arithmétiques. Le score global applique les poids suivants : fonctionnel 40 %, métier minier 25 %, technique 35 %.
 
-`Score global = 73,4 × 0,40 + 56,7 × 0,25 + 76,5 × 0,35 = 70,3/100`.
+`Score global (12 nov) = 80,5 × 0,40 + 63,0 × 0,25 + 78,8 × 0,35 = 75,5/100`.
 
-Le résultat proche de l'ancienne référence de 70 est une coïncidence : il a été recalculé capacité par capacité. Le noyau MVP est plus mature que 70, mais le périmètre cible complet est pénalisé par HSE, pièces/pneus, rentabilité et industrialisation.
+Le rejeu porte exclusivement sur des preuves de **code, migrations, UI et tests** postérieures au 30 octobre ; aucune ligne n'intègre de validation terrain (matériel, Android physique, réseau réel, données de production), qui reste absente.
 
-## Fonctionnel — 73,4/100
+## Fonctionnel — 80,5/100 (73,4 au 30 octobre)
 
-| Capacité | Score | Preuve / lacune principale | Action et critère de validation |
-|---|---:|---|---|
-| Sociétés et sites | 92 | modèles, API, RLS et tests ; recette réelle manquante | import/recette multi-sites sans fuite tenant |
-| Utilisateurs et permissions | 91 | RBAC, MFA, sessions, audit ; gouvernance GitHub non prouvée | revue d'accès et checks de branche attestés |
-| Parc et véhicules | 88 | cycle riche et documents ; import terrain à valider | données réelles validées et E2E par catégorie |
-| Conducteurs et habilitations | 86 | permis/qualifications ; alertes conformité limitées | blocage automatique testé sur habilitation expirée |
-| Affectations | 84 | exclusions et E2E ; relève complexe à éprouver | scénario de poste concurrent réussi |
-| Missions et rotations | 82 | états/événements/pesées ; optimisation absente | E2E d'exception et reprise réseau |
-| Maintenance corrective/préventive | 78 | OT, mécaniciens, échéances ; coûts/fiabilité incomplets | OT chiffré et KPI MTBF/MTTR réconciliés |
-| Carburant et achats | 83 | cycle très avancé ; UI pompes à finir | pompe réelle/sandbox et rapprochement visible |
-| Documents réglementaires | 84 | véhicule robuste ; périmètre incomplet | alertes et conformité multi-entités |
-| GPS et géolocalisation | 75 | téléphone/traceur/live ; intégration réelle absente | test fournisseur + trajets + géofence |
-| Pesées et production | 82 | pesées cohérentes ; plan de production absent | tonnes/heure et rapprochement de poste |
-| Pièces et pneus | 20 | pas de stock structuré | cycle stock et pneu complet avec audit |
-| HSE | 25 | pas de module métier | inspection -> incident -> action E2E |
-| Reporting/tableaux de bord | 58 | UI/KPI de base ; coûts/rentabilité incomplets | KPI métier sourcés et exports vérifiés |
+| Capacité | 30 oct | 12 nov | Preuve nouvelle depuis le 30 octobre |
+|---|---:|---:|---|
+| Sociétés et sites | 92 | 92 | — |
+| Utilisateurs et permissions | 91 | 91 | — |
+| Parc et véhicules | 88 | 88 | — |
+| Conducteurs et habilitations | 86 | 86 | — |
+| Affectations | 84 | 84 | — |
+| Missions et rotations | 82 | 82 | — |
+| Maintenance corrective/préventive | 78 | 83 | pièces structurées (CMP, réservations concurrentes, réappro quatre-yeux), préventif complété (déclarations, révision avec historique, suspension) et prouvé depuis l'UI (#430) |
+| Carburant et achats | 83 | 83 | — |
+| Documents réglementaires | 84 | 86 | cycle documentaire gouverné dans `/juridique` : empreinte SHA-256 au client, scan, vérification quatre-yeux, soumission conditionnée (#432), prouvé navigateur sur harnais S3/ClamAV |
+| GPS et géolocalisation | 75 | 85 | trajets/replay, cap, géofences, alertes, notification, SSE événementiel PostgreSQL, repli/reconnexion (#340–#359) — matériel toujours non certifié |
+| Pesées et production | 82 | 82 | — |
+| Pièces et pneus | 20 | 58 | stock structuré : CMP, magasins, mouvements, réservations, réappro à décision séparée, valorisation ; pneus montages/démontages/usure/coût (migrations 0053+, #304) |
+| HSE | 25 | 62 | incidents/enquêtes/actions correctives (0052), inspections/checklists/non-conformités/preuves photo (0054), double regard prouvé E2E, déclaration hors ligne de bout en bout |
+| Reporting/tableaux de bord | 58 | 65 | coût complet par engin (0055 : carburant + pièces + main-d'œuvre valorisée + pneumatiques), KPI fiabilité alimentés par l'OT immobilisant (#430) ; marge/revenus toujours absents |
 
-## Métier minier — 56,7/100
+## Métier minier — 63,0/100 (56,7 au 30 octobre)
 
-| Capacité | Score | Preuve / lacune principale | Action et critère de validation |
-|---|---:|---|---|
-| Opérations quotidiennes | 82 | missions/rotations solides ; poste offline incomplet | clôture de poste E2E |
-| Dispatching et transport | 82 | affectations/missions ; optimisation limitée | scénario multi-engins avec exceptions |
-| Gestion des équipements | 85 | parc et compteurs riches | validation de référentiels miniers réels |
-| Productivité/disponibilité | 65 | données disponibles, agrégation limitée | KPI disponibilité et utilisation réconciliés |
-| Maintenance des engins | 78 | atelier/préventif présents | pièces, coûts, MTBF/MTTR |
-| Approvisionnements | 72 | carburant/achats, pas de magasin pièces | cycle purchase-to-stock pièces |
-| Coût par équipement | 40 | sources partielles, pas de coût unifié | grand livre par engin/période |
-| Gestion des équipes | 55 | conducteurs/mécaniciens, roster limité | poste/équipe/relève complets |
-| Prévention des incidents | 25 | HSE structuré absent | inspection et action corrective auditées |
-| Sous-traitants | 20 | société externe seulement | contrats/SLA/facturation |
-| Rentabilité des opérations | 20 | marge/revenus absents | marge par mission/site/client |
+| Capacité | 30 oct | 12 nov | Preuve nouvelle depuis le 30 octobre |
+|---|---:|---:|---|
+| Opérations quotidiennes | 82 | 84 | déclaration d'incident HSE hors ligne : première écriture métier synchronisable de bout en bout |
+| Dispatching et transport | 82 | 82 | — |
+| Gestion des équipements | 85 | 85 | — |
+| Productivité/disponibilité | 65 | 65 | — |
+| Maintenance des engins | 78 | 82 | préventif complet (plans/échéances/déclarations) et pièces structurées rattachées aux OT |
+| Approvisionnements | 72 | 78 | cycle purchase-to-stock pièces : réapprovisionnement à décision séparée quatre-yeux, commandes depuis l'UI (#409, #430) |
+| Coût par équipement | 40 | 60 | coût complet unifié par engin/période (`LIVRAISON_COUT_COMPLET.md`, migration 0055) |
+| Gestion des équipes | 55 | 55 | — |
+| Prévention des incidents | 25 | 62 | module HSE structuré complet côté code et tests (HSE-1, HSE-2, offline, double regard E2E) |
+| Sous-traitants | 20 | 20 | — |
+| Rentabilité des opérations | 20 | 20 | — |
 
-## Technique — 76,5/100
+## Technique — 78,8/100 (76,5 au 30 octobre)
 
-| Capacité | Score | Preuve / lacune principale | Action et critère de validation |
-|---|---:|---|---|
-| Architecture | 86 | monorepo modulaire et limites tenant | ADR à jour et contrôle de dépendances |
-| Qualité du code | 84 | Ruff/mypy/types/tests | dette mesurée et aucune dérive de contrat |
-| Base de données | 88 | PostGIS, contraintes, 33 migrations | restauration et migration sur copie réaliste |
-| Sécurité | 87 | MFA, RBAC, secrets, audit | SAST/secrets/SBOM et revue externe |
-| Isolation multi-tenant | 92 | RLS forcée et tests négatifs | test continu et revue de chaque nouvelle table |
-| Tests automatisés | 89 | 3 115 backend, 55 frontend, E2E | charge, résilience et nouveaux modules |
-| CI/CD | 78 | CI/E2E robustes ; CD multi-env absent | promotion signée dev/staging/prod |
-| Performance | 70 | pagination/index/contraintes ; charge non mesurée | budgets p95 et tests GPS/dispatch |
-| Sauvegarde/restauration | 58 | scripts/docs partiels ; exercice absent | restauration réussie avec RPO/RTO |
-| Observabilité | 52 | logs/audit, pas de supervision prouvée | métriques/traces/SLO/alertes actives |
-| Interface utilisateur | 78 | React responsive et tests ; modules incomplets | accessibilité et parcours terrain testés |
-| Déploiement | 68 | conteneurs/docs ; état pilote courant non prouvé | commit/migration courant déployés et smoke |
-| Résilience | 64 | intégrité/transactions ; DR/offline incomplets | tests de panne DB/réseau et runbook |
+| Capacité | 30 oct | 12 nov | Preuve nouvelle depuis le 30 octobre |
+|---|---:|---:|---|
+| Architecture | 86 | 86 | — |
+| Qualité du code | 84 | 85 | anti-dérive matrice+permissions verte à chaque PR, ruff/mypy strict, double contrôle de contrat OpenAPI en CI |
+| Base de données | 88 | 89 | 67 migrations additives disciplinées (33 au 30 octobre), RLS forcée sur 75 tables |
+| Sécurité | 87 | 88 | sessions révocables avec audit (#375), OpenAPI et docs fermés en production, clé HMAC rate-limit dédiée (#374) |
+| Isolation multi-tenant | 92 | 93 | 25 spécifications E2E tenant-isolation exécutées dans le navigateur |
+| Tests automatisés | 89 | 91 | 5 733 tests pytest sur PostgreSQL 16.10 + PostGIS réel, 260 Vitest, recette API R1–R10 |
+| CI/CD | 78 | 82 | images de release signées Cosign + provenance SLSA + SBOM (#376), Dependabot actif et démontré (#377–#399) |
+| Performance | 70 | 71 | workflow de benchmark GPS ajouté ; p95/p99 jamais mesurés sur environnement réel |
+| Sauvegarde/restauration | 58 | 64 | round-trip de restauration chiffrée automatisé en CI avec gardes RLS fail-closed ; coffre externe réel toujours absent |
+| Observabilité | 52 | 56 | surveillance de santé et runbook de recette staging versionné ; alertes non éprouvées par incident réel |
+| Interface utilisateur | 78 | 82 | forme canonique unique du refus d'accès (#413), pages 404 dédiées (#374), socle E2E 34 routes × 13 rôles (#408) |
+| Déploiement | 68 | 71 | images de publication par digest immuables, procédure release/rollback documentée |
+| Résilience | 64 | 66 | rejeu de synchronisation à 5 s après réponse perdue (#434), idempotence du parcours hors ligne |
+
+## Relation avec la grille imposée et verdict
+
+Ce rejeu est un outil de pilotage interne sur la grille d'origine à trois axes ; il **ne remplace pas** la grille imposée de préparation commerciale (`docs/audit/COMMERCIAL_READINESS_CURRENT.md`, 84/100 au 12 novembre), qui reste la référence de décision. Les deux grilles mesurent des choses différentes : celle-ci la profondeur métier par capacité, celle-là la préparation à la commercialisation. Le verdict de gouvernance est inchangé : **NO-GO commercialisation industrialisée, GO conditionnel pour un pilote fermé** — la progression des deux grilles repose entièrement sur des preuves consultables (code, tests, CI), jamais sur une validation terrain ou opérationnelle, et aucun des 8 prérequis terrain du `docs/qa/GO_NO_GO.md` n'est exécuté.
 
 ## Seuils de décision
 
-- **70,3/100 actuel** : fondations solides, pas encore pilote minier complet.
-- **80/100 MVP consolidé** : fermer R1/R2/R5 et livrer pièces minimum + HSE minimum.
-- **85/100 pilote exploitable** : GPS réel, observabilité, restauration, coûts et validation terrain.
+- **70,3/100 (30 octobre)** : fondations solides, pas encore pilote minier complet.
+- **75,5/100 (12 novembre, rejeu)** : les lacunes de code majeures (pièces, pneus, HSE, coûts) sont comblées côté logiciel ; la distance aux seuils suivants est désormais dominée par les validations terrain, plus par le code.
+- **80/100 MVP consolidé** : réconcilier coûts, MTBF/MTTR et disponibilité sur données réelles.
+- **85/100 pilote exploitable** : GPS réel certifié, observabilité éprouvée, restauration sur coffre externe, validation terrain.
 - **90/100 SaaS industrialisé** : CD multi-env, DR, charge, SLO et gouvernance éprouvés.
 - **95/100 maturité élevée** : preuves sur plusieurs exploitations, sans présumer le résultat.

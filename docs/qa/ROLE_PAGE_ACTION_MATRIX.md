@@ -185,8 +185,8 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `maintenance.parts.release` | 1c | `POST /part-reservations/{reservation_id}/release` | `OPS_MANAGER`, `STOREKEEPER`, `WORKSHOP_CHIEF` |
 | `maintenance.parts.reserve` | 1c | `POST /part-reservations` | `OPS_MANAGER`, `STOREKEEPER`, `WORKSHOP_CHIEF` |
 | `maintenance.parts.read` | 1c | `GET /parts`<br>`GET /part-stores`<br>`GET /part-balances`<br>`GET /part-movements`<br>`GET /part-reservations`<br>`GET /part-replenishments`<br>`GET /parts-purchase-orders` | `AUDITOR`, `DIRECTION`, `OPS_MANAGER`, `STOREKEEPER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
-| `maintenance.preventive.manage` | later | `POST /preventive-plans`<br>`POST /preventive-plans/{plan_id}/suspend`<br>`POST /preventive-plans/{plan_id}/revise`<br>`POST /preventive-dues/{due_id}/schedule`<br>`POST /work-orders/{work_order_id}/complete-preventive`<br>`GET /work-orders/{work_order_id}/preventive-completion`<br>`POST /preventive-dues/evaluate`<br>`POST /preventive-declarations`<br>`POST /preventive-declarations/{declaration_id}/decide` | `OPS_MANAGER`, `WORKSHOP_CHIEF` |
-| `maintenance.preventive.read` | later | `GET /vehicles/{vehicle_id}/preventive-plans`<br>`GET /vehicles/{vehicle_id}/preventive-dues`<br>`GET /vehicles/{vehicle_id}/preventive-status`<br>`GET /preventive-dues`<br>`GET /vehicles/{vehicle_id}/preventive-declarations` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `MECHANIC`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
+| `maintenance.preventive.manage` | 1c | `POST /preventive-plans`<br>`POST /preventive-plans/{plan_id}/suspend`<br>`POST /preventive-plans/{plan_id}/revise`<br>`POST /preventive-dues/{due_id}/schedule`<br>`POST /work-orders/{work_order_id}/complete-preventive`<br>`GET /work-orders/{work_order_id}/preventive-completion`<br>`POST /preventive-dues/evaluate`<br>`POST /preventive-declarations`<br>`POST /preventive-declarations/{declaration_id}/decide` | `OPS_MANAGER`, `WORKSHOP_CHIEF` |
+| `maintenance.preventive.read` | 1c | `GET /vehicles/{vehicle_id}/preventive-plans`<br>`GET /vehicles/{vehicle_id}/preventive-dues`<br>`GET /vehicles/{vehicle_id}/preventive-status`<br>`GET /preventive-dues`<br>`GET /vehicles/{vehicle_id}/preventive-declarations` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `MECHANIC`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
 | `maintenance.work_order.read` | 1c | `GET /work-orders`<br>`GET /work-orders/{work_order_id}` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `HSE`, `MECHANIC`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
 | `maintenance.work_order.request` | 1c | `POST /work-orders` | `DISPATCHER`, `HSE`, `MECHANIC`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
 | `maintenance.work_order.manage` | 1c | `POST /work-orders/{work_order_id}/decision`<br>`GET /maintenance-mechanics` | `OPS_MANAGER`, `WORKSHOP_CHIEF` |
@@ -278,7 +278,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 ## 6. Anomalies détectées mécaniquement
 
 - Permissions déclarées sans route : aucune.
-- Permissions marquées `tranche: later` avec routes implémentées : `maintenance.preventive.manage`, `maintenance.preventive.read`.
+- Permissions marquées `tranche: later` avec routes implémentées : aucune.
 - `organization.tenant.list` porte aussi le GET item `/platform/tenants/{{tenant_id}}` (dénommage list/read assumé, documenté dans l'en-tête du YAML).
 
 ## 7. Contrats de test associés
