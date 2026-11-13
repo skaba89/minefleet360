@@ -134,10 +134,13 @@ def test_metrics_respect_scope_and_role(client: TestClient, api: Api, w: World) 
     denied = client.get(f"{API}/gps/metrics", headers=w.dispatcher.headers)
     assert denied.status_code == 403 and denied.json()["code"] == "PERMISSION_DENIED"
 
-    # Une société étrangère ne voit rien (RLS + portée) — même empreinte qu'un tenant vide.
+    # Une société étrangère : son AUDITOR (permission portée) ne voit rien (RLS) — zéro position ;
+    # son TENANT_ADMIN, qui ne porte pas fleet.gps.history, est refusé sans fuite de données.
     outsider = api.tenant()
-    foreign = client.get(f"{API}/gps/metrics", headers=outsider.admin.headers)
+    foreign = client.get(f"{API}/gps/metrics", headers=api.user(outsider, "AUDITOR").headers)
     assert foreign.status_code == 200 and foreign.json()["positions_count"] == 0
+    denied_foreign = client.get(f"{API}/gps/metrics", headers=outsider.admin.headers)
+    assert denied_foreign.status_code == 403 and denied_foreign.json()["code"] == "PERMISSION_DENIED"
 
 
 def test_metrics_window_is_bounded(client: TestClient, w: World) -> None:  # noqa: F811
