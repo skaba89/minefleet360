@@ -43,8 +43,11 @@ def test_script_exists_and_parses() -> None:
 
 def test_script_contains_no_mutation_command() -> None:
     body = SCRIPT.read_text(encoding="utf-8")
+    # Seul le code exécutable est inspecté : l'en-tête documente les interdits et cite
+    # légitimement les commandes interdites ; un ordre mutateur dans du CODE doit échouer.
+    code_only = "\n".join(line for line in body.splitlines() if not line.lstrip().startswith("#"))
     for interdit in INTERDITS:
-        assert interdit not in body, f"ordre mutateur interdit présent : {interdit!r}"
+        assert interdit not in code_only, f"ordre mutateur interdit présent : {interdit!r}"
 
 
 def test_script_guards_configuration_and_offers_plan_mode() -> None:
