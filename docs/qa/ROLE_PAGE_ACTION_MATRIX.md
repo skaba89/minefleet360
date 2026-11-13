@@ -247,7 +247,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `fleet.gps_alert.read` | 1c | `GET /gps/alerts`<br>`GET /sites/{site_id}/gps-policy`<br>`GET /me/alert-notifications`<br>`PUT /me/alert-notifications` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `HSE`, `OPS_MANAGER` |
 | `fleet.gps_alert.manage` | 1c | `POST /gps/alerts/{gps_alert_id}/acknowledge` | `DISPATCHER`, `HSE`, `OPS_MANAGER` |
 | `fleet.gps_policy.manage` | 1c | `PUT /sites/{site_id}/gps-policy` | `OPS_MANAGER`, `TENANT_ADMIN` |
-| `fleet.gps.history` | 1c | `GET /vehicles/{vehicle_id}/gps/track`<br>`GET /gps/geofence-events` | `AUDITOR`, `HSE`, `OPS_MANAGER` |
+| `fleet.gps.history` | 1c | `GET /vehicles/{vehicle_id}/gps/track`<br>`GET /gps/geofence-events`<br>`GET /gps/metrics` | `AUDITOR`, `HSE`, `OPS_MANAGER` |
 | `billing.plan.create` | 2a | `POST /platform/saas-plans` | `PLATFORM_ADMIN` |
 | `billing.plan.list` | 2a | `GET /platform/saas-plans`<br>`GET /platform/saas-plans/{plan_id}` | `PLATFORM_ADMIN` |
 | `billing.plan.update` | 2a | `PATCH /platform/saas-plans/{plan_id}` | `PLATFORM_ADMIN` |
@@ -263,7 +263,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `PLATFORM_ADMIN` | 12 | 33 |
 | `TENANT_ADMIN` | 68 | 129 |
 | `DIRECTION` | 36 | 96 |
-| `OPS_MANAGER` | 84 | 178 |
+| `OPS_MANAGER` | 84 | 179 |
 | `DISPATCHER` | 37 | 82 |
 | `HR` | 16 | 35 |
 | `DRIVER` | 4 | 16 |
@@ -271,9 +271,9 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `MECHANIC` | 17 | 46 |
 | `STOREKEEPER` | 17 | 50 |
 | `FUEL_MANAGER` | 28 | 63 |
-| `HSE` | 33 | 78 |
+| `HSE` | 33 | 79 |
 | `FINANCE` | 24 | 57 |
-| `AUDITOR` | 39 | 100 |
+| `AUDITOR` | 39 | 101 |
 
 ## 6. Anomalies détectées mécaniquement
 

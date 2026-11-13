@@ -1400,6 +1400,8 @@ permissions:
     routes:
       - { method: GET, path: "/vehicles/{vehicle_id}/gps/track", shape: item, success: 200 }
       - { method: GET, path: /gps/geofence-events, shape: collection, success: 200 }
+      # Métriques de qualité (agrégats SLO, aucune position exposée) — P0 SLO GPS.
+      - { method: GET, path: /gps/metrics, shape: collection, success: 200 }
     audit: { action: fleet.gps.track.read }
     grants: { OPS_MANAGER: [TENANT, SITE], HSE: [TENANT, SITE], AUDITOR: [TENANT] }
 
