@@ -1,28 +1,34 @@
 """Métriques de qualité GPS (SLO) : percentiles d'ingestion, fraîcheur, portée et refus.
 
-Complète le banc synthétique par la mesure côté plateforme : les latences sont produites par la
-voie d'ingestion réelle (jeton traceur, horodatages contrôlés), les agrégats sont vérifiés par
-bornes (l'horloge serveur avance pendant l'essai, jamais contre une égalité stricte).
+La voie d'ingestion réelle produit la latence : le contrat GPS refuse toute position horodatée
+avant l'activation du traceur (anti-attribution) et au-delà de 2 min dans le futur — la latence
+positive s'obtient donc par un envoi différé après activation. L'obsolescence d'un engin au repos
+ne peut pas passer par l'ingestion (aucune position antérieure à l'activation n'est acceptée) :
+une position historique est semée en SQL, comme la référence de lecture de `test_gps_latest_read`.
 """
 
+import time
 import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
+from app.core.db import new_session
+from app.core.tenancy import set_tenant_context
 from tests.conftest import API, Api
 from tests.test_assignment import World, _vehicle, w  # noqa: F401
 
 TOLERANCE_S = 30.0
 
 
-def _tracker(client: TestClient, w: World, vehicle: str) -> tuple[str, str]:  # noqa: F811
+def _tracker(client: TestClient, w: World, vehicle: str) -> tuple[str, str, datetime]:  # noqa: F811
     device = "fictif-" + uuid.uuid4().hex
     created = client.post(
         f"{API}/vehicles/{vehicle}/gps/tracker", headers=w.ops.headers, json={"device_id": device}
     )
     assert created.status_code == 201, created.text
-    return device, created.json()["token"]
+    return device, created.json()["token"], datetime.now(UTC)
 
 
 def _send(client: TestClient, device: str, token: str, sequence: int, recorded_at: datetime) -> None:
@@ -41,20 +47,45 @@ def _send(client: TestClient, device: str, token: str, sequence: int, recorded_a
     assert resp.status_code == 204, resp.text
 
 
+def _seed_stale_position(w: World, vehicle: str, site: str, age_minutes: float) -> None:  # noqa: F811
+    """Position historique semée hors ingestion : seule façon d'exister « avant l'activation »."""
+    db = new_session()
+    try:
+        set_tenant_context(db, w.t.tenant_id)
+        db.execute(
+            text(
+                "INSERT INTO fleet_gps_position (tenant_id, vehicle_id, site_id, device_id, "
+                "latitude, longitude, recorded_at, received_at) "
+                "VALUES (:t, :v, :s, :d, 9.5, -13.7, :r, :r)"
+            ),
+            {
+                "t": w.t.tenant_id,
+                "v": uuid.UUID(vehicle),
+                "s": w.t.sites[site],
+                "d": "fictif-semence-" + uuid.uuid4().hex[:8],
+                "r": datetime.now(UTC) - timedelta(minutes=age_minutes),
+            },
+        )
+        db.commit()
+    finally:
+        db.close()
+
+
 def test_metrics_percentiles_skew_and_staleness(client: TestClient, w: World) -> None:  # noqa: F811
-    now = datetime.now(UTC)
     vehicle_a = _vehicle(client, w, site="S1")
     vehicle_b = _vehicle(client, w, site="S2")
-    device_a, token_a = _tracker(client, w, vehicle_a)
-    device_b, token_b = _tracker(client, w, vehicle_b)
+    device_a, token_a, activated = _tracker(client, w, vehicle_a)
 
-    # Engin A : latences 10/20/30 s puis une horloge de boîtier en avance (+5 s). L'ingestion
-    # refuse les messages hors ordre par boîtier (anti-rejeu) : envoi du plus ancien au plus récent.
-    for sequence, delay in ((1, 30), (2, 20), (3, 10)):
-        _send(client, device_a, token_a, sequence, now - timedelta(seconds=delay))
-    _send(client, device_a, token_a, 4, now + timedelta(seconds=5))
-    # Engin B : une seule position vieille de 40 min (au-delà du seuil d'obsolescence de 30 min).
-    _send(client, device_b, token_b, 1, now - timedelta(minutes=40))
+    # Latences positives : estampillage juste après l'activation, transmission différée.
+    time.sleep(6)
+    _send(client, device_a, token_a, 1, activated + timedelta(seconds=1))
+    _send(client, device_a, token_a, 2, activated + timedelta(seconds=4))
+    _send(client, device_a, token_a, 3, activated + timedelta(seconds=5))
+    # Horloge de boîtier en avance : estampillage dans le futur toléré (< 2 min du contrat).
+    _send(client, device_a, token_a, 4, activated + timedelta(seconds=90))
+
+    # Engin au repos : dernière position il y a 40 min (au-delà du seuil d'obsolescence de 30 min).
+    _seed_stale_position(w, vehicle_b, "S2", age_minutes=40)
 
     served = client.get(f"{API}/gps/metrics", headers=w.ops.headers, params={"minutes": 60})
     assert served.status_code == 200, served.text
@@ -63,23 +94,23 @@ def test_metrics_percentiles_skew_and_staleness(client: TestClient, w: World) ->
 
     latency = body["ingestion_latency"]
     assert latency["negative_skew_count"] == 1
-    assert 10 - TOLERANCE_S <= latency["p50_s"] <= 20 + TOLERANCE_S
+    assert 0 <= latency["p50_s"] <= 10
     assert latency["p50_s"] <= latency["p95_s"] <= latency["p99_s"] <= latency["max_s"] + 0.01
-    assert latency["p95_s"] >= 30 - TOLERANCE_S
+    assert 3 <= latency["p95_s"] <= 15  # la plus lente des transmissions différées ≈ 5 s
 
     freshness = body["freshness"]
     assert freshness["vehicles_reporting"] == 2
-    # L'engin A est frais (position datée du futur → âge plancher 0) ; l'engin B est obsolète.
+    # L'engin A est frais (estampillage futur → âge plancher 0) ; l'engin B est obsolète.
     assert freshness["stale_count"] == 1
     assert 40 * 60 - TOLERANCE_S <= freshness["max_age_s"] <= 40 * 60 + TOLERANCE_S
     assert freshness["p50_age_s"] <= freshness["p95_age_s"] <= freshness["max_age_s"] + 0.01
 
 
 def test_metrics_respect_scope_and_role(client: TestClient, api: Api, w: World) -> None:  # noqa: F811
-    now = datetime.now(UTC)
     vehicle_s1 = _vehicle(client, w, site="S1")
-    device, token = _tracker(client, w, vehicle_s1)
-    _send(client, device, token, 1, now - timedelta(seconds=10))
+    device, token, activated = _tracker(client, w, vehicle_s1)
+    time.sleep(1.2)
+    _send(client, device, token, 1, activated + timedelta(seconds=1))
 
     ops_s1 = api.user(w.t, "OPS_MANAGER", "SITE", "S1")
     ops_s2 = api.user(w.t, "OPS_MANAGER", "SITE", "S2")
