@@ -1,6 +1,6 @@
 # Readiness commerciale — état courant
 
-**Base auditée :** `main@68f5eec` (PR #442 fusionnée — modèle de sécurité sous-traitants [Proposé] ; PR #441 — publication de la couverture de tests en artefacts CI ; PR #443 — outil de relève SLO GPS staging).
+**Base auditée :** `main@c0b20e2` (PR #443 fusionnée — outil de relève SLO GPS staging ; PR #442 — modèle de sécurité sous-traitants [Proposé] ; PR #441 — publication de la couverture de tests en artefacts CI ; PR #444 — protocole de validation facturation et coût-servi S1+C2).
 **Audit exécuté :** 13 novembre 2026 — CI GitHub vérifiée via API authentifiée (PR #438 : 9/9 verts puis fusion ; `main` post-fusion vert) ; vérifications locales ciblées (script d'audit en mode plan, SQL des métriques validé sur un PostgreSQL 16 embarqué, suite Vitest complète rejouée avec couverture — 265 tests / 64 fichiers verts).
 **Statut du document :** courant ; remplace les révisions du 12 novembre 2026 (bases `5f2d7cf`/PR #436, `3fbedf7`/PR #434, `980b713`/PR #428 et `6c87f4c`/PR #430) et les révisions antérieures comme référence de décision.
 **Verdict :** **NO-GO commercial maintenu — GO conditionnel pilote maintenu** (aucun prérequis terrain du `GO_NO_GO.md` n'est levé ; le tarif n'est pas approuvé). Score de maturité : **84/100** (grille imposée) — 74 à la base `e36ab33` (#412), 77 avec le harnais documentaire (#417), 80 avec les lots SaaS 1→3 (#418–#420), 81 avec les 4 lots complets (#422, #423), 82 avec la preuve navigateur du cycle commercial de bout en bout et 4 défauts d'interface corrigés (#426), **83 avec le défaut réel de course sur les bornes de quota trouvé par l'audit et corrigé + 7 parcours de cycle de vie prouvés (#428)** — inchangé à la PR #430 (trois parcours supplémentaires prouvés depuis le navigateur : preuve approfondie d'une capacité existante, aucune capacité nouvelle), **84 avec la fermeture du dernier écart de recette UI P0 : le cycle documentaire juridique est exposé dans /juridique (empreinte calculée au client, états, vérification quatre-yeux, soumission) et prouvé depuis le navigateur sur le harnais S3/ClamAV (#432)** — en progression de +16 depuis le 9 novembre, entièrement sur des éléments **vérifiés** (code, tests, CI), jamais sur une validation terrain ou opérationnelle. **84 inchangé aux PR #439 (audit staging lecture seule exécutable) et #438 (métriques SLO GPS : capacité de mesure nouvelle, aucune preuve terrain nouvelle).**
@@ -188,6 +188,18 @@ compile, garde-fou 3/3, chemin nominal exit 0 contre un serveur factice, exit 2 
 d'authentification (aucun rapport imprimé), exit 1 sur échec réseau, jeton absent du rapport.
 Scores et verdict **inchangés** (outil de préparation, aucune preuve terrain nouvelle).
 
+**Révision du 13 novembre (5, PR #444) — protocole de validation facturation et coût-servi (S1+C2) :**
+les deux lignes P1 « À faire » de la roadmap exigeaient des **entretiens et mesures avant tout
+schéma/API** (`règles et cas de facturation validés avant schéma/API` ; `modèle de coût par flotte +
+validation 3+ prospects/pilotes`) sans que la structure de ces entretiens existe. `PROTOCOLE_VALIDATION_FACTURATION.md`
+les prépare : 5 cas de facturation à valider **par règle énoncée et signée par le client** (base tonnage
+mesuré approuvé RM-077, exceptions contractuelles, SLA/retenues, multi-sites, GNF/taxes/paiement local),
+composantes du coût-servi **mesurées sur staging réel** (méthode et outil nommés pour chacune — dont la
+relève #443 et le protocole de restauration #427), test de volonté de payer à la barre C2 (3+ prospects).
+**Aucun tarif, aucun quota, aucun schéma/API, aucun arbitrage** : la gate S1 reste fermée, les restes
+tarif/SLA/règlement restent non techniques (GO/NO-GO inchangé). S1 et C2 restent « À faire ».
+Scores et verdict **inchangés**.
+
 ## 3. Tableau de bord de maturité (grille imposée)
 
 | Domaine | Pondération | Score (9 nov) | Score (12 nov, #426) | Score (12 nov, #428) | Score (12 nov, #432) | Justification synthétique |
@@ -333,6 +345,7 @@ Lecture : la colonne CI/E2E mesure la profondeur de preuve **logicielle** ; aucu
 | `docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md` | **créé** (#427) — 2 appareils × 10 scénarios, mesures et limites consignées |
 | `docs/ops/PROTOCOLE_PILOTE.md` | à jour (2026-11-12) — exécution conditionnée aux 8 prérequis terrain |
 | `docs/MODELE_SECURITE_SOUS_TRAITANTS.md` | **créé** (#442) — modèle d'accès externe proposé en réponse à T-42 (option B détaillée [Proposé], matrice de tests ST-42a–h, décisions explicitement non prises) ; à valider à l'ouverture du lot |
+| `docs/roadmap/PROTOCOLE_VALIDATION_FACTURATION.md` | **créé** (#444) — préparation des entretiens S1+C2 : 5 cas de facturation par règle signée client, coût-servi mesuré sur staging, test de volonté de payer (3+) ; aucun tarif ni schéma/API — gate S1 inchangée |
 | `docs/qa/ROLE_PAGE_ACTION_MATRIX.md` | généré, anti-dérive vert |
 | `docs/qa/RECETTE_UI_P0.md` | à jour (écart n°1 reformulé : cycle documentaire prouvé sur harnais #417, reste l'UI du dépôt/vérification/soumission ; écart n°2 résolu par #413) |
 | `docs/audit/preuves/` | **rafraîchi** (pytest 5 207, vitest 233, tsc, build, anti-dérive, ruff, format, mypy — datés 2026-11-11) |
