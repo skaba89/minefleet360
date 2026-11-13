@@ -45,7 +45,7 @@ _LATENCY_SQL = text(
            count(*) FILTER (WHERE received_at < recorded_at)   AS skew
     FROM fleet_gps_position
     WHERE tenant_id = :tenant
-      AND (:site_ids IS NULL OR site_id = ANY(:site_ids))
+      AND ((:site_ids)::uuid[] IS NULL OR site_id = ANY((:site_ids)::uuid[]))
       AND recorded_at >= :start
       AND recorded_at < :end
     """
@@ -63,7 +63,7 @@ _FRESHNESS_SQL = text(
         SELECT max(recorded_at) AS latest
         FROM fleet_gps_position
         WHERE tenant_id = :tenant
-          AND (:site_ids IS NULL OR site_id = ANY(:site_ids))
+          AND ((:site_ids)::uuid[] IS NULL OR site_id = ANY((:site_ids)::uuid[]))
         GROUP BY vehicle_id
     ) per_vehicle
     """

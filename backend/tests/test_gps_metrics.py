@@ -48,8 +48,9 @@ def test_metrics_percentiles_skew_and_staleness(client: TestClient, w: World) ->
     device_a, token_a = _tracker(client, w, vehicle_a)
     device_b, token_b = _tracker(client, w, vehicle_b)
 
-    # Engin A : latences 10/20/30 s puis une horloge de boîtier en avance (+5 s).
-    for sequence, delay in ((1, 10), (2, 20), (3, 30)):
+    # Engin A : latences 10/20/30 s puis une horloge de boîtier en avance (+5 s). L'ingestion
+    # refuse les messages hors ordre par boîtier (anti-rejeu) : envoi du plus ancien au plus récent.
+    for sequence, delay in ((1, 30), (2, 20), (3, 10)):
         _send(client, device_a, token_a, sequence, now - timedelta(seconds=delay))
     _send(client, device_a, token_a, 4, now + timedelta(seconds=5))
     # Engin B : une seule position vieille de 40 min (au-delà du seuil d'obsolescence de 30 min).
