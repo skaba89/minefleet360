@@ -877,6 +877,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gps/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gps Metrics
+         * @description Qualité du suivi GPS (latence d'ingestion, fraîcheur) sur la fenêtre, portée de l'appelant.
+         */
+        get: operations["gps_metrics_api_v1_gps_metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gps/telemetry": {
         parameters: {
             query?: never;
@@ -4696,6 +4716,22 @@ export interface components {
             /** Validity */
             validity: string;
         };
+        /**
+         * Freshness
+         * @description Âge de la dernière position connue par engin, en secondes.
+         */
+        Freshness: {
+            /** Max Age S */
+            max_age_s: number | null;
+            /** P50 Age S */
+            p50_age_s: number | null;
+            /** P95 Age S */
+            p95_age_s: number | null;
+            /** Stale Count */
+            stale_count: number;
+            /** Vehicles Reporting */
+            vehicles_reporting: number;
+        };
         /** FuelConsumptionOut */
         FuelConsumptionOut: {
             /** Comparison Interval Count */
@@ -5485,6 +5521,20 @@ export interface components {
              */
             vehicle_id: string;
         };
+        /** GpsMetricsOut */
+        GpsMetricsOut: {
+            freshness: components["schemas"]["Freshness"];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            ingestion_latency: components["schemas"]["IngestionLatency"];
+            /** Positions Count */
+            positions_count: number;
+            /** Window Minutes */
+            window_minutes: number;
+        };
         /** GpsPolicyIn */
         GpsPolicyIn: {
             /** Signal Loss Minutes */
@@ -5776,6 +5826,22 @@ export interface components {
             period_start: string;
             /** Rows */
             rows: components["schemas"]["IndicatorRow"][];
+        };
+        /**
+         * IngestionLatency
+         * @description Latence d'ingestion en secondes ; `None` quand la fenêtre ne contient aucune position.
+         */
+        IngestionLatency: {
+            /** Max S */
+            max_s: number | null;
+            /** Negative Skew Count */
+            negative_skew_count: number;
+            /** P50 S */
+            p50_s: number | null;
+            /** P95 S */
+            p95_s: number | null;
+            /** P99 S */
+            p99_s: number | null;
         };
         /** InspectionCreate */
         InspectionCreate: {
@@ -12470,6 +12536,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GeofenceEvent"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    gps_metrics_api_v1_gps_metrics_get: {
+        parameters: {
+            query?: {
+                minutes?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GpsMetricsOut"];
                 };
             };
             /** @description Validation Error */
