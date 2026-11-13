@@ -165,6 +165,16 @@ en devDependency exacte, `coverage-frontend` publié) — **265 tests / 64 fichi
 instructions 47,65 %, branches 41,47 %, lignes 49,18 %. Aucune barre frontend imposée (la publication
 précède toute décision de seuil, qui relèverait d'un arbitrage séparé). Verdict et scores **inchangés**.
 
+**Révision du 13 novembre (3, PR #442) — modèle de sécurité sous-traitants [Proposé] :** réponse
+documentaire à T-42 (`MENACES_ET_CONTROLES.md`, menace interne **haute**, état LU — « modèle d'accès
+distinct des rôles internes » exigé) : trois options d'accès externe comparées (tenant lié, rôle externe
+dans le tenant du donneur d'ordre, portail séparé), **option B recommandée [Proposé]** (rôle externe
+unique au catalogue, portée « organisation » appliquée au niveau RLS, comptes nominatifs expirant avec le
+contrat, MFA obligatoire, révocation DB-33 immédiate), **matrice contractuelle de tests ST-42a–h** et
+besoins d'accès objet par objet (C-37). Décisions explicitement **non prises** : ouverture du lot,
+liste définitive des objets, GPS aux tiers (jamais sans avis juridique, rang 2 du GO/NO-GO), facturation
+(S1 — entretiens métier avant tout schéma/API). Aucun code, aucune route, aucun score, verdict inchangé.
+
 ## 3. Tableau de bord de maturité (grille imposée)
 
 | Domaine | Pondération | Score (9 nov) | Score (12 nov, #426) | Score (12 nov, #428) | Score (12 nov, #432) | Justification synthétique |
@@ -309,6 +319,7 @@ Lecture : la colonne CI/E2E mesure la profondeur de preuve **logicielle** ; aucu
 | `docs/qa/PROTOCOLE_ESSAI_GPS_PHYSIQUE.md` | **créé** (#427) — banc L1–L9, terrain T1–T10, matrice de qualification par modèle |
 | `docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md` | **créé** (#427) — 2 appareils × 10 scénarios, mesures et limites consignées |
 | `docs/ops/PROTOCOLE_PILOTE.md` | à jour (2026-11-12) — exécution conditionnée aux 8 prérequis terrain |
+| `docs/MODELE_SECURITE_SOUS_TRAITANTS.md` | **créé** (#442) — modèle d'accès externe proposé en réponse à T-42 (option B détaillée [Proposé], matrice de tests ST-42a–h, décisions explicitement non prises) ; à valider à l'ouverture du lot |
 | `docs/qa/ROLE_PAGE_ACTION_MATRIX.md` | généré, anti-dérive vert |
 | `docs/qa/RECETTE_UI_P0.md` | à jour (écart n°1 reformulé : cycle documentaire prouvé sur harnais #417, reste l'UI du dépôt/vérification/soumission ; écart n°2 résolu par #413) |
 | `docs/audit/preuves/` | **rafraîchi** (pytest 5 207, vitest 233, tsc, build, anti-dérive, ruff, format, mypy — datés 2026-11-11) |
