@@ -48,7 +48,7 @@ def test_script_contains_no_mutation_or_shellout() -> None:
 def test_script_guards_and_readonly_get() -> None:
     body = SCRIPT.read_text(encoding="utf-8")
     # Garde de mire : refus explicite en production (même convention que benchmark_latest).
-    assert 'MF_ENV' in body and '== "production"' in body
+    assert "MF_ENV" in body and '== "production"' in body
     # URL validée (HTTPS hors localhost, sans identifiants) avant tout appel.
     assert "validate_base_url(url)" in body
     # Le jeton ne sert qu'à l'en-tête et n'est jamais affiché : aucune ligne print ne le mentionne.

@@ -10,6 +10,7 @@ Exemple (recette seulement):
   MF_GPS_BENCH_URL=https://staging.example.org MF_GPS_BENCH_TOKEN=... \
       python scripts/gps/benchmark_metrics.py --minutes 60 --minutes 1440 --samples 20
 """
+
 import argparse
 import json
 import os
@@ -18,7 +19,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def percentile(values: list[float], percent: float) -> float:
@@ -26,7 +27,9 @@ def percentile(values: list[float], percent: float) -> float:
     if not values:
         raise ValueError("échantillon vide")
     ordered = sorted(values)
-    index = max(0, min(len(ordered) - 1, (int((percent / 100 * len(ordered) + 0.999999)) - 1)))
+    index = max(
+        0, min(len(ordered) - 1, int(percent / 100 * len(ordered) + 0.999999) - 1)
+    )
     return ordered[index]
 
 
@@ -45,13 +48,16 @@ def validate_base_url(url: str) -> str:
 
 def collect(url: str, token: str, minutes: int, timeout: float) -> dict:
     base = validate_base_url(url)
-    endpoint = base + "/api/v1/gps/metrics?" + urllib.parse.urlencode({"minutes": minutes})
+    endpoint = (
+        base + "/api/v1/gps/metrics?" + urllib.parse.urlencode({"minutes": minutes})
+    )
     request = urllib.request.Request(
         endpoint,
         headers={"Authorization": "Bearer " + token, "Accept": "application/json"},
     )
     start = time.perf_counter()
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    # Schéma validé par validate_base_url (HTTPS hors localhost, sans identifiants) : noqa S310.
+    with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
         raw = response.read(1_000_001)
         if len(raw) > 1_000_000:
             raise ValueError("réponse métriques > 1 Mo")
@@ -64,9 +70,7 @@ def collect(url: str, token: str, minutes: int, timeout: float) -> dict:
     return {"http_ms": round(elapsed_ms, 2), "metrics": metrics}
 
 
-def summarize(
-    windows: dict[int, dict], total_requests: int, failures: int
-) -> dict:
+def summarize(windows: dict[int, dict], total_requests: int, failures: int) -> dict:
     per_window: dict[str, dict] = {}
     for minutes, data in sorted(windows.items()):
         samples = data["samples"]
@@ -88,11 +92,13 @@ def summarize(
     return {
         "schema_version": "1.0",
         "benchmark_kind": "gps_metrics_slo",
-        "observed_at": datetime.now(timezone.utc).isoformat(),
+        "observed_at": datetime.now(UTC).isoformat(),
         "total_requests": total_requests,
         "successes": total_requests - failures,
         "failures": failures,
-        "success_rate": round((total_requests - failures) / total_requests, 4) if total_requests else 0,
+        "success_rate": round((total_requests - failures) / total_requests, 4)
+        if total_requests
+        else 0,
         "windows": per_window,
         "note": (
             "Agrégats SLO relevés à l'instant de la session ; la signature des seuils "
@@ -102,7 +108,9 @@ def summarize(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Relève des agrégats SLO GPS de recette")
+    parser = argparse.ArgumentParser(
+        description="Relève des agrégats SLO GPS de recette"
+    )
     parser.add_argument(
         "--minutes",
         action="append",
@@ -119,7 +127,11 @@ def main() -> int:
     minutes_list = args.minutes if args.minutes else [60, 1440]
     if not all(1 <= minutes <= 1440 for minutes in minutes_list):
         parser.error("chaque fenêtre minutes doit être dans 1..1440")
-    if not 1 <= args.samples <= 200 or not 0 <= args.interval <= 60 or not 0 < args.timeout <= 60:
+    if (
+        not 1 <= args.samples <= 200
+        or not 0 <= args.interval <= 60
+        or not 0 < args.timeout <= 60
+    ):
         parser.error("samples 1..200, interval 0..60, timeout (0, 60]")
     url, token = os.getenv("MF_GPS_BENCH_URL"), os.getenv("MF_GPS_BENCH_TOKEN")
     if not url or not token:
@@ -137,14 +149,26 @@ def main() -> int:
             except urllib.error.HTTPError as exc:
                 window_failures += 1
                 if exc.code in (401, 403):
-                    print("Authentification ou autorisation refusée; arrêt.", file=sys.stderr)
+                    print(
+                        "Authentification ou autorisation refusée; arrêt.",
+                        file=sys.stderr,
+                    )
                     return 2
-            except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError):
+            except (
+                urllib.error.URLError,
+                TimeoutError,
+                ValueError,
+                json.JSONDecodeError,
+            ):
                 window_failures += 1
             if i < args.samples - 1:
                 time.sleep(args.interval)
         failures += window_failures
-        windows[minutes] = {"requests": args.samples, "failures": window_failures, "samples": samples}
+        windows[minutes] = {
+            "requests": args.samples,
+            "failures": window_failures,
+            "samples": samples,
+        }
     report = summarize(windows, total_requests, failures)
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0 if failures == 0 else 1
