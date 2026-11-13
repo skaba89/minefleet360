@@ -35,7 +35,7 @@ Le suivi GPS précis dépend de matériel, couverture opérateur, configuration 
 | Mining Pro | sous-traitant/exploitant | opérations de site, HSE, pesée, alertes, multi-sites | site + flotte + options/connecteurs |
 | Enterprise | grand groupe | SSO/API, environnements dédiés, intégration, SLA et accompagnement | devis établi sur coûts et engagements |
 
-Ne fixer les quotas ni les prix avant le calcul coût-servi (DB, historique GPS, rétention, sauvegarde, support, SMS, matériel) et un test de volonté de payer. Éviter les prix par véhicule seuls si le coût du support et l'intégration varie fortement.
+Ne fixer les quotas ni les prix avant le calcul coût-servi (DB, historique GPS, rétention, sauvegarde, support, SMS, matériel) et un test de volonté de payer. Éviter les prix par véhicule seuls si le coût du support et l'intégration varie fortement. La structure des entretiens de règles de facturation (S1), la mesure du coût-servi et le test de volonté de payer (barre 3+ prospects/pilotes) sont préparées dans `PROTOCOLE_VALIDATION_FACTURATION.md` (#444) — aucun prix ni quota n'est fixé par ce protocole.
 
 ## Éléments nécessaires à la vente
 
