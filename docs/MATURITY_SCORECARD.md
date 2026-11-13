@@ -1,12 +1,12 @@
 # Score de maturité
 
-Audit indépendant du 30 octobre 2026, basé sur `main@3c4bb02` (70,3/100), **rejoué le 12 novembre 2026 sur `main@c34d322` (PR #435)** avec la grille, la méthode et les poids inchangés. Le calcul du rejeu est reproductible : `python3 scripts/replay_maturity_scorecard.py` vérifie que la colonne du 30 octobre retombe exactement sur 73,4 / 56,7 / 76,5 → 70,3 avant d'imprimer les agrégats courants.
+Audit indépendant du 30 octobre 2026, basé sur `main@3c4bb02` (70,3/100), **rejoué le 13 novembre 2026 sur `main@2cc3599` (PR #438 ; rejeus précédents : 12 novembre `c34d322` PR #435)** avec la grille, la méthode et les poids inchangés. Le calcul du rejeu est reproductible : `python3 scripts/replay_maturity_scorecard.py` vérifie que la colonne du 30 octobre retombe exactement sur 73,4 / 56,7 / 76,5 → 70,3 avant d'imprimer les agrégats courants.
 
 ## Méthode (inchangée)
 
 Chaque capacité est notée de 0 à 100 à partir des preuves dans le code, les migrations, l'UI et les tests exécutés. Les moyennes de catégorie sont arithmétiques. Le score global applique les poids suivants : fonctionnel 40 %, métier minier 25 %, technique 35 %.
 
-`Score global (12 nov) = 80,5 × 0,40 + 63,0 × 0,25 + 78,8 × 0,35 = 75,5/100`.
+`Score global (13 nov) = 80,5 × 0,40 + 63,0 × 0,25 + 78,8 × 0,35 = 75,5/100`.
 
 Le rejeu porte exclusivement sur des preuves de **code, migrations, UI et tests** postérieures au 30 octobre ; aucune ligne n'intègre de validation terrain (matériel, Android physique, réseau réel, données de production), qui reste absente.
 
@@ -56,7 +56,7 @@ Le rejeu porte exclusivement sur des preuves de **code, migrations, UI et tests*
 | Isolation multi-tenant | 92 | 93 | 25 spécifications E2E tenant-isolation exécutées dans le navigateur |
 | Tests automatisés | 89 | 91 | 5 733 tests pytest sur PostgreSQL 16.10 + PostGIS réel, 260 Vitest, recette API R1–R10 |
 | CI/CD | 78 | 82 | images de release signées Cosign + provenance SLSA + SBOM (#376), Dependabot actif et démontré (#377–#399) |
-| Performance | 70 | 71 | workflow de benchmark GPS ajouté ; p95/p99 jamais mesurés sur environnement réel |
+| Performance | 70 | 72 | workflow de benchmark GPS + mesure de production de la qualité du suivi (`GET /gps/metrics` : latence d'ingestion p50/p95/p99, fraîcheur par engin, obsolescence — #438) ; p95/p99 jamais mesurés sur environnement réel |
 | Sauvegarde/restauration | 58 | 64 | round-trip de restauration chiffrée automatisé en CI avec gardes RLS fail-closed ; coffre externe réel toujours absent |
 | Observabilité | 52 | 56 | surveillance de santé et runbook de recette staging versionné ; alertes non éprouvées par incident réel |
 | Interface utilisateur | 78 | 82 | forme canonique unique du refus d'accès (#413), pages 404 dédiées (#374), socle E2E 34 routes × 13 rôles (#408) |
@@ -65,12 +65,12 @@ Le rejeu porte exclusivement sur des preuves de **code, migrations, UI et tests*
 
 ## Relation avec la grille imposée et verdict
 
-Ce rejeu est un outil de pilotage interne sur la grille d'origine à trois axes ; il **ne remplace pas** la grille imposée de préparation commerciale (`docs/audit/COMMERCIAL_READINESS_CURRENT.md`, 84/100 au 12 novembre), qui reste la référence de décision. Les deux grilles mesurent des choses différentes : celle-ci la profondeur métier par capacité, celle-là la préparation à la commercialisation. Le verdict de gouvernance est inchangé : **NO-GO commercialisation industrialisée, GO conditionnel pour un pilote fermé** — la progression des deux grilles repose entièrement sur des preuves consultables (code, tests, CI), jamais sur une validation terrain ou opérationnelle, et aucun des 8 prérequis terrain du `docs/qa/GO_NO_GO.md` n'est exécuté.
+Ce rejeu est un outil de pilotage interne sur la grille d'origine à trois axes ; il **ne remplace pas** la grille imposée de préparation commerciale (`docs/audit/COMMERCIAL_READINESS_CURRENT.md`, 84/100 au 13 novembre), qui reste la référence de décision. Les deux grilles mesurent des choses différentes : celle-ci la profondeur métier par capacité, celle-là la préparation à la commercialisation. Le verdict de gouvernance est inchangé : **NO-GO commercialisation industrialisée, GO conditionnel pour un pilote fermé** — la progression des deux grilles repose entièrement sur des preuves consultables (code, tests, CI), jamais sur une validation terrain ou opérationnelle, et aucun des 8 prérequis terrain du `docs/qa/GO_NO_GO.md` n'est exécuté.
 
 ## Seuils de décision
 
 - **70,3/100 (30 octobre)** : fondations solides, pas encore pilote minier complet.
-- **75,5/100 (12 novembre, rejeu)** : les lacunes de code majeures (pièces, pneus, HSE, coûts) sont comblées côté logiciel ; la distance aux seuils suivants est désormais dominée par les validations terrain, plus par le code.
+- **75,5/100 (13 novembre, rejeu)** : les lacunes de code majeures (pièces, pneus, HSE, coûts) sont comblées côté logiciel ; la distance aux seuils suivants est désormais dominée par les validations terrain, plus par le code.
 - **80/100 MVP consolidé** : réconcilier coûts, MTBF/MTTR et disponibilité sur données réelles.
 - **85/100 pilote exploitable** : GPS réel certifié, observabilité éprouvée, restauration sur coffre externe, validation terrain.
 - **90/100 SaaS industrialisé** : CD multi-env, DR, charge, SLO et gouvernance éprouvés.

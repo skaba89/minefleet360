@@ -8,7 +8,7 @@ exactement sur 73,4 / 56,7 / 76,5 -> 70,3 avant d'imprimer les nouveaux agrégat
 Usage : python3 scripts/replay_maturity_scorecard.py
 """
 
-# (capacité, score 30 oct, score 12 nov)
+# (capacité, score 30 oct, score courant — rejeu du 13 novembre 2026, main@2cc3599)
 FONCTIONNEL = [
     ("Sociétés et sites", 92, 92),
     ("Utilisateurs et permissions", 91, 91),
@@ -46,7 +46,10 @@ TECHNIQUE = [
     ("Isolation multi-tenant", 92, 93),
     ("Tests automatisés", 89, 91),
     ("CI/CD", 78, 82),
-    ("Performance", 70, 71),
+    # Performance +1 (13 nov, #438) : mesure de production de la qualité du suivi GPS
+    # (GET /gps/metrics : latence d'ingestion p50/p95/p99, fraîcheur par engin, obsolescence),
+    # même standard de preuve que le +1 du 12 nov (workflow de benchmark) — code, tests, CI.
+    ("Performance", 70, 72),
     ("Sauvegarde/restauration", 58, 64),
     ("Observabilité", 52, 56),
     ("Interface utilisateur", 78, 82),
