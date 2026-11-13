@@ -90,7 +90,9 @@ def test_metrics_percentiles_skew_and_staleness(client: TestClient, w: World) ->
     served = client.get(f"{API}/gps/metrics", headers=w.ops.headers, params={"minutes": 60})
     assert served.status_code == 200, served.text
     body = served.json()
-    assert body["window_minutes"] == 60 and body["positions_count"] == 4
+    # 4 messages reçus par l'ingestion de l'engin A + la position semée de l'engin B ;
+    # la fenêtre de latence porte sur la réception (le message futur y est donc compté).
+    assert body["window_minutes"] == 60 and body["positions_count"] == 5
 
     latency = body["ingestion_latency"]
     assert latency["negative_skew_count"] == 1

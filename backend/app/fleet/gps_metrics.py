@@ -46,8 +46,10 @@ _LATENCY_SQL = text(
     FROM fleet_gps_position
     WHERE tenant_id = :tenant
       AND ((:site_ids)::uuid[] IS NULL OR site_id = ANY((:site_ids)::uuid[]))
-      AND recorded_at >= :start
-      AND recorded_at < :end
+      -- Fenêtre portée par la RÉCEPTION : une métrique de latence d'ingestion mesure les
+      -- messages traités pendant la fenêtre, y compris ceux estampillés juste après (futur toléré).
+      AND received_at >= :start
+      AND received_at < :end
     """
 )
 
