@@ -1,4 +1,4 @@
-# GO / NO-GO — situation au 13 novembre 2026 (base main avec PR #438 — métriques de qualité du suivi GPS SLO mesurables via `GET /gps/metrics` ; PR #439 — audit staging lecture seule automatisé avec garde-fou CI)
+# GO / NO-GO — situation au 13 novembre 2026 (base main avec PR #440 — gouvernance ; #438 : métriques SLO GPS mesurables ; #439 : audit staging lecture seule automatisé ; #441 : couverture de tests publiée en artefacts CI)
 
 ## Verdict
 
