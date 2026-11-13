@@ -1,6 +1,6 @@
 # Readiness commerciale — état courant
 
-**Base auditée :** `main@6b51cf5` (PR #440 fusionnée — réévaluation de gouvernance du 13 novembre ; PR #441 — publication de la couverture de tests en artefacts CI).
+**Base auditée :** `main@68f5eec` (PR #442 fusionnée — modèle de sécurité sous-traitants [Proposé] ; PR #441 — publication de la couverture de tests en artefacts CI ; PR #443 — outil de relève SLO GPS staging).
 **Audit exécuté :** 13 novembre 2026 — CI GitHub vérifiée via API authentifiée (PR #438 : 9/9 verts puis fusion ; `main` post-fusion vert) ; vérifications locales ciblées (script d'audit en mode plan, SQL des métriques validé sur un PostgreSQL 16 embarqué, suite Vitest complète rejouée avec couverture — 265 tests / 64 fichiers verts).
 **Statut du document :** courant ; remplace les révisions du 12 novembre 2026 (bases `5f2d7cf`/PR #436, `3fbedf7`/PR #434, `980b713`/PR #428 et `6c87f4c`/PR #430) et les révisions antérieures comme référence de décision.
 **Verdict :** **NO-GO commercial maintenu — GO conditionnel pilote maintenu** (aucun prérequis terrain du `GO_NO_GO.md` n'est levé ; le tarif n'est pas approuvé). Score de maturité : **84/100** (grille imposée) — 74 à la base `e36ab33` (#412), 77 avec le harnais documentaire (#417), 80 avec les lots SaaS 1→3 (#418–#420), 81 avec les 4 lots complets (#422, #423), 82 avec la preuve navigateur du cycle commercial de bout en bout et 4 défauts d'interface corrigés (#426), **83 avec le défaut réel de course sur les bornes de quota trouvé par l'audit et corrigé + 7 parcours de cycle de vie prouvés (#428)** — inchangé à la PR #430 (trois parcours supplémentaires prouvés depuis le navigateur : preuve approfondie d'une capacité existante, aucune capacité nouvelle), **84 avec la fermeture du dernier écart de recette UI P0 : le cycle documentaire juridique est exposé dans /juridique (empreinte calculée au client, états, vérification quatre-yeux, soumission) et prouvé depuis le navigateur sur le harnais S3/ClamAV (#432)** — en progression de +16 depuis le 9 novembre, entièrement sur des éléments **vérifiés** (code, tests, CI), jamais sur une validation terrain ou opérationnelle. **84 inchangé aux PR #439 (audit staging lecture seule exécutable) et #438 (métriques SLO GPS : capacité de mesure nouvelle, aucune preuve terrain nouvelle).**
@@ -175,6 +175,19 @@ besoins d'accès objet par objet (C-37). Décisions explicitement **non prises**
 liste définitive des objets, GPS aux tiers (jamais sans avis juridique, rang 2 du GO/NO-GO), facturation
 (S1 — entretiens métier avant tout schéma/API). Aucun code, aucune route, aucun score, verdict inchangé.
 
+**Révision du 13 novembre (4, PR #443) — outil de relève SLO GPS staging (prérequis n°6) :**
+le gap restant du prérequis n°6 était l'**outil** : la mesure est livrée (#438) mais l'opérateur n'avait
+aucun moyen scripté de la relever sur staging (`benchmark_latest.py` cible le polling REST `/gps/latest`,
+pas les agrégats). `scripts/gps/benchmark_metrics.py` relève désormais `GET /gps/metrics` par fenêtre
+(défaut 60 min et 24 h) : latences HTTP p50/p95/p99/max **et** agrégats SLO bruts consignés (latence
+d'ingestion, fraîcheur, `stale_count`) dans un rapport horodaté — preuve pour la signature des seuils,
+qui reste une décision humaine séparée. Lecture seule (aucun verbe d'écriture, aucun shell-out), garde
+`MF_ENV=production`, HTTPS hors localhost, jeton jamais affiché, bornes contractuelles 1..1440 min ;
+**garde-fou CI** `backend/tests/test_ops_benchmark_metrics_script.py` (motif #439). Validé localement :
+compile, garde-fou 3/3, chemin nominal exit 0 contre un serveur factice, exit 2 sur refus
+d'authentification (aucun rapport imprimé), exit 1 sur échec réseau, jeton absent du rapport.
+Scores et verdict **inchangés** (outil de préparation, aucune preuve terrain nouvelle).
+
 ## 3. Tableau de bord de maturité (grille imposée)
 
 | Domaine | Pondération | Score (9 nov) | Score (12 nov, #426) | Score (12 nov, #428) | Score (12 nov, #432) | Justification synthétique |
@@ -294,7 +307,7 @@ Lecture : la colonne CI/E2E mesure la profondeur de preuve **logicielle** ; aucu
 
 ## 7. Priorisation des prochains travaux
 
-**P0 (bloquants GO pilote — inchangés, exigent l'accès staging/coffre/matériel ; protocoles désormais prêts) :** coffre externe réel + RPO/RTO mesurés (`docs/ops/PROTOCOLE_RESTAURATION_EXTERNE.md`) ; exercice staging release→rollback→vérifications (R2) — phases A/B préparées par `docs/ops/PLAN_EXECUTION_STAGING.md` ; isolation A/B en recette réelle ; revue juridique ; essai traceur physique (`docs/qa/PROTOCOLE_ESSAI_GPS_PHYSIQUE.md`) ; essai Android réel (`docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md`) ; SLO GPS p95/p99 — **la mesure est livrée (`GET /gps/metrics`, #438) : le benchmark staging relèvera les valeurs et les cibles seront signées** ; éprouvetage des alertes par incident (runbook staging §Alerte).
+**P0 (bloquants GO pilote — inchangés, exigent l'accès staging/coffre/matériel ; protocoles désormais prêts) :** coffre externe réel + RPO/RTO mesurés (`docs/ops/PROTOCOLE_RESTAURATION_EXTERNE.md`) ; exercice staging release→rollback→vérifications (R2) — phases A/B préparées par `docs/ops/PLAN_EXECUTION_STAGING.md` ; isolation A/B en recette réelle ; revue juridique ; essai traceur physique (`docs/qa/PROTOCOLE_ESSAI_GPS_PHYSIQUE.md`) ; essai Android réel (`docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md`) ; SLO GPS p95/p99 — **la mesure est livrée (`GET /gps/metrics`, #438) et l'outil de relève scriptée est prêt (`scripts/gps/benchmark_metrics.py`, #443, lecture seule avec garde-fou CI) : le benchmark staging relèvera les valeurs et les cibles seront signées** ; éprouvetage des alertes par incident (runbook staging §Alerte).
 
 **P1 (chantiers de code autorisés dans cet environnement, dans l'ordre) :**
 1. ~~Harmoniser les deux formes de refus d'accès direct~~ **fait** — PR #413 (`<AccessDenied />` canonique, 17 points / 10 fichiers, Vitest + socle E2E verts).

@@ -15,6 +15,7 @@ Cette protection est **locale à chaque worker**, pas globale à toutes les rép
 ## Mesures et exploitation avant pilote
 
 - Exécuter le benchmark REST de `scripts/gps/benchmark_latest.py` sur une recette autorisée.
+- Relever les agrégats SLO de `GET /gps/metrics` (#438) sur staging avec `scripts/gps/benchmark_metrics.py` (#443) — latence d'ingestion p50/p95/p99, fraîcheur et `stale_count` par fenêtre (défaut 60 min et 24 h) : le rapport horodaté est la preuve du prérequis n°6 ; la **signature des seuils cibles reste une décision humaine séparée**. Le script est en lecture seule (garde-fou CI `backend/tests/test_ops_benchmark_metrics_script.py`), refuse la production, exige HTTPS hors localhost et n'affiche jamais le jeton.
 - Relever sur un environnement équipé la consommation CPU/PostgreSQL et les latences pour 1, 10 et 32 abonnés par worker.
 - Vérifier les réponses 429, les reconnexions et le retour au polling avec des scénarios Playwright.
 - Régler le nombre de workers et les limites d'entrée du reverse proxy ; maintenir l'authentification Bearer en en-tête.
