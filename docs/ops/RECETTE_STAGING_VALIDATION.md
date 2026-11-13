@@ -33,6 +33,15 @@ catalogues PostgreSQL, sondes, GET API) sont autorisées.
 Exécuter depuis `infra/deploy/`, avec le `.env.prod` en place. Consigner chaque sortie horodatée dans le
 rapport (§R) ; ne jamais coller de secret ni de donnée opérationnelle dans le rapport.
 
+**Automatisation (A1–A8)** : `bash audit-staging-readonly.sh [--plan] [--live]` rejoue les contrôles A1–A8
+de ce §A avec les commandes documentées ci-dessous, produit un fragment de rapport horodaté
+(`audit-staging-readonly-<UTC>.txt`, statuts OK / ÉCHEC / SKIP) et refuse de tourner si `.env.prod` ne
+déclare pas exactement `MF_ENV=staging`. `--plan` affiche les commandes sans rien exécuter ;
+`--live` ajoute les sondes HTTP (A5/A7/A8, `MINEFLEET_STAGING_URL` requis). Le script est strictement
+lecture seule — un test de garde-fou en CI (`backend/tests/test_ops_audit_script.py`) échoue si un ordre
+mutateur y est introduit. Le §A reste la référence : toute divergence entre le script et l'hôte prime
+sur le script et se consigne dans le rapport (§R). A6 (comptes, MFA) reste manuelle par conception.
+
 ### A1 — Versions déployées (API / frontend / commit)
 
 ```bash
