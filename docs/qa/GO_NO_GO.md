@@ -42,7 +42,7 @@ Changement depuis la révision de l'après-midi : **l'audit du code a révélé 
 | 3 | Restauration externe R1 (RPO/RTO) | C1 | **C** (approbation + coffre) | exercice 14 contrôles sur instance isolée | `docs/ops/PROTOCOLE_RESTAURATION_EXTERNE.md` |
 | 4 | Isolation A/B en recette réelle | C1 | **C** (après rang 1) | suite croisée 2 sociétés fictives + 1 pilote | runbook staging (A6 + recette) |
 | 5 | Éprouvetage des alertes | C2 | **C** (après rang 1) | injection d'incident `docker compose stop api` (runbook §Alerte) | runbook staging |
-| 6 | SLO GPS p95/p99 | C2 | **C** (après rangs 1 et 7) | benchmark staging via `/gps/metrics` (#438 — la mesure est livrée), seuils signés | `docs/GPS_SSE_CAPACITY.md` |
+| 6 | SLO GPS p95/p99 | C2 | **C** (après rangs 1 et 7) | benchmark staging via `/gps/metrics` (#438 — mesure livrée ; relève scriptée `scripts/gps/benchmark_metrics.py` #443), seuils signés | `docs/GPS_SSE_CAPACITY.md` + script de relève |
 | 7 | Traceur physique certifié | C2 | **B** (fournisseur + SIM) | commande d'un boîtier d'essai, banc L1–L9 | `docs/qa/PROTOCOLE_ESSAI_GPS_PHYSIQUE.md` |
 | 8 | Android physique / réseau faible | C3 | **A** (2 appareils suffisants) | campagne 10 scénarios sur 2 appareils | `docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md` |
 
