@@ -65,7 +65,13 @@ jobs:
       - name: Upgrade peuplé 0004 vers head
         run: pytest -q -p no:warnings tests_migrations
       - name: Tests (migrations, RLS, autorisations générées, isolation)
-        run: pytest -q -p no:warnings --cov=app --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=85
+        run: pytest -q -p no:warnings --cov=app --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml:coverage-backend.xml --cov-fail-under=85
+      - name: Publier la couverture backend en artefact
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-backend
+          path: backend/coverage-backend.xml
+          retention-days: 14
       - name: Audit des dépendances
         run: pip-audit --skip-editable
       - name: Créer une sauvegarde synthétique pour le test de restauration
@@ -213,7 +219,13 @@ jobs:
       - name: Types
         run: npm run typecheck
       - name: Tests unitaires
-        run: npm test
+        run: npm test -- --coverage --coverage.reporter=text --coverage.reporter=text-summary --coverage.reporter=json --coverage.reporter=lcovonly
+      - name: Publier la couverture frontend en artefact
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-frontend
+          path: frontend/coverage/coverage-final.json
+          retention-days: 14
       - name: Build
         run: npx vite build
       - name: Audit des dépendances
