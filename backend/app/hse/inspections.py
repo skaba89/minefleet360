@@ -432,7 +432,7 @@ def create_inspection(
     idempotency_key: Annotated[str | None, Depends(optional_idempotency_key)],
 ) -> InspectionOut:
     if idempotency_key is None:
-        return _create_inspection(body, auth)
+        return perform_inspection(body, auth)
     # Inspection rejouée depuis la file terrain (même contrat que POST /hse/incidents) : clé liée au tenant
     # ET au compte authentifié, corps empreinté, permission et portée revérifiées à chaque envoi.
     payload = json.dumps(body.model_dump(mode="json"), sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -452,12 +452,13 @@ def create_inspection(
         inspection = inspection_in_scope(auth, owned.replay.resource_id)
         response.headers["Idempotency-Replayed"] = "true"
         return inspections_out(auth, [inspection], detail=True)[0]
-    return _create_inspection(body, auth, idempotency_claim=owned)
+    return perform_inspection(body, auth, idempotency_claim=owned)
 
 
-def _create_inspection(
+def perform_inspection(
     body: InspectionCreate, auth: Authorized, *, idempotency_claim: IdempotencyClaim | None = None
 ) -> InspectionOut:
+    """Créer une inspection (logique métier de POST /hse/inspections, aussi utilisée par la démo)."""
     db = auth.db
     if active_site_in_scope(db, auth.scope, body.site_id) is None:
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
