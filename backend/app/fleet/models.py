@@ -79,6 +79,8 @@ class Vehicle(AuditedColumns, Base):
     )
     commissioned_on: Mapped[date | None] = mapped_column(Date)
     decommissioned_on: Mapped[date | None] = mapped_column(Date)
+    # Organisation sous-traitante (lot 1) : seulement pour un engin SUBCONTRACTED (ck_vehicle_subcontractor).
+    subcontractor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     notes: Mapped[str | None] = mapped_column(String)
 
 

@@ -28,6 +28,7 @@ from app.fleet.schemas import (
     VehicleUpdate,
 )
 from app.organization.contracts import active_site_in_scope, local_date
+from app.partners.contracts import subcontractor_status
 
 # Transitions manuelles autorisées (MODELE_CONCEPTUEL 4.1) ; RETIRED passe par la réforme (US-1.15).
 TRANSITIONS: dict[str, frozenset[str]] = {
@@ -48,6 +49,7 @@ _TRACKED = (
     "model",
     "model_year",
     "ownership_type",
+    "subcontractor_id",
     "fuel_type",
     "rated_payload_kg",
     "status",
@@ -198,6 +200,27 @@ def status_history(auth: Authorized, vehicle_id: uuid.UUID) -> list[StatusHistor
     ]
 
 
+def _check_subcontractor_link(
+    db: Session, ownership_type: str, subcontractor_id: uuid.UUID | None, current: uuid.UUID | None
+) -> None:
+    """Rattachement sous-traitant (lot 1) : engin SUBCONTRACTED seulement.
+
+    Un NOUVEAU rattachement exige un sous-traitant actif du tenant ; un rattachement existant reste valable
+    si le sous-traitant est ensuite suspendu.
+    """
+    if subcontractor_id is None:
+        return
+    if ownership_type != "SUBCONTRACTED":
+        raise AppError(
+            "VALIDATION_ERROR", details=[{"field": "subcontractor_id", "type": "ownership_mismatch"}]
+        )
+    status = subcontractor_status(db, subcontractor_id)
+    if status is None:
+        raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "subcontractor_id"}])
+    if subcontractor_id != current and status != "ACTIVE":
+        raise AppError("VALIDATION_ERROR", details=[{"field": "subcontractor_id", "type": "not_active"}])
+
+
 def create_vehicle(auth: Authorized, body: VehicleCreate) -> Vehicle:
     """US-1.12 : site et catégorie doivent appartenir au tenant ET à la portée (422 sinon).
 
@@ -209,6 +232,7 @@ def create_vehicle(auth: Authorized, body: VehicleCreate) -> Vehicle:
     if active_site_in_scope(db, auth.scope, body.site_id) is None:
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
     _active_category(db, body.vehicle_category_id)
+    _check_subcontractor_link(db, body.ownership_type, body.subcontractor_id, None)
     vehicle = Vehicle(
         tenant_id=auth.tenant_id,
         **body.model_dump(),
@@ -252,6 +276,12 @@ def update_vehicle(
         _ensure_no_open_assignments(auth, vehicle)  # D-13
     if body.vehicle_category_id is not None and body.vehicle_category_id != vehicle.vehicle_category_id:
         _active_category(db, body.vehicle_category_id)
+    ownership = body.ownership_type if "ownership_type" in fields else vehicle.ownership_type
+    link = body.subcontractor_id if "subcontractor_id" in fields else vehicle.subcontractor_id
+    if link is not None and ownership != "SUBCONTRACTED" and "subcontractor_id" not in fields:
+        # Changement de propriété sans détacher explicitement : jamais de modification silencieuse du lien.
+        raise AppError("VALIDATION_ERROR", details=[{"field": "subcontractor_id", "type": "must_clear"}])
+    _check_subcontractor_link(db, str(ownership), link, vehicle.subcontractor_id)
     before = _snapshot(vehicle, fields)
     for name in fields:
         setattr(vehicle, name, getattr(body, name))

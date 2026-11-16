@@ -838,7 +838,8 @@ permissions:
     grants:
       TENANT_ADMIN: [TENANT]
       DIRECTION: [TENANT]
-      OPS_MANAGER: [TENANT]
+      # SITE : un OPS_MANAGER de site rattache ses engins sous-traités (référentiel non lié à un site).
+      OPS_MANAGER: [TENANT, SITE]
       FINANCE: [TENANT]
       HSE: [TENANT]
       AUDITOR: [TENANT]

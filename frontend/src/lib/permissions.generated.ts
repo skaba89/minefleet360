@@ -1744,7 +1744,8 @@ export const GRANTS = {
       "TENANT"
     ],
     "OPS_MANAGER": [
-      "TENANT"
+      "TENANT",
+      "SITE"
     ],
     "TENANT_ADMIN": [
       "TENANT"

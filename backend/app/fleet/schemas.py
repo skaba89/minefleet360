@@ -51,6 +51,7 @@ class VehicleCreate(StrictModel):
     model: str | None = Field(default=None, max_length=60)
     model_year: int | None = Field(default=None, ge=1950, le=2100)
     ownership_type: Ownership = "OWNED"
+    subcontractor_id: uuid.UUID | None = None
     fuel_type: FuelType | None = None
     rated_payload_kg: int | None = Field(default=None, gt=0, le=1_000_000)
     commissioned_on: date | None = None
@@ -66,6 +67,8 @@ class VehicleUpdate(StrictModel):
     model: str | None = Field(default=None, max_length=60)
     model_year: int | None = Field(default=None, ge=1950, le=2100)
     ownership_type: Ownership | None = None
+    # Null explicite = détacher ; absent = inchangé.
+    subcontractor_id: uuid.UUID | None = None
     fuel_type: FuelType | None = None
     rated_payload_kg: int | None = Field(default=None, gt=0, le=1_000_000)
     commissioned_on: date | None = None
@@ -92,6 +95,7 @@ class VehicleOut(BaseModel):
     model: str | None
     model_year: int | None
     ownership_type: str
+    subcontractor_id: uuid.UUID | None = None
     fuel_type: str | None
     rated_payload_kg: int | None
     status: str
