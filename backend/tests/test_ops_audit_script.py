@@ -34,6 +34,8 @@ INTERDITS = (
     "systemctl stop",
     "systemctl restart",
     "verify-restore.sh",
+    " run --rm",  # démarre un conteneur ; sans env de release, compose construit une image
+    "compose build",
 )
 
 
@@ -84,3 +86,12 @@ def test_a4_targets_public_schema_and_mirrors_global_tables() -> None:
     assert block, "GLOBAL_TABLES introuvable dans test_database.py"
     expected = set(re.findall(r'"([a-z_]+)"', block.group(1)))
     assert script_tables == expected
+
+
+def test_a2_reads_schema_revision_without_starting_a_container() -> None:
+    """Régression staging 2026-11-16 : A2 construisait minefleet-api:local via `run --rm migrate`."""
+    body = SCRIPT.read_text(encoding="utf-8")
+    assert "SELECT version_num FROM alembic_version" in body
+    assert "check_schema_revision" not in "\n".join(
+        line for line in body.splitlines() if not line.lstrip().startswith("#")
+    )

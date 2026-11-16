@@ -83,7 +83,11 @@ runsh "1-release-state" "cat release-state/current.json"
 
 section "A2 — Schéma Alembic"
 runsh "2-label-alembic" 'docker inspect --format "{{index .Config.Labels \"com.minefleet.alembic-head\"}}" "$(docker compose -f docker-compose.prod.yml --env-file .env.prod ps -q api)"'
-runsh "2-schema-revision" "docker compose -f docker-compose.prod.yml --env-file .env.prod --profile ops run --rm --no-deps migrate python -m app.core.check_schema_revision"
+# Révision en base lue par le catalogue et comparée au label de l'image API déployée : aucun conteneur
+# démarré. L'ancienne forme (`run --rm migrate` sans environnement de release) faisait retomber compose
+# sur minefleet-api:local et CONSTRUISAIT une image depuis les sources (constat staging 2026-11-16).
+runsh "2-schema-revision" 'label="$(docker inspect --format "{{index .Config.Labels \"com.minefleet.alembic-head\"}}" "$(docker compose -f docker-compose.prod.yml --env-file .env.prod ps -q api)")"; base="$(docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T db psql -U postgres -d minefleet -tAc "SELECT version_num FROM alembic_version")"; printf "label image : %s · base : %s\n" "$label" "$base"; [ -n "$label" ] && [ "$(printf "%s\n" "$base" | wc -l)" -eq 1 ] && [ "${base%%_*}" = "$label" ]'
+
 
 section "A3 — Images et signatures"
 runsh "3-images-epinglees" "docker compose -f docker-compose.prod.yml --env-file .env.prod ps --format '{{.Image}}'"
