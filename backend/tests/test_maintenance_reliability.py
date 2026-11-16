@@ -151,10 +151,20 @@ def _service_dates(w: World, vehicle: str, commissioned: date | None, decommissi
     try:
         with engine.begin() as conn:
             conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(w.t.tenant_id)})
-            conn.execute(
-                text("UPDATE vehicle SET commissioned_on = :c, decommissioned_on = :d WHERE vehicle_id = :v"),
-                {"c": commissioned, "d": decommissioned, "v": vehicle},
-            )
+            # Invariant ck_vehicle_retired : date de réforme ⇔ statut RETIRED.
+            if decommissioned is None:
+                conn.execute(
+                    text("UPDATE vehicle SET commissioned_on = :c WHERE vehicle_id = :v"),
+                    {"c": commissioned, "v": vehicle},
+                )
+            else:
+                conn.execute(
+                    text(
+                        "UPDATE vehicle SET commissioned_on = :c, decommissioned_on = :d, status = 'RETIRED' "
+                        "WHERE vehicle_id = :v"
+                    ),
+                    {"c": commissioned, "d": decommissioned, "v": vehicle},
+                )
     finally:
         engine.dispose()
 
