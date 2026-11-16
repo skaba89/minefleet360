@@ -8278,6 +8278,8 @@ export interface components {
             parts_cost_complete: boolean;
             /** Parts Cost Known */
             parts_cost_known: string | null;
+            /** Service Hours */
+            service_hours: string;
             /** Vehicles */
             vehicles: number;
         };
@@ -9828,6 +9830,10 @@ export interface components {
             parts_cost_complete: boolean;
             /** Parts Cost Known */
             parts_cost_known: string | null;
+            /** Service Dates Conflict */
+            service_dates_conflict: boolean;
+            /** Service Hours */
+            service_hours: string;
             /**
              * Site Id
              * Format: uuid

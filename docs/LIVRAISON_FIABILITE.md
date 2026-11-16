@@ -16,8 +16,10 @@ et MTBF/MTTR/disponibilité n'existaient pas.
 |---|---|
 | Pannes | OT correctifs signalés dans P, hors rejetés/annulés |
 | Immobilisation | union par engin des intervalles [signalement si panne bloquante, sinon début d'intervention ; clôture ou maintenant], découpés sur P — sans double comptage |
-| Disponibilité | (durée P − immobilisation) / durée P |
-| MTBF | (durée P − immobilisation) / pannes ; vide sans panne |
+| Durée de service (par engin) | P bornée par la mise en service (début du jour, heure du site) et la réforme (fin du jour) ; engin hors service sur toute P **et** sans OT : omis ; OT hors des dates de service : durée P retenue et `service_dates_conflict = true` |
+| Disponibilité | (durée de service − immobilisation) / durée de service ; immobilisation bornée à la durée de service |
+| MTBF | (durée de service − immobilisation) / pannes ; vide sans panne |
+| Totaux du parc | somme des durées de service réelles (`totals.service_hours`), et non « durée P × nombre d'engins » |
 | MTTR (délai de remise en service) | moyenne (clôture − signalement) des OT correctifs clôturés dans P |
 | Main-d'œuvre, pièces | OT (correctifs et préventifs) clôturés dans P ; pièces = sorties valorisées liées à l'OT ; `parts_cost_complete=false` si une sortie n'est pas valorisée (affiché « ≥ ») ; devises multiples → coût non agrégé |
 
@@ -38,6 +40,10 @@ plus disponible, sélection de période.
 
 ## Limites
 
-- Durée de P identique pour tous les engins (pas de date de mise en service) ; à affiner avec l'historique de statut.
+- ~~Durée de P identique pour tous les engins~~ — **levée le 16 novembre 2026** : durée de service par engin
+  (`commissioned_on` / `decommissioned_on`, heure du site), test `test_reliability_uses_each_vehicle_service_window`.
+  Un engin réformé (`RETIRED`) sans OT dans P reste omis, comme avant.
+- Indicateurs rapportés au temps calendaire de service, pas aux heures de fonctionnement : MTBF « par heure moteur »
+  et taux d'utilisation à partir des relevés de compteur horaire = tranche suivante.
 - Pas encore de coût carburant ni de pneus : le « coût complet par engin » (P2) agrégera carburant + pièces +
   main-d'œuvre valorisée (taux horaire à définir) + pneus.

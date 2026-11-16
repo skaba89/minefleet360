@@ -58,6 +58,9 @@ class VehicleRef:
     site_id: uuid.UUID
     fleet_number: str
     status: str
+    # Dates de service (date locale du site) : bornent la durée de référence des indicateurs de fiabilité.
+    commissioned_on: date | None = None
+    decommissioned_on: date | None = None
 
 
 def vehicles_in_scope(
@@ -68,7 +71,14 @@ def vehicles_in_scope(
     include_retired: bool = False,
 ) -> list[VehicleRef]:
     """Engins du tenant courant (RLS), limités aux sites donnés (None : toute la société)."""
-    stmt = select(Vehicle.vehicle_id, Vehicle.site_id, Vehicle.fleet_number, Vehicle.status)
+    stmt = select(
+        Vehicle.vehicle_id,
+        Vehicle.site_id,
+        Vehicle.fleet_number,
+        Vehicle.status,
+        Vehicle.commissioned_on,
+        Vehicle.decommissioned_on,
+    )
     if site_ids is not None:
         stmt = stmt.where(Vehicle.site_id.in_(site_ids))
     if vehicle_ids is not None:

@@ -1,6 +1,8 @@
 """Fiabilité et coûts de maintenance par engin (docs/LIVRAISON_FIABILITE.md)."""
 
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
@@ -142,3 +144,108 @@ def test_reliability_scope_and_validation(client: TestClient, w: World, api: Api
     assert too_long.status_code == 422
     dispatcher = client.get(f"{API}/maintenance/reliability", headers=w.dispatcher.headers)
     assert dispatcher.status_code == 403
+
+
+def _service_dates(w: World, vehicle: str, commissioned: date | None, decommissioned: date | None) -> None:  # noqa: F811
+    engine = create_engine(get_settings().database_url(), pool_size=1, max_overflow=0)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(w.t.tenant_id)})
+            conn.execute(
+                text("UPDATE vehicle SET commissioned_on = :c, decommissioned_on = :d WHERE vehicle_id = :v"),
+                {"c": commissioned, "d": decommissioned, "v": vehicle},
+            )
+    finally:
+        engine.dispose()
+
+
+def _site_zone(w: World) -> ZoneInfo:  # noqa: F811
+    engine = create_engine(get_settings().database_url(), pool_size=1, max_overflow=0)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(w.t.tenant_id)})
+            name = conn.execute(
+                text(
+                    "SELECT coalesce(s.timezone, t.default_timezone) FROM site s "
+                    "JOIN tenant t ON t.tenant_id = s.tenant_id WHERE s.site_id = :s"
+                ),
+                {"s": str(w.t.sites["S1"])},
+            ).scalar_one()
+    finally:
+        engine.dispose()
+    return ZoneInfo(name)
+
+
+def test_reliability_uses_each_vehicle_service_window(client: TestClient, w: World, api: Api) -> None:  # noqa: F811
+    """Limite levée (LIVRAISON_FIABILITE.md) : la durée de référence est celle où l'engin était en service."""
+    chief = api.user(w.t, "WORKSHOP_CHIEF")
+    mechanic = api.user(w.t, "MECHANIC", "SITE", "S1")
+    zone = _site_zone(w)
+    late, retired, future, conflicting = (_vehicle(client, w) for _ in range(4))
+    # Période P : 2026-01-01 00:00 → 2026-01-05 00:00 (heure du site), soit 96 h.
+    start = datetime(2026, 1, 1, tzinfo=zone)
+    end = datetime(2026, 1, 5, tzinfo=zone)
+
+    # Mis en service le 2 janvier : 72 h de service ; une panne bloquante de 12 h dans la fenêtre.
+    _service_dates(w, late, date(2026, 1, 2), None)
+    failure = _closed_order(client, w, late, chief, mechanic, immobilize=True)
+    _backdate_at(
+        w, failure, reported=datetime(2026, 1, 3, tzinfo=zone), closed=datetime(2026, 1, 3, 12, tzinfo=zone)
+    )
+    # Réformé le 3 janvier (fin de journée) : 72 h de service ; immobilisation débordant la réforme.
+    _service_dates(w, retired, None, date(2026, 1, 3))
+    overflow = _closed_order(client, w, retired, chief, mechanic, immobilize=True)
+    _backdate_at(
+        w,
+        overflow,
+        reported=datetime(2026, 1, 3, 18, tzinfo=zone),
+        closed=datetime(2026, 1, 4, 6, tzinfo=zone),
+    )
+    # Mis en service après P, sans OT : omis (ni disponible ni indisponible).
+    _service_dates(w, future, date(2026, 2, 1), None)
+    # Mis en service après P mais avec une panne dans P : dates incohérentes → durée de P, signalé.
+    _service_dates(w, conflicting, date(2026, 2, 1), None)
+    odd = _closed_order(client, w, conflicting, chief, mechanic, immobilize=True)
+    _backdate_at(
+        w, odd, reported=datetime(2026, 1, 2, tzinfo=zone), closed=datetime(2026, 1, 2, 6, tzinfo=zone)
+    )
+
+    body = client.get(
+        f"{API}/maintenance/reliability",
+        headers=chief.headers,
+        params={"from": start.isoformat(), "to": end.isoformat()},
+    ).json()
+    rows = {r["vehicle_id"]: r for r in body["vehicles"]}
+    assert body["period_hours"] == "96.00"
+    assert rows[late]["service_hours"] == "72.00" and rows[late]["service_dates_conflict"] is False
+    assert rows[late]["downtime_hours"] == "12.00"
+    assert rows[late]["availability_percent"] == "83.33"  # (72 − 12) / 72, et non (96 − 12) / 96
+    assert rows[late]["mtbf_hours"] == "60.00"
+    assert rows[retired]["service_hours"] == "72.00"
+    assert rows[retired]["downtime_hours"] == "6.00"  # immobilisation bornée à la réforme (18 h → 24 h)
+    assert rows[retired]["availability_percent"] == "91.67"
+    assert future not in rows
+    assert rows[conflicting]["service_dates_conflict"] is True
+    assert rows[conflicting]["service_hours"] == "96.00" and rows[conflicting]["downtime_hours"] == "6.00"
+    # Totaux : heures de service réellement sommées, pas « durée de P × nombre d'engins ».
+    service_total = sum(Decimal(r["service_hours"]) for r in body["vehicles"])
+    assert Decimal(body["totals"]["service_hours"]) == service_total
+    downtime_total = Decimal(body["totals"]["downtime_hours"])
+    expected = ((service_total - downtime_total) * 100 / service_total).quantize(Decimal("0.01"))
+    assert Decimal(body["totals"]["availability_percent"]) == expected
+
+
+def _backdate_at(w: World, oid: str, *, reported: datetime, closed: datetime) -> None:  # noqa: F811
+    engine = create_engine(get_settings().database_url(), pool_size=1, max_overflow=0)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(w.t.tenant_id)})
+            conn.execute(
+                text(
+                    "UPDATE work_order SET reported_at = :r, started_at = :r, closed_at = :c "
+                    "WHERE work_order_id = :o"
+                ),
+                {"r": reported, "c": closed, "o": oid},
+            )
+    finally:
+        engine.dispose()

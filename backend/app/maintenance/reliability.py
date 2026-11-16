@@ -6,8 +6,12 @@ Définitions (période P = [début, fin), fin bornée à maintenant) :
   clôture ou maintenant], découpée sur P. Les chevauchements ne sont comptés qu'une fois.
 - Délai moyen de remise en service (MTTR) : moyenne de (clôture − signalement) des OT correctifs
   clôturés dans P.
-- MTBF : (durée de P − immobilisation) / nombre de pannes ; absent sans panne.
-- Disponibilité : (durée de P − immobilisation) / durée de P.
+- Durée de service d'un engin : P bornée par sa mise en service (début du jour, heure du site) et sa réforme
+  (fin du jour). Un engin hors service sur toute la période et sans OT est omis ; s'il a des OT malgré tout
+  (dates incohérentes), la durée de P est utilisée et `service_dates_conflict` le signale.
+- MTBF : (durée de service − immobilisation) / nombre de pannes ; absent sans panne.
+- Disponibilité : (durée de service − immobilisation) / durée de service. L'immobilisation est bornée à la
+  durée de service.
 - Main-d'œuvre et pièces : celles des OT (correctifs et préventifs) clôturés dans P. Le coût pièces ne somme
   que les sorties valorisées liées à l'OT ; `parts_cost_complete` est faux dès qu'une sortie n'est pas
   valorisée.
@@ -16,7 +20,7 @@ Aucune valeur n'est extrapolée : un engin sans OT a 100 % de disponibilité « 
 
 import uuid
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta, tzinfo
 from decimal import Decimal
 from typing import Annotated
 
@@ -27,10 +31,11 @@ from sqlalchemy import func, or_, select
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
 from app.core.errors import AppError
-from app.fleet.contracts import vehicles_in_scope
+from app.fleet.contracts import VehicleRef, vehicles_in_scope
 from app.maintenance.models import WorkOrder, WorkOrderLabour
 from app.maintenance.parts_costs import aggregate_parts_cost
 from app.maintenance.parts_models import SparePartMovement
+from app.organization.contracts import site_timezone
 
 router = APIRouter(tags=["maintenance"], route_class=SecuredRoute)
 Read = Annotated[Authorized, Depends(Require("maintenance.reliability.read"))]
@@ -44,6 +49,8 @@ class VehicleReliability(BaseModel):
     fleet_number: str
     site_id: uuid.UUID
     vehicle_status: str
+    service_hours: Decimal
+    service_dates_conflict: bool
     failures: int
     closed_corrective: int
     open_work_orders: int
@@ -58,6 +65,7 @@ class VehicleReliability(BaseModel):
 
 class ReliabilityTotals(BaseModel):
     vehicles: int
+    service_hours: Decimal
     failures: int
     downtime_hours: Decimal
     availability_percent: Decimal | None
@@ -94,6 +102,18 @@ def _union(intervals: list[tuple[datetime, datetime]]) -> timedelta:
     if current is not None:
         total += current[1] - current[0]
     return total
+
+
+def _service_window(
+    vehicle: VehicleRef, start: datetime, end: datetime, tz: tzinfo
+) -> tuple[datetime, datetime] | None:
+    """Intersection de P et de la période de service de l'engin (dates locales du site) ; None si vide."""
+    begin, finish = start, end
+    if vehicle.commissioned_on is not None:
+        begin = max(begin, datetime.combine(vehicle.commissioned_on, time.min, tz))
+    if vehicle.decommissioned_on is not None:
+        finish = min(finish, datetime.combine(vehicle.decommissioned_on + timedelta(days=1), time.min, tz))
+    return (begin, finish) if begin < finish else None
 
 
 def _minutes_to_hours(minutes: int) -> Decimal:
@@ -178,16 +198,26 @@ def reliability(
     rows: list[VehicleReliability] = []
     all_repairs: list[timedelta] = []
     total_cost: list[Decimal | None] = []
+    zones: dict[uuid.UUID, tzinfo] = {}
     for vehicle in vehicles:
         own = by_vehicle.get(vehicle.vehicle_id, [])
         if vehicle.status == "RETIRED" and not own:
             continue
+        if vehicle.site_id not in zones:
+            zones[vehicle.site_id] = site_timezone(db, vehicle.site_id)
+        window = _service_window(vehicle, start, end, zones[vehicle.site_id])
+        conflict = False
+        if window is None:
+            if not own:
+                continue  # hors service sur toute la période : ni disponible ni indisponible
+            window, conflict = (start, end), True
+        service = window[1] - window[0]
         intervals = []
         for o in own:
             begin = o.reported_at if o.immobilize else o.started_at
             if begin is None:
                 continue
-            clipped = (max(begin, start), min(o.closed_at or end, end))
+            clipped = (max(begin, window[0]), min(o.closed_at or end, window[1]))
             if clipped[0] < clipped[1]:
                 intervals.append(clipped)
         downtime = _union(intervals)
@@ -209,13 +239,15 @@ def reliability(
                 fleet_number=vehicle.fleet_number,
                 site_id=vehicle.site_id,
                 vehicle_status=vehicle.status,
+                service_hours=_hours(service),
+                service_dates_conflict=conflict,
                 failures=failures,
                 closed_corrective=len(repairs),
                 open_work_orders=sum(1 for o in own if o.closed_at is None),
                 downtime_hours=_hours(downtime),
-                availability_percent=_percent(period - downtime, period),
+                availability_percent=_percent(service - downtime, service),
                 mttr_hours=_hours(sum(repairs, timedelta()) / len(repairs)) if repairs else None,
-                mtbf_hours=_hours((period - downtime) / failures) if failures else None,
+                mtbf_hours=_hours((service - downtime) / failures) if failures else None,
                 labour_hours=_minutes_to_hours(sum(int(labour.get(wo) or 0) for wo in closed)),
                 parts_cost_known=parts.known_total if parts else None,
                 parts_cost_complete=parts.complete if parts else False,
@@ -224,7 +256,7 @@ def reliability(
     rows.sort(key=lambda r: (r.availability_percent, r.fleet_number))
     failures_total = sum(r.failures for r in rows)
     downtime_total = sum((r.downtime_hours for r in rows), Decimal("0"))
-    fleet_hours = _hours(period) * len(rows)
+    fleet_hours = sum((r.service_hours for r in rows), Decimal("0"))
     parts_total = aggregate_parts_cost(total_cost) if len(currencies) <= 1 else None
     return ReliabilityOut(
         period_start=start,
@@ -233,6 +265,7 @@ def reliability(
         currency=currency,
         totals=ReliabilityTotals(
             vehicles=len(rows),
+            service_hours=fleet_hours,
             failures=failures_total,
             downtime_hours=downtime_total,
             availability_percent=_ratio(fleet_hours - downtime_total, fleet_hours),

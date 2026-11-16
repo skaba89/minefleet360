@@ -103,7 +103,11 @@ export function ReliabilityPage() {
                           <div className="small muted">
                             {siteCode.get(v.site_id)} — {label(VEHICLE_STATUS, v.vehicle_status)}
                             {v.open_work_orders > 0 && ` — ${v.open_work_orders} OT ouvert${v.open_work_orders > 1 ? "s" : ""}`}
+                            {!v.service_dates_conflict && Number(v.service_hours) < Number(r.period_hours) && ` — en service ${hours(v.service_hours)} sur la période`}
                           </div>
+                          {v.service_dates_conflict && (
+                            <div className="small warn-text">Dates de mise en service ou de réforme incohérentes avec les OT : période entière retenue.</div>
+                          )}
                         </td>
                         <td>
                           <Badge tone={tone(v.availability_percent)}>{number.format(Number(v.availability_percent))} %</Badge>
@@ -121,7 +125,8 @@ export function ReliabilityPage() {
                 <p className="muted small">
                   Indicateurs calculés à partir des ordres de travail : immobilisation = panne bloquante ou intervention en cours,
                   sans double comptage. « ≥ » signale des sorties de pièces non valorisées (coût réel supérieur). Un engin sans OT
-                  apparaît disponible selon l'atelier, sans mesure terrain.
+                  apparaît disponible selon l'atelier, sans mesure terrain. Disponibilité et MTBF sont rapportés à la durée de
+                  service de chaque engin (mise en service et réforme, heure du site).
                 </p>
               </>
             )}
