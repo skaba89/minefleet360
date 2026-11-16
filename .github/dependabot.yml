@@ -25,6 +25,14 @@ updates:
       time: "06:00"
       timezone: "Europe/Paris"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "pytest"
+        # 9.2.0 casse monkeypatch.setattr sur starlette.State : l'undo supprime
+        # l'attribut dynamique au lieu de le restaurer → app.state.clock disparaît
+        # en cours de session (bisect CI 2026-11-09). Épinglé en 9.1.1 dans
+        # backend/pyproject.toml. À retirer après adaptation des tests
+        # (pas de setattr direct sur State), puis re-bumper pytest délibérément.
+        versions: [">=9.2.0"]
     groups:
       pip-minor-patch:
         update-types:
