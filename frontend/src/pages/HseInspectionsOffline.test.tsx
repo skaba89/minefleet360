@@ -6,6 +6,7 @@ import { MemoryRouter } from "react-router";
 import { ApiError, call, read } from "../api/client";
 import { queueInspection, syncAccount } from "../lib/hseOfflineSync";
 import { HSE_INSPECTION_ENDPOINT, listForAccount } from "../lib/offline-outbox";
+import { loadInspectionKit } from "../lib/offlineInspectionKit";
 import { HseInspectionsPage } from "./HseInspectionsPages";
 
 /** Inspection HSE hors ligne (phase 3, tranche 2) : même file et même contrat que les déclarations d'incident. */
@@ -89,6 +90,7 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   setOnline(true);
+  localStorage.clear();
 });
 
 it("hors ligne, l'inspection est placée dans la file locale sans appel serveur", async () => {
@@ -167,5 +169,21 @@ it("la file affiche l'inspection synchronisée avec un lien vers l'inspection se
   expect(screen.getByText("Synchronisé — INS-000009")).toBeTruthy();
   expect(screen.getByRole("link", { name: "Ouvrir" }).getAttribute("href")).toBe("/hse/inspections/ins-9");
   me.grants = [{ role_code: "MECHANIC", scope_type: "SITE", site_id: "site-1" }];
+  client.clear();
+});
+
+it("en ligne, la page prépare le kit d'inspection hors ligne du compte (sites, checklists actives, engins)", async () => {
+  vi.mocked(read).mockImplementation((async (path: string) => {
+    if (path === "/hse/checklist-templates") return [template, { ...template, hse_checklist_template_id: "tpl-old", active: false }];
+    if (path === "/vehicles") return { items: [{ vehicle_id: "veh-1", fleet_number: "CAM-01" }], total: 1, page: 1, page_size: 200 };
+    return { items: [], total: 0, page: 1, page_size: 50 };
+  }) as never);
+  const client = show();
+  await waitFor(() => expect(loadInspectionKit({ workspace_code: "espace-fictif", user_account_id: "user-1" })).not.toBeNull());
+  const kit = loadInspectionKit({ workspace_code: "espace-fictif", user_account_id: "user-1" })!;
+  expect(kit.sites.map((s) => s.site_id)).toEqual(["site-1"]);
+  // Seules les checklists actives sont emportées hors ligne.
+  expect(kit.templates.map((t) => t.hse_checklist_template_id)).toEqual(["tpl-1"]);
+  expect(kit.vehicles).toEqual([{ vehicle_id: "veh-1", site_id: "site-1", fleet_number: "CAM-01" }]);
   client.clear();
 });

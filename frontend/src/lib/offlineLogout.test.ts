@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { clearOfflineDrafts } from "./offlineDrafts";
 import { purgeOutbox } from "./offline-outbox";
 import { purgeDraftsForSignedOutUser } from "./offlineLogout";
+import { loadInspectionKit, saveInspectionKit } from "./offlineInspectionKit";
 
 vi.mock("./offlineDrafts", () => ({ clearOfflineDrafts: vi.fn() }));
 vi.mock("./offline-outbox", () => ({ purgeOutbox: vi.fn() }));
@@ -34,4 +35,27 @@ it("signale l'échec outbox sans déclarer la purge réussie", async () => {
   vi.mocked(purgeOutbox).mockRejectedValue(new Error("IndexedDB bloqué"));
   await expect(purgeDraftsForSignedOutUser(profile)).rejects.toThrow("pas pu être confirmée");
   expect(clearOfflineDrafts).toHaveBeenCalledOnce();
+});
+
+it("la déconnexion volontaire efface aussi le kit d'inspection hors ligne", async () => {
+  saveInspectionKit({
+    workspace_code: profile.workspace_code,
+    user_account_id: profile.user_account_id,
+    saved_at: new Date().toISOString(),
+    sites: [{ site_id: "site-1", code: "MINE", name: "Mine fictive", timezone: null }],
+    templates: [
+      {
+        hse_checklist_template_id: "tpl-1",
+        code: "PRE",
+        name: "Prise de poste",
+        version: 1,
+        target_type: "PRE_SHIFT",
+        items: [{ key: "epi", label: "EPI portés", critical: true }],
+      },
+    ],
+    vehicles: [],
+  });
+  expect(loadInspectionKit(profile)).not.toBeNull();
+  await purgeDraftsForSignedOutUser(profile);
+  expect(loadInspectionKit(profile)).toBeNull();
 });
