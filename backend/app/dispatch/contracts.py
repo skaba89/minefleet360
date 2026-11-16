@@ -54,6 +54,8 @@ def measured_loads(
         .order_by(Rotation.unloaded_at)
     ).all()
     for vehicle_id, unloaded_at, net_kg, valid in rows:
+        if unloaded_at is None:  # exclu par le filtre de période ; garde explicite pour le typage
+            continue
         out[vehicle_id].append(MeasuredLoad(unloaded_at, int(net_kg), bool(valid)))
     return out
 
