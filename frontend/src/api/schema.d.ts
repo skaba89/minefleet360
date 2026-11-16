@@ -8270,16 +8270,27 @@ export interface components {
             failures: number;
             /** Labour Hours */
             labour_hours: string;
+            /**
+             * Metered Vehicles
+             * @default 0
+             */
+            metered_vehicles: number;
             /** Mtbf Hours */
             mtbf_hours: string | null;
+            /** Mtbf Operating Hours */
+            mtbf_operating_hours?: string | null;
             /** Mttr Hours */
             mttr_hours: string | null;
+            /** Operating Hours */
+            operating_hours?: string | null;
             /** Parts Cost Complete */
             parts_cost_complete: boolean;
             /** Parts Cost Known */
             parts_cost_known: string | null;
             /** Service Hours */
             service_hours: string;
+            /** Utilization Percent */
+            utilization_percent?: string | null;
             /** Vehicles */
             vehicles: number;
         };
@@ -9820,12 +9831,25 @@ export interface components {
             fleet_number: string;
             /** Labour Hours */
             labour_hours: string;
+            /**
+             * Meter Anomaly
+             * @default false
+             */
+            meter_anomaly: boolean;
+            /** Meter Coverage Percent */
+            meter_coverage_percent?: string | null;
+            /** Meter Span Hours */
+            meter_span_hours?: string | null;
             /** Mtbf Hours */
             mtbf_hours: string | null;
+            /** Mtbf Operating Hours */
+            mtbf_operating_hours?: string | null;
             /** Mttr Hours */
             mttr_hours: string | null;
             /** Open Work Orders */
             open_work_orders: number;
+            /** Operating Hours */
+            operating_hours?: string | null;
             /** Parts Cost Complete */
             parts_cost_complete: boolean;
             /** Parts Cost Known */
@@ -9839,6 +9863,8 @@ export interface components {
              * Format: uuid
              */
             site_id: string;
+            /** Utilization Percent */
+            utilization_percent?: string | null;
             /**
              * Vehicle Id
              * Format: uuid

@@ -20,6 +20,11 @@ et MTBF/MTTR/disponibilité n'existaient pas.
 | Disponibilité | (durée de service − immobilisation) / durée de service ; immobilisation bornée à la durée de service |
 | MTBF | (durée de service − immobilisation) / pannes ; vide sans panne |
 | Totaux du parc | somme des durées de service réelles (`totals.service_hours`), et non « durée P × nombre d'engins » |
+| Heures de fonctionnement | progression de l'horamètre entre le premier et le dernier relevé `HOUR_METER` pris dans la durée de service (≥ 2 relevés) ; une remise à zéro motivée coupe le segment ; rien n'est extrapolé hors des relevés |
+| Taux d'utilisation | heures de fonctionnement / (plage des relevés − immobilisation sur la plage) |
+| MTBF en heures moteur | heures de fonctionnement / pannes signalées sur la plage des relevés |
+| Couverture des relevés | plage des relevés / durée de service ; heures moteur > durée écoulée → `meter_anomaly`, utilisation non calculée |
+| Totaux horamètre | engins mesurés (`metered_vehicles`, anomalies comprises) ; utilisation et MTBF moteur sur les engins sans anomalie |
 | MTTR (délai de remise en service) | moyenne (clôture − signalement) des OT correctifs clôturés dans P |
 | Main-d'œuvre, pièces | OT (correctifs et préventifs) clôturés dans P ; pièces = sorties valorisées liées à l'OT ; `parts_cost_complete=false` si une sortie n'est pas valorisée (affiché « ≥ ») ; devises multiples → coût non agrégé |
 
@@ -43,7 +48,9 @@ plus disponible, sélection de période.
 - ~~Durée de P identique pour tous les engins~~ — **levée le 16 novembre 2026** : durée de service par engin
   (`commissioned_on` / `decommissioned_on`, heure du site), test `test_reliability_uses_each_vehicle_service_window`.
   Un engin réformé (`RETIRED`) sans OT dans P reste omis, comme avant.
-- Indicateurs rapportés au temps calendaire de service, pas aux heures de fonctionnement : MTBF « par heure moteur »
-  et taux d'utilisation à partir des relevés de compteur horaire = tranche suivante.
+- ~~Pas d'heures de fonctionnement~~ — **levée le 16 novembre 2026** : utilisation et MTBF en heures moteur à partir
+  de l'horamètre (test `test_reliability_operating_hours_utilization_and_mtbf`). Limites : la qualité dépend de la
+  fréquence des relevés (couverture affichée) ; pas de relevés télématiques (CAN) ni GPS ; productivité en
+  tonnes/heure (pesées) non encore rapprochée des heures moteur.
 - Pas encore de coût carburant ni de pneus : le « coût complet par engin » (P2) agrégera carburant + pièces +
   main-d'œuvre valorisée (taux horaire à définir) + pneus.

@@ -265,3 +265,88 @@ def _backdate_at(w: World, oid: str, *, reported: datetime, closed: datetime) ->
             )
     finally:
         engine.dispose()
+
+
+T1 = datetime(2026, 3, 1, tzinfo=UTC)  # période distincte : aucun OT des autres tests du module
+
+
+def _t1(hours: float) -> datetime:
+    return T1 + timedelta(hours=hours)
+
+
+def _hour_meter(
+    w: World,  # noqa: F811
+    vehicle: str,
+    recorder: Account,
+    readings: list[tuple[float, float, str | None]],
+) -> None:
+    """Relevés d'horamètre antidatés (la table est en ajout seul : INSERT uniquement)."""
+    engine = create_engine(get_settings().database_url(), pool_size=1, max_overflow=0)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(w.t.tenant_id)})
+            for hours, value, reset in readings:
+                conn.execute(
+                    text(
+                        "INSERT INTO vehicle_meter_reading (tenant_id, vehicle_id, site_id, meter_kind, "
+                        "value, read_at, reset_reason, recorded_by) "
+                        "VALUES (:t, :v, :s, 'HOUR_METER', :val, :at, :reset, :by)"
+                    ),
+                    {
+                        "t": str(w.t.tenant_id),
+                        "v": vehicle,
+                        "s": str(w.t.sites["S1"]),
+                        "val": value,
+                        "at": _t1(hours),
+                        "reset": reset,
+                        "by": str(recorder.user_id),
+                    },
+                )
+    finally:
+        engine.dispose()
+
+
+def test_reliability_operating_hours_utilization_and_mtbf(client: TestClient, w: World, api: Api) -> None:  # noqa: F811
+    """MTBF en heures moteur et taux d'utilisation à partir de l'horamètre (sans extrapolation)."""
+    chief = api.user(w.t, "WORKSHOP_CHIEF")
+    mechanic = api.user(w.t, "MECHANIC", "SITE", "S1")
+    worked, reset, anomaly, single = (_vehicle(client, w) for _ in range(4))
+
+    # A : +30 h puis +30 h moteur sur 80 h de plage ; une panne bloquante de 10 h sur la plage.
+    _hour_meter(w, worked, chief, [(10, 1000.0, None), (50, 1030.0, None), (90, 1060.0, None)])
+    failure = _closed_order(client, w, worked, chief, mechanic, immobilize=True)
+    _backdate_at(w, failure, reported=_t1(20), closed=_t1(30))
+    # B : 20 h, remise à zéro (compteur remplacé, progression non comptée), puis 15 h.
+    _hour_meter(
+        w, reset, chief, [(10, 500.0, None), (40, 520.0, None), (60, 0.0, "METER_REPLACED"), (90, 15.0, None)]
+    )
+    # C : 50 h moteur en 10 h écoulées : anomalie de relevés, utilisation non calculée.
+    _hour_meter(w, anomaly, chief, [(10, 0.0, None), (20, 50.0, None)])
+    # D : un seul relevé : aucune plage mesurée.
+    _hour_meter(w, single, chief, [(10, 42.0, None)])
+
+    body = client.get(
+        f"{API}/maintenance/reliability",
+        headers=chief.headers,
+        params={"from": T1.isoformat(), "to": _t1(100).isoformat()},
+    ).json()
+    rows = {r["vehicle_id"]: r for r in body["vehicles"]}
+    a = rows[worked]
+    assert a["operating_hours"] == "60.00" and a["meter_span_hours"] == "80.00"
+    assert a["meter_coverage_percent"] == "80.00"
+    assert a["utilization_percent"] == "85.71"  # 60 / (80 − 10)
+    assert a["mtbf_operating_hours"] == "60.00" and a["meter_anomaly"] is False
+    b = rows[reset]
+    assert b["operating_hours"] == "35.00" and b["utilization_percent"] == "43.75"  # 35 / 80
+    assert b["mtbf_operating_hours"] is None  # aucune panne
+    c = rows[anomaly]
+    assert (
+        c["meter_anomaly"] is True and c["utilization_percent"] is None and c["mtbf_operating_hours"] is None
+    )
+    d = rows[single]
+    assert d["operating_hours"] is None and d["utilization_percent"] is None and d["meter_anomaly"] is False
+    totals = body["totals"]
+    assert totals["metered_vehicles"] == 3
+    assert totals["operating_hours"] == "95.00"  # A + B, anomalie exclue
+    assert totals["utilization_percent"] == "63.33"  # 95 / (70 + 80)
+    assert totals["mtbf_operating_hours"] == "95.00"  # 95 h / 1 panne
