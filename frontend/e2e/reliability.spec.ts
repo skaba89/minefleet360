@@ -60,8 +60,14 @@ test("fiabilité du parc : OT clôturé alimente les indicateurs, période 30 jo
   await expect(synthesis).toContainText("MTBF moyen");
   const row = page.getByRole("row", { name: new RegExp(fleetNumber) });
   await expect(row).toBeVisible();
-  await expect(row.locator("td").nth(2)).toHaveText("1"); // une panne immobilisante sur la période
-  await expect(row.locator("td").nth(6)).toContainText("2 h"); // 120 minutes de main-d'œuvre
+  // Colonnes repérées par leur en-tête (et non par position) : l'ajout d'un indicateur ne casse pas la lecture.
+  const headers = (await page.locator("table thead th").allTextContents()).map((h) => h.trim());
+  const failuresColumn = headers.indexOf("Pannes");
+  const labourColumn = headers.indexOf("Main-d'œuvre");
+  expect(failuresColumn).toBeGreaterThan(0);
+  expect(labourColumn).toBeGreaterThan(0);
+  await expect(row.locator("td").nth(failuresColumn)).toHaveText("1"); // une panne immobilisante sur la période
+  await expect(row.locator("td").nth(labourColumn)).toContainText("2 h"); // 120 minutes de main-d'œuvre
 
   // Le changement de période conserve l'engin (l'OT date d'aujourd'hui).
   await page.getByLabel("Période").selectOption({ label: "30 jours" });

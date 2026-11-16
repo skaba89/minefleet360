@@ -80,3 +80,26 @@ it("signale une durée de service partielle et des dates de service incohérente
   expect(screen.getByText(/Dates de mise en service ou de réforme incohérentes/)).toBeTruthy();
   client.clear();
 });
+
+it("affiche l'utilisation et le MTBF moteur mesurés à l'horamètre, et signale des relevés incohérents", async () => {
+  vi.mocked(read).mockResolvedValue({
+    ...report,
+    totals: { ...report.totals, metered_vehicles: 2, operating_hours: "95.00", utilization_percent: "63.33", mtbf_operating_hours: "95.00" },
+    vehicles: [
+      {
+        ...report.vehicles[0]!, vehicle_id: "v4", fleet_number: "CAM-MESURE", operating_hours: "60.00", meter_span_hours: "80.00",
+        meter_coverage_percent: "80.00", utilization_percent: "85.71", mtbf_operating_hours: "60.00", meter_anomaly: false,
+      },
+      { ...report.vehicles[0]!, vehicle_id: "v5", fleet_number: "CAM-ANOMALIE", meter_anomaly: true },
+    ],
+  } as never);
+  const client = show();
+  expect(await screen.findByText("CAM-MESURE")).toBeTruthy();
+  expect(screen.getByText(/63,3\s%/)).toBeTruthy();
+  expect(screen.getByText(/2 engins mesurés/)).toBeTruthy();
+  expect(screen.getByText(/85,7\s%/)).toBeTruthy();
+  expect(screen.getByText(/MTBF moteur 60 h/)).toBeTruthy();
+  expect(screen.getByText(/relevés sur 80\s% de la période/)).toBeTruthy();
+  expect(screen.getByText("Relevés incohérents")).toBeTruthy();
+  client.clear();
+});

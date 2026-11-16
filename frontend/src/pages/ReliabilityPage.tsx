@@ -13,6 +13,10 @@ import { useSites } from "../site/SiteContext";
 const PERIODS: Record<string, string> = { "30": "30 jours", "90": "90 jours", "180": "180 jours", "365": "365 jours" };
 const number = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 });
 
+function percent(value: string | null | undefined): string {
+  return value == null ? "—" : `${number.format(Number(value))} %`;
+}
+
 function hours(value: string | null | undefined): string {
   return value == null ? "—" : `${number.format(Number(value))} h`;
 }
@@ -78,6 +82,11 @@ export function ReliabilityPage() {
                   <Fact label="Pannes">{r.totals.failures}</Fact>
                   <Fact label="MTBF moyen">{hours(r.totals.mtbf_hours)}</Fact>
                   <Fact label="Délai moyen de remise en service (MTTR)">{hours(r.totals.mttr_hours)}</Fact>
+                  <Fact label="Utilisation (horamètre)">
+                    {percent(r.totals.utilization_percent)}
+                    {r.totals.metered_vehicles > 0 && ` — ${r.totals.metered_vehicles} engin${r.totals.metered_vehicles > 1 ? "s" : ""} mesuré${r.totals.metered_vehicles > 1 ? "s" : ""}`}
+                  </Fact>
+                  <Fact label="MTBF en heures moteur">{hours(r.totals.mtbf_operating_hours)}</Fact>
                   <Fact label="Immobilisation cumulée">{hours(r.totals.downtime_hours)}</Fact>
                   <Fact label="Main-d'œuvre (OT clôturés)">{hours(r.totals.labour_hours)}</Fact>
                   <Fact label="Pièces consommées (OT clôturés)">{cost(r.totals.parts_cost_known, r.totals.parts_cost_complete, r.currency)}</Fact>
@@ -90,6 +99,7 @@ export function ReliabilityPage() {
                       <th scope="col">Pannes</th>
                       <th scope="col">MTBF</th>
                       <th scope="col">MTTR</th>
+                      <th scope="col">Utilisation (horamètre)</th>
                       <th scope="col">Immobilisation</th>
                       <th scope="col">Main-d'œuvre</th>
                       <th scope="col">Pièces</th>
@@ -115,6 +125,17 @@ export function ReliabilityPage() {
                         <td>{v.failures}</td>
                         <td>{hours(v.mtbf_hours)}</td>
                         <td>{hours(v.mttr_hours)}</td>
+                        <td>
+                          {v.meter_anomaly ? (
+                            <span className="warn-text small">Relevés incohérents</span>
+                          ) : (
+                            <>
+                              {percent(v.utilization_percent)}
+                              {v.mtbf_operating_hours != null && <div className="small muted">MTBF moteur {hours(v.mtbf_operating_hours)}</div>}
+                              {v.meter_coverage_percent != null && <div className="small muted">relevés sur {percent(v.meter_coverage_percent)} de la période</div>}
+                            </>
+                          )}
+                        </td>
                         <td>{hours(v.downtime_hours)}</td>
                         <td>{hours(v.labour_hours)}</td>
                         <td>{cost(v.parts_cost_known, v.parts_cost_complete, r.currency)}</td>
@@ -126,7 +147,8 @@ export function ReliabilityPage() {
                   Indicateurs calculés à partir des ordres de travail : immobilisation = panne bloquante ou intervention en cours,
                   sans double comptage. « ≥ » signale des sorties de pièces non valorisées (coût réel supérieur). Un engin sans OT
                   apparaît disponible selon l'atelier, sans mesure terrain. Disponibilité et MTBF sont rapportés à la durée de
-                  service de chaque engin (mise en service et réforme, heure du site).
+                  service de chaque engin (mise en service et réforme, heure du site). Utilisation = heures moteur relevées à
+                  l'horamètre / heures disponibles sur la plage des relevés, sans extrapolation ; « — » sans au moins deux relevés.
                 </p>
               </>
             )}
