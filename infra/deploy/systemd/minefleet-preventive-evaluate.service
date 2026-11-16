@@ -11,6 +11,11 @@ Type=oneshot
 WorkingDirectory=/opt/minefleet/infra/deploy
 # Image API lue dans le reçu de release (jamais minefleet-api:local, jamais de build) — voir run-scheduled-job.sh.
 ExecStart=/usr/bin/bash /opt/minefleet/infra/deploy/run-scheduled-job.sh evaluate-preventive
+# Marqueur de réussite (ExecStartPost ne s'exécute que si ExecStart a réussi) : survit au redémarrage,
+# contrairement à ExecMainExitTimestamp ; lu par probe-scheduled-jobs.sh (constat staging ST-11).
+StateDirectory=minefleet-jobs
+StateDirectoryMode=0755
+ExecStartPost=/usr/bin/touch /var/lib/minefleet-jobs/%N.success
 NoNewPrivileges=true
 PrivateTmp=true
 TimeoutStartSec=600

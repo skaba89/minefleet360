@@ -161,6 +161,20 @@ class SystemdUnitsTests(unittest.TestCase):
                     self.assertNotIn(" run ", f" {line} ", "compose run must go through the runner")
                     self.assertNotIn(" build", line)
 
+    def test_every_job_unit_records_a_success_marker(self) -> None:
+        for name in (
+            "minefleet-hse-digest.service",
+            "minefleet-preventive-evaluate.service",
+            "minefleet-gps-signal-sweep.service",
+            "minefleet-notify-deliver.service",
+        ):
+            with self.subTest(unit=name):
+                body = (SYSTEMD / name).read_text()
+                self.assertIn("StateDirectory=minefleet-jobs", body)
+                self.assertIn(
+                    "ExecStartPost=/usr/bin/touch /var/lib/minefleet-jobs/%N.success", body
+                )
+
     def test_ephemeral_jobs_use_the_runner(self) -> None:
         expected = {
             "minefleet-hse-digest.service": "send-hse-digest",

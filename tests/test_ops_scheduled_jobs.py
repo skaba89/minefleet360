@@ -32,12 +32,26 @@ def stamp(hours_ago: float) -> str:
 
 
 class ScheduledJobsProbeTests(unittest.TestCase):
-    def run_probe(self, **fake: str) -> subprocess.CompletedProcess[str]:
+    def run_probe(self, marker_hours_ago: float | None = None, **fake: str) -> subprocess.CompletedProcess[str]:
         with tempfile.TemporaryDirectory() as root:
             tool = Path(root) / "systemctl"
             tool.write_text(FAKE)
             tool.chmod(tool.stat().st_mode | stat.S_IEXEC)
-            env = {**os.environ, "PATH": f"{root}:{os.environ['PATH']}", "MF_SCHEDULED_UNITS": "minefleet-job", **fake}
+            # Répertoire de marqueurs isolé : jamais celui de l'hôte qui exécute les tests.
+            markers = Path(root) / "jobs"
+            markers.mkdir()
+            if marker_hours_ago is not None:
+                marker = markers / "minefleet-job.success"
+                marker.touch()
+                moment = time.time() - marker_hours_ago * 3600
+                os.utime(marker, (moment, moment))
+            env = {
+                **os.environ,
+                "PATH": f"{root}:{os.environ['PATH']}",
+                "MF_SCHEDULED_UNITS": "minefleet-job",
+                "MF_JOB_STATE_DIR": str(markers),
+                **fake,
+            }
             return subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=10)
 
     def ok(self, **extra: str) -> dict[str, str]:
@@ -68,6 +82,25 @@ class ScheduledJobsProbeTests(unittest.TestCase):
         too_old = self.ok(FAKE_MINEFLEET_JOB_EXECMAINEXITTIMESTAMP=stamp(2))
         self.assertEqual(self.run_probe(**too_old, MF_SCHEDULED_UNITS="minefleet-job:1").returncode, 2)
         self.assertEqual(self.run_probe(**too_old, MF_SCHEDULED_UNITS="minefleet-job:0").returncode, 3)
+
+    def test_success_marker_survives_reboot(self):
+        # Régression ST-11 (staging 2026-11-16) : après redémarrage, systemd efface
+        # ExecMainExitTimestamp ; le marqueur de réussite persistant prouve le dernier succès.
+        after_reboot = self.ok(FAKE_MINEFLEET_JOB_EXECMAINEXITTIMESTAMP="")
+        self.assertEqual(self.run_probe(marker_hours_ago=2, **after_reboot).returncode, 0)
+        self.assertEqual(self.run_probe(**after_reboot).returncode, 3)
+
+    def test_stale_success_marker_is_critical(self):
+        # Une tâche qui échoue n'actualise plus son marqueur : il vieillit et devient CRITICAL.
+        after_reboot = self.ok(FAKE_MINEFLEET_JOB_EXECMAINEXITTIMESTAMP="")
+        self.assertEqual(self.run_probe(marker_hours_ago=30, **after_reboot).returncode, 2)
+
+    def test_recent_marker_never_hides_a_failed_last_run(self):
+        failed = self.ok(FAKE_MINEFLEET_JOB_RESULT="exit-code")
+        self.assertEqual(self.run_probe(marker_hours_ago=0.1, **failed).returncode, 2)
+        self.assertEqual(
+            self.run_probe(marker_hours_ago=0.1, **self.ok(FAKE_MINEFLEET_JOB_FAILED="yes")).returncode, 2
+        )
 
     def test_invalid_configuration_is_unknown(self):
         self.assertEqual(self.run_probe(**self.ok(MF_SCHEDULED_MAX_AGE_HOURS="0")).returncode, 3)

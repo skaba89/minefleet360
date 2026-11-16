@@ -32,3 +32,23 @@ Aucune de ces commandes n'a été lancée sur un serveur réel dans cette PR.
 ## Contrôle du répertoire des sauvegardes
 
 Définir `MF_BACKUP_DIR` comme un chemin **absolu** vers les sauvegardes créées par `backup.sh` (dans l'exemple : `/opt/minefleet/infra/deploy/backups`). Vérifier la présence et la lecture par le compte `minefleet-monitor` sans lui octroyer un accès en écriture. La sonde retourne `UNKNOWN` si le répertoire est inaccessible et `CRITICAL` si aucune archive non vide et récente n'existe. Avant activation du timer, exécuter manuellement la sonde sous le compte de service puis contrôler les résultats. La lecture des métadonnées ne suffit pas à démontrer qu'une archive peut être restaurée.
+
+### Procédure retenue (2026-11-16, sans paquet `acl`)
+
+`backup.sh` ne remet plus le répertoire en 700 à chaque passage : il le crée en 700, puis sur un répertoire
+existant retire seulement l'accès « autres » et l'écriture de groupe (les archives restent en 600, le groupe
+voit les métadonnées, jamais le contenu). Accorder la lecture/traversée au compte de supervision :
+
+```bash
+sudo chgrp minefleet-monitor /opt/minefleet/infra/deploy/backups
+sudo chmod 750 /opt/minefleet/infra/deploy/backups
+sudo -u minefleet-monitor env MF_BACKUP_DIR=/opt/minefleet/infra/deploy/backups \
+  bash /opt/minefleet/infra/deploy/probe-backup-freshness.sh   # attendu : OK
+```
+
+### Marqueurs de réussite des tâches planifiées
+
+Chaque unité de tâche écrit `/var/lib/minefleet-jobs/<unité>.success` via `ExecStartPost` (exécuté
+seulement si la tâche a réussi). Après un redémarrage, systemd efface `ExecMainExitTimestamp` et remet
+`Result` à `success` ; `probe-scheduled-jobs.sh` juge alors la fraîcheur sur ce marqueur. Une tâche en échec
+n'actualise plus son marqueur : il vieillit et la sonde passe en CRITICAL à l'échéance.
