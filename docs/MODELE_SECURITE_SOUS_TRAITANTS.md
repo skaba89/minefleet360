@@ -1,4 +1,12 @@
-# Modèle de sécurité sous-traitants — accès externe [Proposé]
+# Modèle de sécurité sous-traitants — accès externe [Décidé : option B, lot 1 sans compte externe]
+
+> **Décision du 16 novembre 2026** (propriétaire du projet, délégation à l'agent après note de synthèse) :
+> **option B** retenue (§5). **Lot 1** = référentiel des organisations sous-traitantes, rattachements et SLA vus
+> **par le donneur d'ordre seulement**, **aucun compte externe** (T-42 reste en état LU). **Lot 2** = comptes externes
+> (rôle `SOUS_TRAITANT`, portée `org` appliquée par prédicat RLS, matrice ST-42a–h) — **non ouvert**. Restent à
+> trancher avant le lot 2 : liste définitive des objets exposés (§3), paramètres MFA / session / quatre-yeux (§7.4),
+> revue juridique (§7.3). La facturation (S1) reste subordonnée aux entretiens métier. Le GPS reste fermé aux tiers.
+> Livraison du lot 1 : `docs/LIVRAISON_SOUS_TRAITANTS.md`.
 
 > **Statut** : proposition de conception — **aucune décision produit, aucun code, aucune route, aucune permission**. L'ouverture du lot correspondant reste un arbitrage séparé.
 > **Date** : 13 novembre 2026.

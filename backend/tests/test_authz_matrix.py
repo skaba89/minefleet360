@@ -70,6 +70,8 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
     ("POST", "/vehicle-assignments/{vehicle_assignment_id}/cancel"): {"reason_code": "PLAN_CHANGED"},
     ("PATCH", "/site-locations/{site_location_id}"): {"name": "Lieu modifié"},
     ("PATCH", "/materials/{material_id}"): {"name": "Matière modifiée"},
+    ("POST", "/subcontractors"): {"code": "ST-RBAC", "legal_name": "Société fictive de transport"},
+    ("PATCH", "/subcontractors/{subcontractor_id}"): {"notes": "Note fictive"},
     ("POST", "/missions/{mission_id}/events"): {"event_type": "SUSPENDED", "reason_code": "WEATHER"},
     ("POST", "/vehicles/{vehicle_id}/meter-readings"): {"meter_kind": "ODOMETER_KM", "value": 10},
     ("POST", "/vehicles/{vehicle_id}/meter-resets"): {

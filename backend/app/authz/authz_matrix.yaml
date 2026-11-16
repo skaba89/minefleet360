@@ -828,6 +828,29 @@ permissions:
       - { method: PATCH, path: "/materials/{material_id}", shape: item, success: 200 }
     audit: { action: material.create }
     grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT] }
+  # Référentiel sous-traitants (lot 1, option B de docs/MODELE_SECURITE_SOUS_TRAITANTS.md) : données du
+  # donneur d'ordre, rôles INTERNES uniquement ; aucun compte externe (lot 2 : rôle SOUS_TRAITANT, portée org).
+  partner.subcontractor.read:
+    tranche: 2a
+    kind: read
+    site_bound: false
+    routes: [{ method: GET, path: /subcontractors, shape: collection, success: 200 }]
+    grants:
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT]
+      FINANCE: [TENANT]
+      HSE: [TENANT]
+      AUDITOR: [TENANT]
+  partner.subcontractor.manage:
+    tranche: 2a
+    kind: create
+    site_bound: false
+    routes:
+      - { method: POST, path: /subcontractors, shape: collection, success: 201 }
+      - { method: PATCH, path: "/subcontractors/{subcontractor_id}", shape: item, success: 200 }
+    audit: { action: subcontractor.create }
+    grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT] }
   dispatch.mission.read:
     tranche: 1c
     kind: read

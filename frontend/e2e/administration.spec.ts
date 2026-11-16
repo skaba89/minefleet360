@@ -63,6 +63,7 @@ test("l'auditeur lit le journal sans pouvoir administrer les sites", async ({ pa
   await uiLogin(page, account("AUDITOR"));
   await page.goto("/administration");
   await expect(page.getByRole("navigation", { name: "Administration" }).getByRole("link")).toHaveText([
+    "Sous-traitants", // lecture du référentiel sous-traitants (partner.subcontractor.read, AUDITOR tenant)
     "Utilisateurs et rôles",
     "Journal d'audit",
   ]);

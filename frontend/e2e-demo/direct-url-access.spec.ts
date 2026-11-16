@@ -42,6 +42,7 @@ const routes = [
   "/administration/journal",
   "/administration/lieux-matieres",
   "/administration/documents-exiges",
+  "/administration/sous-traitants",
 ] as const;
 
 const roles: Array<[string, string | null]> = [

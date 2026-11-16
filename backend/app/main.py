@@ -52,6 +52,7 @@ from app.maintenance.replenishment_router import router as replenishment_router
 from app.maintenance.router import router as maintenance_router
 from app.maintenance.tyre_router import router as tyre_router
 from app.organization.router import platform_router, site_router, tenant_router
+from app.partners.router import router as partners_router
 from app.workforce.router import router as workforce_router
 
 API_PREFIX = "/api/v1"
@@ -191,6 +192,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         fuel_router,
         fuel_anomalies_router,
         hse_router,
+        partners_router,
         hse_inspections_router,
     ):
         app.include_router(router, prefix=API_PREFIX)

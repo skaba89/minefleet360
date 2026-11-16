@@ -1722,6 +1722,34 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "partner.subcontractor.manage": {
+    "OPS_MANAGER": [
+      "TENANT"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "partner.subcontractor.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT"
+    ],
+    "HSE": [
+      "TENANT"
+    ],
+    "OPS_MANAGER": [
+      "TENANT"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
   "workforce.driver.create": {
     "HR": [
       "TENANT",
