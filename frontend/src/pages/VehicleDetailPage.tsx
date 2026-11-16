@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router";
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState } from "../components/common";
+import { SubcontractorSelect, useSubcontractorName } from "../components/SubcontractorSelect";
 import { ActionForm, Fact, intOrNull, Options, orNull } from "../components/forms";
 import { ASSIGNMENT_STATUS, FUEL, label, OWNERSHIP, VEHICLE_REASONS, VEHICLE_STATUS } from "../lib/labels";
 import { can } from "../lib/permissions";
@@ -103,6 +104,7 @@ export function VehicleDetailPage() {
               <Fact label="N° de série">{v.serial_number}</Fact>
               <Fact label="Marque / modèle">{[v.make, v.model, v.model_year].filter(Boolean).join(" ") || null}</Fact>
               <Fact label="Propriété">{label(OWNERSHIP, v.ownership_type)}</Fact>
+              {v.subcontractor_id && <SubcontractorFact subcontractorId={v.subcontractor_id} />}
               <Fact label="Carburant">{label(FUEL, v.fuel_type)}</Fact>
               <Fact label="Charge utile nominale">
                 {v.rated_payload_kg ? `${v.rated_payload_kg.toLocaleString("fr-FR")} kg (constructeur, pas une pesée)` : null}
@@ -154,6 +156,7 @@ function EditVehicle({
     model: v.model ?? "",
     model_year: v.model_year?.toString() ?? "",
     ownership_type: v.ownership_type,
+    subcontractor_id: v.subcontractor_id ?? "",
     fuel_type: v.fuel_type ?? "",
     rated_payload_kg: v.rated_payload_kg?.toString() ?? "",
     commissioned_on: v.commissioned_on ?? "",
@@ -171,6 +174,8 @@ function EditVehicle({
       else if (key === "site_id" || key === "vehicle_category_id" || key === "ownership_type") body[key] = form[key];
       else body[key] = orNull(form[key]);
     }
+    // Propriété changée hors sous-traitance : le détachement est envoyé explicitement (le serveur refuse le silence).
+    if (form.ownership_type !== "SUBCONTRACTED" && initial.subcontractor_id) body.subcontractor_id = null;
     return body as VehicleUpdate;
   }
 
@@ -236,6 +241,15 @@ function EditVehicle({
           <Options map={OWNERSHIP} />
         </select>
       </label>
+      {form.ownership_type === "SUBCONTRACTED" ? (
+        <SubcontractorSelect
+          value={form.subcontractor_id}
+          current={v.subcontractor_id ?? null}
+          onChange={(id) => setForm({ ...form, subcontractor_id: id })}
+        />
+      ) : (
+        initial.subcontractor_id && <p className="warn-text small">Le rattachement au sous-traitant sera retiré.</p>
+      )}
       <label>
         Carburant
         <select value={form.fuel_type} onChange={set("fuel_type")}>
@@ -423,4 +437,8 @@ function History({ vehicle: v, timeZone }: { vehicle: Vehicle; timeZone: string 
       )}
     </>
   );
+}
+
+function SubcontractorFact({ subcontractorId }: { subcontractorId: string }) {
+  return <Fact label="Sous-traitant">{useSubcontractorName(subcontractorId)}</Fact>;
 }

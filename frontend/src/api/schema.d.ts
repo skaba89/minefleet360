@@ -9847,6 +9847,8 @@ export interface components {
              * Format: uuid
              */
             site_id: string;
+            /** Subcontractor Id */
+            subcontractor_id?: string | null;
             /**
              * Vehicle Category Id
              * Format: uuid
@@ -9919,6 +9921,8 @@ export interface components {
             status_changed_at: string;
             /** Status Reason Code */
             status_reason_code: string | null;
+            /** Subcontractor Id */
+            subcontractor_id?: string | null;
             /**
              * Updated At
              * Format: date-time
@@ -10042,6 +10046,8 @@ export interface components {
             serial_number?: string | null;
             /** Site Id */
             site_id?: string | null;
+            /** Subcontractor Id */
+            subcontractor_id?: string | null;
             /** Vehicle Category Id */
             vehicle_category_id?: string | null;
         };
