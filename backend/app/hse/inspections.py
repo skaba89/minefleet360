@@ -14,6 +14,7 @@ Voir docs/LIVRAISON_HSE2.md.
 """
 
 import hashlib
+import json
 import uuid
 from collections import defaultdict
 from datetime import datetime
@@ -30,6 +31,7 @@ from app.authz.routing import SecuredRoute
 from app.core.config import Settings, get_settings
 from app.core.errors import AppError
 from app.core.http import Page, Pagination, StrictModel
+from app.core.idempotency import IdempotencyClaim, claim, complete, optional_idempotency_key
 from app.core.logging import security_logger
 from app.fleet.contracts import vehicle_facts
 from app.hse import service
@@ -423,7 +425,39 @@ def _next_inspection_number(auth: Authorized) -> int:
     response_model=InspectionOut,
     response_model_exclude_unset=True,
 )
-def create_inspection(body: InspectionCreate, auth: Perform) -> InspectionOut:
+def create_inspection(
+    body: InspectionCreate,
+    auth: Perform,
+    response: Response,
+    idempotency_key: Annotated[str | None, Depends(optional_idempotency_key)],
+) -> InspectionOut:
+    if idempotency_key is None:
+        return _create_inspection(body, auth)
+    # Inspection rejouée depuis la file terrain (même contrat que POST /hse/incidents) : clé liée au tenant
+    # ET au compte authentifié, corps empreinté, permission et portée revérifiées à chaque envoi.
+    payload = json.dumps(body.model_dump(mode="json"), sort_keys=True, separators=(",", ":")).encode("utf-8")
+    owned = claim(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        user_account_id=auth.user_id,
+        key=idempotency_key,
+        method="POST",
+        path="/hse/inspections",
+        body=payload,
+        now=auth.clock.now(),
+    )
+    if owned.replay is not None:
+        if owned.replay.resource_type != "hse_inspection":
+            raise AppError("IDEMPOTENCY_KEY_REUSED")
+        inspection = inspection_in_scope(auth, owned.replay.resource_id)
+        response.headers["Idempotency-Replayed"] = "true"
+        return inspections_out(auth, [inspection], detail=True)[0]
+    return _create_inspection(body, auth, idempotency_claim=owned)
+
+
+def _create_inspection(
+    body: InspectionCreate, auth: Authorized, *, idempotency_claim: IdempotencyClaim | None = None
+) -> InspectionOut:
     db = auth.db
     if active_site_in_scope(db, auth.scope, body.site_id) is None:
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
@@ -506,6 +540,17 @@ def create_inspection(body: InspectionCreate, auth: Perform) -> InspectionOut:
     )
     db.flush()
     out = inspections_out(auth, [inspection], detail=True)[0]
+    if idempotency_claim is not None:
+        # Clé finalisée dans la transaction de l'inspection : un échec annule les deux (pas de doublon,
+        # pas de numéro consommé, pas de clé bloquée « en cours »).
+        complete(
+            db,
+            idempotency_claim,
+            response_status=201,
+            resource_type="hse_inspection",
+            resource_id=inspection.hse_inspection_id,
+            completed_at=auth.clock.now(),
+        )
     db.commit()
     return out
 
