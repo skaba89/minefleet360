@@ -34,7 +34,9 @@ export function AdminIndex() {
       ? "utilisateurs"
       : can(me.grants, "audit.event.read")
         ? "journal"
-        : "lieux-matieres";
+        : can(me.grants, "dispatch.location.manage") || can(me.grants, "dispatch.material.manage")
+          ? "lieux-matieres"
+          : "sous-traitants";
   return <Navigate to={target} replace />;
 }
 
@@ -49,6 +51,7 @@ export function AdminLayout() {
       show: can(me.grants, "dispatch.location.manage") || can(me.grants, "dispatch.material.manage"),
     },
     { to: "documents-exiges", text: "Documents exigés", show: can(me.grants, "fleet.vehicle_category.manage") },
+    { to: "sous-traitants", text: "Sous-traitants", show: can(me.grants, "partner.subcontractor.read") },
     { to: "utilisateurs", text: "Utilisateurs et rôles", show: can(me.grants, "identity.user.read") },
     { to: "journal", text: "Journal d'audit", show: can(me.grants, "audit.event.read") },
   ];
@@ -75,7 +78,8 @@ export function canAdminister(grants: Schemas["GrantOut"][]): boolean {
     can(grants, "identity.user.read") ||
     can(grants, "audit.event.read") ||
     can(grants, "dispatch.location.manage") ||
-    can(grants, "dispatch.material.manage")
+    can(grants, "dispatch.material.manage") ||
+    can(grants, "partner.subcontractor.read")
   );
 }
 

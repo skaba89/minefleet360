@@ -2689,6 +2689,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subcontractors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Subcontractors */
+        get: operations["list_subcontractors_api_v1_subcontractors_get"];
+        put?: never;
+        /** Create Subcontractor */
+        post: operations["create_subcontractor_api_v1_subcontractors_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subcontractors/{subcontractor_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Subcontractor */
+        patch: operations["update_subcontractor_api_v1_subcontractors__subcontractor_id__patch"];
+        trace?: never;
+    };
     "/api/v1/tenant": {
         parameters: {
             query?: never;
@@ -8744,6 +8779,80 @@ export interface components {
              * Format: uuid
              */
             spare_part_store_id: string;
+        };
+        /** SubcontractorCreate */
+        SubcontractorCreate: {
+            /** Code */
+            code: string;
+            /**
+             * Country Code
+             * @default GN
+             */
+            country_code: string;
+            /** Legal Name */
+            legal_name: string;
+            /** Notes */
+            notes?: string | null;
+            /** Registration Number */
+            registration_number?: string | null;
+            /** Tax Id */
+            tax_id?: string | null;
+        };
+        /** SubcontractorOut */
+        SubcontractorOut: {
+            /** Code */
+            code: string;
+            /** Country Code */
+            country_code: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Legal Name */
+            legal_name: string;
+            /** Notes */
+            notes: string | null;
+            /** Registration Number */
+            registration_number: string | null;
+            /** Row Version */
+            row_version: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ACTIVE" | "SUSPENDED" | "ENDED";
+            /** Status Reason */
+            status_reason: string | null;
+            /**
+             * Subcontractor Id
+             * Format: uuid
+             */
+            subcontractor_id: string;
+            /** Tax Id */
+            tax_id: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** SubcontractorUpdate */
+        SubcontractorUpdate: {
+            /** Country Code */
+            country_code?: string | null;
+            /** Legal Name */
+            legal_name?: string | null;
+            /** Notes */
+            notes?: string | null;
+            /** Registration Number */
+            registration_number?: string | null;
+            /** Status */
+            status?: ("ACTIVE" | "SUSPENDED" | "ENDED") | null;
+            /** Status Reason */
+            status_reason?: string | null;
+            /** Tax Id */
+            tax_id?: string | null;
         };
         /**
          * SubscriptionCreate
@@ -16976,6 +17085,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SiteOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_subcontractors_api_v1_subcontractors_get: {
+        parameters: {
+            query?: {
+                status?: ("ACTIVE" | "SUSPENDED" | "ENDED") | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractorOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_subcontractor_api_v1_subcontractors_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubcontractorCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_subcontractor_api_v1_subcontractors__subcontractor_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+                "if-match"?: string | null;
+            };
+            path: {
+                subcontractor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubcontractorUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubcontractorOut"];
                 };
             };
             /** @description Validation Error */

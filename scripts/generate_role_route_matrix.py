@@ -273,6 +273,7 @@ MENU_ENTRIES: list[dict[str, object]] = [
             "audit.event.read",
             "dispatch.location.manage",
             "dispatch.material.manage",
+            "partner.subcontractor.read",
         ],
         "rule": "any",
         "site_scoped": False,
@@ -310,6 +311,16 @@ ADMIN_TABS: list[dict[str, object]] = [
         "site_scoped": False,
         "source": "AdminPages.tsx:62",
         "source_token": 'to: "documents-exiges"',
+    },
+    {
+        "path": "/administration/sous-traitants",
+        "label": "Administration · Sous-traitants",
+        "domain": "Administration",
+        "permissions": ["partner.subcontractor.read"],
+        "rule": "any",
+        "site_scoped": False,
+        "source": "AdminPages.tsx:54",
+        "source_token": 'to: "sous-traitants"',
     },
     {
         "path": "/administration/utilisateurs",
@@ -353,6 +364,7 @@ CHILD_ROUTE_PREFIX: dict[str, str] = {
     "/sites": "/administration",
     "/lieux-matieres": "/administration",
     "/documents-exiges": "/administration",
+    "/sous-traitants": "/administration",
     "/utilisateurs": "/administration",
     "/journal": "/administration",
 }

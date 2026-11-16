@@ -9,6 +9,7 @@ import { MissionDetailPage } from "./pages/MissionDetailPage";
 import { MissionsPage } from "./pages/MissionsPage";
 import { ReliabilityPage } from "./pages/ReliabilityPage";
 import { ReferentialsPage } from "./pages/ReferentialsPage";
+import { SubcontractorsPage } from "./pages/SubcontractorsPage";
 import { DriverDetailPage } from "./pages/DriverDetailPage";
 import { DriversPage } from "./pages/DriversPage";
 import { GpsAlertsPage } from "./pages/GpsAlertsPage";
@@ -116,6 +117,7 @@ export function App() {
             <Route path="journal" element={<AuditAdminPage />} />
             <Route path="lieux-matieres" element={<ReferentialsPage />} />
             <Route path="documents-exiges" element={<RequiredDocumentsPage />} />
+            <Route path="sous-traitants" element={<SubcontractorsPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
         </Route>

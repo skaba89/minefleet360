@@ -56,10 +56,11 @@ Rôles optionnels : `AUDITOR`.
 | [Contrats & assurances](/juridique) | Juridique | — | ✓ | ✓ | ✓ | — | — | — | — | — | — | — | ✓ | ✓ | ✓ |
 | [Coût complet](/couts) | Pilotage | — | — | ✓ | ✓ | — | — | — | ✓ | — | — | — | — | ✓ | ✓ |
 | [Indicateurs](/indicateurs) | Pilotage | — | — | ✓ | ✓ | ✓ | — | — | — | — | — | — | ✓ | ✓ | ✓ |
-| [Administration](/administration) | Administration | — | ✓ | — | ✓ | — | ✓ | — | — | — | — | — | — | — | ✓ |
+| [Administration](/administration) | Administration | — | ✓ | ✓ | ✓ | — | ✓ | — | — | — | — | — | ✓ | ✓ | ✓ |
 | [Administration · Sites](/administration/sites) | Administration | — | ✓ | — | — | — | — | — | — | — | — | — | — | — | — |
 | [Administration · Lieux et matières](/administration/lieux-matieres) | Administration | — | ✓ | — | ✓ | — | — | — | — | — | — | — | — | — | — |
 | [Administration · Documents exigés](/administration/documents-exiges) | Administration | — | ✓ | — | — | — | — | — | — | — | — | — | — | — | — |
+| [Administration · Sous-traitants](/administration/sous-traitants) | Administration | — | ✓ | ✓ | ✓ | — | — | — | — | — | — | — | ✓ | ✓ | ✓ |
 | [Administration · Utilisateurs et rôles](/administration/utilisateurs) | Administration | — | ✓ | — | — | — | ✓ | — | — | — | — | — | — | — | ✓ |
 | [Administration · Journal d'audit](/administration/journal) | Administration | — | ✓ | — | — | — | — | — | — | — | — | — | — | — | ✓ |
 
@@ -114,12 +115,13 @@ Pages toujours accessibles à tout compte authentifié : Accueil (`/`), Mon comp
 | `/indicateurs` | `IndicatorsPage` | `dispatch.indicators.read` |
 | `/mon-compte/securite` | `SecurityPage` | toute session authentifiée |
 | `/mon-compte/sessions` | `SessionsPage` | `identity.session.revoke_own` |
-| `/administration` | `AdminLayout` | `organization.site.create` ou `identity.user.read` ou `audit.event.read` ou `dispatch.location.manage` ou `dispatch.material.manage` |
+| `/administration` | `AdminLayout` | `organization.site.create` ou `identity.user.read` ou `audit.event.read` ou `dispatch.location.manage` ou `dispatch.material.manage` ou `partner.subcontractor.read` |
 | `/administration/sites` | `SitesAdminPage` | `organization.site.create` |
 | `/administration/utilisateurs` | `UsersAdminPage` | `identity.user.read` |
 | `/administration/journal` | `AuditAdminPage` | `audit.event.read` |
 | `/administration/lieux-matieres` | `ReferentialsPage` | `dispatch.location.manage` ou `dispatch.material.manage` |
 | `/administration/documents-exiges` | `RequiredDocumentsPage` | `fleet.vehicle_category.manage` |
+| `/administration/sous-traitants` | `SubcontractorsPage` | `partner.subcontractor.read` |
 | `*` | `NotFoundPage` | toute session authentifiée |
 
 Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell authentifié ; les routes publiques inconnues sont redirigées vers `/connexion` par la garde `Protected`.
@@ -199,6 +201,8 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `dispatch.location.manage` | 1c | `POST /site-locations`<br>`PATCH /site-locations/{site_location_id}` | `OPS_MANAGER`, `TENANT_ADMIN` |
 | `dispatch.material.read` | 1c | `GET /materials` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
 | `dispatch.material.manage` | 1c | `POST /materials`<br>`PATCH /materials/{material_id}` | `OPS_MANAGER`, `TENANT_ADMIN` |
+| `partner.subcontractor.read` | 2a | `GET /subcontractors` | `AUDITOR`, `DIRECTION`, `FINANCE`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN` |
+| `partner.subcontractor.manage` | 2a | `POST /subcontractors`<br>`PATCH /subcontractors/{subcontractor_id}` | `OPS_MANAGER`, `TENANT_ADMIN` |
 | `dispatch.mission.read` | 1c | `GET /missions`<br>`GET /missions/{mission_id}` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
 | `dispatch.mission.create` | 1c | `POST /missions` | `DISPATCHER`, `OPS_MANAGER` |
 | `dispatch.mission.progress` | 1c | `POST /missions/{mission_id}/events` | `DISPATCHER`, `OPS_MANAGER` |
@@ -261,9 +265,9 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | Rôle | Permissions | Routes API accessibles |
 |---|---:|---:|
 | `PLATFORM_ADMIN` | 12 | 33 |
-| `TENANT_ADMIN` | 68 | 129 |
-| `DIRECTION` | 36 | 96 |
-| `OPS_MANAGER` | 84 | 179 |
+| `TENANT_ADMIN` | 70 | 132 |
+| `DIRECTION` | 37 | 97 |
+| `OPS_MANAGER` | 86 | 182 |
 | `DISPATCHER` | 37 | 82 |
 | `HR` | 16 | 35 |
 | `DRIVER` | 4 | 16 |
@@ -271,9 +275,9 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `MECHANIC` | 17 | 46 |
 | `STOREKEEPER` | 17 | 50 |
 | `FUEL_MANAGER` | 28 | 63 |
-| `HSE` | 33 | 79 |
-| `FINANCE` | 24 | 57 |
-| `AUDITOR` | 39 | 101 |
+| `HSE` | 34 | 80 |
+| `FINANCE` | 25 | 58 |
+| `AUDITOR` | 40 | 102 |
 
 ## 6. Anomalies détectées mécaniquement
 
