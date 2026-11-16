@@ -151,22 +151,27 @@ def _service_dates(w: World, vehicle: str, commissioned: date | None, decommissi
     try:
         with engine.begin() as conn:
             conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(w.t.tenant_id)})
-            # Invariant ck_vehicle_retired : date de réforme ⇔ statut RETIRED.
-            if decommissioned is None:
-                conn.execute(
-                    text("UPDATE vehicle SET commissioned_on = :c WHERE vehicle_id = :v"),
-                    {"c": commissioned, "v": vehicle},
-                )
-            else:
-                conn.execute(
-                    text(
-                        "UPDATE vehicle SET commissioned_on = :c, decommissioned_on = :d, status = 'RETIRED' "
-                        "WHERE vehicle_id = :v"
-                    ),
-                    {"c": commissioned, "d": decommissioned, "v": vehicle},
-                )
+            # Seules les DATES sont antidatées : la réforme elle-même passe par l'API (_retire), qui applique
+            # les invariants du domaine (statut RETIRED, motif, date de réforme).
+            conn.execute(
+                text(
+                    "UPDATE vehicle SET commissioned_on = :c, "
+                    "decommissioned_on = coalesce(CAST(:d AS date), decommissioned_on) WHERE vehicle_id = :v"
+                ),
+                {"c": commissioned, "d": decommissioned, "v": vehicle},
+            )
     finally:
         engine.dispose()
+
+
+def _retire(client: TestClient, w: World, vehicle: str) -> None:  # noqa: F811
+    url = f"{API}/vehicles/{vehicle}"
+    resp = client.post(
+        f"{url}/retire",
+        headers={**w.t.admin.headers, "If-Match": client.get(url, headers=w.t.admin.headers).headers["ETag"]},
+        json={"reason_code": "END_OF_LIFE"},
+    )
+    assert resp.status_code == 200, resp.text
 
 
 def _site_zone(w: World) -> ZoneInfo:  # noqa: F811
@@ -203,8 +208,9 @@ def test_reliability_uses_each_vehicle_service_window(client: TestClient, w: Wor
         w, failure, reported=datetime(2026, 1, 3, tzinfo=zone), closed=datetime(2026, 1, 3, 12, tzinfo=zone)
     )
     # Réformé le 3 janvier (fin de journée) : 72 h de service ; immobilisation débordant la réforme.
-    _service_dates(w, retired, None, date(2026, 1, 3))
     overflow = _closed_order(client, w, retired, chief, mechanic, immobilize=True)
+    _retire(client, w, retired)  # réforme réelle (terminale) après la panne, puis date antidatée
+    _service_dates(w, retired, None, date(2026, 1, 3))
     _backdate_at(
         w,
         overflow,
