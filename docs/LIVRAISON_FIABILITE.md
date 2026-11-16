@@ -25,6 +25,8 @@ et MTBF/MTTR/disponibilité n'existaient pas.
 | MTBF en heures moteur | heures de fonctionnement / pannes signalées sur la plage des relevés |
 | Couverture des relevés | plage des relevés / durée de service ; heures moteur > durée écoulée → `meter_anomaly`, utilisation non calculée |
 | Totaux horamètre | engins mesurés (`metered_vehicles`, anomalies comprises) ; utilisation et MTBF moteur sur les engins sans anomalie |
+| Productivité | tonnage **mesuré** (pesées valides — pont-bascule ou saisie dégradée approuvée — des rotations terminées déchargées sur la plage des relevés, RM-071) / heures moteur ; pesées en attente : `tonnage_pending`, jamais comptées ; aucune rotation pesée sur la plage → « — » (pas de « 0 t/h ») ; jamais capacité nominale ni GPS |
+| Visibilité du tonnage | champs de tonnage renseignés seulement si l'appelant a **aussi** `dispatch.indicators.read` sur le site de l'engin (`tonnage_visible`) : WORKSHOP_CHIEF lit la fiabilité mais pas le tonnage |
 | MTTR (délai de remise en service) | moyenne (clôture − signalement) des OT correctifs clôturés dans P |
 | Main-d'œuvre, pièces | OT (correctifs et préventifs) clôturés dans P ; pièces = sorties valorisées liées à l'OT ; `parts_cost_complete=false` si une sortie n'est pas valorisée (affiché « ≥ ») ; devises multiples → coût non agrégé |
 
@@ -51,6 +53,7 @@ plus disponible, sélection de période.
 - ~~Pas d'heures de fonctionnement~~ — **levée le 16 novembre 2026** : utilisation et MTBF en heures moteur à partir
   de l'horamètre (test `test_reliability_operating_hours_utilization_and_mtbf`). Limites : la qualité dépend de la
   fréquence des relevés (couverture affichée) ; pas de relevés télématiques (CAN) ni GPS ; productivité en
-  tonnes/heure (pesées) non encore rapprochée des heures moteur.
+  tonnes/heure (pesées) rapprochée des heures moteur le même jour (test
+  `test_productivity_uses_measured_tonnage_only_and_respects_permissions`).
 - Pas encore de coût carburant ni de pneus : le « coût complet par engin » (P2) agrégera carburant + pièces +
   main-d'œuvre valorisée (taux horaire à définir) + pneus.

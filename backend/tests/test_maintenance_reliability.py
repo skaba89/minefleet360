@@ -11,6 +11,8 @@ from app.core.config import get_settings
 from app.maintenance.reliability import _union
 from tests.conftest import API, Account, Api
 from tests.test_assignment import World, _vehicle, w  # noqa: F401  (fixture w)
+from tests.test_dispatch import _assignment, _event, _mission, _refs
+from tests.test_weighing import _ticket, _weighbridge
 
 T0 = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -350,3 +352,84 @@ def test_reliability_operating_hours_utilization_and_mtbf(client: TestClient, w:
     assert totals["operating_hours"] == "95.00"  # A + B, anomalie exclue
     assert totals["utilization_percent"] == "63.33"  # 95 / (70 + 80)
     assert totals["mtbf_operating_hours"] == "95.00"  # 95 h / 1 panne
+
+
+def _hour_meter_at(w: World, vehicle: str, recorder: Account, readings: list[tuple[datetime, float]]) -> None:  # noqa: F811
+    engine = create_engine(get_settings().database_url(), pool_size=1, max_overflow=0)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(w.t.tenant_id)})
+            for at, value in readings:
+                conn.execute(
+                    text(
+                        "INSERT INTO vehicle_meter_reading (tenant_id, vehicle_id, site_id, meter_kind, "
+                        "value, read_at, recorded_by) VALUES (:t, :v, :s, 'HOUR_METER', :val, :at, :by)"
+                    ),
+                    {
+                        "t": str(w.t.tenant_id),
+                        "v": vehicle,
+                        "s": str(w.t.sites["S1"]),
+                        "val": value,
+                        "at": at,
+                        "by": str(recorder.user_id),
+                    },
+                )
+    finally:
+        engine.dispose()
+
+
+def test_productivity_uses_measured_tonnage_only_and_respects_permissions(
+    client: TestClient,
+    w: World,  # noqa: F811
+    api: Api,
+) -> None:
+    """Tonnes par heure moteur : pesées valides seulement (RM-071), visibles avec dispatch.indicators.read."""
+    started = datetime.now(UTC)
+    assignment = _assignment(client, w)
+    vehicle = assignment["vehicle_id"]
+    refs = _refs(client, w)
+    mid = _mission(client, w, assignment, refs).json()["mission_id"]
+    assert _event(client, w, mid, "DEPARTED").status_code == 200
+    for _ in range(3):
+        for event in ("ARRIVED_LOADING", "LOADED", "ARRIVED_UNLOADING", "UNLOADED"):
+            assert _event(client, w, mid, event).status_code == 200, event
+    assert _event(client, w, mid, "COMPLETED").status_code == 200
+    rotations = client.get(f"{API}/missions/{mid}", headers=w.ops.headers).json()["rotations"]
+    bridge = _weighbridge(client, w)
+    measured = client.post(
+        f"{API}/weighing-tickets", headers=w.ops.headers, json=_ticket(rotations[0]["rotation_id"], bridge)
+    )
+    assert measured.status_code == 201, measured.text  # 52 t − 18 t = 34 t mesurées
+    pending = client.post(
+        f"{API}/weighing-tickets",
+        headers=w.ops.headers,
+        json=_ticket(
+            rotations[1]["rotation_id"], bridge, source="MANUAL_DEGRADED", degraded_reason="POWER_OUTAGE"
+        ),
+    )
+    assert pending.status_code == 201, pending.text  # saisie dégradée non approuvée : jamais comptée
+    # 10 h moteur sur une plage de 20 h encadrant les rotations (troisième rotation non pesée).
+    chief = api.user(w.t, "WORKSHOP_CHIEF")
+    _hour_meter_at(w, vehicle, chief, [(started - timedelta(hours=20), 100.0), (datetime.now(UTC), 110.0)])
+    params = {
+        "from": (started - timedelta(days=3)).isoformat(),
+        "to": (started + timedelta(days=1)).isoformat(),
+    }
+
+    ops = client.get(f"{API}/maintenance/reliability", headers=w.ops.headers, params=params).json()
+    assert ops["tonnage_visible"] is True
+    row = next(r for r in ops["vehicles"] if r["vehicle_id"] == vehicle)
+    assert row["operating_hours"] == "10.00"
+    assert row["measured_tonnes"] == "34.00"
+    assert row["tonnes_per_operating_hour"] == "3.40"
+    assert row["tonnage_pending"] is True
+
+    # Le chef d'atelier lit la fiabilité mais pas le tonnage : rien n'est exposé, pas même l'attente.
+    workshop = client.get(f"{API}/maintenance/reliability", headers=chief.headers, params=params).json()
+    assert workshop["tonnage_visible"] is False
+    hidden = next(r for r in workshop["vehicles"] if r["vehicle_id"] == vehicle)
+    assert hidden["operating_hours"] == "10.00"
+    assert hidden["measured_tonnes"] is None and hidden["tonnes_per_operating_hour"] is None
+    assert hidden["tonnage_pending"] is False
+    assert workshop["totals"]["measured_tonnes"] is None
+    assert all(r["measured_tonnes"] is None and r["tonnage_pending"] is False for r in workshop["vehicles"])

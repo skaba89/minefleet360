@@ -1,13 +1,61 @@
 """Contrat public du module dispatch (utilisé par la maintenance, lot 3)."""
 
 import uuid
+from collections import defaultdict
+from collections.abc import Iterable
+from dataclasses import dataclass
+from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
 
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
-from app.dispatch.models import Mission, MissionEvent
+from app.dispatch.models import Mission, MissionEvent, Rotation, WeighingTicket
 from app.dispatch.service import RUNNING
+from app.dispatch.weighing import APPROVED, VOIDED
+
+
+@dataclass(frozen=True)
+class MeasuredLoad:
+    """Chargement d'une rotation terminée : tonnage MESURÉ seulement si `valid` (RM-071)."""
+
+    unloaded_at: datetime
+    net_kg: int
+    valid: bool  # pont-bascule, ou saisie dégradée approuvée ; sinon en attente d'approbation
+
+
+def measured_loads(
+    db: Session, vehicle_ids: Iterable[uuid.UUID], start: datetime, end: datetime
+) -> dict[uuid.UUID, list[MeasuredLoad]]:
+    """Pesées non annulées des rotations TERMINÉES déchargées dans [start, end), par engin (RLS).
+
+    Même définition que les indicateurs dispatch : jamais de tonnage estimé (capacité nominale) ni GPS.
+    """
+    ids = list(set(vehicle_ids))
+    out: dict[uuid.UUID, list[MeasuredLoad]] = defaultdict(list)
+    if not ids:
+        return out
+    rows = db.execute(
+        select(
+            Rotation.vehicle_id,
+            Rotation.unloaded_at,
+            WeighingTicket.net_kg,
+            or_(WeighingTicket.source == "WEIGHBRIDGE", APPROVED).label("valid"),
+        )
+        .join(WeighingTicket, WeighingTicket.rotation_id == Rotation.rotation_id)
+        .where(
+            ~VOIDED,
+            Rotation.vehicle_id.in_(ids),
+            Rotation.status == "COMPLETED",
+            Rotation.unloaded_at >= start,
+            Rotation.unloaded_at < end,
+        )
+        .order_by(Rotation.unloaded_at)
+    ).all()
+    for vehicle_id, unloaded_at, net_kg, valid in rows:
+        out[vehicle_id].append(MeasuredLoad(unloaded_at, int(net_kg), bool(valid)))
+    return out
 
 
 def mission_vehicle(auth: Authorized, mission_id: uuid.UUID) -> tuple[uuid.UUID, uuid.UUID] | None:

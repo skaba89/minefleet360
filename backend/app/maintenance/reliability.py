@@ -23,6 +23,11 @@ Heures de fonctionnement (horamètre, relevés en ajout seul, ordonnés, jamais 
 - MTBF en heures de fonctionnement : heures de fonctionnement / pannes signalées sur la plage.
 - Couverture : plage mesurée / durée de service. Des heures de fonctionnement supérieures à la plage
   écoulée sont une anomalie de relevés : utilisation non calculée, `meter_anomaly` vrai.
+Productivité (tonnage MESURÉ uniquement, RM-071 — jamais capacité nominale ni GPS) :
+- Tonnage mesuré : pesées valides des rotations terminées déchargées sur la plage mesurée.
+- Tonnes par heure moteur : tonnage mesuré / heures de fonctionnement. Pesées en attente d'approbation :
+  signalées (`tonnage_pending`), jamais comptées.
+- Visible seulement si l'appelant a aussi `dispatch.indicators.read` sur le site de l'engin ; sinon null.
 Aucune valeur n'est extrapolée : un engin sans OT a 100 % de disponibilité « selon l'atelier », pas mesurée.
 """
 
@@ -39,8 +44,10 @@ from pydantic import AwareDatetime, BaseModel
 from sqlalchemy import func, or_, select
 
 from app.authz.dependencies import Authorized, Require
+from app.authz.principal import evaluate
 from app.authz.routing import SecuredRoute
 from app.core.errors import AppError
+from app.dispatch.contracts import MeasuredLoad, measured_loads
 from app.fleet.contracts import VehicleRef, vehicles_in_scope
 from app.fleet.models import VehicleMeterReading
 from app.maintenance.models import WorkOrder, WorkOrderLabour
@@ -78,6 +85,9 @@ class VehicleReliability(BaseModel):
     utilization_percent: Decimal | None = None
     mtbf_operating_hours: Decimal | None = None
     meter_anomaly: bool = False
+    measured_tonnes: Decimal | None = None
+    tonnes_per_operating_hour: Decimal | None = None
+    tonnage_pending: bool = False
 
 
 class ReliabilityTotals(BaseModel):
@@ -95,6 +105,8 @@ class ReliabilityTotals(BaseModel):
     operating_hours: Decimal | None = None
     utilization_percent: Decimal | None = None
     mtbf_operating_hours: Decimal | None = None
+    measured_tonnes: Decimal | None = None
+    tonnes_per_operating_hour: Decimal | None = None
 
 
 class ReliabilityOut(BaseModel):
@@ -102,6 +114,8 @@ class ReliabilityOut(BaseModel):
     period_end: datetime
     period_hours: Decimal
     currency: str | None
+    # Faux si l'appelant n'a pas `dispatch.indicators.read` : aucun tonnage n'est alors exposé.
+    tonnage_visible: bool = False
     totals: ReliabilityTotals
     vehicles: list[VehicleReliability]
 
@@ -144,6 +158,8 @@ class _Operating:
     available: timedelta  # plage mesurée − immobilisation sur la plage
     failures: int
     anomaly: bool
+    measured_kg: int | None = None  # None : tonnage non visible pour l'appelant
+    pending_loads: bool = False
 
 
 def _operating(
@@ -151,6 +167,7 @@ def _operating(
     window: tuple[datetime, datetime],
     downtime: list[tuple[datetime, datetime]],
     failure_times: list[datetime],
+    loads: list[MeasuredLoad] | None = None,
 ) -> _Operating | None:
     """Heures moteur mesurées par l'horamètre dans la durée de service ; None sans plage mesurée."""
     inside = [r for r in readings if window[0] <= r.read_at <= window[1]]
@@ -166,7 +183,25 @@ def _operating(
     available = span - _union(on_span)
     failures = sum(1 for moment in failure_times if first <= moment < last)
     anomaly = operating * HOUR > Decimal(span.total_seconds())
-    return _Operating(operating, span, available, failures, anomaly)
+    if loads is None:
+        return _Operating(operating, span, available, failures, anomaly)
+    on_range = [load for load in loads if first <= load.unloaded_at < last]
+    if not on_range:
+        # Aucune rotation pesée sur la plage (engin de chargement, rotations non pesées) : pas de « 0 t/h ».
+        return _Operating(operating, span, available, failures, anomaly)
+    return _Operating(
+        operating,
+        span,
+        available,
+        failures,
+        anomaly,
+        measured_kg=sum(load.net_kg for load in on_range if load.valid),
+        pending_loads=any(not load.valid for load in on_range),
+    )
+
+
+def _tonnes(kg: int) -> Decimal:
+    return (Decimal(kg) / 1000).quantize(Decimal("0.01"))
 
 
 def _minutes_to_hours(minutes: int) -> Decimal:
@@ -189,6 +224,9 @@ class _OperatingView:
     utilization_percent: Decimal | None = None
     mtbf_operating_hours: Decimal | None = None
     meter_anomaly: bool = False
+    measured_tonnes: Decimal | None = None
+    tonnes_per_operating_hour: Decimal | None = None
+    tonnage_pending: bool = False
 
 
 def _operating_view(measured: _Operating | None, service: timedelta) -> _OperatingView:
@@ -204,6 +242,13 @@ def _operating_view(measured: _Operating | None, service: timedelta) -> _Operati
         if usable and measured.failures
         else None,
         meter_anomaly=measured.anomaly,
+        measured_tonnes=_tonnes(measured.measured_kg) if measured.measured_kg is not None else None,
+        tonnes_per_operating_hour=(_tonnes(measured.measured_kg) / measured.operating).quantize(
+            Decimal("0.01")
+        )
+        if usable and measured.measured_kg is not None and measured.operating > 0
+        else None,
+        tonnage_pending=measured.pending_loads,
     )
 
 
@@ -213,6 +258,8 @@ class _OperatingTotals:
     operating_hours: Decimal | None = None
     utilization_percent: Decimal | None = None
     mtbf_operating_hours: Decimal | None = None
+    measured_tonnes: Decimal | None = None
+    tonnes_per_operating_hour: Decimal | None = None
 
 
 def _operating_totals(metered: list[_Operating]) -> _OperatingTotals:
@@ -222,11 +269,18 @@ def _operating_totals(metered: list[_Operating]) -> _OperatingTotals:
     operating = sum((m.operating for m in usable), Decimal("0"))
     available = sum((_hours(m.available) for m in usable), Decimal("0"))
     failures = sum(m.failures for m in usable)
+    weighed = [m for m in usable if m.measured_kg is not None and m.operating > 0]
+    tonnes = _tonnes(sum(m.measured_kg or 0 for m in weighed)) if weighed else None
+    weighed_hours = sum((m.operating for m in weighed), Decimal("0"))
     return _OperatingTotals(
         metered_vehicles=len(metered),
         operating_hours=operating.quantize(Decimal("0.01")),
         utilization_percent=_ratio(operating, available),
         mtbf_operating_hours=(operating / failures).quantize(Decimal("0.01")) if failures else None,
+        measured_tonnes=tonnes,
+        tonnes_per_operating_hour=(tonnes / weighed_hours).quantize(Decimal("0.01"))
+        if tonnes is not None and weighed_hours > 0
+        else None,
     )
 
 
@@ -312,6 +366,18 @@ def reliability(
         .all()
     ):
         meters[reading.vehicle_id].append(reading)
+    # Tonnage : seulement là où l'appelant lit aussi les indicateurs dispatch (aucune fuite par la fiabilité).
+    tonnage_scope = evaluate(auth.principal, "dispatch.indicators.read")
+    visible: set[uuid.UUID] = (
+        set()
+        if tonnage_scope is None
+        else {v.site_id for v in vehicles if tonnage_scope.covers_site(v.site_id)}
+    )
+    loads = (
+        measured_loads(db, [v.vehicle_id for v in vehicles if v.site_id in visible], start, end)
+        if visible
+        else {}
+    )
     closed_set = set(closed_in_period)
     metered: list[_Operating] = []
     rows: list[VehicleReliability] = []
@@ -353,6 +419,7 @@ def reliability(
             window,
             intervals,
             [o.reported_at for o in corrective if start <= o.reported_at < end],
+            loads.get(vehicle.vehicle_id, []) if vehicle.site_id in visible else None,
         )
         if measured is not None:
             metered.append(measured)
@@ -385,6 +452,9 @@ def reliability(
                 utilization_percent=view.utilization_percent,
                 mtbf_operating_hours=view.mtbf_operating_hours,
                 meter_anomaly=view.meter_anomaly,
+                measured_tonnes=view.measured_tonnes,
+                tonnes_per_operating_hour=view.tonnes_per_operating_hour,
+                tonnage_pending=view.tonnage_pending,
             )
         )
     rows.sort(key=lambda r: (r.availability_percent, r.fleet_number))
@@ -398,6 +468,7 @@ def reliability(
         period_end=end,
         period_hours=_hours(period),
         currency=currency,
+        tonnage_visible=tonnage_scope is not None,
         totals=ReliabilityTotals(
             vehicles=len(rows),
             service_hours=fleet_hours,
@@ -415,6 +486,8 @@ def reliability(
             operating_hours=fleet_operating.operating_hours,
             utilization_percent=fleet_operating.utilization_percent,
             mtbf_operating_hours=fleet_operating.mtbf_operating_hours,
+            measured_tonnes=fleet_operating.measured_tonnes,
+            tonnes_per_operating_hour=fleet_operating.tonnes_per_operating_hour,
         ),
         vehicles=rows,
     )

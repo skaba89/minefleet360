@@ -8256,6 +8256,11 @@ export interface components {
              * Format: date-time
              */
             period_start: string;
+            /**
+             * Tonnage Visible
+             * @default false
+             */
+            tonnage_visible: boolean;
             totals: components["schemas"]["ReliabilityTotals"];
             /** Vehicles */
             vehicles: components["schemas"]["VehicleReliability"][];
@@ -8270,6 +8275,8 @@ export interface components {
             failures: number;
             /** Labour Hours */
             labour_hours: string;
+            /** Measured Tonnes */
+            measured_tonnes?: string | null;
             /**
              * Metered Vehicles
              * @default 0
@@ -8289,6 +8296,8 @@ export interface components {
             parts_cost_known: string | null;
             /** Service Hours */
             service_hours: string;
+            /** Tonnes Per Operating Hour */
+            tonnes_per_operating_hour?: string | null;
             /** Utilization Percent */
             utilization_percent?: string | null;
             /** Vehicles */
@@ -9831,6 +9840,8 @@ export interface components {
             fleet_number: string;
             /** Labour Hours */
             labour_hours: string;
+            /** Measured Tonnes */
+            measured_tonnes?: string | null;
             /**
              * Meter Anomaly
              * @default false
@@ -9863,6 +9874,13 @@ export interface components {
              * Format: uuid
              */
             site_id: string;
+            /**
+             * Tonnage Pending
+             * @default false
+             */
+            tonnage_pending: boolean;
+            /** Tonnes Per Operating Hour */
+            tonnes_per_operating_hour?: string | null;
             /** Utilization Percent */
             utilization_percent?: string | null;
             /**
