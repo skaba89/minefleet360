@@ -123,3 +123,59 @@ test("réponse perdue : l'inspection créée n'est pas dupliquée au rejeu", asy
   expect(dropped).toBe(true);
   expect(await inspectionsNoted(request, note)).toBe(1);
 });
+
+/** Service worker actif, shell en cache, profil terrain ET kit d'inspection préparés (tranche 3). */
+async function waitForOfflineInspectionReady(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await page.waitForFunction(
+    async () => {
+      if (!navigator.serviceWorker.controller) return false;
+      const shell = await caches.match("/index.html");
+      const profile = localStorage.getItem("minefleet-field-profile-v1");
+      const kit = localStorage.getItem("minefleet-field-inspection-kit-v1");
+      return !!shell && !!profile && !!kit;
+    },
+    undefined,
+    { timeout: 20_000 },
+  );
+}
+
+test("ouverture de l'application sans réseau : inspection depuis le kit puis synchronisation unique", async ({
+  page,
+  context,
+  request,
+}) => {
+  const templateName = await createTemplate(request);
+  const note = `Inspection démarrage hors ligne ${Date.now()}`;
+  await uiLogin(page, performer());
+  await openInspections(page); // prépare le kit : sites, checklists actives, engins
+  await waitForOfflineInspectionReady(page);
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: /mode hors ligne/ })).toBeVisible();
+  await page.getByRole("button", { name: "Réaliser une inspection" }).click();
+  const checklist = page.getByLabel("Checklist");
+  await checklist.selectOption({ label: `${templateName} (Prise de poste, v1)` });
+  await expect(page.getByLabel("Résultat : EPI portés")).toBeVisible();
+  const form = page.getByRole("form", { name: /Réaliser une inspection \(hors ligne\)/ });
+  await page.getByLabel("Observation générale (facultatif)").fill(note);
+  await page.getByRole("button", { name: "Enregistrer sur l'appareil" }).click();
+  try {
+    await expect(form).toBeHidden({ timeout: 3_000 });
+  } catch {
+    await page.getByRole("button", { name: "Enregistrer sur l'appareil" }).click();
+    await expect(form).toBeHidden();
+  }
+  await expect(page.getByText(`Inspection — ${templateName} v1`)).toBeVisible();
+  await expect(page.getByText("En attente de synchronisation", { exact: true })).toBeVisible();
+  expect(await inspectionsNoted(request, note)).toBe(0);
+
+  await context.setOffline(false);
+  // Session rétablie par le cookie de rafraîchissement, puis synchronisation depuis l'écran Inspections.
+  await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible({ timeout: 20_000 });
+  await openInspections(page);
+  await expect(page.getByText(/Synchronisé — INS-\d{6}/)).toBeVisible({ timeout: 20_000 });
+  expect(await inspectionsNoted(request, note)).toBe(1);
+});

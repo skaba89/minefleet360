@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router";
 
 import { ApiError, call, read } from "../api/client";
-import { queueIncident, syncAccount } from "../lib/hseOfflineSync";
+import { queueIncident, queueInspection, syncAccount } from "../lib/hseOfflineSync";
 import { listForAccount } from "../lib/offline-outbox";
 import { OfflineFieldPage } from "./HseOffline";
 import { HsePage } from "./HsePages";
@@ -43,6 +43,7 @@ vi.mock("../api/client", async (original) => ({
 vi.mock("../lib/hseOfflineSync", async (original) => ({
   ...(await original<typeof import("../lib/hseOfflineSync")>()),
   queueIncident: vi.fn(),
+  queueInspection: vi.fn(),
   syncAccount: vi.fn(),
 }));
 vi.mock("../lib/offline-outbox", async (original) => ({
@@ -81,6 +82,7 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   setOnline(true);
+  localStorage.clear();
 });
 
 it("hors ligne, la déclaration est placée dans la file locale sans appel serveur", async () => {
@@ -185,4 +187,88 @@ it("après une tentative en échec, la resynchronisation repart à 5 s plutôt q
   } finally {
     vi.useRealTimers();
   }
+});
+
+/** Kit préparé en ligne pour le compte fictif (tranche 3) : deux sites, un engin sur chacun. */
+function storeKit() {
+  localStorage.setItem(
+    "minefleet-field-inspection-kit-v1",
+    JSON.stringify({
+      workspace_code: "espace-fictif",
+      user_account_id: "user-1",
+      saved_at: new Date(Date.now() - 3600 * 1000).toISOString(),
+      sites: [
+        { site_id: "site-1", code: "MINE", name: "Mine fictive", timezone: "Africa/Conakry" },
+        { site_id: "site-2", code: "PORT", name: "Port fictif", timezone: "Africa/Conakry" },
+      ],
+      templates: [
+        {
+          hse_checklist_template_id: "tpl-veh",
+          code: "VEH",
+          name: "Contrôle engin",
+          version: 3,
+          target_type: "VEHICLE",
+          items: [
+            { key: "freins", label: "Freins efficaces", critical: true },
+            { key: "feux", label: "Feux", critical: false },
+          ],
+        },
+      ],
+      vehicles: [
+        { vehicle_id: "veh-1", site_id: "site-1", fleet_number: "CAM-01" },
+        { vehicle_id: "veh-2", site_id: "site-2", fleet_number: "CAM-99" },
+      ],
+    }),
+  );
+}
+
+it("mode hors ligne au démarrage : sans kit préparé, l'inspection n'est pas proposée", () => {
+  setOnline(false);
+  const client = show(<OfflineFieldPage />);
+  expect(screen.queryByRole("button", { name: "Réaliser une inspection" })).toBeNull();
+  client.clear();
+});
+
+it("mode hors ligne au démarrage : inspection depuis le kit, mise en file sans aucun appel API", async () => {
+  setOnline(false);
+  storeKit();
+  const client = show(<OfflineFieldPage />);
+  fireEvent.click(screen.getByRole("button", { name: "Réaliser une inspection" }));
+  fireEvent.change(screen.getByLabelText("Checklist"), { target: { value: "tpl-veh" } });
+  // Seuls les engins du site choisi sont proposés.
+  const engin = screen.getByLabelText("Engin");
+  expect(Array.from(engin.querySelectorAll("option")).map((o) => o.textContent)).toEqual(["— Choisir —", "CAM-01"]);
+  fireEvent.change(engin, { target: { value: "veh-1" } });
+  fireEvent.change(screen.getByLabelText("Résultat : Freins efficaces"), { target: { value: "NON_COMPLIANT" } });
+  fireEvent.change(screen.getByLabelText("Constat : Freins efficaces"), { target: { value: "Course de pédale longue" } });
+  fireEvent.click(screen.getByRole("button", { name: "Enregistrer sur l'appareil" }));
+  await waitFor(() => expect(queueInspection).toHaveBeenCalledOnce());
+  const [account, body, summary] = vi.mocked(queueInspection).mock.calls[0]!;
+  expect(account).toEqual({ tenantId: "espace-fictif", userId: "user-1" });
+  expect(body).toMatchObject({
+    site_id: "site-1",
+    hse_checklist_template_id: "tpl-veh",
+    vehicle_id: "veh-1",
+    area_note: null,
+    answers: [
+      { item_key: "freins", result: "NON_COMPLIANT", comment: "Course de pédale longue" },
+      { item_key: "feux", result: "COMPLIANT", comment: null },
+    ],
+  });
+  expect(summary).toBe("Contrôle engin v3");
+  expect(await screen.findByText(/Inspection enregistrée sur l'appareil/)).toBeTruthy();
+  expect(read).not.toHaveBeenCalled();
+  expect(call).not.toHaveBeenCalled();
+  expect(syncAccount).not.toHaveBeenCalled();
+  client.clear();
+});
+
+it("mode hors ligne au démarrage : le kit d'un autre compte n'est jamais utilisé", () => {
+  setOnline(false);
+  storeKit();
+  const raw = JSON.parse(localStorage.getItem("minefleet-field-inspection-kit-v1")!);
+  localStorage.setItem("minefleet-field-inspection-kit-v1", JSON.stringify({ ...raw, user_account_id: "user-2" }));
+  const client = show(<OfflineFieldPage />);
+  expect(screen.queryByRole("button", { name: "Réaliser une inspection" })).toBeNull();
+  client.clear();
 });

@@ -1,5 +1,5 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
 import { ApiError, call, read, type Schemas } from "../api/client";
@@ -12,6 +12,7 @@ import { ActionForm, Fact, Options, orNull } from "../components/forms";
 import { HSE_ANSWER, HSE_RESULT, HSE_TARGET, label } from "../lib/labels";
 import { useConnectivity } from "../lib/connectivity";
 import { accountOf, queueInspection } from "../lib/hseOfflineSync";
+import { saveInspectionKit, type KitTargetType } from "../lib/offlineInspectionKit";
 import { can } from "../lib/permissions";
 import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
 import { useSites } from "../site/SiteContext";
@@ -24,7 +25,60 @@ type Answer = Schemas["AnswerIn"];
 const PAGE_SIZE = 50;
 
 /** Inspections HSE (prise de poste, engins, zones de travail) et accès aux modèles de checklists. */
+/** Nombre maximal de sites dont les engins sont préparés pour l'inspection hors ligne (requêtes bornées). */
+const OFFLINE_KIT_MAX_SITES = 10;
+
+/**
+ * Prépare le kit d'inspection hors ligne pendant que le réseau est là : sites où le compte peut inspecter,
+ * checklists actives, engins de ces sites. Réutilise les mêmes requêtes (et le même cache) que le formulaire.
+ */
+function usePrepareOfflineInspectionKit() {
+  const me = useMe();
+  const { sites } = useSites();
+  const online = useConnectivity();
+  const allowed = sites.filter((s) => can(me.grants, "hse.inspection.perform", s.site_id)).slice(0, OFFLINE_KIT_MAX_SITES);
+  const templates = useQuery({
+    queryKey: ["hse-templates"],
+    enabled: online && allowed.length > 0,
+    queryFn: () => read("/hse/checklist-templates"),
+  });
+  const vehicleSites = allowed.filter((s) => can(me.grants, "fleet.vehicle.read", s.site_id));
+  const vehicles = useQueries({
+    queries: vehicleSites.map((s) => ({
+      queryKey: ["vehicles", "hse-inspection", s.site_id],
+      enabled: online,
+      queryFn: () => read("/vehicles", { query: { site_id: s.site_id, page_size: 200 } }),
+    })),
+  });
+  const vehiclesReady = vehicles.every((v) => v.isSuccess);
+  const vehiclesStamp = vehicles.map((v) => v.dataUpdatedAt).join(",");
+  useEffect(() => {
+    if (!online || !templates.data || !vehiclesReady || allowed.length === 0) return;
+    saveInspectionKit({
+      workspace_code: me.workspace_code,
+      user_account_id: me.user_account_id,
+      saved_at: new Date().toISOString(),
+      sites: allowed.map((s) => ({ site_id: s.site_id, code: s.code, name: s.name, timezone: s.timezone ?? null })),
+      templates: templates.data
+        .filter((t) => t.active)
+        .map((t) => ({
+          hse_checklist_template_id: t.hse_checklist_template_id,
+          code: t.code,
+          name: t.name,
+          version: t.version,
+          target_type: t.target_type as KitTargetType,
+          items: t.items.map((i) => ({ key: i.key, label: i.label, critical: i.critical })),
+        })),
+      vehicles: vehicles.flatMap((q, index) =>
+        (q.data?.items ?? []).map((v) => ({ vehicle_id: v.vehicle_id, site_id: vehicleSites[index]!.site_id, fleet_number: v.fleet_number })),
+      ),
+    });
+    // Le kit est réécrit à chaque rafraîchissement des données sources, jamais à chaque rendu.
+  }, [online, templates.dataUpdatedAt, vehiclesReady, vehiclesStamp, allowed.length, me.workspace_code, me.user_account_id]);
+}
+
 export function HseInspectionsPage() {
+  usePrepareOfflineInspectionKit();
   const me = useMe();
   const { siteId, sites, timezoneOf } = useSites();
   const [result, setResult] = useState("");

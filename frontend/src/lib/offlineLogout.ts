@@ -1,5 +1,6 @@
 import { clearOfflineDrafts } from "./offlineDrafts";
 import { clearFieldProfile } from "./offlineFieldProfile";
+import { clearInspectionKit } from "./offlineInspectionKit";
 import { purgeOutbox, purgeOutboxKeepingPending } from "./offline-outbox";
 
 type Profile = { workspace_code: string; user_account_id: string };
@@ -7,6 +8,7 @@ type Profile = { workspace_code: string; user_account_id: string };
 /** Purge les brouillons du compte et toute file outbox locale (appareil partagé). */
 export async function purgeDraftsForSignedOutUser(profile: Profile): Promise<void> {
   clearFieldProfile();
+  clearInspectionKit();
   // AllSettled garantit que la seconde purge est tentée même si la première échoue.
   const results = await Promise.allSettled([
     clearOfflineDrafts(`${profile.workspace_code}:${profile.user_account_id}`),

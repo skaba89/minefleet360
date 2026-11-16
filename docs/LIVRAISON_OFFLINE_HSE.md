@@ -106,3 +106,30 @@ synchronisation unique, réponse perdue sans doublon — exécutés en CI unique
 Limites de cette tranche : la checklist et les engins doivent avoir été chargés **avant** la coupure (coupure en
 cours de session). L'ouverture de l'application sans réseau pour une inspection (modèles et engins mis en cache
 dans le profil terrain) est la tranche 3. Photos : en ligne uniquement. Appareil Android réel : non essayé.
+
+## Extension aux inspections HSE — tranche 3 : ouverture de l'application sans réseau (16 novembre 2026)
+
+- **Kit d'inspection hors ligne** (`lib/offlineInspectionKit.ts`, `localStorage`, clé
+  `minefleet-field-inspection-kit-v1`) préparé à l'ouverture de la page Inspections **en ligne** : sites où le
+  compte a `hse.inspection.perform` (10 au plus), checklists **actives** (définitions seulement), engins de ces
+  sites (identifiant + numéro de parc, seulement si `fleet.vehicle.read`). Mêmes requêtes et même cache que le
+  formulaire en ligne.
+- **Données locales — changement assumé** : le profil terrain restait sans donnée métier ; le kit ajoute des
+  définitions de checklists et des numéros de parc. **Aucune donnée personnelle, aucun jeton.** Garde-fous : champs
+  copiés un à un (rien d'inattendu ne transite), bornes (50 sites, 50 checklists, 100 points, 1 000 engins),
+  validation stricte à la relecture, **lié au compte et à l'espace**, ignoré au-delà de **7 jours** ou s'il est daté
+  dans le futur, **supprimé à la déconnexion volontaire** (conservé à l'expiration de session, comme le profil
+  terrain).
+- **Mode hors ligne restreint** : si un kit valide existe pour le compte, « Réaliser une inspection » s'ajoute à la
+  déclaration d'incident ; même libellés et mêmes règles que le formulaire en ligne ; engins filtrés par site ;
+  l'inspection part dans la file commune et se synchronise après reconnexion.
+- Le serveur revérifie tout à la synchronisation : permission, site, **modèle toujours actif** (un modèle désactivé
+  entre-temps → refus définitif affiché), engin du site.
+
+Vérifications : Vitest 287/287 (12 nouveaux ; les 3 tests de capacité échouent sans l'implémentation), `tsc` OK ;
+E2E (Chromium + émulation Android) : préparation en ligne, rechargement sans réseau, inspection en mode restreint,
+reconnexion, synchronisation unique — exécuté en CI uniquement.
+
+Limites : le mode hors ligne restreint ne s'ouvre que pour un compte qui a aussi un profil terrain (droit de
+déclarer un incident sur au moins un site) ; un compte qui ne peut qu'inspecter n'en bénéficie pas encore.
+Photos en ligne uniquement. Appareil Android réel non essayé (`docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md`).

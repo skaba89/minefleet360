@@ -8,7 +8,9 @@ import { accountOf, queueIncident, syncAccount, type Account, type IncidentDraft
 import { HSE_CATEGORY, HSE_SEVERITY, label } from "../lib/labels";
 import { HSE_INSPECTION_ENDPOINT, listForAccount, removeEntry, type OutboxEntry } from "../lib/offline-outbox";
 import { useConnectivity } from "../lib/connectivity";
+import { loadInspectionKit } from "../lib/offlineInspectionKit";
 import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
+import { QueueInspectionForm } from "./HseInspectionOffline";
 
 export interface DeclarationSite {
   site_id: string;
@@ -293,27 +295,32 @@ export function OfflineIncidentQueue({
   );
 }
 
-/** Ouverture sans réseau avec un profil terrain mémorisé : déclaration HSE et file d'attente seulement. */
+/**
+ * Ouverture sans réseau avec un profil terrain mémorisé : déclaration d'incident HSE, inspection HSE si un kit a
+ * été préparé en ligne pour ce compte (moins de 7 jours), et file d'attente.
+ */
 export function OfflineFieldPage() {
   const { fieldProfile, retrySession } = useAuth();
-  const [declaring, setDeclaring] = useState(true);
+  const [mode, setMode] = useState<"incident" | "inspection" | null>("incident");
   const [refreshKey, setRefreshKey] = useState(0);
   const [confirmation, setConfirmation] = useState<string | null>(null);
   if (!fieldProfile) return null;
   const account = accountOf(fieldProfile);
+  const kit = loadInspectionKit(fieldProfile);
   const tzOf = (siteId: string) => fieldProfile.sites.find((s) => s.site_id === siteId)?.timezone ?? fieldProfile.timezone;
   return (
     <main className="container">
       <h1>MINEFLEET 360 — mode hors ligne</h1>
       <p className="muted">
-        Connecté en tant que {fieldProfile.display_name}. Sans réseau, seule la déclaration d'incident HSE est disponible ; rien
-        n'est envoyé avant le retour du réseau et la reconnexion de votre compte.
+        Connecté en tant que {fieldProfile.display_name}. Sans réseau, seules la déclaration d'incident HSE
+        {kit ? " et l'inspection HSE" : ""} sont disponibles ; rien n'est envoyé avant le retour du réseau et la reconnexion
+        de votre compte.
       </p>
       <button type="button" onClick={() => void retrySession()}>
         Réessayer la connexion
       </button>
       {confirmation && <p role="status" className="warn-text">{confirmation}</p>}
-      {declaring ? (
+      {mode === "incident" && (
         <QueueIncidentForm
           account={account}
           sites={fieldProfile.sites}
@@ -321,14 +328,35 @@ export function OfflineFieldPage() {
           onQueued={() => {
             setConfirmation("Déclaration enregistrée sur l'appareil — en attente de synchronisation.");
             setRefreshKey((k) => k + 1);
-            setDeclaring(false);
+            setMode(null);
           }}
         />
-      ) : (
-        <button type="button" className="primary" onClick={() => setDeclaring(true)}>
-          Déclarer un autre incident
-        </button>
       )}
+      {mode === "inspection" && kit && (
+        <QueueInspectionForm
+          account={account}
+          kit={kit}
+          fallbackTimeZone={fieldProfile.timezone}
+          onCancel={() => setMode(null)}
+          onQueued={() => {
+            setConfirmation("Inspection enregistrée sur l'appareil — en attente de synchronisation.");
+            setRefreshKey((k) => k + 1);
+            setMode(null);
+          }}
+        />
+      )}
+      <div className="row">
+        {mode !== "incident" && (
+          <button type="button" className="primary" onClick={() => setMode("incident")}>
+            Déclarer un autre incident
+          </button>
+        )}
+        {kit && mode !== "inspection" && (
+          <button type="button" onClick={() => setMode("inspection")}>
+            Réaliser une inspection
+          </button>
+        )}
+      </div>
       <OfflineIncidentQueue account={account} canSync={false} canOpen={false} timeZone={fieldProfile.timezone} refreshKey={refreshKey} />
     </main>
   );
