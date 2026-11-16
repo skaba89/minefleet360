@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router";
 
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
+import { SubcontractorSelect } from "../components/SubcontractorSelect";
 import { Badge, DataState, Pager } from "../components/common";
 import { ActionForm, intOrNull, Options, orNull } from "../components/forms";
 import { FUEL, label, OWNERSHIP, VEHICLE_STATUS } from "../lib/labels";
@@ -127,6 +128,7 @@ function CreateVehicle({ onClose }: { onClose: () => void }) {
     model: "",
     model_year: "",
     ownership_type: "OWNED",
+    subcontractor_id: "",
     fuel_type: "",
     rated_payload_kg: "",
     commissioned_on: "",
@@ -153,6 +155,7 @@ function CreateVehicle({ onClose }: { onClose: () => void }) {
             model: orNull(form.model),
             model_year: intOrNull(form.model_year),
             ownership_type: form.ownership_type as VehicleCreate["ownership_type"],
+            subcontractor_id: form.ownership_type === "SUBCONTRACTED" ? orNull(form.subcontractor_id) : null,
             fuel_type: orNull(form.fuel_type) as VehicleCreate["fuel_type"],
             rated_payload_kg: intOrNull(form.rated_payload_kg),
             commissioned_on: orNull(form.commissioned_on),
@@ -216,6 +219,9 @@ function CreateVehicle({ onClose }: { onClose: () => void }) {
           <Options map={OWNERSHIP} />
         </select>
       </label>
+      {form.ownership_type === "SUBCONTRACTED" && (
+        <SubcontractorSelect value={form.subcontractor_id} current={null} onChange={(id) => setForm({ ...form, subcontractor_id: id })} />
+      )}
       <label>
         Carburant
         <select value={form.fuel_type} onChange={set("fuel_type")}>
