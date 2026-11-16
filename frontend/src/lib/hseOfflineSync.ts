@@ -1,5 +1,5 @@
 /**
- * Déclaration d'incident HSE hors ligne (premier parcours outbox de bout en bout).
+ * Saisies HSE hors ligne (déclarations d'incident et inspections) : file outbox de bout en bout.
  *
  * - La saisie est enregistrée dans l'outbox IndexedDB, liée au tenant, au compte et au site.
  * - La synchronisation est déclenchée explicitement (retour du réseau, bouton, minuterie), sous verrou
@@ -12,6 +12,8 @@ import { ApiError, request, type Schemas } from "../api/client";
 import {
   enqueue,
   HSE_INCIDENT_ENDPOINT,
+  HSE_INSPECTION_ENDPOINT,
+  isSyncableEndpoint,
   listForAccount,
   updateEntry,
   type OutboxEntry,
@@ -20,6 +22,7 @@ import { withExclusiveOfflineSync, type LockManagerLike } from "./offline-sync-l
 import { transitionAfterResponse } from "./offline-sync-state";
 
 export type IncidentDraft = Schemas["IncidentCreate"];
+export type InspectionDraft = Schemas["InspectionCreate"];
 export type Account = { tenantId: string; userId: string };
 
 export interface SyncDeps {
@@ -60,11 +63,48 @@ export async function queueIncident(
   return entry;
 }
 
+/**
+ * Inspection HSE saisie sans réseau (ou dont la réponse s'est perdue) : même file, même clé d'idempotence.
+ * `summary` (nom de la checklist) sert seulement à l'affichage local ; il n'est jamais envoyé.
+ */
+export async function queueInspection(
+  account: Account,
+  body: InspectionDraft,
+  summary: string,
+  nowIso = new Date().toISOString(),
+  operationId: string = crypto.randomUUID(),
+): Promise<OutboxEntry> {
+  const entry: OutboxEntry = {
+    operationId,
+    tenantId: account.tenantId,
+    userId: account.userId,
+    siteId: body.site_id,
+    endpoint: HSE_INSPECTION_ENDPOINT,
+    payload: { ...body },
+    createdAt: nowIso,
+    status: "pending",
+    attempts: 0,
+    summary: summary.slice(0, 200),
+  };
+  await enqueue(entry);
+  return entry;
+}
+
 export async function countUnsynchronized(account: Account): Promise<number> {
   return (await listForAccount(account)).filter((e) => e.status === "pending" || e.status === "syncing").length;
 }
 
-async function sendIncident(entry: OutboxEntry): Promise<{ id: string; reference: string }> {
+async function sendEntry(entry: OutboxEntry): Promise<{ id: string; reference: string }> {
+  if (entry.endpoint === HSE_INSPECTION_ENDPOINT) {
+    const { data } = await request<Schemas["InspectionOut"]>(entry.endpoint, {
+      method: "POST",
+      body: entry.payload,
+      idempotencyKey: entry.operationId,
+    });
+    if (!data?.hse_inspection_id || !data.reference) throw new Error("Accusé de réception serveur incomplet");
+    return { id: data.hse_inspection_id, reference: data.reference };
+  }
+  if (entry.endpoint !== HSE_INCIDENT_ENDPOINT) throw new Error("Opération hors ligne non prise en charge");
   const { data } = await request<Schemas["IncidentOut"]>(entry.endpoint, {
     method: "POST",
     body: entry.payload,
@@ -82,7 +122,7 @@ function browserLocks(): LockManagerLike | null {
 export const defaultSyncDeps: SyncDeps = {
   list: listForAccount,
   update: updateEntry,
-  send: sendIncident,
+  send: sendEntry,
   locks: browserLocks(),
   now: () => Date.now(),
 };
@@ -106,7 +146,7 @@ export async function syncAccount(account: Account, deps: SyncDeps = defaultSync
     const queue = (await deps.list(account)).filter((e) => e.status === "pending" || e.status === "syncing");
     for (let index = 0; index < queue.length; index += 1) {
       const entry = queue[index]!;
-      if (entry.endpoint !== HSE_INCIDENT_ENDPOINT || entry.tenantId !== account.tenantId || entry.userId !== account.userId) {
+      if (!isSyncableEndpoint(entry.endpoint) || entry.tenantId !== account.tenantId || entry.userId !== account.userId) {
         continue;
       }
       // Une opération « syncing » orpheline (onglet fermé en plein envoi) est rejouable : la clé est stable.

@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
-import { call, read, type Schemas } from "../api/client";
+import { ApiError, call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, ErrorMessage, Pager } from "../components/common";
 import { EvidenceImage, EvidenceUploader } from "../components/Evidence";
@@ -10,9 +10,12 @@ import { ExportButton } from "../components/ExportButton";
 import { downloadCsv, fetchAllPages, stamp, toCsv } from "../lib/csv";
 import { ActionForm, Fact, Options, orNull } from "../components/forms";
 import { HSE_ANSWER, HSE_RESULT, HSE_TARGET, label } from "../lib/labels";
+import { useConnectivity } from "../lib/connectivity";
+import { accountOf, queueInspection } from "../lib/hseOfflineSync";
 import { can } from "../lib/permissions";
 import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
 import { useSites } from "../site/SiteContext";
+import { OfflineIncidentQueue } from "./HseOffline";
 import { ActionsTable, AddActionForm } from "./HsePages";
 
 type Inspection = Schemas["InspectionOut"];
@@ -27,6 +30,8 @@ export function HseInspectionsPage() {
   const [result, setResult] = useState("");
   const [page, setPage] = useState(1);
   const [performing, setPerforming] = useState(false);
+  const [queued, setQueued] = useState(0);
+  const queryClient = useQueryClient();
   const canRead = can(me.grants, "hse.inspection.read", siteId);
   const inspections = useQuery({
     queryKey: ["hse-inspections", siteId, result, page],
@@ -54,7 +59,26 @@ export function HseInspectionsPage() {
           )}
         </div>
       </div>
-      {performing && <InspectionForm onClose={() => setPerforming(false)} />}
+      {performing && (
+        <InspectionForm
+          onClose={() => setPerforming(false)}
+          onQueued={() => {
+            setPerforming(false);
+            setQueued((n) => n + 1);
+          }}
+        />
+      )}
+      <OfflineIncidentQueue
+        account={accountOf(me)}
+        canSync
+        canOpen={canRead}
+        timeZone={me.timezone}
+        refreshKey={queued}
+        onSynchronized={() => {
+          void queryClient.invalidateQueries({ queryKey: ["hse-inspections"] });
+          void queryClient.invalidateQueries({ queryKey: ["hse-summary"] });
+        }}
+      />
       {canRead ? (
         <>
           <div className="filters">
@@ -137,8 +161,9 @@ export function HseInspectionsPage() {
   );
 }
 
-function InspectionForm({ onClose }: { onClose: () => void }) {
+function InspectionForm({ onClose, onQueued }: { onClose: () => void; onQueued: () => void }) {
   const me = useMe();
+  const online = useConnectivity();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { siteId, sites, timezoneOf } = useSites();
@@ -193,20 +218,39 @@ function InspectionForm({ onClose }: { onClose: () => void }) {
   return (
     <ActionForm
       title="Réaliser une inspection"
-      submitLabel="Enregistrer l'inspection"
+      submitLabel={online ? "Enregistrer l'inspection" : "Enregistrer sur l'appareil"}
       onCancel={onClose}
       onSubmit={async () => {
-        const { data } = await call("post", "/hse/inspections", {
-          body: {
-            site_id: site,
-            hse_checklist_template_id: templateId,
-            vehicle_id: vehicle || null,
-            area_note: orNull(area),
-            performed_at: zonedInputToUtc(performedAt, timezoneOf(site)).toISOString(),
-            answers: Object.values(answers).map((a) => ({ ...a, comment: orNull(a.comment ?? "") })),
-            note: orNull(note),
-          },
-        });
+        const body: Schemas["InspectionCreate"] = {
+          site_id: site,
+          hse_checklist_template_id: templateId,
+          vehicle_id: vehicle || null,
+          area_note: orNull(area),
+          performed_at: zonedInputToUtc(performedAt, timezoneOf(site)).toISOString(),
+          answers: Object.values(answers).map((a) => ({ ...a, comment: orNull(a.comment ?? "") })),
+          note: orNull(note),
+        };
+        const account = accountOf(me);
+        const summary = template ? `${template.name} v${template.version}` : "";
+        if (!online) {
+          await queueInspection(account, body, summary);
+          onQueued();
+          return;
+        }
+        // Clé d'idempotence dès l'envoi direct (même contrat que les incidents) : si la réponse se perd,
+        // l'inspection part dans la file avec la même clé et son rejeu renvoie celle déjà créée.
+        const operationId = crypto.randomUUID();
+        let data: Inspection;
+        try {
+          ({ data } = await call("post", "/hse/inspections", { body, idempotencyKey: operationId }));
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 0) {
+            await queueInspection(account, body, summary, new Date().toISOString(), operationId);
+            onQueued();
+            return;
+          }
+          throw error;
+        }
         void queryClient.invalidateQueries({ queryKey: ["hse-inspections"] });
         void queryClient.invalidateQueries({ queryKey: ["hse-summary"] });
         setCreated(data);
@@ -294,6 +338,11 @@ function InspectionForm({ onClose }: { onClose: () => void }) {
         <textarea maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
       <p className="muted small">Décrivez les constats sans nom de personne ; les photos s'ajoutent après l'enregistrement.</p>
+      {!online && (
+        <p className="warn-text small">
+          Hors ligne : l'inspection sera envoyée automatiquement au retour du réseau (photos à ajouter ensuite, en ligne).
+        </p>
+      )}
     </ActionForm>
   );
 }

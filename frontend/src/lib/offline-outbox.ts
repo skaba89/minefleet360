@@ -21,6 +21,8 @@ export interface OutboxEntry {
   serverId?: string;
   serverReference?: string;
   syncedAt?: string;
+  /** Libellé d'affichage local (ex. nom de la checklist) : jamais envoyé au serveur. */
+  summary?: string;
 }
 
 /** Durée maximale de conservation locale d'une opération non synchronisée. */
@@ -31,7 +33,13 @@ const STORE = "operations";
 const VERSION = 1;
 /** Routes autorisées explicitement : déclarations append-only et idempotentes côté serveur. */
 export const HSE_INCIDENT_ENDPOINT = "/hse/incidents";
-const ENABLED_ENDPOINTS: ReadonlySet<string> = new Set([HSE_INCIDENT_ENDPOINT]);
+export const HSE_INSPECTION_ENDPOINT = "/hse/inspections";
+const ENABLED_ENDPOINTS: ReadonlySet<string> = new Set([HSE_INCIDENT_ENDPOINT, HSE_INSPECTION_ENDPOINT]);
+
+/** Route synchronisable hors ligne : création append-only et idempotente côté serveur (Idempotency-Key). */
+export function isSyncableEndpoint(endpoint: string): boolean {
+  return ENABLED_ENDPOINTS.has(endpoint);
+}
 
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {

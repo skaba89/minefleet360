@@ -144,6 +144,29 @@ describe("synchronisation des déclarations HSE hors ligne", () => {
     expect(deps.send).not.toHaveBeenCalled();
   });
 
+  it("inspections et déclarations partagent la file et partent dans l'ordre de saisie", async () => {
+    const inspection = entry("bb", {
+      endpoint: "/hse/inspections",
+      payload: { site_id: "site-1", hse_checklist_template_id: "tpl-1", answers: [] },
+      summary: "Prise de poste v2",
+    });
+    const { store, deps } = harness([entry("a"), inspection], async (e) => ({
+      id: `srv-${e.operationId}`,
+      reference: e.endpoint === "/hse/inspections" ? "INS-000007" : "HSE-000042",
+    }));
+    const result = await syncAccount(account, deps);
+    expect(result).toEqual({ kind: "done", synchronized: 2, rejected: 0, waiting: 0 });
+    expect(vi.mocked(deps.send).mock.calls.map(([e]) => e.endpoint)).toEqual(["/hse/incidents", "/hse/inspections"]);
+    expect(store.get("bb")).toMatchObject({ status: "synchronized", serverReference: "INS-000007", serverId: "srv-bb" });
+  });
+
+  it("une opération d'une route non activée n'est jamais envoyée", async () => {
+    const { store, deps } = harness([entry("a", { endpoint: "/work-orders" })], async () => ({ id: "x", reference: "y" }));
+    await syncAccount(account, deps);
+    expect(deps.send).not.toHaveBeenCalled();
+    expect(store.get("a")).toMatchObject({ status: "pending" });
+  });
+
   it("un accusé de réception incomplet n'est pas une synchronisation", async () => {
     const { store, deps } = harness([entry("a")], async () => {
       throw new Error("Accusé de réception serveur incomplet");

@@ -6,7 +6,7 @@ import { Badge, ErrorMessage } from "../components/common";
 import { ActionForm, Options, orNull } from "../components/forms";
 import { accountOf, queueIncident, syncAccount, type Account, type IncidentDraft } from "../lib/hseOfflineSync";
 import { HSE_CATEGORY, HSE_SEVERITY, label } from "../lib/labels";
-import { listForAccount, removeEntry, type OutboxEntry } from "../lib/offline-outbox";
+import { HSE_INSPECTION_ENDPOINT, listForAccount, removeEntry, type OutboxEntry } from "../lib/offline-outbox";
 import { useConnectivity } from "../lib/connectivity";
 import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
 
@@ -249,15 +249,22 @@ export function OfflineIncidentQueue({
       {error !== null && <ErrorMessage error={error} />}
       <ul>
         {entries.map((e) => {
+          const inspection = e.endpoint === HSE_INSPECTION_ENDPOINT;
           const payload = e.payload as Partial<IncidentDraft>;
           return (
             <li key={e.operationId}>
-              <strong>{payload.title}</strong> — {label(HSE_CATEGORY, payload.category)} — saisi le {formatDateTime(e.createdAt, timeZone)}{" "}
-              {statusBadge(e)}
+              {inspection ? (
+                <strong>Inspection{e.summary ? ` — ${e.summary}` : ""}</strong>
+              ) : (
+                <>
+                  <strong>{payload.title}</strong> — {label(HSE_CATEGORY, payload.category)}
+                </>
+              )}{" "}
+              — saisi le {formatDateTime(e.createdAt, timeZone)} {statusBadge(e)}
               {e.status === "synchronized" && e.serverId && canOpen && (
                 <>
                   {" "}
-                  <Link to={`/hse/${e.serverId}`}>Ouvrir</Link>
+                  <Link to={inspection ? `/hse/inspections/${e.serverId}` : `/hse/${e.serverId}`}>Ouvrir</Link>
                 </>
               )}
               {e.status === "rejected" && (

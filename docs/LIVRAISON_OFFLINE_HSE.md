@@ -86,3 +86,23 @@ Reste (tranches suivantes) : mise en cache des modèles actifs et des engins du 
 file IndexedDB + écran hors ligne des inspections (réutilisation du moteur `hseOfflineSync`), E2E Chromium +
 émulation Android, puis essai sur appareil réel (`docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md`). Les photos de
 preuve restent en ligne uniquement.
+
+## Extension aux inspections HSE — tranche 2 : file hors ligne côté application (16 novembre 2026)
+
+- `/hse/inspections` rejoint la liste blanche de la file IndexedDB (`offline-outbox.ts`), avec `/hse/incidents`.
+- Le moteur (`hseOfflineSync.ts`) envoie chaque opération vers sa route et n'accepte comme accusé de réception
+  que l'identifiant et la référence serveur de cette route (`hse_inspection_id` + `INS-000123`). Inspections et
+  déclarations partagent la file, l'ordre de saisie, le verrou Web Locks par compte et la politique de rejeu.
+- Formulaire d'inspection : clé d'idempotence générée **avant** l'envoi ; hors ligne → file (« Enregistrer sur
+  l'appareil ») ; réponse perdue (`status 0`) → file avec **la même clé** ; refus serveur → jamais mis en file.
+- Libellé local `summary` (nom et version de la checklist) pour l'affichage de la file : **jamais envoyé** (schéma
+  strict côté API).
+- La page Inspections affiche et synchronise la file (lien « Ouvrir » vers `/hse/inspections/<id>`).
+
+Vérifications : Vitest 275/275 (10 nouveaux, dont 6 qui échouent sans l'implémentation), `tsc` OK ; E2E
+`e2e-field/hse-inspection-offline.spec.ts` (Chromium + émulation Android) : saisie hors ligne puis
+synchronisation unique, réponse perdue sans doublon — exécutés en CI uniquement.
+
+Limites de cette tranche : la checklist et les engins doivent avoir été chargés **avant** la coupure (coupure en
+cours de session). L'ouverture de l'application sans réseau pour une inspection (modèles et engins mis en cache
+dans le profil terrain) est la tranche 3. Photos : en ligne uniquement. Appareil Android réel : non essayé.
