@@ -123,7 +123,9 @@ test("deux onglets reconnectés ensemble n'envoient qu'une fois", async ({ conte
   await uiLogin(first, dispatcher());
   await openHse(first);
   await context.setOffline(true);
-  await declare(first, title, "Enregistrer sur l'appareil");
+  // Même garde que les autres scénarios (#434) : un clic perdu pendant une re-renderisation laissait le
+  // formulaire ouvert sans rien mettre en file (échec chromium observé en CI le 2026-11-16, PR #452).
+  await declareUntilClosed(first, title, "Enregistrer sur l'appareil");
   await expect(first.getByText("En attente de synchronisation")).toBeVisible();
   const second = await context.newPage();
   await context.setOffline(false);
@@ -141,7 +143,7 @@ test("ouverture de l'application sans réseau puis reconnexion", async ({ page, 
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole("heading", { name: /mode hors ligne/ })).toBeVisible();
-  await declare(page, title, "Enregistrer sur l'appareil");
+  await declareUntilClosed(page, title, "Enregistrer sur l'appareil");
   await expect(page.getByText("En attente de synchronisation", { exact: true })).toBeVisible();
   await context.setOffline(false);
   // Session rétablie par le cookie de rafraîchissement, puis synchronisation depuis l'écran HSE.
@@ -155,7 +157,7 @@ test("la déconnexion volontaire prévient puis efface la file locale", async ({
   await uiLogin(page, dispatcher());
   await openHse(page);
   await context.setOffline(true);
-  await declare(page, `Non envoyée ${Date.now()}`, "Enregistrer sur l'appareil");
+  await declareUntilClosed(page, `Non envoyée ${Date.now()}`, "Enregistrer sur l'appareil");
   await expect(page.getByText("En attente de synchronisation")).toBeVisible();
   let warned = "";
   page.once("dialog", async (dialog) => {
