@@ -95,11 +95,30 @@ else
 fi
 
 section "A4 — Permissions et isolation PostgreSQL (lectures de catalogue uniquement)"
-runsh "4-catalogue" "docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T db psql -U postgres -d minefleet -tAc \"
-SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname IN ('mf_owner','mf_app');
-SELECT has_table_privilege('mf_app','app.insurance_policy','INSERT,UPDATE,DELETE');
-SELECT has_table_privilege('mf_app','app.legal_contract','INSERT');
-SELECT count(*) FROM pg_tables WHERE schemaname='app' AND rowsecurity;\""
+# Les tables métier vivent dans le schéma public (le schéma app ne porte que les fonctions RLS et
+# auth_failure_bucket) — constat staging du 2026-11-16 : l'ancienne requête sur app.* échouait.
+# Liste blanche des tables globales hors RLS : miroir exact de GLOBAL_TABLES
+# (backend/tests/test_database.py), verrouillé par backend/tests/test_ops_audit_script.py.
+A4_GLOBAL_TABLES="'role','role_allowed_scope','license_category_ref','vehicle_category_template','vehicle_category_template_license','vehicle_category_document_template','saas_plan','billing_invoice_sequence','alembic_version','spatial_ref_sys'"
+A4_RLS_FORCE="FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('r','p')"
+A4_SQL="
+SELECT 'roles : ' || string_agg(rolname || ' super=' || rolsuper || ' bypassrls=' || rolbypassrls, ', ' ORDER BY rolname) FROM pg_roles WHERE rolname IN ('mf_owner','mf_app');
+SELECT 'insurance_policy mf_app : INSERT=' || has_table_privilege('mf_app','public.insurance_policy','INSERT') || ' UPDATE=' || has_table_privilege('mf_app','public.insurance_policy','UPDATE') || ' DELETE=' || has_table_privilege('mf_app','public.insurance_policy','DELETE');
+SELECT 'legal_contract mf_app : INSERT=' || has_table_privilege('mf_app','public.legal_contract','INSERT');
+SELECT 'tables RLS+FORCE : ' || count(*) ${A4_RLS_FORCE} AND c.relrowsecurity AND c.relforcerowsecurity;
+SELECT 'RLS sans FORCE : ' || coalesce(string_agg(c.relname, ','), '-') ${A4_RLS_FORCE} AND c.relrowsecurity AND NOT c.relforcerowsecurity;
+SELECT 'hors RLS non autorisées : ' || coalesce(string_agg(c.relname, ','), '-') ${A4_RLS_FORCE} AND NOT c.relrowsecurity AND c.relname NOT IN (${A4_GLOBAL_TABLES});
+SELECT 'A4 verdict : ' || CASE WHEN
+  (SELECT count(*) FROM pg_roles WHERE rolname IN ('mf_owner','mf_app') AND NOT rolsuper AND NOT rolbypassrls) = 2
+  AND has_table_privilege('mf_app','public.insurance_policy','INSERT')
+  AND NOT has_table_privilege('mf_app','public.insurance_policy','UPDATE')
+  AND NOT has_table_privilege('mf_app','public.insurance_policy','DELETE')
+  AND has_table_privilege('mf_app','public.legal_contract','INSERT')
+  AND NOT EXISTS (SELECT 1 ${A4_RLS_FORCE} AND c.relrowsecurity AND NOT c.relforcerowsecurity)
+  AND NOT EXISTS (SELECT 1 ${A4_RLS_FORCE} AND NOT c.relrowsecurity AND c.relname NOT IN (${A4_GLOBAL_TABLES}))
+  THEN 'OK' ELSE 'KO' END;"
+export A4_SQL
+runsh "4-catalogue" 'out="$(docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T db psql -U postgres -d minefleet -tA -v ON_ERROR_STOP=1 <<<"$A4_SQL")" || exit 1; printf "%s\n" "$out"; printf "%s\n" "$out" | grep -qx "A4 verdict : OK"'
 
 section "A5 — HTTPS et configuration Compose"
 runsh "5-compose-parse" "bash check-preproduction.sh docker-compose.prod.yml"
