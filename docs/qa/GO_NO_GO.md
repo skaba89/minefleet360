@@ -39,7 +39,7 @@ Changement depuis la révision de l'après-midi : **l'audit du code a révélé 
 
 | Rang | Blocant | Criticité | Actionnabilité | Premier pas concret | Outil prêt |
 |---|---|---|---|---|---|
-| 1 | Phases A/B staging lecture seule | C1 | **C** (A6 = comptes du coffre + MFA) | **16 nov : rc.1 déployée depuis `/opt/minefleet` (reçu), phase A rejouée — A1/A2/A4/A5/A7 OK, 4 tâches planifiées actives ; restent A6 (manuelle) et la confirmation A8 après le premier passage quotidien** | `docs/audit/preuves/staging/EXPLOITATION_STAGING_2026-11-16.md` |
+| 1 | Phases A/B staging lecture seule | C1 | **C** (A6 = comptes du coffre + MFA) | **16 nov, rc.2 (`4b953ee`) : phase B `PLAN OK`, phase A Échecs : 0 (A3 cosign et A6 en SKIP) ; reste A6 manuelle pour lever le rang** | `docs/audit/preuves/staging/RELEASE_STAGING_2026-11-16_rc2.md` |
 | 2 | Revue juridique GPS/données salariés | C1 | **B** (juriste guinéen) | désigner un cabinet, fournir les finalités/rétentions produit | `docs/ops/PROTOCOLE_PILOTE.md` §5 |
 | 3 | Restauration externe R1 (RPO/RTO) | C1 | **C** (approbation + coffre) | exercice 14 contrôles sur instance isolée | `docs/ops/PROTOCOLE_RESTAURATION_EXTERNE.md` |
 | 4 | Isolation A/B en recette réelle | C1 | **C** (après rang 1) | suite croisée 2 sociétés fictives + 1 pilote | runbook staging (A6 + recette) |
