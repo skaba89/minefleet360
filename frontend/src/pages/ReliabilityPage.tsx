@@ -87,6 +87,11 @@ export function ReliabilityPage() {
                     {r.totals.metered_vehicles > 0 && ` — ${r.totals.metered_vehicles} engin${r.totals.metered_vehicles > 1 ? "s" : ""} mesuré${r.totals.metered_vehicles > 1 ? "s" : ""}`}
                   </Fact>
                   <Fact label="MTBF en heures moteur">{hours(r.totals.mtbf_operating_hours)}</Fact>
+                  {r.tonnage_visible && (
+                    <Fact label="Productivité (pesées mesurées)">
+                      {r.totals.tonnes_per_operating_hour == null ? "—" : `${number.format(Number(r.totals.tonnes_per_operating_hour))} t/h moteur`}
+                    </Fact>
+                  )}
                   <Fact label="Immobilisation cumulée">{hours(r.totals.downtime_hours)}</Fact>
                   <Fact label="Main-d'œuvre (OT clôturés)">{hours(r.totals.labour_hours)}</Fact>
                   <Fact label="Pièces consommées (OT clôturés)">{cost(r.totals.parts_cost_known, r.totals.parts_cost_complete, r.currency)}</Fact>
@@ -133,6 +138,12 @@ export function ReliabilityPage() {
                               {percent(v.utilization_percent)}
                               {v.mtbf_operating_hours != null && <div className="small muted">MTBF moteur {hours(v.mtbf_operating_hours)}</div>}
                               {v.meter_coverage_percent != null && <div className="small muted">relevés sur {percent(v.meter_coverage_percent)} de la période</div>}
+                              {r.tonnage_visible && v.tonnes_per_operating_hour != null && (
+                                <div className="small">
+                                  {number.format(Number(v.tonnes_per_operating_hour))} t/h ({number.format(Number(v.measured_tonnes))} t pesées)
+                                </div>
+                              )}
+                              {r.tonnage_visible && v.tonnage_pending && <div className="small warn-text">pesées en attente d'approbation non comptées</div>}
                             </>
                           )}
                         </td>
@@ -149,6 +160,7 @@ export function ReliabilityPage() {
                   apparaît disponible selon l'atelier, sans mesure terrain. Disponibilité et MTBF sont rapportés à la durée de
                   service de chaque engin (mise en service et réforme, heure du site). Utilisation = heures moteur relevées à
                   l'horamètre / heures disponibles sur la plage des relevés, sans extrapolation ; « — » sans au moins deux relevés.
+                  {r.tonnage_visible && " Productivité = tonnage des pesées valides (pont-bascule ou saisie dégradée approuvée) / heures moteur ; jamais la capacité nominale ni le GPS."}
                 </p>
               </>
             )}

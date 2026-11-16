@@ -103,3 +103,30 @@ it("affiche l'utilisation et le MTBF moteur mesurés à l'horamètre, et signale
   expect(screen.getByText("Relevés incohérents")).toBeTruthy();
   client.clear();
 });
+
+it("affiche la productivité mesurée seulement quand le serveur expose le tonnage", async () => {
+  const measured = {
+    ...report.vehicles[0]!, vehicle_id: "v6", fleet_number: "CAM-PESEE", operating_hours: "10.00", meter_span_hours: "20.00",
+    meter_coverage_percent: "50.00", utilization_percent: "50.00", meter_anomaly: false,
+    measured_tonnes: "34.00", tonnes_per_operating_hour: "3.40", tonnage_pending: true,
+  };
+  vi.mocked(read).mockResolvedValue({
+    ...report, tonnage_visible: true,
+    totals: { ...report.totals, metered_vehicles: 1, measured_tonnes: "34.00", tonnes_per_operating_hour: "3.40" },
+    vehicles: [measured],
+  } as never);
+  let client = show();
+  expect(await screen.findByText("CAM-PESEE")).toBeTruthy();
+  expect(screen.getByText(/3,4 t\/h moteur/)).toBeTruthy();
+  expect(screen.getByText(/34 t pesées/)).toBeTruthy();
+  expect(screen.getByText("pesées en attente d'approbation non comptées")).toBeTruthy();
+  client.clear();
+  cleanup();
+
+  vi.mocked(read).mockResolvedValue({ ...report, tonnage_visible: false, vehicles: [{ ...measured, measured_tonnes: null, tonnes_per_operating_hour: null, tonnage_pending: false }] } as never);
+  client = show();
+  expect(await screen.findByText("CAM-PESEE")).toBeTruthy();
+  expect(screen.queryByText(/Productivité/)).toBeNull();
+  expect(screen.queryByText(/t\/h/)).toBeNull();
+  client.clear();
+});
