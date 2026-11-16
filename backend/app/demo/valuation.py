@@ -462,7 +462,7 @@ class ValuationMixin:
         route(
             self.actor("DISPATCHER", hauler["site"]),
             "hse.inspection.perform",
-            hse_inspections.create_inspection,
+            hse_inspections.perform_inspection,
             hse_inspections.InspectionCreate(
                 site_id=self.site_ids[hauler["site"]],
                 hse_checklist_template_id=self.checklist_id,

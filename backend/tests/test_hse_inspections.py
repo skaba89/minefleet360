@@ -404,3 +404,110 @@ def test_incident_photos_refused_once_closed(client: TestClient, w: World, stora
     late = _incident_upload(client, w.mechanic.headers, incident["hse_incident_id"])
     assert late.status_code == 409 and late.json()["code"] == "HSE_INCIDENT_STATE_INVALID"
     assert storage.objects == {}
+
+
+# --- Rejeu hors ligne (file terrain, Idempotency-Key) — même contrat que POST /hse/incidents -----------
+
+
+def _offline_inspect(client: TestClient, headers: dict[str, str], key: str, body: dict[str, object]):  # type: ignore[no-untyped-def]
+    return client.post(f"{API}/hse/inspections", headers={**headers, "Idempotency-Key": key}, json=body)
+
+
+def _offline_body(w: World, template: dict, **extra: object) -> dict[str, object]:  # type: ignore[type-arg]
+    return {
+        "site_id": str(w.t.sites["S1"]),
+        "hse_checklist_template_id": template["hse_checklist_template_id"],
+        "vehicle_id": w.vehicle,
+        "performed_at": (datetime.now(UTC) - timedelta(hours=3)).isoformat(),
+        "answers": [{"item_key": i["key"], "result": "COMPLIANT"} for i in template["items"]],
+        "note": f"Saisie hors ligne {uuid.uuid4().hex[:8]}",
+        **extra,
+    }
+
+
+def test_offline_inspection_replay_creates_it_once(client: TestClient, w: World) -> None:
+    template = _template(client, w, f"OFF-{uuid.uuid4().hex[:6]}").json()
+    key = str(uuid.uuid4())
+    body = _offline_body(w, template)
+    first = _offline_inspect(client, w.mechanic.headers, key, body)
+    assert first.status_code == 201, first.text
+    assert "Idempotency-Replayed" not in first.headers
+    again = _offline_inspect(client, w.mechanic.headers, key, body)
+    assert again.status_code == 201 and again.headers["Idempotency-Replayed"] == "true"
+    assert again.json()["hse_inspection_id"] == first.json()["hse_inspection_id"]
+    assert again.json()["reference"] == first.json()["reference"]
+    # Le rejeu ne consomme pas de numéro : l'inspection suivante prend le numéro immédiatement supérieur.
+    following = _inspect(client, w, template)
+    assert following.status_code == 201, following.text
+    assert following.json()["number"] == first.json()["number"] + 1
+    listed = client.get(f"{API}/hse/inspections", headers=w.hse.headers, params={"page_size": 200}).json()[
+        "items"
+    ]
+    assert sum(1 for i in listed if i["hse_inspection_id"] == first.json()["hse_inspection_id"]) == 1
+    audit = client.get(
+        f"{API}/audit-events", headers=w.t.admin.headers, params={"action": "hse.inspection.create"}
+    ).json()["items"]
+    assert sum(1 for e in audit if e["entity_id"] == first.json()["hse_inspection_id"]) == 1
+    altered = _offline_inspect(client, w.mechanic.headers, key, {**body, "note": "Autre contenu"})
+    assert altered.status_code == 422 and altered.json()["code"] == "IDEMPOTENCY_KEY_REUSED"
+
+
+def test_offline_inspection_key_is_bound_to_the_account(client: TestClient, w: World) -> None:
+    template = _template(client, w, f"OFA-{uuid.uuid4().hex[:6]}").json()
+    key = str(uuid.uuid4())
+    body = _offline_body(w, template)
+    mine = _offline_inspect(client, w.mechanic.headers, key, body).json()
+    # Le même identifiant d'opération sous un autre compte ne rejoue pas l'inspection d'autrui.
+    theirs = _offline_inspect(client, w.ops.headers, key, body)
+    assert theirs.status_code == 201 and "Idempotency-Replayed" not in theirs.headers
+    assert theirs.json()["hse_inspection_id"] != mine["hse_inspection_id"]
+    assert theirs.json()["performed_by"] == str(w.ops.user_id)
+    # Autre société : ni rejeu ni accès au modèle d'autrui.
+    foreign = _offline_inspect(client, w.other_hse.headers, key, body)
+    assert foreign.status_code in (403, 422)
+    assert "Idempotency-Replayed" not in foreign.headers
+
+
+def test_offline_inspection_replay_rechecks_rules_and_rolls_back(
+    client: TestClient, w: World, api: Api
+) -> None:
+    template = _template(client, w, f"OFR-{uuid.uuid4().hex[:6]}").json()
+    performer = api.user(w.t, "MECHANIC", "SITE", "S1")
+    # Un échec métier annule aussi la réservation de clé : pas de clé bloquée « en cours ».
+    key = str(uuid.uuid4())
+    invalid = _offline_body(w, template, vehicle_id=w.vehicle_s2)
+    assert _offline_inspect(client, performer.headers, key, invalid).status_code == 422
+    retried = _offline_inspect(client, performer.headers, key, invalid)
+    assert retried.json()["code"] == "REFERENCE_NOT_FOUND"
+    # Modèle désactivé pendant que la saisie attendait le réseau : refus définitif, rien n'est créé.
+    stale = _template(client, w, f"OFD-{uuid.uuid4().hex[:6]}").json()
+    pending = _offline_body(w, stale)
+    deactivated = client.post(
+        f"{API}/hse/checklist-templates/{stale['hse_checklist_template_id']}/deactivate",
+        headers=w.hse.headers,
+    )
+    assert deactivated.status_code == 200, deactivated.text
+    refused = _offline_inspect(client, performer.headers, str(uuid.uuid4()), pending)
+    assert refused.status_code == 422 and refused.json()["code"] == "REFERENCE_NOT_FOUND"
+    # Rôle retiré entre la saisie hors ligne et la synchronisation : refus, rien n'est créé.
+    assignment = client.get(
+        f"{API}/role-assignments", headers=w.t.admin.headers, params={"user_id": str(performer.user_id)}
+    ).json()["items"][0]
+    revoked = client.post(
+        f"{API}/role-assignments/{assignment['user_role_assignment_id']}/revoke",
+        headers={**w.t.admin.headers, "If-Match": f'"{assignment["row_version"]}"'},
+    )
+    assert revoked.status_code == 200, revoked.text
+    late_body = _offline_body(w, template)
+    late = _offline_inspect(client, performer.headers, str(uuid.uuid4()), late_body)
+    assert late.status_code in (401, 403)
+    listed = client.get(f"{API}/hse/inspections", headers=w.hse.headers, params={"page_size": 200}).json()[
+        "items"
+    ]
+    assert all(i["note"] != late_body["note"] and i["note"] != pending["note"] for i in listed)
+
+
+def test_offline_inspection_rejects_malformed_key(client: TestClient, w: World) -> None:
+    template = _template(client, w, f"OFK-{uuid.uuid4().hex[:6]}").json()
+    bad = _offline_inspect(client, w.mechanic.headers, "cle invalide!", _offline_body(w, template))
+    assert bad.status_code == 422

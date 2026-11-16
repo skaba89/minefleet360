@@ -67,3 +67,22 @@ formulaires en bas de page.
 - Sélection d'engin indisponible hors ligne (liste non mise en cache) ; photos non prises en charge.
 - Si le rôle d'un utilisateur change pendant qu'il est hors ligne, le profil terrain reste celui de la dernière
   session jusqu'au retour du réseau ; le serveur refuse alors les déclarations non autorisées.
+
+## Extension aux inspections HSE — tranche 1 : contrat serveur idempotent (16 novembre 2026)
+
+Prérequis de la file hors ligne des inspections (phase 3 de la mission « validation terrain ») :
+`POST /hse/inspections` accepte désormais `Idempotency-Key` avec **exactement** le contrat des incidents —
+clé liée au tenant **et** au compte, corps empreinté (SHA-256), clé finalisée dans la transaction de
+l'inspection, rejeu → inspection d'origine + `Idempotency-Replayed: true`, corps différent →
+`IDEMPOTENCY_KEY_REUSED`. Sans clé, le comportement est inchangé. Pas de migration (table `idempotency_record`).
+
+Garanties testées (`backend/tests/test_hse_inspections.py`) : création unique au rejeu, **aucun numéro
+consommé** ni second événement d'audit `hse.inspection.create` ; clé d'un autre compte sans effet ; échec métier
+(engin hors site) sans clé bloquée ; **modèle de checklist désactivé pendant l'attente du réseau** → refus
+définitif `REFERENCE_NOT_FOUND`, rien n'est créé ; rôle retiré avant synchronisation → 401/403, rien n'est créé ;
+clé malformée → 422.
+
+Reste (tranches suivantes) : mise en cache des modèles actifs et des engins du site dans le profil terrain,
+file IndexedDB + écran hors ligne des inspections (réutilisation du moteur `hseOfflineSync`), E2E Chromium +
+émulation Android, puis essai sur appareil réel (`docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md`). Les photos de
+preuve restent en ligne uniquement.
