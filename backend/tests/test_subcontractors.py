@@ -100,14 +100,14 @@ def test_subcontractor_validation(client: TestClient, api: Api) -> None:
         _patch(client, t.admin.headers, item, status="ACTIVE", status_reason="Sans objet").status_code == 422
     )
     assert _patch(client, t.admin.headers, item, status_reason="Motif orphelin").status_code == 422
-    # Verrouillage optimiste : version périmée → 409, sans If-Match → refus.
+    # Verrouillage optimiste : version périmée → 409, sans If-Match → IF_MATCH_REQUIRED.
     fresh = _patch(client, t.admin.headers, item, notes="Première modification").json()
     stale = _patch(client, t.admin.headers, item, notes="Écrase la précédente")
     assert stale.status_code == 409
     missing = client.patch(
         f"{API}/subcontractors/{fresh['subcontractor_id']}", headers=t.admin.headers, json={"notes": "x"}
     )
-    assert missing.status_code in (409, 428)
+    assert (missing.status_code, missing.json()["code"]) == (422, "IF_MATCH_REQUIRED")
 
 
 def test_subcontractor_isolation_and_permissions(client: TestClient, api: Api) -> None:
