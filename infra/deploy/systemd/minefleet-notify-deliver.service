@@ -11,6 +11,11 @@ Type=oneshot
 # Adapter le répertoire et les fichiers compose au déploiement réel avant activation.
 WorkingDirectory=/opt/minefleet/infra/deploy
 ExecStart=/usr/bin/docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T api minefleet deliver-notifications
+# Marqueur de réussite (ExecStartPost ne s'exécute que si ExecStart a réussi) : survit au redémarrage,
+# contrairement à ExecMainExitTimestamp ; lu par probe-scheduled-jobs.sh (constat staging ST-11).
+StateDirectory=minefleet-jobs
+StateDirectoryMode=0755
+ExecStartPost=/usr/bin/touch /var/lib/minefleet-jobs/%N.success
 NoNewPrivileges=true
 PrivateTmp=true
 TimeoutStartSec=55

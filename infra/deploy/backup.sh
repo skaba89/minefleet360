@@ -14,8 +14,15 @@ if [[ -L "$backup_dir" ]]; then
   echo "FAIL: backup directory must not be a symlink" >&2
   exit 1
 fi
-mkdir -p -- "$backup_dir"
-chmod 700 "$backup_dir"
+# Création en 700. Sur un répertoire existant, ne jamais élargir : retirer l'accès « autres » et
+# l'écriture de groupe, mais conserver une lecture/traversée de groupe posée par l'exploitant pour le
+# compte de supervision (constat staging 2026-11-16 : le 700 forcé à chaque passage retirait cet accès).
+# Les archives restent en 600 (umask 077) : le groupe voit les métadonnées, jamais le contenu.
+if [[ ! -d "$backup_dir" ]]; then
+  mkdir -p -- "$backup_dir"
+  chmod 700 "$backup_dir"
+fi
+chmod u+rwx,g-w,o-rwx "$backup_dir"
 dump="$backup_dir/minefleet-$(date -u +%Y%m%dT%H%M%SZ).dump"
 # Write to a temporary file: a failed dump must never look like a usable backup.
 partial="$dump.partial"

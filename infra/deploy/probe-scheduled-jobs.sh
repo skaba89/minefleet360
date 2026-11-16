@@ -11,6 +11,9 @@ if [[ ! "$max_age" =~ ^[1-9][0-9]*$ ]] || (( max_age > 720 )); then
   exit 3
 fi
 command -v systemctl >/dev/null || { echo "UNKNOWN: systemctl missing" >&2; exit 3; }
+# Marqueurs de réussite écrits par ExecStartPost des unités : seule trace qui survit à un redémarrage
+# (systemd y efface ExecMainExitTimestamp et remet Result à success).
+job_state_dir="${MF_JOB_STATE_DIR:-/var/lib/minefleet-jobs}"
 now="$(date +%s)"
 critical=0
 unknown=0
@@ -34,20 +37,32 @@ for entry in $units; do
   fi
   result="$(systemctl show "$unit.service" -p Result --value 2>/dev/null)"
   last="$(systemctl show "$unit.service" -p ExecMainExitTimestamp --value 2>/dev/null)"
-  if [[ -z "$last" || "$last" == "n/a" ]]; then
+  last_epoch=""
+  if [[ -n "$last" && "$last" != "n/a" ]]; then
+    if ! last_epoch="$(date -d "$last" +%s 2>/dev/null)"; then
+      echo "UNKNOWN: cannot parse $unit timestamp" >&2
+      unknown=1
+      continue
+    fi
+    if [[ "$result" != "success" ]]; then
+      echo "CRITICAL: $unit last run unsuccessful" >&2
+      critical=1
+      continue
+    fi
+  fi
+  # Fraîcheur jugée sur la dernière RÉUSSITE prouvée : marqueur (persistant) ou fin d'exécution réussie.
+  marker="$job_state_dir/$unit.success"
+  if [[ -f "$marker" && ! -L "$marker" ]] && marker_epoch="$(stat -c %Y -- "$marker" 2>/dev/null)"; then
+    if [[ -z "$last_epoch" ]] || (( marker_epoch > last_epoch )); then
+      last_epoch="$marker_epoch"
+    fi
+  fi
+  if [[ -z "$last_epoch" ]]; then
     echo "UNKNOWN: $unit has never run" >&2
     unknown=1
     continue
   fi
-  if ! last_epoch="$(date -d "$last" +%s 2>/dev/null)"; then
-    echo "UNKNOWN: cannot parse $unit timestamp" >&2
-    unknown=1
-    continue
-  fi
-  if [[ "$result" != "success" ]]; then
-    echo "CRITICAL: $unit last run unsuccessful" >&2
-    critical=1
-  elif (( now - last_epoch > unit_max * 3600 )); then
+  if (( now - last_epoch > unit_max * 3600 )); then
     echo "CRITICAL: $unit has not run for more than ${unit_max}h" >&2
     critical=1
   fi
