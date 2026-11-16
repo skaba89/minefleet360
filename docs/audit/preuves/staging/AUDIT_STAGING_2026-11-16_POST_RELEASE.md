@@ -40,3 +40,19 @@ ST-01 à ST-04 et ST-06 (audit S1 du matin) sont **levés** par la release rc.1.
   s'est déclenché (sur un faux négatif d'outillage, corrigé par #450). Un exercice de rollback **volontaire**,
   avec reçu, reste à faire pour attester R2.
 - Aucun autre blocant levé. Score inchangé.
+
+## Addendum (16 nov, après-midi) — l'audit « lecture seule » a construit une image
+
+En préparant l'installation des unités systemd (ST-07), constat : l'image `minefleet-api:local` (révision
+`unknown`) a été **créée le 2026-11-16 à 12:34:25Z, pendant l'audit**. L'étape A2 (`run --rm migrate` sans
+environnement de release) fait retomber compose sur `MF_API_IMAGE=minefleet-api:local`, et le service ayant
+une section `build:`, compose a **construit** cette image depuis les sources puis y a exécuté la vérification
+de schéma — mutation de l'hôte (image) et vérification faite avec une image non déployée. Les trois unités
+`hse-digest`, `preventive-evaluate`, `gps-signal-sweep` avaient le même défaut : installées telles quelles,
+elles auraient exécuté du code non déployé contre la base.
+
+Correctif (PR « tâches planifiées sur l'image déployée ») : A2 compare `alembic_version` au label de l'image
+déployée (aucun conteneur démarré — vérifié sur staging : `label image : 0067 · base : 0067`, 43/43
+conteneurs avant/après) ; `run-scheduled-job.sh` lit l'image dans le reçu validé, `--no-build`, refus sans
+reçu ; unités modifiées ; garde-fous de tests. L'image `minefleet-api:local` reste sur l'hôte (suppression
+soumise à approbation).

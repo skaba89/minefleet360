@@ -9,7 +9,8 @@ Type=oneshot
 # La commande s'exécute dans un conteneur éphémère de l'image API (rôle applicatif mf_app, jamais le propriétaire).
 # Adapter le répertoire et les fichiers compose au déploiement réel avant activation.
 WorkingDirectory=/opt/minefleet/infra/deploy
-ExecStart=/usr/bin/docker compose -f docker-compose.prod.yml --env-file .env.prod run --rm --no-deps api minefleet sweep-gps-signal
+# Image API lue dans le reçu de release (jamais minefleet-api:local, jamais de build) — voir run-scheduled-job.sh.
+ExecStart=/usr/bin/bash /opt/minefleet/infra/deploy/run-scheduled-job.sh sweep-gps-signal
 NoNewPrivileges=true
 PrivateTmp=true
 TimeoutStartSec=240
