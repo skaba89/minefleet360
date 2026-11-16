@@ -39,11 +39,11 @@ Changement depuis la révision de l'après-midi : **l'audit du code a révélé 
 
 | Rang | Blocant | Criticité | Actionnabilité | Premier pas concret | Outil prêt |
 |---|---|---|---|---|---|
-| 1 | Phases A/B staging lecture seule | C1 | **C** (A6 et unités systemd = actions hôte/coffre) | **16 nov : release rc.1 appliquée (reçu), phase B `PLAN OK`, phase A exécutée — A1/A2/A4/A5/A7 OK ; restent A6 (comptes + MFA, manuelle) et ST-07 (aucune tâche planifiée installée)** | `docs/audit/preuves/staging/AUDIT_STAGING_2026-11-16_POST_RELEASE.md` |
+| 1 | Phases A/B staging lecture seule | C1 | **C** (A6 = comptes du coffre + MFA) | **16 nov : rc.1 déployée depuis `/opt/minefleet` (reçu), phase A rejouée — A1/A2/A4/A5/A7 OK, 4 tâches planifiées actives ; restent A6 (manuelle) et la confirmation A8 après le premier passage quotidien** | `docs/audit/preuves/staging/EXPLOITATION_STAGING_2026-11-16.md` |
 | 2 | Revue juridique GPS/données salariés | C1 | **B** (juriste guinéen) | désigner un cabinet, fournir les finalités/rétentions produit | `docs/ops/PROTOCOLE_PILOTE.md` §5 |
 | 3 | Restauration externe R1 (RPO/RTO) | C1 | **C** (approbation + coffre) | exercice 14 contrôles sur instance isolée | `docs/ops/PROTOCOLE_RESTAURATION_EXTERNE.md` |
 | 4 | Isolation A/B en recette réelle | C1 | **C** (après rang 1) | suite croisée 2 sociétés fictives + 1 pilote | runbook staging (A6 + recette) |
-| 5 | Éprouvetage des alertes | C2 | **C** (après rang 1) | injection d'incident `docker compose stop api` (runbook §Alerte) | runbook staging |
+| 5 | Éprouvetage des alertes | C2 | **C** (SMTP à fournir + accès lecture sauvegardes) | moniteur installé (utilisateur dédié, unités, configuration root 600), timer désactivé : fournir SMTP/destinataire (ST-13), régler la lecture des sauvegardes (ST-12), puis injection d'incident | `docs/audit/preuves/staging/EXPLOITATION_STAGING_2026-11-16.md` |
 | 6 | SLO GPS p95/p99 | C2 | **C** (après rangs 1 et 7) | benchmark staging via `/gps/metrics` (#438 — mesure livrée ; relève scriptée `scripts/gps/benchmark_metrics.py` #443), seuils signés | `docs/GPS_SSE_CAPACITY.md` + script de relève |
 | 7 | Traceur physique certifié | C2 | **B** (fournisseur + SIM) | commande d'un boîtier d'essai, banc L1–L9 | `docs/qa/PROTOCOLE_ESSAI_GPS_PHYSIQUE.md` |
 | 8 | Android physique / réseau faible | C3 | **A** (2 appareils suffisants) | campagne 10 scénarios sur 2 appareils | `docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md` |
