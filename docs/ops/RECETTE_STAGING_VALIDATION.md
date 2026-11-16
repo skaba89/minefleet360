@@ -87,14 +87,22 @@ référencé par le compose courant.
 ```bash
 docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T db psql -U postgres -d minefleet -tAc "
 SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname IN ('mf_owner','mf_app');
-SELECT has_table_privilege('mf_app','app.insurance_policy','INSERT,UPDATE,DELETE');
-SELECT has_table_privilege('mf_app','app.legal_contract','INSERT');
-SELECT count(*) FROM pg_tables WHERE schemaname='app' AND rowsecurity;"   # tables RLS activées
+SELECT has_table_privilege('mf_app','public.insurance_policy','INSERT'),
+       has_table_privilege('mf_app','public.insurance_policy','UPDATE'),
+       has_table_privilege('mf_app','public.insurance_policy','DELETE');   -- attendu : t, f, f (0046 : SELECT, INSERT)
+SELECT has_table_privilege('mf_app','public.legal_contract','INSERT');
+SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+ WHERE n.nspname='public' AND c.relkind IN ('r','p') AND c.relrowsecurity AND c.relforcerowsecurity;"
 ```
+
+> **Correctif du 2026-11-16** : les tables métier sont dans le schéma `public` (le schéma `app` ne porte que
+> les fonctions RLS et `auth_failure_bucket`) ; l'ancienne requête sur `app.*` échouait sur staging. Le script
+> `audit-staging-readonly.sh` exécute la version complète (RLS sans FORCE, tables hors RLS comparées à la liste
+> blanche `GLOBAL_TABLES`) et rend un verdict `A4 verdict : OK|KO` qui fait échouer A4 en cas d'écart.
 
 **Attendu** : `mf_owner`/`mf_app` non-superuser, `NOBYPASSRLS` ; privilèges métier attendus (un surplus est
 un 403 applicatif manquant, un manque casse des routes) ; nombre de tables `rowsecurity` cohérent avec la
-migration de fondation (75 à la rédaction). **Ne jamais exécuter de DDL/DML de vérification** : les
+migration de fondation (75 à la rédaction ; 97 constatées sur staging le 2026-11-16, schéma 0067). **Ne jamais exécuter de DDL/DML de vérification** : les
 vérifications effectives de cloisonnement (RLS, IDOR) sont faites par la suite de recette sur base jetable,
 pas sur staging.
 

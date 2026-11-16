@@ -17,7 +17,7 @@
 | Exécution locale complète (sandbox Linux, PostgreSQL 16.10 + PostGIS, Python 3.12 / Node 22) | lint, types, **suite intégrée complète (5 733 tests à la révision #428)**, Vitest, build | élevée |
 | CI GitHub (`ci.yml`, `e2e-isolation.yml`, `security-static.yml`, `release-images.yml`, `gps-benchmark-tests.yml`) — vérifiée le 2026-11-11 via API authentifiée | gates de fusion, E2E navigateur sur base éphémère | élevée (infrastructure **jetable** : ne prouve pas l'exploitation réelle) |
 | Documents de gouvernance datés (`docs/qa/`, `docs/audit/`, `docs/ops/`) | historique des audits, verdicts | moyenne (non reproductible ici) |
-| VPS OVHcloud / staging | exploitation réelle | **accessible en lecture (16 nov)** — phase A interrompue à S1 : API `6a4f696` ≠ web `b8a43a2`, images locales non signées, pas de reçu, schéma 0063 vs 0067 (`docs/audit/preuves/staging/AUDIT_STAGING_2026-11-16_S1.md`) |
+| VPS OVHcloud / staging | exploitation réelle | **rc.1 (`5dfe305`, schéma 0067) déployée le 16 nov par release signée avec reçu** ; phase A exécutée (A6 manuelle restante) ; aucune tâche planifiée installée (ST-07) — `docs/audit/preuves/staging/AUDIT_STAGING_2026-11-16_POST_RELEASE.md` |
 
 Hors périmètre de cet audit : matériel GPS réel, Android physique, réseau mobile guinéen réel, données de production, exercice de restauration sur coffre externe réel.
 
