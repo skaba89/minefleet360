@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -43,7 +45,12 @@ def receipt() -> dict[str, object]:
 
 class ScheduledJobRunnerTests(unittest.TestCase):
     def run_job(
-        self, job: str, *, with_receipt: bool = True, receipt_value: object | None = None
+        self,
+        job: str,
+        *,
+        with_receipt: bool = True,
+        receipt_value: object | None = None,
+        image_present: bool = True,
     ) -> tuple[subprocess.CompletedProcess[str], str, str]:
         with tempfile.TemporaryDirectory() as root:
             temporary = Path(root)
@@ -68,6 +75,7 @@ class ScheduledJobRunnerTests(unittest.TestCase):
                 f"  if [ \"$prev\" = '--env-file' ] && [ \"$a\" != '{secrets}' ]; then cp \"$a\" '{env_copy}'; fi\n"
                 "  prev=\"$a\"\n"
                 "done\n"
+                f"if [ \"$1 $2\" = 'image inspect' ]; then exit {0 if image_present else 1}; fi\n"
                 "exit 0\n"
             )
             docker.chmod(0o700)
@@ -92,9 +100,36 @@ class ScheduledJobRunnerTests(unittest.TestCase):
     def test_job_runs_deployed_image_without_build(self) -> None:
         result, docker_log, release_env = self.run_job("send-hse-digest")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("run --rm --no-deps --no-build api minefleet send-hse-digest", docker_log)
+        lines = docker_log.splitlines()
+        self.assertEqual(lines[0], f"image inspect {API_IMAGE}")
+        self.assertIn("run --rm --no-deps api minefleet send-hse-digest", lines[1])
         self.assertIn(f"MF_API_IMAGE={API_IMAGE}", release_env)
         self.assertNotIn("PASSWORD", release_env)
+
+    def test_absent_deployed_image_refuses_instead_of_building(self) -> None:
+        result, docker_log, _ = self.run_job("send-hse-digest", image_present=False)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("not present locally", result.stderr)
+        self.assertNotIn(" run ", f" {docker_log} ")
+
+    @unittest.skipUnless(shutil.which("docker"), "docker absent : contrôle des options réelles impossible")
+    def test_compose_run_flags_exist_in_installed_compose(self) -> None:
+        # Régression staging 2026-11-16 : `run --no-build` n'existe pas en Compose v5 ; le faux docker
+        # des autres tests accepte tout, seul l'aide réelle de compose fait foi.
+        helped = subprocess.run(
+            ["docker", "compose", "run", "--help"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if helped.returncode != 0:
+            self.skipTest("docker compose indisponible")
+        body = RUNNER.read_text()
+        run_line = next(line for line in body.splitlines() if line.strip().startswith("run --rm"))
+        for flag in re.findall(r"(--[a-z][a-z-]+)", run_line):
+            with self.subTest(flag=flag):
+                self.assertIn(flag, helped.stdout)
 
     def test_missing_receipt_refuses_before_docker(self) -> None:
         result, docker_log, _ = self.run_job("evaluate-preventive", with_receipt=False)
