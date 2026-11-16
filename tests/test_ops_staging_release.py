@@ -108,6 +108,8 @@ class StagingReleaseScriptTests(unittest.TestCase):
         secrets_environment: str = "staging",
         permissions: int = 0o600,
         approval: bool = False,
+        transient_failures_after_start: int = 0,
+        ready_timeout: str = "5",
     ) -> tuple[subprocess.CompletedProcess[str], str]:
         with tempfile.TemporaryDirectory() as root:
             temporary = Path(root)
@@ -134,8 +136,23 @@ class StagingReleaseScriptTests(unittest.TestCase):
                 "exit 0\n"
             )
             docker.chmod(0o700)
+            # Fake curl: 200 everywhere, except for the first N calls issued after an
+            # application restart (`up -d --no-build`), which answer 502 like the edge proxy
+            # does while uvicorn is still starting.
+            counter = temporary / "curl.count"
             curl = bin_dir / "curl"
-            curl.write_text("#!/bin/sh\nprintf '200'\n")
+            curl.write_text(
+                "#!/bin/sh\n"
+                f"if grep -q 'up -d --no-build' '{log}' 2>/dev/null; then\n"
+                f"  n=$(cat '{counter}' 2>/dev/null || echo 0)\n"
+                f"  if [ \"$n\" -lt {transient_failures_after_start} ]; then\n"
+                f"    echo $((n + 1)) > '{counter}'\n"
+                "    printf '502'\n"
+                "    exit 0\n"
+                "  fi\n"
+                "fi\n"
+                "printf '200'\n"
+            )
             curl.chmod(0o700)
             env = {
                 **os.environ,
@@ -144,6 +161,8 @@ class StagingReleaseScriptTests(unittest.TestCase):
                 "MINEFLEET_STAGING_URL": "https://staging.example.invalid",
                 "MF_BACKUP_DIR": str(temporary / "backups"),
                 "MF_RELEASE_STATE_DIR": str(temporary / "release-state"),
+                "MF_RELEASE_READY_TIMEOUT": ready_timeout,
+                "MF_RELEASE_READY_INTERVAL": "0",
             }
             if approval:
                 env["MF_STAGING_CHANGE_APPROVAL"] = f"{action}:{RELEASE_COMMIT}"
@@ -192,6 +211,44 @@ class StagingReleaseScriptTests(unittest.TestCase):
         self.assertIn("run --rm --no-deps migrate", docker_log)
         self.assertIn("up -d --no-build api web", docker_log)
         self.assertIn("RELEASE OK", result.stdout)
+
+    def test_apply_waits_for_api_readiness_after_restart(self) -> None:
+        # Regression (staging 2026-11-16): a transient 502 right after `up -d` must not
+        # trigger a rollback when the API becomes ready within the bounded window.
+        result, docker_log = self.run_script(
+            "apply", approval=True, transient_failures_after_start=3
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("OK: API ready after restart", result.stdout)
+        self.assertIn("RELEASE OK", result.stdout)
+        self.assertEqual(docker_log.count("up -d --no-build api web"), 1)
+
+    def test_apply_rolls_back_when_api_never_becomes_ready(self) -> None:
+        result, docker_log = self.run_script(
+            "apply",
+            approval=True,
+            transient_failures_after_start=10_000,
+            ready_timeout="1",
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("API not ready within 1s", result.stderr)
+        self.assertIn("pull api web", docker_log)
+        self.assertNotIn("RELEASE OK", result.stdout)
+
+    def test_rollback_waits_for_api_readiness_after_restart(self) -> None:
+        result, _ = self.run_script(
+            "rollback", approval=True, transient_failures_after_start=2
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("OK: API ready after restart", result.stdout)
+        self.assertIn("ROLLBACK OK", result.stdout)
+
+    def test_invalid_readiness_timeout_is_rejected_before_mutation(self) -> None:
+        result, docker_log = self.run_script("apply", approval=True, ready_timeout="0")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("MF_RELEASE_READY_TIMEOUT", result.stderr)
+        self.assertNotIn("pg_dump", docker_log)
+        self.assertNotIn(" up ", f" {docker_log} ")
 
     def test_production_manifest_is_rejected_before_docker(self) -> None:
         result, docker_log = self.run_script("plan", environment="production")

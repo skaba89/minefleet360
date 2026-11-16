@@ -97,6 +97,42 @@ live_check() {
     bash check-preproduction.sh docker-compose.prod.yml --live
 }
 
+# After `up -d` the API needs a few seconds before uvicorn serves requests: the edge proxy answers
+# 502 meanwhile (observed on staging 2026-11-16, release and rollback both failed on a transient 502).
+# Poll /api/v1/ready within a bounded window, then run the unchanged smoke gate.
+ready_timeout="${MF_RELEASE_READY_TIMEOUT:-120}"
+ready_interval="${MF_RELEASE_READY_INTERVAL:-3}"
+if [[ ! "$ready_timeout" =~ ^[0-9]+$ ]] || (( ready_timeout < 1 || ready_timeout > 600 )); then
+  echo "FAIL: MF_RELEASE_READY_TIMEOUT must be an integer between 1 and 600 seconds" >&2
+  exit 2
+fi
+if [[ ! "$ready_interval" =~ ^[0-9]+$ ]] || (( ready_interval > 30 )); then
+  echo "FAIL: MF_RELEASE_READY_INTERVAL must be an integer between 0 and 30 seconds" >&2
+  exit 2
+fi
+
+wait_until_ready() {
+  local base="${MINEFLEET_STAGING_URL%/}"
+  local deadline=$((SECONDS + ready_timeout))
+  local code
+  while (( SECONDS < deadline )); do
+    code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+      --connect-timeout 3 --max-time 5 --proto '=https' "$base/api/v1/ready" 2>/dev/null || true)"
+    if [[ "$code" == "200" ]]; then
+      echo "OK: API ready after restart"
+      return 0
+    fi
+    sleep "$ready_interval"
+  done
+  echo "FAIL: API not ready within ${ready_timeout}s after restart (last HTTP ${code:-none})" >&2
+  return 1
+}
+
+post_start_check() {
+  wait_until_ready || return 1
+  live_check
+}
+
 verify_image_commit() {
   local image="$1"
   local expected="$2"
@@ -124,7 +160,7 @@ rollback_apps() {
   verify_image_commit "$rollback_api_image" "$rollback_commit"
   verify_image_commit "$rollback_web_image" "$rollback_commit"
   compose up -d --no-build api web
-  live_check
+  post_start_check
 }
 
 if [[ "$action" == "rollback" ]]; then
@@ -148,7 +184,7 @@ compose --profile ops run --rm --no-deps migrate
 compose --profile ops run --rm --no-deps migrate python -m app.core.check_schema_revision
 compose up -d --no-build api web
 
-if ! live_check; then
+if ! post_start_check; then
   echo "FAIL: post-release smoke failed; attempting application-only rollback" >&2
   if rollback_apps; then
     echo "ROLLBACK OK: previous application images restored; schema kept forward" >&2
