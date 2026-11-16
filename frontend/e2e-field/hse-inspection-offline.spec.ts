@@ -49,7 +49,7 @@ async function uiLogin(page: Page, a: Account): Promise<void> {
 async function openInspections(page: Page): Promise<void> {
   const menu = page.getByRole("button", { name: "Afficher le menu" });
   if (await menu.isVisible()) await menu.click();
-  await page.getByRole("link", { name: "Sécurité (HSE)" }).click();
+  await page.getByRole("link", { name: "Sécurité (HSE)", exact: true }).click();
   await page.getByRole("link", { name: "Inspections et checklists" }).click();
   await expect(page.getByRole("heading", { name: "Inspections" })).toBeVisible();
 }
