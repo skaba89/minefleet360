@@ -21,12 +21,13 @@ const report = {
   period_hours: "2160.00",
   currency: "GNF",
   totals: {
-    vehicles: 2, failures: 3, downtime_hours: "216.00", availability_percent: "95.00", mttr_hours: "12.50",
+    vehicles: 2, service_hours: "4320.00", failures: 3, downtime_hours: "216.00", availability_percent: "95.00", mttr_hours: "12.50",
     mtbf_hours: "1368.00", labour_hours: "6.00", parts_cost_known: "1500000", parts_cost_complete: false,
   },
   vehicles: [
     {
-      vehicle_id: "v1", fleet_number: "CAM-FICTIF-1", site_id: "s1", vehicle_status: "AVAILABLE", failures: 3,
+      vehicle_id: "v1", fleet_number: "CAM-FICTIF-1", site_id: "s1", vehicle_status: "AVAILABLE",
+      service_hours: "2160.00", service_dates_conflict: false, failures: 3,
       closed_corrective: 2, open_work_orders: 1, downtime_hours: "216.00", availability_percent: "90.00",
       mttr_hours: "12.50", mtbf_hours: "648.00", labour_hours: "6.00", parts_cost_known: "1500000",
       parts_cost_complete: false,
@@ -62,5 +63,20 @@ it("ne charge rien sans la permission", () => {
   const client = show();
   expect(screen.getByText("Vous n'avez pas accès à cette page.")).toBeTruthy();
   expect(read).not.toHaveBeenCalled();
+  client.clear();
+});
+
+it("signale une durée de service partielle et des dates de service incohérentes", async () => {
+  vi.mocked(read).mockResolvedValue({
+    ...report,
+    vehicles: [
+      { ...report.vehicles[0]!, vehicle_id: "v2", fleet_number: "CAM-RECENT", service_hours: "720.00" },
+      { ...report.vehicles[0]!, vehicle_id: "v3", fleet_number: "CAM-INCOHERENT", service_dates_conflict: true },
+    ],
+  } as never);
+  const client = show();
+  expect(await screen.findByText("CAM-RECENT")).toBeTruthy();
+  expect(screen.getByText(/en service 720 h sur la période/)).toBeTruthy();
+  expect(screen.getByText(/Dates de mise en service ou de réforme incohérentes/)).toBeTruthy();
   client.clear();
 });
