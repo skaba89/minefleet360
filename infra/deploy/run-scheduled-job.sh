@@ -40,7 +40,19 @@ if ! python3 release_manifest.py emit-release-env "$receipt" > "$release_env"; t
   exit 2
 fi
 
+# Compose ne construit (section build:) ni ne tire une image déjà présente : exiger l'image déployée
+# en local garantit que la tâche s'exécute sur le code de la release, jamais sur une image reconstruite.
+api_image="$(sed -n 's/^MF_API_IMAGE=//p' "$release_env")"
+if [[ ! "$api_image" =~ @sha256:[0-9a-f]{64}$ ]]; then
+  echo "FAIL: release receipt did not yield a digest-pinned API image" >&2
+  exit 2
+fi
+if ! docker image inspect "$api_image" >/dev/null 2>&1; then
+  echo "FAIL: deployed API image is not present locally ($api_image) — refusing to let compose build or pull" >&2
+  exit 2
+fi
+
 status=0
 docker compose -f docker-compose.prod.yml --env-file "$secrets_file" --env-file "$release_env" \
-  run --rm --no-deps --no-build api minefleet "$job" || status=$?
+  run --rm --no-deps api minefleet "$job" || status=$?
 exit "$status"
