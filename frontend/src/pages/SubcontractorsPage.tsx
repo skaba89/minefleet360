@@ -276,8 +276,9 @@ function EditForm({ item, onCancel, onDone }: { item: Subcontractor; onCancel: (
       onSubmit={() => {
         const body: Schemas["SubcontractorUpdate"] = {};
         if (legalName.trim() !== item.legal_name) body.legal_name = legalName.trim();
-        if (notes !== (item.notes ?? "")) body.notes = notes;
-        if (target !== (item.availability_target_percent ?? "") && target !== "") body.availability_target_percent = target;
+        // Champ facultatif vidé : null explicite (effacement) plutôt qu'une chaîne vide.
+        if (notes !== (item.notes ?? "")) body.notes = orNull(notes);
+        if (target !== (item.availability_target_percent ?? "")) body.availability_target_percent = orNull(target);
         if (statusChanged) {
           body.status = status;
           if (status !== "ACTIVE") body.status_reason = reason.trim();

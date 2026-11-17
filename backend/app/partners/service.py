@@ -15,6 +15,8 @@ from app.core.http import check_version
 from app.partners.models import Subcontractor
 from app.partners.schemas import SubcontractorCreate, SubcontractorStatus, SubcontractorUpdate
 
+CLEARABLE = frozenset({"registration_number", "tax_id", "notes", "availability_target_percent"})
+
 
 def list_subcontractors(
     auth: Authorized, *, status: SubcontractorStatus | None = None
@@ -66,7 +68,8 @@ def update_subcontractor(
     if subcontractor is None:
         raise AppError("NOT_FOUND")
     check_version(version, subcontractor.row_version)
-    fields = sorted(f for f in body.model_fields_set if getattr(body, f) is not None)
+    # Null explicite = effacer, pour les seuls champs facultatifs ; un champ obligatoire n'est jamais vidé.
+    fields = sorted(f for f in body.model_fields_set if getattr(body, f) is not None or f in CLEARABLE)
     if body.status == "ACTIVE":
         fields = sorted({*fields, "status_reason"})  # réactivation : le motif précédent est effacé
     before = {f: getattr(subcontractor, f) for f in fields}
