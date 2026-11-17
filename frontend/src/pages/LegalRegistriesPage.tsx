@@ -4,6 +4,7 @@ import { useState } from "react";
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { AccessDenied, Badge, DataState, ErrorMessage, Pager } from "../components/common";
+import { SubcontractorSelect } from "../components/SubcontractorSelect";
 import { sha256Hex } from "../lib/hash";
 import { can } from "../lib/permissions";
 import { useSites } from "../site/SiteContext";
@@ -31,6 +32,7 @@ export function LegalRegistriesPage() {
   const [title, setTitle] = useState("");
   const [counterparty, setCounterparty] = useState("");
   const [contractType, setContractType] = useState<Schemas["ContractDraftInput"]["contract_type"]>("SUPPLIER");
+  const [subcontractorId, setSubcontractorId] = useState("");
   const [empreinte, setEmpreinte] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<unknown>(null);
@@ -104,11 +106,13 @@ export function LegalRegistriesPage() {
                 counterparty_name: counterparty.trim(),
                 contract_type: contractType,
                 document_sha256: empreinte || undefined,
+                subcontractor_id: contractType === "SUBCONTRACTOR" && subcontractorId ? subcontractorId : null,
               },
             });
             setReference("");
             setTitle("");
             setCounterparty("");
+            setSubcontractorId("");
             setEmpreinte("");
             setPage(1);
             await queryClient.invalidateQueries({ queryKey: ["legal-contracts"] });
@@ -135,6 +139,16 @@ export function LegalRegistriesPage() {
               <option value="OTHER">Autre</option>
             </select>
           </label>
+          {contractType === "SUBCONTRACTOR" && (
+            <SubcontractorSelect
+              value={subcontractorId}
+              current={null}
+              onChange={(id, legalName) => {
+                setSubcontractorId(id);
+                if (legalName && !counterparty.trim()) setCounterparty(legalName);
+              }}
+            />
+          )}
           <label>Justificatif au format PDF (optionnel — l'empreinte est calculée au client)
             <input
               type="file"

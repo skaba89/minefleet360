@@ -204,3 +204,29 @@ it("la soumission exige un justificatif vérifié et une empreinte attendue", as
   expect(blocked.hasAttribute("disabled")).toBe(true);
   expect(call).not.toHaveBeenCalled();
 });
+
+it("contrat de sous-traitance : rattachement au référentiel et contrepartie pré-remplie", async () => {
+  grants = adminGrants;
+  const fallback = vi.mocked(read).getMockImplementation()!;
+  vi.mocked(read).mockImplementation((async (path: string, options?: unknown) =>
+    path === "/subcontractors"
+      ? [{ subcontractor_id: "st-1", code: "ST-TRANS", legal_name: "Transports Fictifs SARL", status: "ACTIVE" }]
+      : fallback(path as never, options as never)) as never);
+  show();
+  await screen.findByRole("heading", { name: "Nouveau contrat — brouillon" });
+  // Le choix n'apparaît que pour un contrat de sous-traitance.
+  expect(screen.queryByLabelText("Sous-traitant (référentiel)")).toBeNull();
+  fireEvent.change(screen.getByLabelText("Type de contrat"), { target: { value: "SUBCONTRACTOR" } });
+  await screen.findByRole("option", { name: "ST-TRANS — Transports Fictifs SARL" });
+  fireEvent.change(screen.getByLabelText("Sous-traitant (référentiel)"), { target: { value: "st-1" } });
+  expect((screen.getByLabelText("Contrepartie") as HTMLInputElement).value).toBe("Transports Fictifs SARL");
+  fireEvent.change(screen.getByLabelText("Référence"), { target: { value: "CTR-ST-01" } });
+  fireEvent.change(screen.getByLabelText("Intitulé"), { target: { value: "Sous-traitance transport" } });
+  fireEvent.click(screen.getByRole("button", { name: "Enregistrer le brouillon" }));
+  await waitFor(() => expect(call).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(call).mock.calls[0][2]?.body).toMatchObject({
+    contract_type: "SUBCONTRACTOR",
+    counterparty_name: "Transports Fictifs SARL",
+    subcontractor_id: "st-1",
+  });
+});
