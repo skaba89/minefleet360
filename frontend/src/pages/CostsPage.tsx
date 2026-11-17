@@ -10,6 +10,7 @@ import { ActionForm } from "../components/forms";
 import { downloadCsv, stamp, toCsv } from "../lib/csv";
 import { can } from "../lib/permissions";
 import { useSites } from "../site/SiteContext";
+import { ContractRevenueSection } from "./ContractRevenue";
 import { CostBudgetSection } from "./CostBudget";
 import { ContractTariffsSection } from "./ContractTariffs";
 
@@ -180,6 +181,7 @@ export function CostsPage() {
         </ul>
       </DataState>
       {selected && <VehicleHistory vehicle={selected} onClose={() => setSelected(null)} />}
+      {can(me.grants, "finance.revenue.read") && <ContractRevenueSection days={days} />}
       {can(me.grants, "cost.budget.read") && <CostBudgetSection />}
       {can(me.grants, "finance.tariff.read") && <ContractTariffsSection />}
       {can(me.grants, "cost.labour_rate.manage") && <LabourRates />}

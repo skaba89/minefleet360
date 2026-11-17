@@ -48,9 +48,25 @@ l'heure, à la tonne mesurée et à la mission, totaux par site et historique (`
 - `GET /dispatch/billable-contracts` (permission de création de mission) : contrats rattachables des sites
   couverts. Formulaire de mission : sélecteur facultatif ; détail de mission : référence du contrat.
 
+## Tranche 3 — Revenus par contrat et marge par site
+
+- `GET /finance/revenue?site_id&from&to` (`finance.revenue.read` : DIRECTION, FINANCE, AUDITOR ; 366 jours au
+  plus, 30 par défaut). Aucune migration.
+- Revenu = tarif en vigueur × quantité **mesurée** :
+  - `TONNE` : tonnes nettes des pesées valides des missions rattachées, tarif en vigueur à la date (UTC) de pesée ;
+    une saisie dégradée non approuvée est exclue et signalée ;
+  - `MISSION` : forfait par mission terminée, tarif en vigueur à la date (UTC) de fin ;
+  - `HOUR` / `KM` : les compteurs sont par engin, pas par mission : quantité non mesurée, revenu
+    « insuffisant » — aucune répartition inventée (à traiter avec une règle validée) ;
+  - sans tarif en vigueur : « partiel » (minimum) s'il existe d'autres montants, sinon « insuffisant ».
+- Marge du site = revenus des contrats − coût complet des engins du site, seulement dans la même devise ; les
+  missions terminées sans contrat sont comptées et signalées (leur revenu n'est pas connu).
+- **Marge opérationnelle** non calculée : les frais généraux ne sont pas saisis dans l'application.
+- Interface : section « Revenus et marges » de la page Coût complet, export CSV.
+
 ## Tranches suivantes
 
-3. Revenus par mission, rotation et contrat ; marges brute et opérationnelle par site, engin et contrat.
 4. Coût du parc sous-traité (prix payé + coûts internes) et comparaison parc propre / sous-traité — après la
    facturation prestataire.
 5. Exports Excel/PDF des tableaux financiers (le CSV est disponible).
+6. Revenus `HOUR` / `KM` : règle de mesure par mission à valider (horamètre/odomètre aux bornes de la mission).

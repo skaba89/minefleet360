@@ -6,12 +6,12 @@ date est la plus récente dont `valid_from` ≤ date. Aucun revenu n'est calcul�
 """
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
-from pydantic import BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -21,6 +21,7 @@ from app.authz.routing import SecuredRoute
 from app.core.errors import AppError
 from app.core.http import StrictModel
 from app.finance.models import ContractTariff
+from app.finance.revenue import ContractRevenue, SiteMargin, contract_revenues, site_margins
 from app.legal.contracts import ContractFacts, billable_transport_contracts, contract_facts
 
 router = APIRouter(tags=["finance"], route_class=SecuredRoute)
@@ -160,3 +161,42 @@ def list_billable_contracts(auth: TariffRead) -> list[BillableContractOut]:
         for c in billable_transport_contracts(auth.db)
         if auth.scope.covers_site(c.site_id)
     ]
+
+
+# --- Revenus et marges (tranche 3) -------------------------------------------------------------------------
+
+RevenueRead = Annotated[Authorized, Depends(Require("finance.revenue.read"))]
+MAX_PERIOD = timedelta(days=366)
+
+
+class RevenueOut(BaseModel):
+    period_start: datetime
+    period_end: datetime
+    contracts: list[ContractRevenue]
+    sites: list[SiteMargin]
+
+
+@router.get("/finance/revenue", response_model=RevenueOut)
+def revenue_and_margin(
+    auth: RevenueRead,
+    site_id: uuid.UUID | None = None,
+    period_start: Annotated[AwareDatetime | None, Query(alias="from")] = None,
+    period_end: Annotated[AwareDatetime | None, Query(alias="to")] = None,
+) -> RevenueOut:
+    """Revenus par contrat (tarif × quantité mesurée) et marge sur coût complet par site (30 jours)."""
+    now = auth.clock.now()
+    end = min(period_end or now, now)
+    start = period_start or end - timedelta(days=30)
+    if start >= end:
+        raise AppError("END_BEFORE_START")
+    if end - start > MAX_PERIOD:
+        raise AppError("VALIDATION_ERROR", details=[{"field": "from", "type": "period_too_long"}])
+    if site_id is not None:
+        if not auth.scope.covers_site(site_id):
+            raise AppError("NOT_FOUND")
+        sites: frozenset[uuid.UUID] | None = frozenset({site_id})
+    else:
+        sites = None if auth.scope.tenant_wide else frozenset(auth.scope.site_ids)
+    contracts = contract_revenues(auth, start=start, end=end, sites=sites)
+    margins = site_margins(auth, contracts, start=start, end=end, sites=sites)
+    return RevenueOut(period_start=start, period_end=end, contracts=contracts, sites=margins)

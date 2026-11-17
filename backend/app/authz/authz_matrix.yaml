@@ -1399,6 +1399,16 @@ permissions:
       OPS_MANAGER: [TENANT, SITE]
       FINANCE: [TENANT, SITE]
       AUDITOR: [TENANT]
+  # Revenus par contrat et marge sur coût complet (contrôle de gestion, tranche 3) : données commerciales.
+  finance.revenue.read:
+    tranche: 2a
+    kind: read
+    site_bound: true
+    routes: [{ method: GET, path: /finance/revenue, shape: collection, success: 200 }]
+    grants:
+      DIRECTION: [TENANT]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
   cost.budget.manage:
     tranche: 2a
     kind: create
