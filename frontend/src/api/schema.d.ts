@@ -177,6 +177,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/costs/budget-variance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Cost Budget Variance
+         * @description Budget vs coût complet réel par site × mois × composante (12 mois max, défaut : 6 derniers).
+         */
+        get: operations["cost_budget_variance_api_v1_costs_budget_variance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/costs/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Cost Budget
+         * @description Nouvelle version du budget d'un site pour un mois et une composante (la plus récente fait foi).
+         */
+        post: operations["create_cost_budget_api_v1_costs_budgets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/costs/labour-rates": {
         parameters: {
             query?: never;
@@ -4309,6 +4349,64 @@ export interface components {
              * Format: uuid
              */
             spare_part_store_id: string;
+        };
+        /** BudgetIn */
+        BudgetIn: {
+            /** Amount */
+            amount: number | string;
+            /**
+             * Component
+             * @enum {string}
+             */
+            component: "FUEL" | "PARTS" | "LABOUR" | "TYRES";
+            /** Currency */
+            currency: string;
+            /** Month */
+            month: string;
+            /** Note */
+            note?: string | null;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+        };
+        /** BudgetOut */
+        BudgetOut: {
+            /** Amount */
+            amount: string;
+            /** Component */
+            component: string;
+            /**
+             * Cost Budget Id
+             * Format: uuid
+             */
+            cost_budget_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /** Month */
+            month: string;
+            /** Note */
+            note: string | null;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+        };
+        /** BudgetVarianceOut */
+        BudgetVarianceOut: {
+            /** From Month */
+            from_month: string;
+            /** Rows */
+            rows: components["schemas"]["VarianceRow"][];
+            /** To Month */
+            to_month: string;
         };
         /** CategoryDocumentsIn */
         CategoryDocumentsIn: {
@@ -9822,6 +9920,40 @@ export interface components {
             /** Valuation Currency */
             valuation_currency: string;
         };
+        /** VarianceRow */
+        VarianceRow: {
+            /** Actual Amount */
+            actual_amount: string | null;
+            /** Actual Currency */
+            actual_currency: string | null;
+            /**
+             * Actual Status
+             * @enum {string}
+             */
+            actual_status: "COMPLETE" | "ESTIMATED" | "PARTIAL" | "INSUFFICIENT" | "FUTURE";
+            /** Budget Amount */
+            budget_amount: string | null;
+            /** Budget Currency */
+            budget_currency: string | null;
+            /**
+             * Component
+             * @enum {string}
+             */
+            component: "FUEL" | "PARTS" | "LABOUR" | "TYRES";
+            /** Month */
+            month: string;
+            /** Not Comparable Reason */
+            not_comparable_reason: string | null;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Variance Amount */
+            variance_amount: string | null;
+            /** Variance Percent */
+            variance_percent: string | null;
+        };
         /** VehicleCategoryOut */
         VehicleCategoryOut: {
             /** Code */
@@ -10870,6 +11002,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cost_budget_variance_api_v1_costs_budget_variance_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetVarianceOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_cost_budget_api_v1_costs_budgets_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetOut"];
                 };
             };
             /** @description Validation Error */

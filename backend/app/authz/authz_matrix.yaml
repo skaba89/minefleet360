@@ -1375,6 +1375,24 @@ permissions:
       - { method: POST, path: /costs/labour-rates, shape: collection, success: 201 }
     audit: { action: cost.labour_rate.create }
     grants: { DIRECTION: [TENANT], FINANCE: [TENANT, SITE] }
+  # Budget prévisionnel (contrôle de gestion, décision du 17 novembre 2026 : site × mois × composante).
+  cost.budget.manage:
+    tranche: 2a
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /costs/budgets, shape: collection, success: 201 }]
+    audit: { action: cost.budget.create }
+    grants: { DIRECTION: [TENANT], FINANCE: [TENANT, SITE] }
+  cost.budget.read:
+    tranche: 2a
+    kind: read
+    site_bound: true
+    routes: [{ method: GET, path: /costs/budget-variance, shape: collection, success: 200 }]
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
   # --- GPS avancé (chantier E, docs/LIVRAISON_GPS_AVANCE.md) -------------------------------------------
   fleet.geofence.read:
     tranche: 1c

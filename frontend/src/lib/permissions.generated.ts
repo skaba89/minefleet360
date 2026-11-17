@@ -118,6 +118,31 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "cost.budget.manage": {
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "cost.budget.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "cost.labour_rate.manage": {
     "DIRECTION": [
       "TENANT"
