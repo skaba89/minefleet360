@@ -47,9 +47,24 @@ sans ouvrir le moindre accès externe.
 - Interface : choix « Sous-traitant (référentiel) » dans la création et la modification d'un engin sous-traité
   (actifs + sous-traitant actuel), mention sur la fiche ; masqué sans droit de lecture du référentiel.
 
+## Tranche 2b — rattachement des contrats de sous-traitance
+
+- Migration additive `0070` : `legal_contract.subcontractor_id` (nullable), clé étrangère composite même tenant,
+  contrainte `ck_legal_contract_subcontractor` (rattachement seulement pour un contrat `SUBCONTRACTOR`), index
+  partiel.
+- Rattachement **à la création du brouillon uniquement** : le contrat est un document juridique dont la
+  modification reste limitée au circuit de soumission existant (0048) ; aucun nouveau chemin de mise à jour.
+  Règles : type incompatible → 422 ; sous-traitant inconnu ou d'un autre tenant → 422 `REFERENCE_NOT_FOUND` ;
+  sous-traitant non actif → 422 `not_active`. Les contrats existants restent sans rattachement (aucune reprise
+  automatique de `counterparty_name`).
+- Autorisation inchangée : les créateurs de contrats (TENANT_ADMIN, OPS_MANAGER tenant ou site) lisent déjà le
+  référentiel (#466).
+- Interface (Juridique) : pour un contrat de sous-traitance, choix « Sous-traitant (référentiel) » ; la contrepartie
+  est pré-remplie avec la raison sociale si elle est vide.
+
 ## Tranches suivantes (lot 1)
 
-2b. Contrats `SUBCONTRACTOR` et conducteurs sous-traitants reliés au référentiel.
+2c. Conducteurs sous-traitants (`employment_type = SUBCONTRACTOR`) reliés au référentiel.
 3. SLA et performance par sous-traitant (disponibilité, rotations, tonnage **mesuré**), vus par le donneur d'ordre.
 
 Lot 2 (comptes externes) : non ouvert — voir les décisions restantes du modèle de sécurité.

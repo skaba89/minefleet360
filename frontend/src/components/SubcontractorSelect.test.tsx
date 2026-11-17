@@ -40,7 +40,7 @@ it("propose les sous-traitants actifs et conserve le sous-traitant actuel même 
   expect(screen.getByRole("option", { name: "ST-S — Suspendue SA (non actif)" })).toBeTruthy();
   expect(screen.queryByRole("option", { name: /ST-E/ })).toBeNull(); // terminé et non actuel : jamais proposé
   fireEvent.change(screen.getByLabelText("Sous-traitant (référentiel)"), { target: { value: "a" } });
-  expect(onChange).toHaveBeenCalledWith("a");
+  expect(onChange).toHaveBeenCalledWith("a", "Active SARL");
   client.clear();
 });
 

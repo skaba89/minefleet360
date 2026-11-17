@@ -29,7 +29,8 @@ export function SubcontractorSelect({
 }: {
   value: string;
   current: string | null;
-  onChange: (value: string) => void;
+  /** Identifiant choisi (vide = non rattaché) et raison sociale correspondante (pour pré-remplir un libellé). */
+  onChange: (value: string, legalName: string | null) => void;
 }) {
   const me = useMe();
   const readable = can(me.grants, "partner.subcontractor.read");
@@ -43,7 +44,10 @@ export function SubcontractorSelect({
   return (
     <label>
       Sous-traitant (référentiel)
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value, options.find((s) => s.subcontractor_id === e.target.value)?.legal_name ?? null)}
+      >
         <option value="">— Non rattaché —</option>
         {options.map((s) => (
           <option key={s.subcontractor_id} value={s.subcontractor_id}>

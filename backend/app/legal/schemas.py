@@ -20,11 +20,15 @@ class ContractDraftInput(StrictModel):
     contract_type: Literal["SUPPLIER", "TRANSPORT", "SUBCONTRACTOR", "EMPLOYMENT", "LEASE", "OTHER"]
     counterparty_name: str = Field(min_length=1, max_length=240)
     document_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    # Référentiel sous-traitants (lot 1) : seulement pour un contrat SUBCONTRACTOR.
+    subcontractor_id: uuid.UUID | None = None
 
     @model_validator(mode="after")
     def validate_text(self) -> "ContractDraftInput":
         if not all((self.reference.strip(), self.title.strip(), self.counterparty_name.strip())):
             raise ValueError("contract text fields must not be blank")
+        if self.subcontractor_id is not None and self.contract_type != "SUBCONTRACTOR":
+            raise ValueError("subcontractor_id réservé aux contrats SUBCONTRACTOR")
         return self
 
 

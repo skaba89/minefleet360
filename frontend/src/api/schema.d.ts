@@ -4395,6 +4395,8 @@ export interface components {
              * Format: uuid
              */
             site_id: string;
+            /** Subcontractor Id */
+            subcontractor_id?: string | null;
             /** Title */
             title: string;
         };
@@ -4420,6 +4422,8 @@ export interface components {
             site_id: string;
             /** Status */
             status: string;
+            /** Subcontractor Id */
+            subcontractor_id?: string | null;
             /** Title */
             title: string;
         };

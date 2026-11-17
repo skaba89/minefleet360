@@ -32,6 +32,7 @@ from app.legal.insurance_rules import CoverageStatus, coverage_status
 from app.legal.reconciliation_service import summarize_tenant_contract_storage
 from app.legal.s3_factory import build_private_contract_store
 from app.legal.schemas import ContractDraftInput, InsurancePolicyInput
+from app.partners.contracts import subcontractor_status
 
 router = APIRouter(tags=["juridique"], route_class=SecuredRoute)
 ContractRead = Annotated[Authorized, Depends(Require("legal.contract.read"))]
@@ -55,6 +56,8 @@ class LegalContract(Base):
     counterparty_name: Mapped[str] = mapped_column(String)
     status: Mapped[str] = mapped_column(String)
     document_sha256: Mapped[str | None] = mapped_column(String)
+    # Organisation sous-traitante (lot 1) : contrat SUBCONTRACTOR seulement (ck_legal_contract_subcontractor).
+    subcontractor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     created_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
 
 
@@ -85,6 +88,7 @@ class ContractOut(BaseModel):
     counterparty_name: str
     status: str
     document_sha256: str | None
+    subcontractor_id: uuid.UUID | None = None
 
 
 class InsuranceOut(BaseModel):
@@ -309,6 +313,13 @@ def create_contract_draft(body: ContractDraftInput, auth: ContractCreate) -> Con
     """Create a draft only; signing and activation require separate workflows."""
     if not auth.scope.covers_site(body.site_id):
         raise AppError("NOT_FOUND")
+    if body.subcontractor_id is not None:
+        # Nouveau rattachement : sous-traitant actif du tenant (inconnu et étranger sont indiscernables).
+        status_of = subcontractor_status(auth.db, body.subcontractor_id)
+        if status_of is None:
+            raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "subcontractor_id"}])
+        if status_of != "ACTIVE":
+            raise AppError("VALIDATION_ERROR", details=[{"field": "subcontractor_id", "type": "not_active"}])
     contract = LegalContract(
         tenant_id=auth.tenant_id,
         site_id=body.site_id,
@@ -318,6 +329,7 @@ def create_contract_draft(body: ContractDraftInput, auth: ContractCreate) -> Con
         counterparty_name=body.counterparty_name,
         status="DRAFT",
         document_sha256=body.document_sha256,
+        subcontractor_id=body.subcontractor_id,
         created_by=auth.user_id,
     )
     auth.db.add(contract)
