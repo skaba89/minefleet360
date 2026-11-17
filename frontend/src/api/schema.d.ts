@@ -332,6 +332,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dispatch/billable-contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Billable Contracts
+         * @description Contrats de transport approuvés des sites couverts, rattachables à une nouvelle mission.
+         */
+        get: operations["billable_contracts_api_v1_dispatch_billable_contracts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/driver-licenses/{license_id}": {
         parameters: {
             query?: never;
@@ -6891,10 +6911,29 @@ export interface components {
             /** Mfa Token */
             mfa_token: string;
         };
+        /** MissionContractOut */
+        MissionContractOut: {
+            /**
+             * Contract Id
+             * Format: uuid
+             */
+            contract_id: string;
+            /** Counterparty Name */
+            counterparty_name: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+        };
         /** MissionCreate */
         MissionCreate: {
             /** Client Request Id */
             client_request_id?: string | null;
+            /** Contract Id */
+            contract_id?: string | null;
             /**
              * Destination Location Id
              * Format: uuid
@@ -6945,6 +6984,10 @@ export interface components {
         };
         /** MissionOut */
         MissionOut: {
+            /** Contract Id */
+            contract_id?: string | null;
+            /** Contract Reference */
+            contract_reference?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -11467,6 +11510,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IndicatorsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    billable_contracts_api_v1_dispatch_billable_contracts_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissionContractOut"][];
                 };
             };
             /** @description Validation Error */

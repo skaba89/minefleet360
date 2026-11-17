@@ -57,3 +57,15 @@ def billable_transport_contracts(db: Session) -> list[BillableContract]:
         .order_by(LegalContract.reference)
     ).all()
     return [BillableContract(*row) for row in rows]
+
+
+def contract_references(db: Session, contract_ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """Références des contrats du tenant courant (RLS), pour l'affichage des missions rattachées."""
+    if not contract_ids:
+        return {}
+    rows = db.execute(
+        select(LegalContract.contract_id, LegalContract.reference).where(
+            LegalContract.contract_id.in_(contract_ids)
+        )
+    ).all()
+    return {r[0]: r[1] for r in rows}

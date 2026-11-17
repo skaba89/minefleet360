@@ -36,6 +36,7 @@ from app.dispatch.schemas import (
     RotationOut,
 )
 from app.fleet.contracts import vehicle_facts
+from app.legal.contracts import contract_facts, contract_references
 from app.organization.contracts import active_site_in_scope
 from app.workforce.contracts import driver_facts
 
@@ -198,6 +199,7 @@ class _Labels:
     locations: dict[uuid.UUID, str]
     materials: dict[uuid.UUID, str]
     completed: dict[uuid.UUID, int]
+    contracts: dict[uuid.UUID, str]
 
 
 def _labels(db: Session, missions: list[Mission]) -> _Labels:
@@ -226,6 +228,7 @@ def _labels(db: Session, missions: list[Mission]) -> _Labels:
         {r[0]: r[1] for r in places},
         {r[0]: r[1] for r in materials},
         {r[0]: int(r[1]) for r in completed},
+        contract_references(db, {m.contract_id for m in missions if m.contract_id}),
     )
 
 
@@ -272,6 +275,8 @@ def _out(
         "status_before_suspension": m.status_before_suspension,
         "status_reason": m.status_reason,
         "notes": m.notes,
+        "contract_id": m.contract_id,
+        "contract_reference": labels.contracts.get(m.contract_id) if m.contract_id else None,
         "rotations_completed": labels.completed.get(m.mission_id, 0),
         "overdue": m.due_at is not None and m.due_at <= now and m.status not in TERMINAL,
         "created_at": m.created_at,
@@ -436,6 +441,7 @@ def create_mission(auth: Authorized, body: MissionCreate) -> MissionOut:
                     "planned_start",
                     "due_at",
                     "planned_rotations",
+                    "contract_id",
                 )
             )
             if not auth.scope.covers_site(replay.site_id) or not same:
@@ -455,6 +461,13 @@ def create_mission(auth: Authorized, body: MissionCreate) -> MissionOut:
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "material_id"}])
     if body.due_at is not None and body.due_at <= body.planned_start:
         raise AppError("END_BEFORE_START")
+    if body.contract_id is not None:
+        contract = contract_facts(db, body.contract_id)
+        # Même site que la mission ; autre tenant invisible (RLS) : indiscernable d'un contrat inexistant.
+        if contract is None or contract.site_id != facts.site_id:
+            raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "contract_id"}])
+        if contract.contract_type != "TRANSPORT" or contract.status != "APPROVED":
+            raise AppError("VALIDATION_ERROR", details=[{"field": "contract_id", "type": "not_billable"}])
     mission = Mission(
         tenant_id=auth.tenant_id,
         site_id=facts.site_id,
@@ -469,6 +482,7 @@ def create_mission(auth: Authorized, body: MissionCreate) -> MissionOut:
         planned_rotations=body.planned_rotations,
         notes=body.notes,
         client_request_id=body.client_request_id,
+        contract_id=body.contract_id,
         status="ASSIGNED",
         created_by=auth.user_id,
         updated_by=auth.user_id,
@@ -493,7 +507,11 @@ def create_mission(auth: Authorized, body: MissionCreate) -> MissionOut:
         entity_id=mission.mission_id,
         site_id=mission.site_id,
         actor_user_id=auth.user_id,
-        after={"status": mission.status, "vehicle_assignment_id": str(mission.vehicle_assignment_id)},
+        after={
+            "status": mission.status,
+            "vehicle_assignment_id": str(mission.vehicle_assignment_id),
+            "contract_id": str(mission.contract_id) if mission.contract_id else None,
+        },
     )
     db.flush()
     out = missions_out(auth, [mission])[0]

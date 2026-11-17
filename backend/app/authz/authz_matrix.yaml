@@ -886,7 +886,10 @@ permissions:
     tranche: 1c
     kind: create
     site_bound: true
-    routes: [{ method: POST, path: /missions, shape: collection, success: 201 }]
+    routes:
+      - { method: POST, path: /missions, shape: collection, success: 201 }
+      # Contrats TRANSPORT approuvés rattachables (contrôle de gestion, tranche 2b).
+      - { method: GET, path: /dispatch/billable-contracts, shape: collection, success: 200 }
     audit: { action: mission.create }
     grants: { OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE] }
   dispatch.mission.progress:

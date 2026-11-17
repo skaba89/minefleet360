@@ -182,6 +182,7 @@ export function MissionDetailPage() {
               <Fact label="Véhicule">{m.vehicle_fleet_number}</Fact>
               <Fact label="Conducteur">{m.driver_display_name}</Fact>
               <Fact label="Matière">{m.material_name}</Fact>
+              {m.contract_reference && <Fact label="Contrat de transport">{m.contract_reference}</Fact>}
               <Fact label="Début prévu">{formatDateTime(m.planned_start, tz)}</Fact>
               <Fact label="Échéance">
                 {m.due_at ? formatDateTime(m.due_at, tz) : null}
