@@ -90,7 +90,7 @@ sans ouvrir le moindre accès externe.
 - **Aucune valeur déclarée par le sous-traitant** : tout est mesuré par le donneur d'ordre.
 - Interface : objectif SLA dans la création et la modification ; section « Performance mesurée » (période 30 j /
   90 j / 12 mois) avec badge « Atteint » / « Non atteint ».
-- Limite : un objectif SLA se modifie mais ne s'efface pas encore (champ facultatif à la création).
+- Champs facultatifs (objectif SLA, RCCM, NIF, notes) : un null explicite les efface ; un champ obligatoire n'est jamais vidé.
 
 Le lot 1 est complet côté logiciel (référentiel, rattachements engins/contrats/conducteurs, SLA et performance).
 

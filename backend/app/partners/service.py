@@ -5,6 +5,8 @@ chaque écriture est journalisée (création, modification, changement de statut
 """
 
 import uuid
+from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import select
 
@@ -14,6 +16,13 @@ from app.core.errors import AppError
 from app.core.http import check_version
 from app.partners.models import Subcontractor
 from app.partners.schemas import SubcontractorCreate, SubcontractorStatus, SubcontractorUpdate
+
+CLEARABLE = frozenset({"registration_number", "tax_id", "notes", "availability_target_percent"})
+
+
+def _audit_value(value: Any) -> Any:
+    """Valeur journalisable en JSON : les décimales (objectif SLA) sont consignées en texte exact."""
+    return str(value) if isinstance(value, Decimal) else value
 
 
 def list_subcontractors(
@@ -66,7 +75,8 @@ def update_subcontractor(
     if subcontractor is None:
         raise AppError("NOT_FOUND")
     check_version(version, subcontractor.row_version)
-    fields = sorted(f for f in body.model_fields_set if getattr(body, f) is not None)
+    # Null explicite = effacer, pour les seuls champs facultatifs ; un champ obligatoire n'est jamais vidé.
+    fields = sorted(f for f in body.model_fields_set if getattr(body, f) is not None or f in CLEARABLE)
     if body.status == "ACTIVE":
         fields = sorted({*fields, "status_reason"})  # réactivation : le motif précédent est effacé
     before = {f: getattr(subcontractor, f) for f in fields}
@@ -86,8 +96,8 @@ def update_subcontractor(
         entity_id=subcontractor.subcontractor_id,
         actor_user_id=auth.user_id,
         reason=subcontractor.status_reason if "status" in changed else None,
-        before={f: before[f] for f in changed},
-        after={f: getattr(subcontractor, f) for f in changed},
+        before={f: _audit_value(before[f]) for f in changed},
+        after={f: _audit_value(getattr(subcontractor, f)) for f in changed},
         changed_fields=changed,
     )
     db.commit()

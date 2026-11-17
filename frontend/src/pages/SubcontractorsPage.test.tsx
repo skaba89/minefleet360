@@ -150,3 +150,15 @@ it("performance absente sans la permission dédiée (lecture du référentiel se
   expect(vi.mocked(read).mock.calls.some(([path]) => path === "/subcontractors/performance")).toBe(false);
   client.clear();
 });
+
+it("modification : vider l'objectif SLA l'efface (null explicite)", async () => {
+  vi.mocked(read).mockImplementation((async (path: string) =>
+    path === "/subcontractors/performance" ? performance : [{ ...active, availability_target_percent: "90.00" }]) as never);
+  const client = show();
+  fireEvent.click((await screen.findAllByRole("button", { name: "Modifier" }))[0]!);
+  fireEvent.change(screen.getByLabelText("Objectif de disponibilité (SLA, %)"), { target: { value: "" } });
+  fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+  await waitFor(() => expect(call).toHaveBeenCalledOnce());
+  expect(vi.mocked(call).mock.calls[0]![2]).toMatchObject({ body: { availability_target_percent: null } });
+  client.clear();
+});

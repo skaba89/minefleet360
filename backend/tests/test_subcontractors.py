@@ -136,3 +136,33 @@ def test_subcontractor_isolation_and_permissions(client: TestClient, api: Api) -
             json={"code": "ST-REFUS", "legal_name": "Refus attendu"},
         )
         assert refused.status_code == 403, role
+
+
+def test_optional_fields_can_be_cleared_but_required_ones_cannot(client: TestClient, api: Api) -> None:
+    t = api.tenant()
+    item = _create(client, t, availability_target_percent="92.50", notes="Contrat cadre").json()
+    assert item["availability_target_percent"] == "92.50"
+    # Régression : modifier l'objectif SLA faisait échouer l'audit (Decimal non sérialisable → 500).
+    changed = _patch(client, t.admin.headers, item, availability_target_percent="95.00")
+    assert changed.status_code == 200, changed.text
+    item = changed.json()
+    assert item["availability_target_percent"] == "95.00"
+    audit = client.get(
+        f"{API}/audit-events",
+        headers=t.admin.headers,
+        params={"entity_type": "subcontractor", "page_size": 50},
+    ).json()["items"]
+    update = next(
+        e
+        for e in audit
+        if e["entity_id"] == item["subcontractor_id"] and e["action"] == "subcontractor.update"
+    )
+    assert update["after_data"]["availability_target_percent"] == "95.00"
+    cleared = _patch(client, t.admin.headers, item, availability_target_percent=None, notes=None, tax_id=None)
+    assert cleared.status_code == 200, cleared.text
+    body = cleared.json()
+    assert (body["availability_target_percent"], body["notes"], body["tax_id"]) == (None, None, None)
+    assert body["registration_number"] == "RCCM-FICTIF-0001"  # champ non envoyé : inchangé
+    # Un champ obligatoire envoyé à null n'est jamais vidé.
+    kept = _patch(client, t.admin.headers, body, legal_name=None)
+    assert kept.status_code == 200 and kept.json()["legal_name"] == "Transports Fictifs SARL"
