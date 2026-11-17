@@ -7,6 +7,7 @@ import importlib.util
 import io
 import json
 import os
+import secrets
 import sys
 import tempfile
 import threading
@@ -21,7 +22,8 @@ audit_a6 = importlib.util.module_from_spec(SPEC)
 sys.modules["audit_a6"] = audit_a6  # requis par les dataclasses du script (annotations différées)
 SPEC.loader.exec_module(audit_a6)
 
-PASSWORD = "MotDePasse-Fictif-123"
+# Mot de passe fictif tiré à chaque exécution : aucune valeur ressemblant à un secret dans le dépôt.
+PASSWORD = secrets.token_urlsafe(18)
 
 
 class FakeApi:
