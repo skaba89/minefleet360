@@ -35,6 +35,7 @@ def create_subcontractor(auth: Authorized, body: SubcontractorCreate) -> Subcont
         tax_id=body.tax_id,
         country_code=body.country_code,
         notes=body.notes,
+        availability_target_percent=body.availability_target_percent,
         created_by=auth.user_id,
         updated_by=auth.user_id,
     )

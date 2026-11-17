@@ -845,6 +845,19 @@ permissions:
       FINANCE: [TENANT]
       HSE: [TENANT]
       AUDITOR: [TENANT]
+  # Performance mesurée par sous-traitant (tranche 3) : rôles lisant à la fois la fiabilité et le référentiel.
+  # Portée SITE (OPS_MANAGER) : seuls les engins des sites couverts sont agrégés ; tonnage sous
+  # dispatch.indicators.read.
+  partner.performance.read:
+    tranche: 2a
+    kind: read
+    site_bound: false
+    routes: [{ method: GET, path: /subcontractors/performance, shape: collection, success: 200 }]
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FINANCE: [TENANT]
+      AUDITOR: [TENANT]
   partner.subcontractor.manage:
     tranche: 2a
     kind: create

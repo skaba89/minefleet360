@@ -76,7 +76,22 @@ sans ouvrir le moindre accès externe.
 - Autorisation : `partner.subcontractor.read` accordée à **HR** (TENANT, SITE), seul gestionnaire des conducteurs ;
   conséquence : HR voit l'onglet Administration → Sous-traitants.
 
-## Tranche suivante (lot 1)
-3. SLA et performance par sous-traitant (disponibilité, rotations, tonnage **mesuré**), vus par le donneur d'ordre.
+## Tranche 3 — SLA de disponibilité et performance mesurée
+
+- Migration additive `0072` : `subcontractor.availability_target_percent` (nullable, `numeric(5,2)`, borné 0–100) —
+  objectif contractuel saisi par le donneur d'ordre.
+- `GET /subcontractors/performance?from&to` (permission `partner.performance.read` : DIRECTION, OPS_MANAGER tenant ou
+  site, FINANCE, AUDITOR — rôles lisant à la fois la fiabilité et le référentiel) : par sous-traitant, agrégat des
+  engins rattachés à partir du **calcul de fiabilité existant** (aucune duplication) — engins, heures de service,
+  immobilisation, disponibilité = (service − immobilisation) / service, pannes, MTBF, MTTR pondéré par le nombre de
+  réparations, heures moteur (relevés sans anomalie), tonnage **mesuré** et t/h moteur (seulement avec
+  `dispatch.indicators.read`), pesées en attente signalées. `sla_met` = disponibilité ≥ objectif ; `null` sans objectif
+  ou sans engin mesuré. Portée SITE : seuls les engins des sites couverts sont agrégés.
+- **Aucune valeur déclarée par le sous-traitant** : tout est mesuré par le donneur d'ordre.
+- Interface : objectif SLA dans la création et la modification ; section « Performance mesurée » (période 30 j /
+  90 j / 12 mois) avec badge « Atteint » / « Non atteint ».
+- Limite : un objectif SLA se modifie mais ne s'efface pas encore (champ facultatif à la création).
+
+Le lot 1 est complet côté logiciel (référentiel, rattachements engins/contrats/conducteurs, SLA et performance).
 
 Lot 2 (comptes externes) : non ouvert — voir les décisions restantes du modèle de sécurité.

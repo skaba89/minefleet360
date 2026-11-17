@@ -1,6 +1,7 @@
 import uuid
+from decimal import Decimal
 
-from sqlalchemy import String, text
+from sqlalchemy import Numeric, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,3 +27,5 @@ class Subcontractor(AuditedColumns, Base):
     status: Mapped[str] = mapped_column(String, nullable=False, server_default="ACTIVE")
     status_reason: Mapped[str | None] = mapped_column(String)
     notes: Mapped[str | None] = mapped_column(String)
+    # SLA contractuel (tranche 3) : objectif de disponibilité, comparé à la disponibilité MESURÉE.
+    availability_target_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2))
