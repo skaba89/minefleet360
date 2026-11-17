@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
-import { account, apiLogin, dispatcherSite, uiLogin } from "../e2e/fixtures";
+import { account, apiLogin, dispatcherSite, type Account } from "../e2e/fixtures";
 
 /**
  * Relevé de compteur sans réseau (phase 4) : coupure en cours de session, file IndexedDB réelle, rejeu idempotent
@@ -21,6 +21,16 @@ async function freshVehicle(request: APIRequestContext): Promise<{ id: string; f
   });
   expect(created.status()).toBe(201);
   return { id: (await created.json()).vehicle_id, fleetNumber };
+}
+
+/** Connexion valable aussi en profil téléphone (menu replié) : le bouton de déconnexion prouve la session. */
+async function uiLogin(page: Page, a: Account): Promise<void> {
+  await page.goto("/connexion");
+  await page.getByLabel("Code de l'espace de travail").fill(a.workspace);
+  await page.getByLabel("Adresse e-mail").fill(a.email);
+  await page.getByLabel("Mot de passe").fill(a.password);
+  await page.getByRole("button", { name: "Se connecter" }).click();
+  await expect(page.getByRole("button", { name: "Se déconnecter" })).toBeVisible();
 }
 
 async function readings(request: APIRequestContext, vehicleId: string): Promise<number> {
