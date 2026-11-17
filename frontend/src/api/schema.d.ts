@@ -510,6 +510,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Revenue And Margin
+         * @description Revenus par contrat (tarif × quantité mesurée) et marge sur coût complet par site (30 jours).
+         */
+        get: operations["revenue_and_margin_api_v1_finance_revenue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/fuel/alerts": {
         parameters: {
             query?: never;
@@ -4631,6 +4651,36 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** ContractRevenue */
+        ContractRevenue: {
+            /** Amount */
+            amount: string | null;
+            /**
+             * Contract Id
+             * Format: uuid
+             */
+            contract_id: string;
+            /** Contract Reference */
+            contract_reference: string;
+            /** Currency */
+            currency: string | null;
+            /** Missing */
+            missing: string[];
+            /** Missions Completed */
+            missions_completed: number;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "COMPLETE" | "PARTIAL" | "INSUFFICIENT";
+            /** Tonnes */
+            tonnes: string;
+        };
         /** DecisionCreate */
         DecisionCreate: {
             /**
@@ -8599,6 +8649,23 @@ export interface components {
             /** Workspace Code */
             workspace_code: string;
         };
+        /** RevenueOut */
+        RevenueOut: {
+            /** Contracts */
+            contracts: components["schemas"]["ContractRevenue"][];
+            /**
+             * Period End
+             * Format: date-time
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date-time
+             */
+            period_start: string;
+            /** Sites */
+            sites: components["schemas"]["SiteMargin"][];
+        };
         /** RoleAssignmentCreate */
         RoleAssignmentCreate: {
             /** Role Code */
@@ -8837,6 +8904,8 @@ export interface components {
         };
         /** SiteCost */
         SiteCost: {
+            /** Currency */
+            currency?: string | null;
             /**
              * Site Id
              * Format: uuid
@@ -8913,6 +8982,35 @@ export interface components {
             vehicle_id: string;
             /** Work Order Id */
             work_order_id: string | null;
+        };
+        /** SiteMargin */
+        SiteMargin: {
+            /** Cost */
+            cost: string | null;
+            /** Cost Status */
+            cost_status: string;
+            /** Currency */
+            currency: string | null;
+            /** Margin */
+            margin: string | null;
+            /** Margin Percent */
+            margin_percent: string | null;
+            /** Missions Without Contract */
+            missions_without_contract: number;
+            /** Not Comparable Reason */
+            not_comparable_reason: string | null;
+            /** Revenue */
+            revenue: string | null;
+            /**
+             * Revenue Status
+             * @enum {string}
+             */
+            revenue_status: "COMPLETE" | "PARTIAL" | "INSUFFICIENT";
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
         };
         /** SiteOut */
         SiteOut: {
@@ -12044,6 +12142,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DriverOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revenue_and_margin_api_v1_finance_revenue_get: {
+        parameters: {
+            query?: {
+                site_id?: string | null;
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevenueOut"];
                 };
             };
             /** @description Validation Error */

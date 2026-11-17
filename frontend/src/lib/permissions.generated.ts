@@ -361,6 +361,18 @@ export const GRANTS = {
       "SITE"
     ]
   },
+  "finance.revenue.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "finance.tariff.manage": {
     "DIRECTION": [
       "TENANT"

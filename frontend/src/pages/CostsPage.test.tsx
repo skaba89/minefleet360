@@ -39,7 +39,7 @@ const report = {
 };
 
 beforeEach(() => {
-  vi.mocked(read).mockImplementation((async (path: string) => (path.startsWith("/contract-tariffs") ? [] : report)) as never);
+  vi.mocked(read).mockImplementation((async (path: string) => (path.startsWith("/contract-tariffs") ? [] : path === "/finance/revenue" ? { contracts: [], sites: [] } : report)) as never);
 });
 afterEach(() => {
   cleanup();
@@ -67,7 +67,7 @@ it("distingue coûts estimés, complets et données insuffisantes, sans chiffre 
 
 it("la finance gère les taux horaires", async () => {
   grants = [{ role_code: "FINANCE", scope_type: "TENANT", site_id: null }];
-  vi.mocked(read).mockImplementation((async (path: string) => (path === "/costs/labour-rates" || path.startsWith("/contract-tariffs") ? [] : report)) as never);
+  vi.mocked(read).mockImplementation((async (path: string) => (path === "/costs/labour-rates" || path.startsWith("/contract-tariffs") ? [] : path === "/finance/revenue" ? { contracts: [], sites: [] } : report)) as never);
   const client = show();
   expect(await screen.findByRole("region", { name: "Taux horaires de main-d'œuvre" })).toBeTruthy();
   client.clear();

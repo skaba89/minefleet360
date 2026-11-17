@@ -249,6 +249,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `cost.labour_rate.manage` | 1c | `GET /costs/labour-rates`<br>`POST /costs/labour-rates` | `DIRECTION`, `FINANCE` |
 | `finance.tariff.manage` | 2a | `POST /contract-tariffs` | `DIRECTION`, `FINANCE` |
 | `finance.tariff.read` | 2a | `GET /contract-tariffs`<br>`GET /contract-tariffs/contracts` | `AUDITOR`, `DIRECTION`, `FINANCE`, `OPS_MANAGER` |
+| `finance.revenue.read` | 2a | `GET /finance/revenue` | `AUDITOR`, `DIRECTION`, `FINANCE` |
 | `cost.budget.manage` | 2a | `POST /costs/budgets` | `DIRECTION`, `FINANCE` |
 | `cost.budget.read` | 2a | `GET /costs/budget-variance` | `AUDITOR`, `DIRECTION`, `FINANCE`, `OPS_MANAGER` |
 | `fleet.geofence.read` | 1c | `GET /geofences` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN` |
@@ -271,7 +272,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 |---|---:|---:|
 | `PLATFORM_ADMIN` | 12 | 33 |
 | `TENANT_ADMIN` | 70 | 132 |
-| `DIRECTION` | 42 | 103 |
+| `DIRECTION` | 43 | 104 |
 | `OPS_MANAGER` | 89 | 187 |
 | `DISPATCHER` | 37 | 83 |
 | `HR` | 17 | 36 |
@@ -281,8 +282,8 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `STOREKEEPER` | 17 | 50 |
 | `FUEL_MANAGER` | 28 | 63 |
 | `HSE` | 34 | 80 |
-| `FINANCE` | 30 | 64 |
-| `AUDITOR` | 43 | 106 |
+| `FINANCE` | 31 | 65 |
+| `AUDITOR` | 44 | 107 |
 
 ## 6. Anomalies détectées mécaniquement
 

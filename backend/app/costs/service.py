@@ -80,6 +80,8 @@ class SiteCost(BaseModel):
     total: Decimal | None
     total_status: Status
     vehicles: int
+    # Devise unique du total (None si aucun montant ou devises multiples).
+    currency: str | None = None
 
 
 @dataclass
@@ -450,5 +452,10 @@ def site_totals(rows: list[VehicleCost]) -> list[SiteCost]:
             total = sum(known, Decimal("0")).quantize(CENT) if known else None
             if any(r.total is None and r.total_status == "INSUFFICIENT" for r in items) and total is not None:
                 status = "PARTIAL"
-        result.append(SiteCost(site_id=site_id, total=total, total_status=status, vehicles=len(items)))
+        currency = next(iter(currencies)) if len(currencies) == 1 and total is not None else None
+        result.append(
+            SiteCost(
+                site_id=site_id, total=total, total_status=status, vehicles=len(items), currency=currency
+            )
+        )
     return sorted(result, key=lambda s: (s.total is None, -(s.total or 0)))
