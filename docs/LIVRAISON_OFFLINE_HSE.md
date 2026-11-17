@@ -133,3 +133,31 @@ reconnexion, synchronisation unique — exécuté en CI uniquement.
 Limites : le mode hors ligne restreint ne s'ouvre que pour un compte qui a aussi un profil terrain (droit de
 déclarer un incident sur au moins un site) ; un compte qui ne peut qu'inspecter n'en bénéficie pas encore.
 Photos en ligne uniquement. Appareil Android réel non essayé (`docs/qa/PROTOCOLE_ESSAI_ANDROID_REEL.md`).
+
+## Extension aux relevés de compteur — phase 4, premier parcours hors HSE (17 novembre 2026)
+
+- **Serveur** : `POST /vehicles/{vehicle_id}/meter-readings` accepte `Idempotency-Key`. L'empreinte du corps
+  inclut l'engin. La clé est finalisée dans la transaction du relevé. Un rejeu renvoie le relevé d'origine
+  (`Idempotency-Replayed: true`) après revérification des droits et du périmètre. Même clé avec un autre contenu
+  ou un autre engin : `IDEMPOTENCY_KEY_REUSED`. Un refus métier (baisse, progression invraisemblable,
+  antériorité) annule la réservation de la clé.
+- **Application** : la route est ajoutée à la liste blanche de l'outbox. L'engin voyage dans la charge utile
+  locale, jamais dans le corps envoyé, et son identifiant est vérifié avant de construire l'URL. Le formulaire
+  « Nouveau relevé » met le relevé en file sans réseau, ou si la réponse se perd, avec la même clé. La file
+  s'affiche et se synchronise depuis la fiche engin.
+- **Exclus** : la remise à zéro du compteur (action motivée et réservée) n'est jamais différée hors ligne.
+- **Limites** :
+  - le relevé doit être synchronisé dans les 7 jours (tolérance serveur `meter_backdate_tolerance`, égale à la
+    rétention de l'outbox) ;
+  - un relevé saisi en ligne entre-temps avec une heure postérieure fait refuser le relevé différé
+    (`before_last_reading`, visible dans la file) ;
+  - l'ouverture de l'application sans réseau pour un relevé n'est pas couverte (le kit terrain ne contient pas
+    les engins pour ce parcours).
+- **Tests** :
+  - pytest `tests/test_meter_reading_offline.py` : rejeu unique, audit unique, clé réutilisée, autre engin,
+    rejet sans consommation de la clé, clé par compte, droits ;
+  - Vitest : envoi vers l'URL de l'engin, URL forgée refusée, mise en file hors ligne, réponse perdue, refus
+    métier non mis en file ;
+  - Playwright `e2e-field/meter-offline.spec.ts` : coupure puis synchronisation unique, réponse perdue sans
+    doublon.
+- **Non fait** : essai sur un téléphone Android réel en réseau intermittent.

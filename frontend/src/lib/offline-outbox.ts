@@ -34,7 +34,9 @@ const VERSION = 1;
 /** Routes autorisées explicitement : déclarations append-only et idempotentes côté serveur. */
 export const HSE_INCIDENT_ENDPOINT = "/hse/incidents";
 export const HSE_INSPECTION_ENDPOINT = "/hse/inspections";
-const ENABLED_ENDPOINTS: ReadonlySet<string> = new Set([HSE_INCIDENT_ENDPOINT, HSE_INSPECTION_ENDPOINT]);
+/** Relevé de compteur : l'engin est dans la charge utile, l'URL réelle est résolue à l'envoi. */
+export const METER_READING_ENDPOINT = "/vehicles/{vehicle_id}/meter-readings";
+const ENABLED_ENDPOINTS: ReadonlySet<string> = new Set([HSE_INCIDENT_ENDPOINT, HSE_INSPECTION_ENDPOINT, METER_READING_ENDPOINT]);
 
 /** Route synchronisable hors ligne : création append-only et idempotente côté serveur (Idempotency-Key). */
 export function isSyncableEndpoint(endpoint: string): boolean {

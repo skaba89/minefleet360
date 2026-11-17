@@ -1,5 +1,5 @@
 /**
- * Saisies HSE hors ligne (déclarations d'incident et inspections) : file outbox de bout en bout.
+ * Saisies terrain hors ligne (incidents et inspections HSE, relevés de compteur) : file outbox de bout en bout.
  *
  * - La saisie est enregistrée dans l'outbox IndexedDB, liée au tenant, au compte et au site.
  * - La synchronisation est déclenchée explicitement (retour du réseau, bouton, minuterie), sous verrou
@@ -15,6 +15,7 @@ import {
   HSE_INSPECTION_ENDPOINT,
   isSyncableEndpoint,
   listForAccount,
+  METER_READING_ENDPOINT,
   updateEntry,
   type OutboxEntry,
 } from "./offline-outbox";
@@ -90,11 +91,53 @@ export async function queueInspection(
   return entry;
 }
 
+export type MeterReadingDraft = Schemas["MeterReadingCreate"] & { read_at: string };
+
+/**
+ * Relevé de compteur saisi sans réseau : l'engin voyage dans la charge utile locale et n'est jamais envoyé
+ * dans le corps (il est dans l'URL). `read_at` est obligatoire : l'heure du relevé, pas celle de l'envoi.
+ */
+export async function queueMeterReading(
+  account: Account,
+  siteId: string,
+  vehicleId: string,
+  body: MeterReadingDraft,
+  summary: string,
+  nowIso = new Date().toISOString(),
+  operationId: string = crypto.randomUUID(),
+): Promise<OutboxEntry> {
+  const entry: OutboxEntry = {
+    operationId,
+    tenantId: account.tenantId,
+    userId: account.userId,
+    siteId,
+    endpoint: METER_READING_ENDPOINT,
+    payload: { vehicle_id: vehicleId, meter_kind: body.meter_kind, value: body.value, read_at: body.read_at },
+    createdAt: nowIso,
+    status: "pending",
+    attempts: 0,
+    summary: summary.slice(0, 200),
+  };
+  await enqueue(entry);
+  return entry;
+}
+
 export async function countUnsynchronized(account: Account): Promise<number> {
   return (await listForAccount(account)).filter((e) => e.status === "pending" || e.status === "syncing").length;
 }
 
 async function sendEntry(entry: OutboxEntry): Promise<{ id: string; reference: string }> {
+  if (entry.endpoint === METER_READING_ENDPOINT) {
+    const { vehicle_id: vehicleId, ...body } = entry.payload;
+    if (typeof vehicleId !== "string" || !/^[0-9a-f-]{36}$/i.test(vehicleId)) throw new Error("Engin invalide");
+    const { data } = await request<Schemas["MeterReadingOut"]>(`/vehicles/${vehicleId}/meter-readings`, {
+      method: "POST",
+      body,
+      idempotencyKey: entry.operationId,
+    });
+    if (!data?.vehicle_meter_reading_id) throw new Error("Accusé de réception serveur incomplet");
+    return { id: data.vehicle_meter_reading_id, reference: `relevé ${data.value}` };
+  }
   if (entry.endpoint === HSE_INSPECTION_ENDPOINT) {
     const { data } = await request<Schemas["InspectionOut"]>(entry.endpoint, {
       method: "POST",

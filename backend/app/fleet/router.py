@@ -1,3 +1,4 @@
+import json
 import uuid
 from typing import Annotated
 
@@ -5,7 +6,9 @@ from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
+from app.core.errors import AppError
 from app.core.http import IfMatch, Page, Pagination, etag
+from app.core.idempotency import claim, optional_idempotency_key
 from app.fleet import records, service
 from app.fleet.gps_latest_read import latest_visible_positions
 from app.fleet.gps_schemas import GpsLatestPositionOut
@@ -187,8 +190,32 @@ def record_meter_reading(
     vehicle_id: uuid.UUID,
     body: MeterReadingCreate,
     auth: Annotated[Authorized, Depends(Require("fleet.meter.record"))],
+    response: Response,
+    idempotency_key: Annotated[str | None, Depends(optional_idempotency_key)],
 ) -> MeterReadingOut:
-    return records.record_reading(auth, vehicle_id, body)
+    if idempotency_key is None:
+        return records.record_reading(auth, vehicle_id, body)
+    # Relevé rejoué depuis l'outbox terrain : clé liée au tenant ET au compte, corps empreinté (avec l'engin),
+    # droits et périmètre revérifiés à chaque envoi.
+    payload = json.dumps(
+        {"vehicle_id": str(vehicle_id), **body.model_dump(mode="json")}, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    owned = claim(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        user_account_id=auth.user_id,
+        key=idempotency_key,
+        method="POST",
+        path="/vehicles/{vehicle_id}/meter-readings",
+        body=payload,
+        now=auth.clock.now(),
+    )
+    if owned.replay is not None:
+        if owned.replay.resource_type != "vehicle_meter_reading":
+            raise AppError("IDEMPOTENCY_KEY_REUSED")
+        response.headers["Idempotency-Replayed"] = "true"
+        return records.reading_replay(auth, vehicle_id, owned.replay.resource_id)
+    return records.record_reading(auth, vehicle_id, body, idempotency_claim=owned)
 
 
 @router.post(
