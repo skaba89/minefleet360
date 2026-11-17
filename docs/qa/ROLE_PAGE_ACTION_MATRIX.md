@@ -247,6 +247,8 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `hse.checklist.manage` | 1c | `POST /hse/checklist-templates`<br>`POST /hse/checklist-templates/{template_id}/deactivate` | `HSE` |
 | `cost.vehicle.read` | 1c | `GET /costs/vehicles`<br>`GET /costs/vehicles/{vehicle_id}/history` | `AUDITOR`, `DIRECTION`, `FINANCE`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
 | `cost.labour_rate.manage` | 1c | `GET /costs/labour-rates`<br>`POST /costs/labour-rates` | `DIRECTION`, `FINANCE` |
+| `finance.tariff.manage` | 2a | `POST /contract-tariffs` | `DIRECTION`, `FINANCE` |
+| `finance.tariff.read` | 2a | `GET /contract-tariffs`<br>`GET /contract-tariffs/contracts` | `AUDITOR`, `DIRECTION`, `FINANCE`, `OPS_MANAGER` |
 | `cost.budget.manage` | 2a | `POST /costs/budgets` | `DIRECTION`, `FINANCE` |
 | `cost.budget.read` | 2a | `GET /costs/budget-variance` | `AUDITOR`, `DIRECTION`, `FINANCE`, `OPS_MANAGER` |
 | `fleet.geofence.read` | 1c | `GET /geofences` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN` |
@@ -269,8 +271,8 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 |---|---:|---:|
 | `PLATFORM_ADMIN` | 12 | 33 |
 | `TENANT_ADMIN` | 70 | 132 |
-| `DIRECTION` | 40 | 100 |
-| `OPS_MANAGER` | 88 | 184 |
+| `DIRECTION` | 42 | 103 |
+| `OPS_MANAGER` | 89 | 186 |
 | `DISPATCHER` | 37 | 82 |
 | `HR` | 17 | 36 |
 | `DRIVER` | 4 | 16 |
@@ -279,8 +281,8 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `STOREKEEPER` | 17 | 50 |
 | `FUEL_MANAGER` | 28 | 63 |
 | `HSE` | 34 | 80 |
-| `FINANCE` | 28 | 61 |
-| `AUDITOR` | 42 | 104 |
+| `FINANCE` | 30 | 64 |
+| `AUDITOR` | 43 | 106 |
 
 ## 6. Anomalies détectées mécaniquement
 

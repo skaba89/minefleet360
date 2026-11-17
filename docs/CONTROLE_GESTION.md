@@ -27,9 +27,21 @@ l'heure, à la tonne mesurée et à la mission, totaux par site et historique (`
   sinon (aucun budget, mois à venir, réel indisponible, devises différentes).
 - Interface : section « Budget et écarts » de la page Coût complet, saisie réservée, export CSV.
 
+## Tranche 2a — Tarifs des contrats de transport
+
+- Réutilise le registre juridique existant : un tarif ne s'applique qu'à un contrat `TRANSPORT` **approuvé**
+  (circuit quatre-yeux), sur un site couvert par l'appelant. Aucune nouvelle entité « contrat ».
+- Migration additive `0074` : table `contract_tariff` en **ajout seul** ; modes `TONNE` (tonne mesurée),
+  `HOUR` (heure moteur), `KM`, `MISSION` (forfait) ; prix > 0, devise ISO ; une version par date d'effet ; la
+  version en vigueur à une date est la plus récente dont `valid_from` ≤ date.
+- `POST /contract-tariffs` (`finance.tariff.manage` : DIRECTION, FINANCE) audité `finance.tariff.create` ;
+  `GET /contract-tariffs` et `GET /contract-tariffs/contracts` (`finance.tariff.read` : DIRECTION, OPS_MANAGER,
+  FINANCE, AUDITOR) — la finance voit les contrats facturables sans accès au registre juridique.
+- Interface : section « Tarifs des contrats de transport » de la page Coût complet.
+
 ## Tranches suivantes
 
-2. Contrats clients et tarification (tonne mesurée / heure / km / forfait), rattachement des missions.
+2b. Rattachement des missions à un contrat (optionnel, même site, contrat approuvé).
 3. Revenus par mission, rotation et contrat ; marges brute et opérationnelle par site, engin et contrat.
 4. Coût du parc sous-traité (prix payé + coûts internes) et comparaison parc propre / sous-traité — après la
    facturation prestataire.

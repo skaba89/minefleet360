@@ -1376,6 +1376,26 @@ permissions:
     audit: { action: cost.labour_rate.create }
     grants: { DIRECTION: [TENANT], FINANCE: [TENANT, SITE] }
   # Budget prévisionnel (contrôle de gestion, décision du 17 novembre 2026 : site × mois × composante).
+  # Tarifs des contrats de transport (contrôle de gestion, tranche 2a) : contrat TRANSPORT approuvé seulement.
+  finance.tariff.manage:
+    tranche: 2a
+    kind: create
+    site_bound: true
+    routes: [{ method: POST, path: /contract-tariffs, shape: collection, success: 201 }]
+    audit: { action: finance.tariff.create }
+    grants: { DIRECTION: [TENANT], FINANCE: [TENANT, SITE] }
+  finance.tariff.read:
+    tranche: 2a
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /contract-tariffs, shape: collection, success: 200 }
+      - { method: GET, path: /contract-tariffs/contracts, shape: collection, success: 200 }
+    grants:
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
   cost.budget.manage:
     tranche: 2a
     kind: create

@@ -177,6 +177,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/contract-tariffs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tariffs
+         * @description Versions de tarifs (plus récente d'abord) d'un contrat, ou de tous les contrats des sites couverts.
+         *
+         *     `current` marque, pour chaque contrat, la version en vigueur aujourd'hui.
+         */
+        get: operations["list_tariffs_api_v1_contract_tariffs_get"];
+        put?: never;
+        /** Create Tariff */
+        post: operations["create_tariff_api_v1_contract_tariffs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/contract-tariffs/contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Billable Contracts
+         * @description Contrats de transport approuvés des sites couverts (saisie des tarifs, sans le registre).
+         */
+        get: operations["list_billable_contracts_api_v1_contract_tariffs_contracts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/costs/budget-variance": {
         parameters: {
             query?: never;
@@ -4349,6 +4392,25 @@ export interface components {
              * Format: uuid
              */
             spare_part_store_id: string;
+        };
+        /** BillableContractOut */
+        BillableContractOut: {
+            /**
+             * Contract Id
+             * Format: uuid
+             */
+            contract_id: string;
+            /** Counterparty Name */
+            counterparty_name: string;
+            /** Reference */
+            reference: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /** Title */
+            title: string;
         };
         /** BudgetIn */
         BudgetIn: {
@@ -9233,6 +9295,69 @@ export interface components {
              */
             site_id: string;
         };
+        /** TariffIn */
+        TariffIn: {
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "TONNE" | "HOUR" | "KM" | "MISSION";
+            /**
+             * Contract Id
+             * Format: uuid
+             */
+            contract_id: string;
+            /** Currency */
+            currency: string;
+            /** Note */
+            note?: string | null;
+            /** Unit Price */
+            unit_price: number | string;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
+        };
+        /** TariffOut */
+        TariffOut: {
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "TONNE" | "HOUR" | "KM" | "MISSION";
+            /**
+             * Contract Id
+             * Format: uuid
+             */
+            contract_id: string;
+            /**
+             * Contract Tariff Id
+             * Format: uuid
+             */
+            contract_tariff_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string;
+            /**
+             * Current
+             * @default false
+             */
+            current: boolean;
+            /** Note */
+            note: string | null;
+            /** Unit Price */
+            unit_price: string;
+            /**
+             * Valid From
+             * Format: date
+             */
+            valid_from: string;
+        };
         /** TemplateCreate */
         TemplateCreate: {
             /** Code */
@@ -11002,6 +11127,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tariffs_api_v1_contract_tariffs_get: {
+        parameters: {
+            query?: {
+                contract_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TariffOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_tariff_api_v1_contract_tariffs_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TariffIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TariffOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_billable_contracts_api_v1_contract_tariffs_contracts_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillableContractOut"][];
                 };
             };
             /** @description Validation Error */
