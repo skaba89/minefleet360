@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router";
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, Pager } from "../components/common";
+import { SubcontractorSelect } from "../components/SubcontractorSelect";
 import { ActionForm, Options, orNull } from "../components/forms";
 import { DRIVER_STATUS, EMPLOYMENT, label } from "../lib/labels";
 import { can } from "../lib/permissions";
@@ -132,6 +133,7 @@ function CreateDriver({ onClose }: { onClose: () => void }) {
     phone: "",
     employment_type: "EMPLOYEE",
     external_company_name: "",
+    subcontractor_id: "",
     hire_date: "",
   });
   // Site calculé à chaque affichage : la liste des sites peut arriver après l'ouverture du formulaire.
@@ -154,6 +156,7 @@ function CreateDriver({ onClose }: { onClose: () => void }) {
             phone: orNull(form.phone),
             employment_type: form.employment_type as Schemas["DriverCreate"]["employment_type"],
             external_company_name: orNull(form.external_company_name),
+            subcontractor_id: form.employment_type === "SUBCONTRACTOR" ? orNull(form.subcontractor_id) : null,
             hire_date: orNull(form.hire_date),
           },
         });
@@ -201,6 +204,15 @@ function CreateDriver({ onClose }: { onClose: () => void }) {
           Entreprise sous-traitante
           <input required maxLength={120} value={form.external_company_name} onChange={set("external_company_name")} />
         </label>
+      )}
+      {form.employment_type === "SUBCONTRACTOR" && (
+        <SubcontractorSelect
+          value={form.subcontractor_id}
+          current={null}
+          onChange={(id, legalName) =>
+            setForm({ ...form, subcontractor_id: id, external_company_name: form.external_company_name || legalName || "" })
+          }
+        />
       )}
       <label>
         Date d'embauche

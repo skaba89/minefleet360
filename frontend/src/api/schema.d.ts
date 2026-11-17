@@ -4607,6 +4607,8 @@ export interface components {
              * Format: uuid
              */
             site_id: string;
+            /** Subcontractor Id */
+            subcontractor_id?: string | null;
         };
         /**
          * DriverOut
@@ -4653,6 +4655,8 @@ export interface components {
             site_id: string;
             /** Status */
             status: string;
+            /** Subcontractor Id */
+            subcontractor_id?: string | null;
             /** Suspension Reason Code */
             suspension_reason_code?: string | null;
             /** Unavailability Reason */
@@ -4694,6 +4698,8 @@ export interface components {
             phone?: string | null;
             /** Site Id */
             site_id?: string | null;
+            /** Subcontractor Id */
+            subcontractor_id?: string | null;
         };
         /** EvidenceOut */
         EvidenceOut: {

@@ -25,6 +25,7 @@ class DriverCreate(StrictModel):
     phone: str | None = Field(default=None, pattern=PHONE_PATTERN)
     employment_type: EmploymentType = "EMPLOYEE"
     external_company_name: str | None = Field(default=None, max_length=120)
+    subcontractor_id: uuid.UUID | None = None
     hire_date: date | None = None
 
 
@@ -35,6 +36,8 @@ class DriverUpdate(StrictModel):
     phone: str | None = Field(default=None, pattern=PHONE_PATTERN)
     employment_type: EmploymentType | None = None
     external_company_name: str | None = Field(default=None, max_length=120)
+    # Null explicite = détacher ; absent = inchangé.
+    subcontractor_id: uuid.UUID | None = None
     hire_date: date | None = None
 
 
@@ -62,6 +65,7 @@ class DriverOut(BaseModel):
     suspension_reason_code: str | None = None
     employment_type: str | None = None
     external_company_name: str | None = None
+    subcontractor_id: uuid.UUID | None = None
     hire_date: date | None = None
     exit_date: date | None = None
     warnings: list[str] | None = None

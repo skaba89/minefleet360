@@ -10,6 +10,7 @@ from datetime import timedelta
 from typing import Any
 
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from app.assignment.contracts import (
     SAFETY_DRIVER_STATUSES,
@@ -24,6 +25,7 @@ from app.core.errors import AppError
 from app.core.http import PageParams, check_version
 from app.core.logging import security_logger
 from app.organization.contracts import active_site_in_scope, site_in_scope, site_timezone
+from app.partners.contracts import subcontractor_status
 from app.workforce.models import Driver, DriverLicense, DriverQualification
 from app.workforce.schemas import (
     DriverCreate,
@@ -112,6 +114,7 @@ def driver_out(
         "suspension_reason_code": driver.suspension_reason_code,
         "employment_type": driver.employment_type,
         "external_company_name": driver.external_company_name,
+        "subcontractor_id": driver.subcontractor_id,
         "hire_date": driver.hire_date,
         "exit_date": driver.exit_date,
         "created_at": driver.created_at,
@@ -221,6 +224,27 @@ def list_drivers(
     return list(rows.scalars()), total
 
 
+def _check_subcontractor_link(
+    db: Session, employment_type: str, subcontractor_id: uuid.UUID | None, current: uuid.UUID | None
+) -> None:
+    """Rattachement sous-traitant (lot 1) : conducteur SUBCONTRACTOR seulement.
+
+    Un NOUVEAU rattachement exige un sous-traitant actif du tenant ; un rattachement existant reste valable
+    si le sous-traitant est ensuite suspendu ou terminé.
+    """
+    if subcontractor_id is None:
+        return
+    if employment_type != "SUBCONTRACTOR":
+        raise AppError(
+            "VALIDATION_ERROR", details=[{"field": "subcontractor_id", "type": "employment_mismatch"}]
+        )
+    status = subcontractor_status(db, subcontractor_id)
+    if status is None:
+        raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "subcontractor_id"}])
+    if subcontractor_id != current and status != "ACTIVE":
+        raise AppError("VALIDATION_ERROR", details=[{"field": "subcontractor_id", "type": "not_active"}])
+
+
 def create_driver(auth: Authorized, body: DriverCreate) -> tuple[Driver, list[str]]:
     """US-1.16 : matricule unique (409) ; homonyme sur le même site = avertissement non bloquant (A6)."""
     db = auth.db
@@ -228,6 +252,7 @@ def create_driver(auth: Authorized, body: DriverCreate) -> tuple[Driver, list[st
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
     if body.employment_type == "SUBCONTRACTOR" and not body.external_company_name:
         raise AppError("VALIDATION_ERROR", details=[{"field": "external_company_name", "type": "missing"}])
+    _check_subcontractor_link(db, body.employment_type, body.subcontractor_id, None)
     target = (_norm_name(body.last_name), _norm_name(body.first_name))
     same_site = db.execute(
         select(Driver.last_name, Driver.first_name).where(Driver.site_id == body.site_id)
@@ -272,6 +297,12 @@ def update_driver(
         if active_site_in_scope(db, auth.scope, body.site_id) is None:
             raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
         _ensure_no_open_assignments(auth, driver)  # D-13
+    employment = body.employment_type if "employment_type" in fields else driver.employment_type
+    link = body.subcontractor_id if "subcontractor_id" in fields else driver.subcontractor_id
+    if link is not None and employment != "SUBCONTRACTOR" and "subcontractor_id" not in fields:
+        # Changement de statut d'emploi sans détacher explicitement : jamais de modification silencieuse.
+        raise AppError("VALIDATION_ERROR", details=[{"field": "subcontractor_id", "type": "must_clear"}])
+    _check_subcontractor_link(db, str(employment), link, driver.subcontractor_id)
     visible = tuple(f for f in fields if f in AUDIT_VALUED_DRIVER_FIELDS)
     before = {f: getattr(driver, f) for f in visible}
     for name in fields:

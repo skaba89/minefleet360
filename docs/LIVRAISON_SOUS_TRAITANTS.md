@@ -62,9 +62,21 @@ sans ouvrir le moindre accès externe.
 - Interface (Juridique) : pour un contrat de sous-traitance, choix « Sous-traitant (référentiel) » ; la contrepartie
   est pré-remplie avec la raison sociale si elle est vide.
 
-## Tranches suivantes (lot 1)
+## Tranche 2c — rattachement des conducteurs sous-traitants
 
-2c. Conducteurs sous-traitants (`employment_type = SUBCONTRACTOR`) reliés au référentiel.
+- Migration additive `0071` : `driver.subcontractor_id` (nullable), clé étrangère composite même tenant,
+  contrainte `ck_driver_subcontractor` (rattachement seulement pour `employment_type = SUBCONTRACTOR`), index
+  partiel. `external_company_name` reste exigé pour un sous-traitant (contrainte existante) ; l'interface le
+  pré-remplit avec la raison sociale.
+- **Donnée RH** : `subcontractor_id` suit la politique de `external_company_name` (`field_policies` : visible HR
+  seulement) et n'est **jamais journalisé en valeur** (nom du champ seulement dans `changed_fields`).
+- Règles : statut d'emploi incompatible → 422 `employment_mismatch` ; inconnu ou autre tenant → 422
+  `REFERENCE_NOT_FOUND` ; nouveau rattachement à un sous-traitant non actif → 422 `not_active` ; changement de
+  statut d'emploi sans détachement explicite → 422 `must_clear`. Aucune reprise automatique.
+- Autorisation : `partner.subcontractor.read` accordée à **HR** (TENANT, SITE), seul gestionnaire des conducteurs ;
+  conséquence : HR voit l'onglet Administration → Sous-traitants.
+
+## Tranche suivante (lot 1)
 3. SLA et performance par sous-traitant (disponibilité, rotations, tonnage **mesuré**), vus par le donneur d'ordre.
 
 Lot 2 (comptes externes) : non ouvert — voir les décisions restantes du modèle de sécurité.
