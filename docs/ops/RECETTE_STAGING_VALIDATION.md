@@ -121,6 +121,16 @@ prévoir) ; pas de redirection ni de TLS invalide (les sondes refusent tout cont
 
 ### A6 — Comptes et permissions (API, lecture seule)
 
+**Outil (17 novembre 2026)** : `infra/deploy/audit-a6-accounts.py` exécute ce contrôle — connexion (code MFA demandé
+de façon interactive), `GET /me` (rôle et portée attendus), route hors droits → 403 (`/platform/tenants`, ou
+`/vehicles` pour PLATFORM_ADMIN), MFA activé sur les comptes d'administration, déconnexion. Python standard seul,
+aucune écriture métier, aucun secret affiché. Fichier de comptes fictifs TSV en droits 600, **hors dépôt** :
+
+```bash
+MF_A6_URL=https://<domaine-staging> python3 infra/deploy/audit-a6-accounts.py /chemin/hors-depot/comptes-recette.tsv
+# codes de sortie : 0 aucun écart · 2 écart(s) · 3 configuration
+```
+
 Pour chaque rôle du jeu fictif : `POST /api/v1/auth/login` puis `GET /api/v1/me`, vérifier les grants et la
 portée (TENANT/SITE). **Aucun POST/PUT/DELETE métier** : la vérification fonctionnelle fine est couverte par
 la CI (`e2e-isolation`) sur base jetable ; sur staging on vérifie uniquement l'identité, les menus exposés
