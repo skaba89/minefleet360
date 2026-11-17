@@ -1740,6 +1740,10 @@ export const GRANTS = {
     "FINANCE": [
       "TENANT"
     ],
+    "HR": [
+      "TENANT",
+      "SITE"
+    ],
     "HSE": [
       "TENANT"
     ],

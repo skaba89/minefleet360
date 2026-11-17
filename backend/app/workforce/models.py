@@ -26,6 +26,8 @@ class Driver(AuditedColumns, Base):
     phone: Mapped[str | None] = mapped_column(String)
     employment_type: Mapped[str] = mapped_column(String, nullable=False, server_default="EMPLOYEE")
     external_company_name: Mapped[str | None] = mapped_column(String)
+    # Organisation sous-traitante (lot 1) : conducteur SUBCONTRACTOR seulement ; donnée RH (visible HR).
+    subcontractor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     hire_date: Mapped[date | None] = mapped_column(Date)
     exit_date: Mapped[date | None] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String, nullable=False, server_default="ACTIVE")

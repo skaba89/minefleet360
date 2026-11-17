@@ -60,7 +60,7 @@ Rôles optionnels : `AUDITOR`.
 | [Administration · Sites](/administration/sites) | Administration | — | ✓ | — | — | — | — | — | — | — | — | — | — | — | — |
 | [Administration · Lieux et matières](/administration/lieux-matieres) | Administration | — | ✓ | — | ✓ | — | — | — | — | — | — | — | — | — | — |
 | [Administration · Documents exigés](/administration/documents-exiges) | Administration | — | ✓ | — | — | — | — | — | — | — | — | — | — | — | — |
-| [Administration · Sous-traitants](/administration/sous-traitants) | Administration | — | ✓ | ✓ | ✓ | — | — | — | — | — | — | — | ✓ | ✓ | ✓ |
+| [Administration · Sous-traitants](/administration/sous-traitants) | Administration | — | ✓ | ✓ | ✓ | — | ✓ | — | — | — | — | — | ✓ | ✓ | ✓ |
 | [Administration · Utilisateurs et rôles](/administration/utilisateurs) | Administration | — | ✓ | — | — | — | ✓ | — | — | — | — | — | — | — | ✓ |
 | [Administration · Journal d'audit](/administration/journal) | Administration | — | ✓ | — | — | — | — | — | — | — | — | — | — | — | ✓ |
 
@@ -201,7 +201,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `dispatch.location.manage` | 1c | `POST /site-locations`<br>`PATCH /site-locations/{site_location_id}` | `OPS_MANAGER`, `TENANT_ADMIN` |
 | `dispatch.material.read` | 1c | `GET /materials` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
 | `dispatch.material.manage` | 1c | `POST /materials`<br>`PATCH /materials/{material_id}` | `OPS_MANAGER`, `TENANT_ADMIN` |
-| `partner.subcontractor.read` | 2a | `GET /subcontractors` | `AUDITOR`, `DIRECTION`, `FINANCE`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN` |
+| `partner.subcontractor.read` | 2a | `GET /subcontractors` | `AUDITOR`, `DIRECTION`, `FINANCE`, `HR`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN` |
 | `partner.subcontractor.manage` | 2a | `POST /subcontractors`<br>`PATCH /subcontractors/{subcontractor_id}` | `OPS_MANAGER`, `TENANT_ADMIN` |
 | `dispatch.mission.read` | 1c | `GET /missions`<br>`GET /missions/{mission_id}` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
 | `dispatch.mission.create` | 1c | `POST /missions` | `DISPATCHER`, `OPS_MANAGER` |
@@ -269,7 +269,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `DIRECTION` | 37 | 97 |
 | `OPS_MANAGER` | 86 | 182 |
 | `DISPATCHER` | 37 | 82 |
-| `HR` | 16 | 35 |
+| `HR` | 17 | 36 |
 | `DRIVER` | 4 | 16 |
 | `WORKSHOP_CHIEF` | 40 | 104 |
 | `MECHANIC` | 17 | 46 |

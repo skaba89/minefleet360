@@ -840,6 +840,8 @@ permissions:
       DIRECTION: [TENANT]
       # SITE : un OPS_MANAGER de site rattache ses engins sous-traités (référentiel non lié à un site).
       OPS_MANAGER: [TENANT, SITE]
+      # HR rattache les conducteurs sous-traitants (données de société, aucune donnée nominative).
+      HR: [TENANT, SITE]
       FINANCE: [TENANT]
       HSE: [TENANT]
       AUDITOR: [TENANT]
@@ -1527,6 +1529,7 @@ field_policies:
     suspension_reason_code: { visible_to_roles: [HR, HSE] }
     employment_type: { visible_to_roles: [HR] }
     external_company_name: { visible_to_roles: [HR] }
+    subcontractor_id: { visible_to_roles: [HR] }
     hire_date: { visible_to_roles: [HR] }
     exit_date: { visible_to_roles: [HR] }
   driver_license:

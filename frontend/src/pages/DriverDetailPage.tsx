@@ -5,6 +5,7 @@ import { Link, useLocation, useParams } from "react-router";
 import { call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, ErrorMessage } from "../components/common";
+import { useSubcontractorName, SubcontractorSelect } from "../components/SubcontractorSelect";
 import { ActionForm, Fact, Options, orNull } from "../components/forms";
 import {
   ASSIGNMENT_STATUS,
@@ -117,6 +118,7 @@ export function DriverDetailPage() {
               {"phone" in d && <Fact label="Téléphone">{d.phone}</Fact>}
               {"employment_type" in d && <Fact label="Contrat">{label(EMPLOYMENT, d.employment_type)}</Fact>}
               {d.external_company_name && <Fact label="Entreprise">{d.external_company_name}</Fact>}
+              {d.subcontractor_id && <DriverSubcontractorFact subcontractorId={d.subcontractor_id} />}
               {"hire_date" in d && <Fact label="Embauche">{formatDate(d.hire_date)}</Fact>}
               {d.exit_date && <Fact label="Sortie">{formatDate(d.exit_date)}</Fact>}
               {d.unavailability_reason && (
@@ -155,6 +157,7 @@ function EditDriver({ driver: d, etag, onDone, onCancel }: PanelProps & { etag: 
     phone: d.phone ?? "",
     employment_type: d.employment_type ?? "",
     external_company_name: d.external_company_name ?? "",
+    subcontractor_id: d.subcontractor_id ?? "",
     hire_date: d.hire_date ?? "",
   };
   const [form, setForm] = useState(initial);
@@ -173,6 +176,8 @@ function EditDriver({ driver: d, etag, onDone, onCancel }: PanelProps & { etag: 
         for (const key of Object.keys(form) as (keyof typeof form)[]) {
           if (form[key] !== initial[key]) body[key] = key === "site_id" ? form[key] : orNull(form[key]);
         }
+        // Statut d'emploi changé : le détachement du sous-traitant est envoyé explicitement (le serveur refuse le silence).
+        if (form.employment_type !== "SUBCONTRACTOR" && initial.subcontractor_id) body.subcontractor_id = null;
         return call("patch", "/drivers/{driver_id}", {
           path: { driver_id: d.driver_id },
           body: body as Schemas["DriverUpdate"],
@@ -217,6 +222,17 @@ function EditDriver({ driver: d, etag, onDone, onCancel }: PanelProps & { etag: 
               Entreprise sous-traitante
               <input required maxLength={120} value={form.external_company_name} onChange={set("external_company_name")} />
             </label>
+          )}
+          {form.employment_type === "SUBCONTRACTOR" ? (
+            <SubcontractorSelect
+              value={form.subcontractor_id}
+              current={d.subcontractor_id ?? null}
+              onChange={(id, legalName) =>
+                setForm({ ...form, subcontractor_id: id, external_company_name: form.external_company_name || legalName || "" })
+              }
+            />
+          ) : (
+            initial.subcontractor_id && <p className="warn-text small">Le rattachement au sous-traitant sera retiré.</p>
           )}
           <label>
             Date d'embauche
@@ -677,4 +693,8 @@ function DriverAssignments({ driver: d, timeZone }: { driver: Driver; timeZone: 
       </DataState>
     </>
   );
+}
+
+function DriverSubcontractorFact({ subcontractorId }: { subcontractorId: string }) {
+  return <Fact label="Sous-traitant (référentiel)">{useSubcontractorName(subcontractorId)}</Fact>;
 }
