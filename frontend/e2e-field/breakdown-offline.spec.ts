@@ -44,7 +44,7 @@ async function uiLogin(page: Page, a: Account): Promise<void> {
 async function startReport(page: Page, fleetNumber: string): Promise<void> {
   await page.goto("/atelier");
   await page.getByRole("button", { name: "Signaler une panne" }).click();
-  const vehicle = page.getByLabel("Véhicule");
+  const vehicle = page.getByLabel("Véhicule", { exact: true });
   await expect(vehicle.locator("option", { hasText: fleetNumber })).toHaveCount(1);
   await vehicle.selectOption({ label: fleetNumber });
 }
