@@ -10,6 +10,7 @@ import { ActionForm } from "../components/forms";
 import { downloadCsv, stamp, toCsv } from "../lib/csv";
 import { can } from "../lib/permissions";
 import { useSites } from "../site/SiteContext";
+import { CostBudgetSection } from "./CostBudget";
 
 type VehicleCost = Schemas["VehicleCost"];
 type Component = Schemas["Component"];
@@ -178,6 +179,7 @@ export function CostsPage() {
         </ul>
       </DataState>
       {selected && <VehicleHistory vehicle={selected} onClose={() => setSelected(null)} />}
+      {can(me.grants, "cost.budget.read") && <CostBudgetSection />}
       {can(me.grants, "cost.labour_rate.manage") && <LabourRates />}
     </section>
   );
