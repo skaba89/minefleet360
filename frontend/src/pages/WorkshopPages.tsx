@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
-import { call, read, type Schemas } from "../api/client";
+import { ApiError, call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, ErrorMessage, Pager } from "../components/common";
 import { ActionForm, Fact, Options } from "../components/forms";
@@ -15,11 +15,14 @@ import {
   WORK_ORDER_STATUS,
   WORK_ORDER_TONE,
 } from "../lib/labels";
+import { useConnectivity } from "../lib/connectivity";
+import { accountOf, queueBreakdown } from "../lib/hseOfflineSync";
 import { can } from "../lib/permissions";
 import { submitPreparedOfflineWorkOrderNote } from "../lib/offlineWorkOrderSubmit";
 import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
 import { useSites } from "../site/SiteContext";
 import { PreventiveCompletionPanel } from "./PreventiveCompletionPanel";
+import { OfflineIncidentQueue } from "./HseOffline";
 import { OfflineWorkOrderDrafts } from "./OfflineWorkOrderDrafts";
 
 type WorkOrder = Schemas["WorkOrderOut"];
@@ -41,11 +44,13 @@ function formatMinutes(total: number): string {
 /** Atelier (US-3.01, US-3.06) : ordres de travail du site, signalement de panne. */
 export function WorkshopPage() {
   const me = useMe();
+  const queryClient = useQueryClient();
   const { siteId, sites, timezoneOf } = useSites();
   const [status, setStatus] = useState("");
   const [openOnly, setOpenOnly] = useState(true);
   const [page, setPage] = useState(1);
   const [reporting, setReporting] = useState(false);
+  const [queued, setQueued] = useState(0);
   const orders = useQuery({
     queryKey: ["work-orders", siteId, status, openOnly, page],
     queryFn: () =>
@@ -71,7 +76,25 @@ export function WorkshopPage() {
           </button>
         )}
       </div>
-      {reporting && <ReportForm onClose={() => setReporting(false)} />}
+      {reporting && (
+        <ReportForm
+          onClose={() => setReporting(false)}
+          onQueued={() => {
+            setReporting(false);
+            setQueued((n) => n + 1);
+          }}
+        />
+      )}
+      {can(me.grants, "maintenance.work_order.request", siteId) && (
+        <OfflineIncidentQueue
+          account={accountOf(me)}
+          canSync
+          canOpen={can(me.grants, "maintenance.work_order.read", siteId)}
+          timeZone={me.timezone}
+          refreshKey={queued}
+          onSynchronized={() => void queryClient.invalidateQueries({ queryKey: ["work-orders"] })}
+        />
+      )}
       <div className="filters">
         <label>
           Statut
@@ -140,9 +163,11 @@ export function WorkshopPage() {
   );
 }
 
-function ReportForm({ onClose }: { onClose: () => void }) {
+function ReportForm({ onClose, onQueued }: { onClose: () => void; onQueued: () => void }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const me = useMe();
+  const online = useConnectivity();
   const { siteId } = useSites();
   const vehicles = useQuery({
     queryKey: ["vehicles", "workshop", siteId],
@@ -161,15 +186,37 @@ function ReportForm({ onClose }: { onClose: () => void }) {
       submitLabel="Enregistrer le signalement"
       onCancel={onClose}
       onSubmit={async () => {
-        const { data } = await call("post", "/work-orders", {
-          body: {
-            vehicle_id: form.vehicle_id,
-            symptom_code: form.symptom_code as Symptom,
-            priority: form.priority as Priority,
-            description: form.description.trim() || null,
-            immobilize: form.immobilize,
-          },
-        });
+        const vehicle = (vehicles.data?.items ?? []).find((v) => v.vehicle_id === form.vehicle_id);
+        const body = {
+          vehicle_id: form.vehicle_id,
+          symptom_code: form.symptom_code as Symptom,
+          priority: form.priority as Priority,
+          description: form.description.trim() || null,
+          immobilize: form.immobilize,
+          // Heure du constat : un signalement différé garde l'heure réelle de la panne.
+          reported_at: new Date().toISOString(),
+        };
+        const account = accountOf(me);
+        const summary = `${vehicle?.fleet_number ?? ""} — ${label(SYMPTOMS, body.symptom_code)}${body.immobilize ? " (bloquante)" : ""}`;
+        if (!online && vehicle) {
+          await queueBreakdown(account, vehicle.site_id, body, summary);
+          onQueued();
+          return;
+        }
+        // Clé d'idempotence dès l'envoi direct : si la réponse se perd, le signalement part dans la file avec
+        // la même clé et son rejeu renvoie l'ordre de travail déjà créé (aucun doublon).
+        const operationId = crypto.randomUUID();
+        let data: Schemas["WorkOrderOut"];
+        try {
+          ({ data } = await call("post", "/work-orders", { body, idempotencyKey: operationId }));
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 0 && vehicle) {
+            await queueBreakdown(account, vehicle.site_id, body, summary, new Date().toISOString(), operationId);
+            onQueued();
+            return;
+          }
+          throw error;
+        }
         void queryClient.invalidateQueries({ queryKey: ["work-orders"] });
         navigate(`/atelier/${data.work_order_id}`);
       }}
@@ -206,6 +253,12 @@ function ReportForm({ onClose }: { onClose: () => void }) {
         Panne bloquante : immobiliser le véhicule (sa mission en cours est suspendue)
       </label>
       <p className="muted small">Décrivez la panne, sans nom de personne ni donnée personnelle.</p>
+      {!online && (
+        <p className="warn-text small" role="status">
+          Hors ligne : le signalement est conservé sur l'appareil et envoyé au retour du réseau.
+          {form.immobilize && " L'immobilisation et la suspension de mission ne prendront effet qu'à ce moment : prévenez le répartiteur par radio."}
+        </p>
+      )}
     </ActionForm>
   );
 }

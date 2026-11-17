@@ -92,8 +92,30 @@ def create_work_order(
     body: WorkOrderCreate,
     auth: Annotated[Authorized, Depends(Require("maintenance.work_order.request"))],
     response: Response,
+    idempotency_key: Annotated[str | None, Depends(optional_idempotency_key)],
 ) -> WorkOrderOut:
-    return _tagged(service.create_work_order(auth, body), response)
+    if idempotency_key is None:
+        return _tagged(service.create_work_order(auth, body), response)
+    # Signalement de panne rejoué depuis l'outbox terrain : clé liée au tenant ET au compte, corps empreinté,
+    # droits et périmètre revérifiés à chaque envoi.
+    payload = json.dumps(body.model_dump(mode="json"), sort_keys=True, separators=(",", ":")).encode("utf-8")
+    owned = claim(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        user_account_id=auth.user_id,
+        key=idempotency_key,
+        method="POST",
+        path="/work-orders",
+        body=payload,
+        now=auth.clock.now(),
+    )
+    if owned.replay is not None:
+        if owned.replay.resource_type != "work_order":
+            raise AppError("IDEMPOTENCY_KEY_REUSED")
+        order = service.work_order_in_scope(auth, owned.replay.resource_id)
+        response.headers["Idempotency-Replayed"] = "true"
+        return _tagged(service.work_orders_out(auth, [order], detail=True)[0], response)
+    return _tagged(service.create_work_order(auth, body, idempotency_claim=owned), response)
 
 
 @router.post(

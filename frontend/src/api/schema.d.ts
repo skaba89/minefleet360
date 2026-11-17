@@ -10737,6 +10737,8 @@ export interface components {
              * @enum {string}
              */
             priority: "CRITICAL" | "HIGH" | "NORMAL" | "LOW";
+            /** Reported At */
+            reported_at?: string | null;
             /**
              * Symptom Code
              * @enum {string}
@@ -20410,6 +20412,7 @@ export interface operations {
             query?: never;
             header?: {
                 authorization?: string | null;
+                "Idempotency-Key"?: string | null;
             };
             path?: never;
             cookie?: never;

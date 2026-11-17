@@ -6,7 +6,14 @@ import { Badge, ErrorMessage } from "../components/common";
 import { ActionForm, Options, orNull } from "../components/forms";
 import { accountOf, queueIncident, syncAccount, type Account, type IncidentDraft } from "../lib/hseOfflineSync";
 import { HSE_CATEGORY, HSE_SEVERITY, label } from "../lib/labels";
-import { HSE_INSPECTION_ENDPOINT, listForAccount, METER_READING_ENDPOINT, removeEntry, type OutboxEntry } from "../lib/offline-outbox";
+import {
+  HSE_INSPECTION_ENDPOINT,
+  listForAccount,
+  METER_READING_ENDPOINT,
+  removeEntry,
+  WORK_ORDER_ENDPOINT,
+  type OutboxEntry,
+} from "../lib/offline-outbox";
 import { useConnectivity } from "../lib/connectivity";
 import { loadInspectionKit } from "../lib/offlineInspectionKit";
 import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
@@ -253,12 +260,15 @@ export function OfflineIncidentQueue({
         {entries.map((e) => {
           const inspection = e.endpoint === HSE_INSPECTION_ENDPOINT;
           const meter = e.endpoint === METER_READING_ENDPOINT;
+          const breakdown = e.endpoint === WORK_ORDER_ENDPOINT;
           const payload = e.payload as Partial<IncidentDraft>;
           const vehicleId = meter ? String(e.payload.vehicle_id ?? "") : "";
           return (
             <li key={e.operationId}>
               {meter ? (
                 <strong>Relevé de compteur{e.summary ? ` — ${e.summary}` : ""}</strong>
+              ) : breakdown ? (
+                <strong>Signalement de panne{e.summary ? ` — ${e.summary}` : ""}</strong>
               ) : inspection ? (
                 <strong>Inspection{e.summary ? ` — ${e.summary}` : ""}</strong>
               ) : (
@@ -270,7 +280,19 @@ export function OfflineIncidentQueue({
               {e.status === "synchronized" && e.serverId && canOpen && (
                 <>
                   {" "}
-                  <Link to={meter ? `/vehicules/${vehicleId}` : inspection ? `/hse/inspections/${e.serverId}` : `/hse/${e.serverId}`}>Ouvrir</Link>
+                  <Link
+                    to={
+                      meter
+                        ? `/vehicules/${vehicleId}`
+                        : breakdown
+                          ? `/atelier/${e.serverId}`
+                          : inspection
+                            ? `/hse/inspections/${e.serverId}`
+                            : `/hse/${e.serverId}`
+                    }
+                  >
+                    Ouvrir
+                  </Link>
                 </>
               )}
               {e.status === "rejected" && (
