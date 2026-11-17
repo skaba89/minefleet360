@@ -65,6 +65,8 @@ class Mission(AuditedColumns, Base):
     notes: Mapped[str | None] = mapped_column(String)
     # Identifiant fourni par le client : un renvoi de création ne crée pas de doublon (revue L2A-R-08).
     client_request_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    # Contrat de transport approuvé du même site (facultatif, contrôle de gestion tranche 2b).
+    contract_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
 
 
 class MissionEvent(Base):

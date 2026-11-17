@@ -142,7 +142,10 @@ function CreateMission({ onClose }: { onClose: () => void }) {
     planned_start: utcToZonedInput(new Date(), timezoneOf(siteId)),
     due_at: "",
     planned_rotations: "",
+    contract_id: "",
   });
+  // Contrats de transport approuvés (base des revenus) : facultatif, même site que l'affectation.
+  const contracts = useQuery({ queryKey: ["billable-contracts", "dispatch"], queryFn: () => read("/dispatch/billable-contracts") });
   const assignment = useMemo(
     () => assignments.data?.find((a) => a.vehicle_assignment_id === form.vehicle_assignment_id),
     [assignments.data, form.vehicle_assignment_id],
@@ -173,6 +176,7 @@ function CreateMission({ onClose }: { onClose: () => void }) {
             planned_start: zonedInputToUtc(form.planned_start, timeZone).toISOString(),
             due_at: form.due_at ? zonedInputToUtc(form.due_at, timeZone).toISOString() : null,
             planned_rotations: intOrNull(form.planned_rotations),
+            contract_id: form.contract_id || null,
           },
         });
         await queryClient.invalidateQueries({ queryKey: ["missions"] });
@@ -243,6 +247,19 @@ function CreateMission({ onClose }: { onClose: () => void }) {
       <label>
         Rotations prévues (facultatif)
         <input type="number" min={1} max={500} value={form.planned_rotations} onChange={set("planned_rotations")} />
+      </label>
+      <label>
+        Contrat de transport (facultatif)
+        <select value={form.contract_id} onChange={set("contract_id")}>
+          <option value="">— Aucun —</option>
+          {(contracts.data ?? [])
+            .filter((c) => assignment && c.site_id === assignment.site_id)
+            .map((c) => (
+              <option key={c.contract_id} value={c.contract_id}>
+                {c.reference} — {c.counterparty_name}
+              </option>
+            ))}
+        </select>
       </label>
       {assignment && places.length < 2 && (
         <p className="warn-text small">

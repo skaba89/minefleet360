@@ -39,9 +39,17 @@ l'heure, à la tonne mesurée et à la mission, totaux par site et historique (`
   FINANCE, AUDITOR) — la finance voit les contrats facturables sans accès au registre juridique.
 - Interface : section « Tarifs des contrats de transport » de la page Coût complet.
 
+## Tranche 2b — Rattachement des missions à un contrat
+
+- Migration additive `0075` : colonne facultative `mission.contract_id` (clé étrangère composite tenant).
+- À la création d'une mission, contrat `TRANSPORT` **approuvé** du **même site** que l'affectation ; sinon
+  `REFERENCE_NOT_FOUND` (autre site, autre tenant, inexistant) ou `not_billable`. Le renvoi hors ligne compare
+  aussi le contrat (contrat différent → conflit). Audit `mission.create` enrichi du contrat.
+- `GET /dispatch/billable-contracts` (permission de création de mission) : contrats rattachables des sites
+  couverts. Formulaire de mission : sélecteur facultatif ; détail de mission : référence du contrat.
+
 ## Tranches suivantes
 
-2b. Rattachement des missions à un contrat (optionnel, même site, contrat approuvé).
 3. Revenus par mission, rotation et contrat ; marges brute et opérationnelle par site, engin et contrat.
 4. Coût du parc sous-traité (prix payé + coûts internes) et comparaison parc propre / sous-traité — après la
    facturation prestataire.

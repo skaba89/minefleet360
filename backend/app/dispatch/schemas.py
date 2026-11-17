@@ -100,6 +100,8 @@ class MissionCreate(StrictModel):
     notes: str | None = Field(default=None, max_length=1000)
     # Renvoi après coupure réseau : même identifiant → même mission, aucun doublon (revue L2A-R-08).
     client_request_id: uuid.UUID | None = None
+    # Contrat de transport approuvé du même site : base des revenus (tarif × quantité mesurée).
+    contract_id: uuid.UUID | None = None
 
 
 class MissionEventCreate(StrictModel):
@@ -161,6 +163,8 @@ class MissionOut(BaseModel):
     status_before_suspension: str | None
     status_reason: str | None
     notes: str | None
+    contract_id: uuid.UUID | None = None
+    contract_reference: str | None = None
     rotations_completed: int
     # Indicateur dérivé : échéance dépassée sans mission terminée.
     overdue: bool

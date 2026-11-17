@@ -205,7 +205,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `partner.performance.read` | 2a | `GET /subcontractors/performance` | `AUDITOR`, `DIRECTION`, `FINANCE`, `OPS_MANAGER` |
 | `partner.subcontractor.manage` | 2a | `POST /subcontractors`<br>`PATCH /subcontractors/{subcontractor_id}` | `OPS_MANAGER`, `TENANT_ADMIN` |
 | `dispatch.mission.read` | 1c | `GET /missions`<br>`GET /missions/{mission_id}` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
-| `dispatch.mission.create` | 1c | `POST /missions` | `DISPATCHER`, `OPS_MANAGER` |
+| `dispatch.mission.create` | 1c | `POST /missions`<br>`GET /dispatch/billable-contracts` | `DISPATCHER`, `OPS_MANAGER` |
 | `dispatch.mission.progress` | 1c | `POST /missions/{mission_id}/events` | `DISPATCHER`, `OPS_MANAGER` |
 | `dispatch.weighing.read` | 1c | `GET /weighing-tickets`<br>`GET /weighing-tickets/{weighing_ticket_id}` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER` |
 | `dispatch.weighing.record` | 1c | `POST /weighing-tickets` | `DISPATCHER`, `OPS_MANAGER` |
@@ -272,8 +272,8 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `PLATFORM_ADMIN` | 12 | 33 |
 | `TENANT_ADMIN` | 70 | 132 |
 | `DIRECTION` | 42 | 103 |
-| `OPS_MANAGER` | 89 | 186 |
-| `DISPATCHER` | 37 | 82 |
+| `OPS_MANAGER` | 89 | 187 |
+| `DISPATCHER` | 37 | 83 |
 | `HR` | 17 | 36 |
 | `DRIVER` | 4 | 16 |
 | `WORKSHOP_CHIEF` | 40 | 104 |

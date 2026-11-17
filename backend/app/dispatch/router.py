@@ -2,7 +2,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response, status
-from pydantic import AwareDatetime
+from pydantic import AwareDatetime, BaseModel
 
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
@@ -27,6 +27,7 @@ from app.dispatch.schemas import (
     WeighingStatus,
     WeighingVoid,
 )
+from app.legal.contracts import billable_transport_contracts
 
 router = APIRouter(tags=["dispatch"], route_class=SecuredRoute)
 
@@ -130,6 +131,30 @@ def create_mission(
     out = service.create_mission(auth, body)
     response.headers["ETag"] = etag(out.row_version)
     return out
+
+
+class MissionContractOut(BaseModel):
+    contract_id: uuid.UUID
+    site_id: uuid.UUID
+    reference: str
+    counterparty_name: str
+
+
+@router.get("/dispatch/billable-contracts", response_model=list[MissionContractOut])
+def billable_contracts(
+    auth: Annotated[Authorized, Depends(Require("dispatch.mission.create"))],
+) -> list[MissionContractOut]:
+    """Contrats de transport approuvés des sites couverts, rattachables à une nouvelle mission."""
+    return [
+        MissionContractOut(
+            contract_id=c.contract_id,
+            site_id=c.site_id,
+            reference=c.reference,
+            counterparty_name=c.counterparty_name,
+        )
+        for c in billable_transport_contracts(auth.db)
+        if auth.scope.covers_site(c.site_id)
+    ]
 
 
 @router.post("/missions/{mission_id}/events", response_model=MissionOut, response_model_exclude_unset=True)
