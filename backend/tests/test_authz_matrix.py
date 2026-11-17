@@ -70,6 +70,13 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
     ("POST", "/vehicle-assignments/{vehicle_assignment_id}/cancel"): {"reason_code": "PLAN_CHANGED"},
     ("PATCH", "/site-locations/{site_location_id}"): {"name": "Lieu modifié"},
     ("PATCH", "/materials/{material_id}"): {"name": "Matière modifiée"},
+    ("POST", "/contract-tariffs"): {
+        "contract_id": "00000000-0000-0000-0000-000000000001",
+        "basis": "TONNE",
+        "unit_price": "25000.0000",
+        "currency": "GNF",
+        "valid_from": "2026-01-01",
+    },
     ("POST", "/costs/budgets"): {
         "site_id": "00000000-0000-0000-0000-000000000001",
         "month": "2026-01",

@@ -32,6 +32,7 @@ from app.core.logging import configure_logging
 from app.core.request_context import RequestMeta, set_request_meta
 from app.costs.router import router as costs_router
 from app.dispatch.router import router as dispatch_router
+from app.finance.router import router as finance_router
 from app.fleet.gps_alert_router import router as gps_alert_router
 from app.fleet.gps_history import router as gps_history_router
 from app.fleet.gps_live_router import router as gps_live_router
@@ -193,6 +194,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         fuel_anomalies_router,
         hse_router,
         partners_router,
+        finance_router,
         hse_inspections_router,
     ):
         app.include_router(router, prefix=API_PREFIX)

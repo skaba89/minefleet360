@@ -11,6 +11,7 @@ import { downloadCsv, stamp, toCsv } from "../lib/csv";
 import { can } from "../lib/permissions";
 import { useSites } from "../site/SiteContext";
 import { CostBudgetSection } from "./CostBudget";
+import { ContractTariffsSection } from "./ContractTariffs";
 
 type VehicleCost = Schemas["VehicleCost"];
 type Component = Schemas["Component"];
@@ -180,6 +181,7 @@ export function CostsPage() {
       </DataState>
       {selected && <VehicleHistory vehicle={selected} onClose={() => setSelected(null)} />}
       {can(me.grants, "cost.budget.read") && <CostBudgetSection />}
+      {can(me.grants, "finance.tariff.read") && <ContractTariffsSection />}
       {can(me.grants, "cost.labour_rate.manage") && <LabourRates />}
     </section>
   );

@@ -361,6 +361,31 @@ export const GRANTS = {
       "SITE"
     ]
   },
+  "finance.tariff.manage": {
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "finance.tariff.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "fleet.document.manage": {
     "HSE": [
       "TENANT",
