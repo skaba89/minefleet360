@@ -142,6 +142,22 @@ def test_optional_fields_can_be_cleared_but_required_ones_cannot(client: TestCli
     t = api.tenant()
     item = _create(client, t, availability_target_percent="92.50", notes="Contrat cadre").json()
     assert item["availability_target_percent"] == "92.50"
+    # Régression : modifier l'objectif SLA faisait échouer l'audit (Decimal non sérialisable → 500).
+    changed = _patch(client, t.admin.headers, item, availability_target_percent="95.00")
+    assert changed.status_code == 200, changed.text
+    item = changed.json()
+    assert item["availability_target_percent"] == "95.00"
+    audit = client.get(
+        f"{API}/audit-events",
+        headers=t.admin.headers,
+        params={"entity_type": "subcontractor", "page_size": 50},
+    ).json()["items"]
+    update = next(
+        e
+        for e in audit
+        if e["entity_id"] == item["subcontractor_id"] and e["action"] == "subcontractor.update"
+    )
+    assert update["after_data"]["availability_target_percent"] == "95.00"
     cleared = _patch(client, t.admin.headers, item, availability_target_percent=None, notes=None, tax_id=None)
     assert cleared.status_code == 200, cleared.text
     body = cleared.json()

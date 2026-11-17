@@ -5,6 +5,8 @@ chaque écriture est journalisée (création, modification, changement de statut
 """
 
 import uuid
+from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import select
 
@@ -16,6 +18,11 @@ from app.partners.models import Subcontractor
 from app.partners.schemas import SubcontractorCreate, SubcontractorStatus, SubcontractorUpdate
 
 CLEARABLE = frozenset({"registration_number", "tax_id", "notes", "availability_target_percent"})
+
+
+def _audit_value(value: Any) -> Any:
+    """Valeur journalisable en JSON : les décimales (objectif SLA) sont consignées en texte exact."""
+    return str(value) if isinstance(value, Decimal) else value
 
 
 def list_subcontractors(
@@ -89,8 +96,8 @@ def update_subcontractor(
         entity_id=subcontractor.subcontractor_id,
         actor_user_id=auth.user_id,
         reason=subcontractor.status_reason if "status" in changed else None,
-        before={f: before[f] for f in changed},
-        after={f: getattr(subcontractor, f) for f in changed},
+        before={f: _audit_value(before[f]) for f in changed},
+        after={f: _audit_value(getattr(subcontractor, f)) for f in changed},
         changed_fields=changed,
     )
     db.commit()
