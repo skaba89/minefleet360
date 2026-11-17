@@ -21,8 +21,9 @@ pour prétendre à un résultat sur cette classe d'appareil.
 
 ## 1. Scénarios obligatoires (par appareil, données fictives, société de démonstration)
 
-Chaque scénario est exécuté sur les parcours **offline-first livrés** (déclaration HSE, notes d'OT) et sur
-les consultations classiques. Résultat consigné : réussi / partiel / échec + capture ou enregistrement.
+Chaque scénario est exécuté sur les parcours **offline-first livrés** (déclaration HSE, **inspection HSE** depuis
+#457–#459, notes d'OT) et sur les consultations classiques. Résultat consigné : réussi / partiel / échec + capture
+ou enregistrement.
 
 | # | Scénario | Procédure | Critère de réussite |
 |---|---|---|---|
@@ -37,6 +38,24 @@ les consultations classiques. Résultat consigné : réussi / partiel / échec +
 | A9 | Indicateur d'état de connexion | couper/rétablir le réseau et observer la bannière d'état | l'état affiché correspond au réel, sans blocage persistant |
 | A10 | Habilitations hors ligne | parcourir uniquement des données déjà synchronisées | aucune donnée non autorisée rendue accessible hors ligne |
 
+### 1 bis. Inspections HSE hors ligne (#457–#459) — à exécuter sur A1 et A2
+
+Ces scénarios reproduisent sur appareil réel ce que la CI ne prouve qu'en émulation (`e2e-field/
+hse-inspection-offline.spec.ts`). Compte de terrain fictif ayant le droit de déclarer **et** d'inspecter ; checklist
+fictive créée au préalable par le compte HSE ; comptage côté serveur par le compte HSE (liste des inspections).
+
+| # | Scénario | Procédure | Critère de réussite |
+|---|---|---|---|
+| I1 | Coupure en cours de saisie | en ligne, ouvrir « Réaliser une inspection » et choisir la checklist ; mode avion ; renseigner une note unique ; « Enregistrer sur l'appareil » | l'inspection apparaît dans la file « En attente de synchronisation », libellée avec la checklist ; **0** inspection côté serveur |
+| I2 | Retour du réseau | sortie du mode avion, rester sur l'écran Inspections | « Synchronisé — INS-000xxx » sans action ; **exactement 1** inspection côté serveur |
+| I3 | Ouverture de l'application sans réseau | en ligne, ouvrir la page Inspections (préparation du kit) ; fermer Chrome ; mode avion ; rouvrir l'application | écran « mode hors ligne » avec « Réaliser une inspection » ; checklists et engins du site proposés ; mise en file sans erreur |
+| I4 | Reconnexion après I3 | sortie du mode avion ; laisser la session se rétablir ; ouvrir Inspections | synchronisation unique (1 inspection serveur) ; aucune ressaisie demandée |
+| I5 | Réponse perdue (réseau très instable) | enregistrer une inspection en ligne au moment précis d'une coupure (zone limite ou bascule Wi-Fi → mobile), répéter 5 fois | aucune inspection en double côté serveur ; chaque saisie aboutit à « Synchronisé » une seule fois |
+| I6 | Kit périmé | avancer l'horloge de l'appareil de 8 jours (ou attendre) puis ouvrir sans réseau | « Réaliser une inspection » **n'est plus proposé** (kit ignoré au-delà de 7 jours) ; la déclaration d'incident reste disponible |
+| I7 | Déconnexion volontaire | « Se déconnecter », puis ouvrir sans réseau | ni profil terrain ni kit d'inspection : aucune donnée de checklist ou d'engin accessible |
+| I8 | Modèle désactivé pendant l'attente | saisir hors ligne (I1) ; faire désactiver la checklist par le compte HSE ; rétablir le réseau | refus définitif affiché pour cette inspection (« Refusé par le serveur »), jamais renvoyé ; rien créé côté serveur |
+| I9 | Photos | après synchronisation, ajouter une photo de preuve à l'inspection | l'ajout est proposé **en ligne seulement** (limite assumée), sans erreur |
+
 ## 2. Points de mesure à consigner
 
 - Temps de chargement à froid / à chaud par écran principal (mesure chronométrée, 3 essais).
@@ -45,6 +64,8 @@ les consultations classiques. Résultat consigné : réussi / partiel / échec +
   (volatilité assumée) — le constater et le documenter, ne pas promettre mieux.
 - Consommation batterie approximative pour 1 h d'usage actif.
 - Version d'Android, version de Chrome, espace disponible — à chaque campagne.
+- Pour I1–I5 : délai entre retour du réseau et « Synchronisé » (secondes), et nombre d'inspections côté serveur
+  après chaque scénario (doit valoir le nombre de saisies, jamais plus).
 
 ## 3. Résultats et limites (modèle de rapport)
 
