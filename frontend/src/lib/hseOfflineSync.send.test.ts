@@ -48,6 +48,31 @@ describe("envoi d'une opération hors ligne vers sa route", () => {
     expect(await defaultSyncDeps.send(entry("/hse/incidents"))).toEqual({ id: "inc-1", reference: "HSE-000001" });
   });
 
+  it("un relevé de compteur part vers l'URL de son engin, sans l'engin dans le corps", async () => {
+    vi.mocked(request).mockResolvedValue({ data: { vehicle_meter_reading_id: "rel-1", value: 1050.5 } } as never);
+    const meter = {
+      ...entry("/vehicles/{vehicle_id}/meter-readings"),
+      payload: {
+        vehicle_id: "22222222-2222-4222-8222-222222222222",
+        meter_kind: "ODOMETER_KM",
+        value: 1050.5,
+        read_at: "2026-11-16T05:00:00Z",
+      },
+    };
+    expect(await defaultSyncDeps.send(meter)).toEqual({ id: "rel-1", reference: "relevé 1050.5" });
+    expect(request).toHaveBeenCalledWith("/vehicles/22222222-2222-4222-8222-222222222222/meter-readings", {
+      method: "POST",
+      body: { meter_kind: "ODOMETER_KM", value: 1050.5, read_at: "2026-11-16T05:00:00Z" },
+      idempotencyKey: "11111111-1111-4111-8111-111111111111",
+    });
+  });
+
+  it("un relevé dont l'engin n'est pas un identifiant n'est jamais envoyé (pas d'URL forgée)", async () => {
+    const forged = { ...entry("/vehicles/{vehicle_id}/meter-readings"), payload: { vehicle_id: "../admin", value: 1 } };
+    await expect(defaultSyncDeps.send(forged)).rejects.toThrow("Engin invalide");
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it("une route non prise en charge n'est jamais appelée", async () => {
     await expect(defaultSyncDeps.send(entry("/work-orders"))).rejects.toThrow("non prise en charge");
     expect(request).not.toHaveBeenCalled();

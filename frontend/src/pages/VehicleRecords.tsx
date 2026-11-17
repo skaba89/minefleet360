@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router";
 
-import { call, read, type Schemas } from "../api/client";
+import { ApiError, call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, ErrorMessage } from "../components/common";
 import { ActionForm, Options } from "../components/forms";
@@ -15,9 +15,12 @@ import {
   VALIDITY_TONE,
   WITHDRAW_REASONS,
 } from "../lib/labels";
+import { useConnectivity } from "../lib/connectivity";
+import { accountOf, queueMeterReading } from "../lib/hseOfflineSync";
 import { can } from "../lib/permissions";
 import { formatDate, formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
 import { useSites } from "../site/SiteContext";
+import { OfflineIncidentQueue } from "./HseOffline";
 
 type Vehicle = Schemas["VehicleOut"];
 type Category = Schemas["VehicleCategoryOut"];
@@ -36,6 +39,7 @@ export function Meters({ vehicle: v, category }: { vehicle: Vehicle; category: C
   const { timezoneOf } = useSites();
   const tz = timezoneOf(v.site_id);
   const [panel, setPanel] = useState<"reading" | "reset" | null>(null);
+  const [queued, setQueued] = useState(0);
   const kinds = (["ODOMETER_KM", "HOUR_METER"] as const).filter((k) =>
     k === "ODOMETER_KM" ? category?.has_odometer : category?.has_hour_meter,
   );
@@ -80,7 +84,32 @@ export function Meters({ vehicle: v, category }: { vehicle: Vehicle; category: C
           </div>
         ))}
       </dl>
-      {panel && <ReadingForm vehicleId={v.vehicle_id} kinds={kinds} timeZone={tz} reset={panel === "reset"} onCancel={() => setPanel(null)} onDone={done} />}
+      {panel && (
+        <ReadingForm
+          vehicleId={v.vehicle_id}
+          siteId={v.site_id}
+          fleetNumber={v.fleet_number}
+          kinds={kinds}
+          timeZone={tz}
+          reset={panel === "reset"}
+          onCancel={() => setPanel(null)}
+          onDone={done}
+          onQueued={() => {
+            setPanel(null);
+            setQueued((n) => n + 1);
+          }}
+        />
+      )}
+      {can(me.grants, "fleet.meter.record", v.site_id) && (
+        <OfflineIncidentQueue
+          account={accountOf(me)}
+          canSync
+          canOpen
+          timeZone={tz}
+          refreshKey={queued}
+          onSynchronized={() => void queryClient.invalidateQueries({ queryKey: ["meter-readings", v.vehicle_id] })}
+        />
+      )}
       <DataState loading={readings.isLoading} error={readings.error} empty={items.length === 0} emptyText="Aucun relevé.">
         <table>
           <thead>
@@ -109,19 +138,27 @@ export function Meters({ vehicle: v, category }: { vehicle: Vehicle; category: C
 
 function ReadingForm({
   vehicleId,
+  siteId,
+  fleetNumber,
   kinds,
   timeZone,
   reset,
   onCancel,
   onDone,
+  onQueued,
 }: {
   vehicleId: string;
+  siteId: string;
+  fleetNumber: string;
   kinds: MeterKind[];
   timeZone: string;
   reset: boolean;
   onCancel: () => void;
   onDone: () => void;
+  onQueued: () => void;
 }) {
+  const me = useMe();
+  const online = useConnectivity();
   const [form, setForm] = useState({
     meter_kind: kinds[0] as string,
     value: "",
@@ -140,14 +177,40 @@ function ReadingForm({
       danger={reset}
       onCancel={onCancel}
       onDone={onDone}
-      onSubmit={() =>
-        reset
-          ? call("post", "/vehicles/{vehicle_id}/meter-resets", {
-              path: { vehicle_id: vehicleId },
-              body: { ...body, reset_reason: form.reset_reason as ResetReason },
-            })
-          : call("post", "/vehicles/{vehicle_id}/meter-readings", { path: { vehicle_id: vehicleId }, body })
-      }
+      onSubmit={async () => {
+        if (reset) {
+          // Remise à zéro : action motivée réservée, jamais différée hors ligne.
+          await call("post", "/vehicles/{vehicle_id}/meter-resets", {
+            path: { vehicle_id: vehicleId },
+            body: { ...body, reset_reason: form.reset_reason as ResetReason },
+          });
+          return;
+        }
+        const account = accountOf(me);
+        const summary = `${fleetNumber} — ${label(METER_KINDS, body.meter_kind)} ${body.value}`;
+        if (!online) {
+          await queueMeterReading(account, siteId, vehicleId, body, summary);
+          onQueued();
+          return;
+        }
+        // Clé d'idempotence dès l'envoi direct : si la réponse se perd, le relevé part dans la file avec la
+        // même clé et son rejeu renvoie celui déjà créé (aucun doublon).
+        const operationId = crypto.randomUUID();
+        try {
+          await call("post", "/vehicles/{vehicle_id}/meter-readings", {
+            path: { vehicle_id: vehicleId },
+            body,
+            idempotencyKey: operationId,
+          });
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 0) {
+            await queueMeterReading(account, siteId, vehicleId, body, summary, new Date().toISOString(), operationId);
+            onQueued();
+            return;
+          }
+          throw error;
+        }
+      }}
     >
       <label>
         Compteur
@@ -178,7 +241,7 @@ function ReadingForm({
       <p className="muted small">
         {reset
           ? "Réservée à l'atelier et à l'exploitation ; la valeur précédente reste dans l'historique et le journal."
-          : "Un relevé ne peut pas être antérieur au précédent, ni en baisse, ni progresser plus vite que le temps écoulé ne le permet."}
+          : "Un relevé ne peut pas être antérieur au précédent, ni en baisse, ni progresser plus vite que le temps écoulé ne le permet. Sans réseau, il est conservé sur l'appareil (7 jours au plus) et envoyé au retour de la connexion."}
       </p>
     </ActionForm>
   );

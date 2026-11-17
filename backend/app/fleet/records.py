@@ -22,6 +22,7 @@ from app.authz.principal import mask
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.http import PageParams, check_version
+from app.core.idempotency import IdempotencyClaim, complete
 from app.core.logging import security_logger
 from app.core.validity import derive_validity
 from app.fleet.contracts import required_documents
@@ -167,6 +168,7 @@ def _save(
     at: datetime,
     last: VehicleMeterReading | None,
     reset_reason: str | None,
+    idempotency_claim: IdempotencyClaim | None = None,
 ) -> MeterReadingOut:
     db = auth.db
     reading = VehicleMeterReading(
@@ -202,11 +204,35 @@ def _save(
         },
     )
     out = _reading_out(auth, reading)
+    if idempotency_claim is not None:
+        # Clé finalisée dans la transaction du relevé : un échec annule les deux (aucun doublon au rejeu).
+        complete(
+            db,
+            idempotency_claim,
+            response_status=201,
+            resource_type="vehicle_meter_reading",
+            resource_id=reading.vehicle_meter_reading_id,
+            completed_at=auth.clock.now(),
+        )
     db.commit()
     return out
 
 
-def record_reading(auth: Authorized, vehicle_id: uuid.UUID, body: MeterReadingCreate) -> MeterReadingOut:
+def reading_replay(auth: Authorized, vehicle_id: uuid.UUID, reading_id: uuid.UUID) -> MeterReadingOut:
+    """Relevé déjà créé par la même clé : relu dans le périmètre courant (droits revérifiés)."""
+    reading = auth.db.get(VehicleMeterReading, reading_id)
+    if reading is None or reading.vehicle_id != vehicle_id or not auth.scope.covers_site(reading.site_id):
+        raise AppError("IDEMPOTENCY_KEY_REUSED")
+    return _reading_out(auth, reading)
+
+
+def record_reading(
+    auth: Authorized,
+    vehicle_id: uuid.UUID,
+    body: MeterReadingCreate,
+    *,
+    idempotency_claim: IdempotencyClaim | None = None,
+) -> MeterReadingOut:
     """US-2.09 : relevé ordonné et en progression plausible ; jamais en baisse (RM-102)."""
     vehicle, category, at, last = _prepare(auth, vehicle_id, body.meter_kind, body.read_at)
     if last is not None:
@@ -215,7 +241,7 @@ def record_reading(auth: Authorized, vehicle_id: uuid.UUID, body: MeterReadingCr
             raise AppError("VALIDATION_ERROR", details=[{"field": "value", "type": "below_last_reading"}])
         if not _plausible(body.meter_kind, category, delta, at - last.read_at):
             raise AppError("VALIDATION_ERROR", details=[{"field": "value", "type": "implausible_increase"}])
-    return _save(auth, vehicle, body.meter_kind, body.value, at, last, None)
+    return _save(auth, vehicle, body.meter_kind, body.value, at, last, None, idempotency_claim)
 
 
 def reset_meter(auth: Authorized, vehicle_id: uuid.UUID, body: MeterReset) -> MeterReadingOut:
