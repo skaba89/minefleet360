@@ -1722,6 +1722,21 @@ export const GRANTS = {
       "TENANT"
     ]
   },
+  "partner.performance.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "FINANCE": [
+      "TENANT"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "partner.subcontractor.manage": {
     "OPS_MANAGER": [
       "TENANT"

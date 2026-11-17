@@ -252,3 +252,16 @@ def change_status_for_maintenance(
         return False
     service._apply_status(auth, vehicle, target, reason, action, commit=False)
     return True
+
+
+def vehicle_subcontractors(db: Session, vehicle_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, uuid.UUID]:
+    """Rattachement sous-traitant des engins donnés (tenant courant, RLS) ; engins non rattachés absents."""
+    ids = sorted(set(vehicle_ids))
+    if not ids:
+        return {}
+    rows = db.execute(
+        select(Vehicle.vehicle_id, Vehicle.subcontractor_id).where(
+            Vehicle.vehicle_id.in_(ids), Vehicle.subcontractor_id.is_not(None)
+        )
+    ).all()
+    return {vehicle: partner for vehicle, partner in rows if partner is not None}

@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -16,6 +17,9 @@ class SubcontractorCreate(StrictModel):
     tax_id: str | None = Field(default=None, min_length=1, max_length=64)
     country_code: str = Field(default="GN", pattern=r"^[A-Z]{2}$")
     notes: str | None = Field(default=None, max_length=2000)
+    availability_target_percent: Decimal | None = Field(
+        default=None, ge=0, le=100, max_digits=5, decimal_places=2
+    )
 
     @model_validator(mode="after")
     def _not_blank(self) -> "SubcontractorCreate":
@@ -30,6 +34,9 @@ class SubcontractorUpdate(StrictModel):
     tax_id: str | None = Field(default=None, min_length=1, max_length=64)
     country_code: str | None = Field(default=None, pattern=r"^[A-Z]{2}$")
     notes: str | None = Field(default=None, max_length=2000)
+    availability_target_percent: Decimal | None = Field(
+        default=None, ge=0, le=100, max_digits=5, decimal_places=2
+    )
     status: SubcontractorStatus | None = None
     # Obligatoire pour SUSPENDED/ENDED, interdit pour ACTIVE (contrainte ck_subcontractor_reason).
     status_reason: str | None = Field(default=None, min_length=3, max_length=500)
@@ -55,6 +62,7 @@ class SubcontractorOut(BaseModel):
     status: SubcontractorStatus
     status_reason: str | None
     notes: str | None
+    availability_target_percent: Decimal | None = None
     created_at: datetime
     updated_at: datetime
     row_version: int

@@ -202,6 +202,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `dispatch.material.read` | 1c | `GET /materials` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
 | `dispatch.material.manage` | 1c | `POST /materials`<br>`PATCH /materials/{material_id}` | `OPS_MANAGER`, `TENANT_ADMIN` |
 | `partner.subcontractor.read` | 2a | `GET /subcontractors` | `AUDITOR`, `DIRECTION`, `FINANCE`, `HR`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN` |
+| `partner.performance.read` | 2a | `GET /subcontractors/performance` | `AUDITOR`, `DIRECTION`, `FINANCE`, `OPS_MANAGER` |
 | `partner.subcontractor.manage` | 2a | `POST /subcontractors`<br>`PATCH /subcontractors/{subcontractor_id}` | `OPS_MANAGER`, `TENANT_ADMIN` |
 | `dispatch.mission.read` | 1c | `GET /missions`<br>`GET /missions/{mission_id}` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
 | `dispatch.mission.create` | 1c | `POST /missions` | `DISPATCHER`, `OPS_MANAGER` |
@@ -266,8 +267,8 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 |---|---:|---:|
 | `PLATFORM_ADMIN` | 12 | 33 |
 | `TENANT_ADMIN` | 70 | 132 |
-| `DIRECTION` | 37 | 97 |
-| `OPS_MANAGER` | 86 | 182 |
+| `DIRECTION` | 38 | 98 |
+| `OPS_MANAGER` | 87 | 183 |
 | `DISPATCHER` | 37 | 82 |
 | `HR` | 17 | 36 |
 | `DRIVER` | 4 | 16 |
@@ -276,8 +277,8 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `STOREKEEPER` | 17 | 50 |
 | `FUEL_MANAGER` | 28 | 63 |
 | `HSE` | 34 | 80 |
-| `FINANCE` | 25 | 58 |
-| `AUDITOR` | 40 | 102 |
+| `FINANCE` | 26 | 59 |
+| `AUDITOR` | 41 | 103 |
 
 ## 6. Anomalies détectées mécaniquement
 

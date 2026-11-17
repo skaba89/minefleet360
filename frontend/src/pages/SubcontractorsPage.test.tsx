@@ -33,8 +33,29 @@ function show() {
   return client;
 }
 
+const performance = {
+  period_start: "2026-08-18T00:00:00Z",
+  period_end: "2026-11-16T00:00:00Z",
+  tonnage_visible: false,
+  subcontractors: [
+    {
+      subcontractor_id: "st-1", code: "ST-TRANS", legal_name: "Transports Fictifs SARL", status: "ACTIVE",
+      availability_target_percent: "90.00", vehicles: 2, service_hours: "200.00", downtime_hours: "20.00",
+      availability_percent: "90.00", sla_met: true, failures: 1, mtbf_hours: "180.00", mttr_hours: "20.00",
+      operating_hours: null, measured_tonnes: null, tonnes_per_operating_hour: null, tonnage_pending: false,
+    },
+    {
+      subcontractor_id: "st-2", code: "ST-SUSP", legal_name: "Engins Fictifs SA", status: "SUSPENDED",
+      availability_target_percent: "95.00", vehicles: 1, service_hours: "100.00", downtime_hours: "10.00",
+      availability_percent: "90.00", sla_met: false, failures: 1, mtbf_hours: "90.00", mttr_hours: "10.00",
+      operating_hours: null, measured_tonnes: null, tonnes_per_operating_hour: null, tonnage_pending: false,
+    },
+  ],
+};
+
 beforeEach(() => {
-  vi.mocked(read).mockResolvedValue([active, suspended] as never);
+  vi.mocked(read).mockImplementation((async (path: string) =>
+    path === "/subcontractors/performance" ? performance : [active, suspended]) as never);
   vi.mocked(call).mockResolvedValue({ data: active, etag: '"4"' } as never);
 });
 afterEach(() => {
@@ -45,9 +66,11 @@ afterEach(() => {
 
 it("liste les sous-traitants avec leur statut et le motif de suspension", async () => {
   const client = show();
-  expect(await screen.findByText("Transports Fictifs SARL")).toBeTruthy();
-  expect(within(screen.getByRole("table")).getByText("Suspendue")).toBeTruthy();
-  expect(screen.getByText("Assurance expirée")).toBeTruthy();
+  await screen.findAllByText("Transports Fictifs SARL");
+  const list = screen.getAllByRole("table")[0]!; // le référentiel ; la performance suit dans sa propre section
+  expect(within(list).getByText("Transports Fictifs SARL")).toBeTruthy();
+  expect(within(list).getByText("Suspendue")).toBeTruthy();
+  expect(within(list).getByText("Assurance expirée")).toBeTruthy();
   client.clear();
 });
 
@@ -62,7 +85,16 @@ it("création : code, raison sociale, identifiants légaux facultatifs, pays en 
   expect(vi.mocked(call).mock.calls[0]).toEqual([
     "post",
     "/subcontractors",
-    { body: { code: "ST-NEW", legal_name: "Nouvelle Société", registration_number: null, tax_id: null, country_code: "SN" } },
+    {
+      body: {
+        code: "ST-NEW",
+        legal_name: "Nouvelle Société",
+        registration_number: null,
+        tax_id: null,
+        country_code: "SN",
+        availability_target_percent: null,
+      },
+    },
   ]);
   client.clear();
 });
@@ -86,7 +118,7 @@ it("suspension : motif obligatoire, version envoyée en If-Match, seuls les cham
 it("lecture seule : ni création ni modification pour la finance", async () => {
   grants = [{ role_code: "FINANCE", scope_type: "TENANT", site_id: null }];
   const client = show();
-  expect(await screen.findByText("Transports Fictifs SARL")).toBeTruthy();
+  expect((await screen.findAllByText("Transports Fictifs SARL")).length).toBeGreaterThan(0);
   expect(screen.queryByRole("button", { name: "Nouveau sous-traitant" })).toBeNull();
   expect(screen.queryByRole("button", { name: "Modifier" })).toBeNull();
   client.clear();
@@ -97,5 +129,24 @@ it("refuse l'accès sans la permission de lecture, sans appel serveur", () => {
   const client = show();
   expect(screen.getByText("Vous n'avez pas accès à cette page.")).toBeTruthy();
   expect(read).not.toHaveBeenCalled();
+  client.clear();
+});
+
+it("performance : disponibilité mesurée comparée à l'objectif SLA, sans productivité si le tonnage est masqué", async () => {
+  const client = show();
+  const section = await screen.findByRole("region", { name: "Performance des sous-traitants" });
+  expect(await within(section).findByText("Atteint")).toBeTruthy();
+  expect(within(section).getByText("Non atteint")).toBeTruthy();
+  expect(within(section).getByText("180 h")).toBeTruthy();
+  expect(within(section).queryByText(/Productivité/)).toBeNull();
+  client.clear();
+});
+
+it("performance absente sans la permission dédiée (lecture du référentiel seulement)", async () => {
+  grants = [{ role_code: "HSE", scope_type: "TENANT", site_id: null }];
+  const client = show();
+  expect((await screen.findAllByText("Transports Fictifs SARL")).length).toBeGreaterThan(0);
+  expect(screen.queryByRole("region", { name: "Performance des sous-traitants" })).toBeNull();
+  expect(vi.mocked(read).mock.calls.some(([path]) => path === "/subcontractors/performance")).toBe(false);
   client.clear();
 });

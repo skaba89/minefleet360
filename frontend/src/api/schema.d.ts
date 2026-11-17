@@ -2707,6 +2707,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subcontractors/performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Subcontractor Performance
+         * @description Performance mesurée par sous-traitant, à partir des engins rattachés (tranche 3).
+         *
+         *     Réutilise le calcul de fiabilité (durée de service, immobilisation, horamètre, tonnage mesuré) dans la
+         *     portée de l'appelant ; le tonnage reste soumis à `dispatch.indicators.read`. Aucune valeur déclarée par un
+         *     tiers.
+         */
+        get: operations["subcontractor_performance_api_v1_subcontractors_performance_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subcontractors/{subcontractor_id}": {
         parameters: {
             query?: never;
@@ -7649,6 +7673,23 @@ export interface components {
              */
             work_order_id: string;
         };
+        /** PerformanceOut */
+        PerformanceOut: {
+            /**
+             * Period End
+             * Format: date-time
+             */
+            period_end: string;
+            /**
+             * Period Start
+             * Format: date-time
+             */
+            period_start: string;
+            /** Subcontractors */
+            subcontractors: components["schemas"]["SubcontractorPerformance"][];
+            /** Tonnage Visible */
+            tonnage_visible: boolean;
+        };
         /** PhonePointIn */
         PhonePointIn: {
             /** Accuracy M */
@@ -8792,6 +8833,8 @@ export interface components {
         };
         /** SubcontractorCreate */
         SubcontractorCreate: {
+            /** Availability Target Percent */
+            availability_target_percent?: number | string | null;
             /** Code */
             code: string;
             /**
@@ -8810,6 +8853,8 @@ export interface components {
         };
         /** SubcontractorOut */
         SubcontractorOut: {
+            /** Availability Target Percent */
+            availability_target_percent?: string | null;
             /** Code */
             code: string;
             /** Country Code */
@@ -8847,8 +8892,50 @@ export interface components {
              */
             updated_at: string;
         };
+        /** SubcontractorPerformance */
+        SubcontractorPerformance: {
+            /** Availability Percent */
+            availability_percent: string | null;
+            /** Availability Target Percent */
+            availability_target_percent: string | null;
+            /** Code */
+            code: string;
+            /** Downtime Hours */
+            downtime_hours: string;
+            /** Failures */
+            failures: number;
+            /** Legal Name */
+            legal_name: string;
+            /** Measured Tonnes */
+            measured_tonnes: string | null;
+            /** Mtbf Hours */
+            mtbf_hours: string | null;
+            /** Mttr Hours */
+            mttr_hours: string | null;
+            /** Operating Hours */
+            operating_hours: string | null;
+            /** Service Hours */
+            service_hours: string;
+            /** Sla Met */
+            sla_met: boolean | null;
+            /** Status */
+            status: string;
+            /**
+             * Subcontractor Id
+             * Format: uuid
+             */
+            subcontractor_id: string;
+            /** Tonnage Pending */
+            tonnage_pending: boolean;
+            /** Tonnes Per Operating Hour */
+            tonnes_per_operating_hour: string | null;
+            /** Vehicles */
+            vehicles: number;
+        };
         /** SubcontractorUpdate */
         SubcontractorUpdate: {
+            /** Availability Target Percent */
+            availability_target_percent?: number | string | null;
             /** Country Code */
             country_code?: string | null;
             /** Legal Name */
@@ -17169,6 +17256,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubcontractorOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    subcontractor_performance_api_v1_subcontractors_performance_get: {
+        parameters: {
+            query?: {
+                from?: string | null;
+                to?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PerformanceOut"];
                 };
             };
             /** @description Validation Error */
