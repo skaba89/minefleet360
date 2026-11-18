@@ -10,7 +10,7 @@
 
 import uuid
 from collections import defaultdict
-from datetime import timedelta
+from datetime import UTC, timedelta
 from typing import Any
 
 from sqlalchemy import func, select, text
@@ -18,6 +18,7 @@ from sqlalchemy import func, select, text
 from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.authz.principal import evaluate
+from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.http import PageParams, check_version
 from app.core.idempotency import IdempotencyClaim, complete
@@ -347,8 +348,15 @@ def _create_work_order_uncommitted(auth: Authorized, body: WorkOrderCreate) -> W
     locked = vehicle_facts(db, [body.vehicle_id], lock=True).get(body.vehicle_id)
     if locked is None or locked.site_id != facts.site_id or locked.status == "RETIRED":
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "vehicle_id"}])
-    immobilized = _immobilize(auth, body.vehicle_id) if body.immobilize else False
     now = auth.clock.now()
+    reported_at = now
+    if body.reported_at is not None:
+        settings = get_settings()
+        at = body.reported_at.astimezone(UTC)
+        if at > now + settings.clock_skew_tolerance or at < now - settings.field_backdate_tolerance:
+            raise AppError("VALIDATION_ERROR", details=[{"field": "reported_at", "type": "out_of_tolerance"}])
+        reported_at = min(at, now)  # avance d'horloge tolérée ramenée à l'heure serveur
+    immobilized = _immobilize(auth, body.vehicle_id) if body.immobilize else False
     order = WorkOrder(
         tenant_id=auth.tenant_id,
         # Numéro pris en dernier : le verrou du compteur du tenant est tenu le moins longtemps (L3A-R-10).
@@ -361,7 +369,7 @@ def _create_work_order_uncommitted(auth: Authorized, body: WorkOrderCreate) -> W
         description=(body.description or "").strip() or None,
         immobilize=body.immobilize,
         immobilized_vehicle=immobilized,
-        reported_at=now,
+        reported_at=reported_at,
         reported_by=auth.user_id,
         created_by=auth.user_id,
         updated_by=auth.user_id,
@@ -386,9 +394,21 @@ def _create_work_order_uncommitted(auth: Authorized, body: WorkOrderCreate) -> W
     return out
 
 
-def create_work_order(auth: Authorized, body: WorkOrderCreate) -> WorkOrderOut:
+def create_work_order(
+    auth: Authorized, body: WorkOrderCreate, *, idempotency_claim: IdempotencyClaim | None = None
+) -> WorkOrderOut:
     """US-3.01 : conserve la transaction existante pour l’API corrective."""
     out = _create_work_order_uncommitted(auth, body)
+    if idempotency_claim is not None:
+        # Signalement rejoué depuis l'outbox : clé finalisée dans la transaction de l'OT (aucun doublon).
+        complete(
+            auth.db,
+            idempotency_claim,
+            response_status=201,
+            resource_type="work_order",
+            resource_id=out.work_order_id,
+            completed_at=auth.clock.now(),
+        )
     auth.db.commit()
     return out
 

@@ -1,5 +1,6 @@
 /**
- * Saisies terrain hors ligne (incidents et inspections HSE, relevés de compteur) : file outbox de bout en bout.
+ * Saisies terrain hors ligne (incidents et inspections HSE, relevés de compteur, signalements de panne) :
+ * file outbox de bout en bout.
  *
  * - La saisie est enregistrée dans l'outbox IndexedDB, liée au tenant, au compte et au site.
  * - La synchronisation est déclenchée explicitement (retour du réseau, bouton, minuterie), sous verrou
@@ -16,6 +17,7 @@ import {
   isSyncableEndpoint,
   listForAccount,
   METER_READING_ENDPOINT,
+  WORK_ORDER_ENDPOINT,
   updateEntry,
   type OutboxEntry,
 } from "./offline-outbox";
@@ -122,11 +124,50 @@ export async function queueMeterReading(
   return entry;
 }
 
+export type BreakdownDraft = Schemas["WorkOrderCreate"] & { reported_at: string };
+
+/**
+ * Signalement de panne saisi sans réseau : `reported_at` porte l'heure du constat ; une panne bloquante
+ * n'immobilise l'engin qu'à la synchronisation (l'écran le signale).
+ */
+export async function queueBreakdown(
+  account: Account,
+  siteId: string,
+  body: BreakdownDraft,
+  summary: string,
+  nowIso = new Date().toISOString(),
+  operationId: string = crypto.randomUUID(),
+): Promise<OutboxEntry> {
+  const entry: OutboxEntry = {
+    operationId,
+    tenantId: account.tenantId,
+    userId: account.userId,
+    siteId,
+    endpoint: WORK_ORDER_ENDPOINT,
+    payload: { ...body },
+    createdAt: nowIso,
+    status: "pending",
+    attempts: 0,
+    summary: summary.slice(0, 200),
+  };
+  await enqueue(entry);
+  return entry;
+}
+
 export async function countUnsynchronized(account: Account): Promise<number> {
   return (await listForAccount(account)).filter((e) => e.status === "pending" || e.status === "syncing").length;
 }
 
 async function sendEntry(entry: OutboxEntry): Promise<{ id: string; reference: string }> {
+  if (entry.endpoint === WORK_ORDER_ENDPOINT) {
+    const { data } = await request<Schemas["WorkOrderOut"]>(entry.endpoint, {
+      method: "POST",
+      body: entry.payload,
+      idempotencyKey: entry.operationId,
+    });
+    if (!data?.work_order_id || !data.reference) throw new Error("Accusé de réception serveur incomplet");
+    return { id: data.work_order_id, reference: data.reference };
+  }
   if (entry.endpoint === METER_READING_ENDPOINT) {
     const { vehicle_id: vehicleId, ...body } = entry.payload;
     if (typeof vehicleId !== "string" || !/^[0-9a-f-]{36}$/i.test(vehicleId)) throw new Error("Engin invalide");

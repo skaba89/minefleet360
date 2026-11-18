@@ -59,6 +59,8 @@ class WorkOrderCreate(StrictModel):
     # Panne bloquante : véhicule immobilisé et mission en cours suspendue (D-44).
     immobilize: bool = False
     mission_id: uuid.UUID | None = None
+    # Heure du constat (saisie hors ligne différée) ; par défaut l'heure de réception par le serveur.
+    reported_at: AwareDatetime | None = None
 
 
 class WorkOrderDecision(StrictModel):

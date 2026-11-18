@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     indicators_max_period: timedelta = timedelta(days=92)
     # Compteurs (lot 2c, RM-101, RM-103) : valeurs de développement à valider avec l'atelier.
     meter_backdate_tolerance: timedelta = timedelta(days=7)
+    # Saisies terrain différées (outbox, 7 jours de rétention) : heure du constat acceptée dans ce délai.
+    field_backdate_tolerance: timedelta = timedelta(days=7)
     # Plafond des catégories propres au tenant ; les catégories du catalogue ont le leur (D-43).
     meter_max_kmh: int = Field(default=120, ge=10, le=300)
     # Documents des véhicules (D-42) : alerte d'échéance, document exigé jamais saisi (avertissement le

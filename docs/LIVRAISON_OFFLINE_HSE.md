@@ -161,3 +161,30 @@ Photos en ligne uniquement. Appareil Android réel non essayé (`docs/qa/PROTOCO
   - Playwright `e2e-field/meter-offline.spec.ts` : coupure puis synchronisation unique, réponse perdue sans
     doublon.
 - **Non fait** : essai sur un téléphone Android réel en réseau intermittent.
+
+## Extension aux signalements de panne — phase 4 (17 novembre 2026)
+
+- **Serveur** :
+  - `POST /work-orders` accepte `Idempotency-Key`, sur le même modèle que les autres saisies terrain. La clé est
+    finalisée dans la transaction de l'OT. Un rejeu renvoie l'OT d'origine et sa référence ; la même clé avec un
+    autre contenu donne `IDEMPOTENCY_KEY_REUSED`.
+  - Nouveau champ facultatif `reported_at`, l'heure du constat, accepté entre maintenant − 7 jours
+    (`field_backdate_tolerance`) et maintenant + la tolérance de dérive d'horloge. Sans lui, le comportement est
+    inchangé (heure de réception). Les indicateurs de fiabilité utilisent ainsi l'heure réelle de la panne.
+- **Application** :
+  - le formulaire « Signaler une panne » met le signalement en file sans réseau, ou si la réponse se perd, avec
+    la même clé ;
+  - la file s'affiche et se synchronise depuis la page Atelier ;
+  - une panne bloquante saisie hors ligne affiche un avertissement : l'immobilisation et la suspension de
+    mission ne prennent effet qu'à la synchronisation, il faut donc prévenir le répartiteur par radio.
+- **Limites** :
+  - la liste des engins doit avoir été chargée avant la coupure : l'ouverture de l'application sans réseau
+    n'est pas couverte ;
+  - l'engin est immobilisé à la synchronisation et non à l'heure du constat.
+- **Tests** :
+  - pytest `tests/test_breakdown_offline.py` : rejeu unique avec l'heure du constat, immobilisation, audit
+    unique, clé réutilisée, tolérance, rejet sans consommation de la clé, clé par compte, droits, autre site ;
+  - Vitest : envoi vers `/work-orders` ;
+  - Playwright `e2e-field/breakdown-offline.spec.ts` : coupure puis synchronisation unique, réponse perdue sans
+    doublon.
+- **Non fait** : essai sur un téléphone Android réel.

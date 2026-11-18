@@ -73,8 +73,22 @@ describe("envoi d'une opération hors ligne vers sa route", () => {
     expect(request).not.toHaveBeenCalled();
   });
 
+  it("un signalement de panne part vers /work-orders avec sa clé et l'heure du constat", async () => {
+    vi.mocked(request).mockResolvedValue({ data: { work_order_id: "ot-1", reference: "OT-000001" } } as never);
+    const breakdown = {
+      ...entry("/work-orders"),
+      payload: { vehicle_id: "v1", symptom_code: "BRAKES", immobilize: true, reported_at: "2026-11-16T05:00:00Z" },
+    };
+    expect(await defaultSyncDeps.send(breakdown)).toEqual({ id: "ot-1", reference: "OT-000001" });
+    expect(request).toHaveBeenCalledWith("/work-orders", {
+      method: "POST",
+      body: breakdown.payload,
+      idempotencyKey: "11111111-1111-4111-8111-111111111111",
+    });
+  });
+
   it("une route non prise en charge n'est jamais appelée", async () => {
-    await expect(defaultSyncDeps.send(entry("/work-orders"))).rejects.toThrow("non prise en charge");
+    await expect(defaultSyncDeps.send(entry("/fuel/issues"))).rejects.toThrow("non prise en charge");
     expect(request).not.toHaveBeenCalled();
   });
 });

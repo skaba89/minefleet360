@@ -161,7 +161,7 @@ describe("synchronisation des déclarations HSE hors ligne", () => {
   });
 
   it("une opération d'une route non activée n'est jamais envoyée", async () => {
-    const { store, deps } = harness([entry("a", { endpoint: "/work-orders" })], async () => ({ id: "x", reference: "y" }));
+    const { store, deps } = harness([entry("a", { endpoint: "/fuel/issues" })], async () => ({ id: "x", reference: "y" }));
     await syncAccount(account, deps);
     expect(deps.send).not.toHaveBeenCalled();
     expect(store.get("a")).toMatchObject({ status: "pending" });
