@@ -216,8 +216,8 @@ admis pour une saisie différée est de 12 h, et l'étape est marquée comme dif
     ressaisir) ;
   - l'ouverture de l'application sans réseau sur une mission non chargée n'est pas couverte.
 - **Tests** :
-  - pytest `tests/test_mission_events_offline.py` : 5 h acceptées avec marquage `MOBILE`, en ligne refusé, rejeu
-    sans doublon, audit, 13 h refusées, réaffectation, état incompatible, suspension non différable, identifiant
+  - pytest `tests/test_mission_events_offline.py` : tolérance hors ligne appliquée (bornes réduites par configuration), marquage `MOBILE`, en ligne refusé, rejeu
+    sans doublon, audit, au-delà de la tolérance refusé, défaut 12 h, réaffectation, état incompatible, suspension non différable, identifiant
     obligatoire ;
   - Vitest : projection, sélection de la file, envoi avec relecture de version, URL forgée ;
   - Playwright `e2e-field/mission-offline.spec.ts`.
