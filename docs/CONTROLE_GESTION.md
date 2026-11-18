@@ -56,8 +56,10 @@ l'heure, à la tonne mesurée et à la mission, totaux par site et historique (`
   - `TONNE` : tonnes nettes des pesées valides des missions rattachées, tarif en vigueur à la date (UTC) de pesée ;
     une saisie dégradée non approuvée est exclue et signalée ;
   - `MISSION` : forfait par mission terminée, tarif en vigueur à la date (UTC) de fin ;
-  - `HOUR` / `KM` : les compteurs sont par engin, pas par mission : quantité non mesurée, revenu
-    « insuffisant » — aucune répartition inventée (à traiter avec une règle validée) ;
+  - `HOUR` / `KM` (décision du 18 novembre 2026) : quantité = relevé du compteur de l'engin juste après la
+    fin de mission − relevé juste avant le départ, chacun dans une fenêtre de 2 h. Sans ces deux relevés, avec
+    une remise à zéro entre les deux, ou si la mission a été réaffectée à un autre engin : « insuffisant », sans
+    estimation ;
   - sans tarif en vigueur : « partiel » (minimum) s'il existe d'autres montants, sinon « insuffisant ».
 - Marge du site = revenus des contrats − coût complet des engins du site, seulement dans la même devise ; les
   missions terminées sans contrat sont comptées et signalées (leur revenu n'est pas connu).
@@ -69,4 +71,3 @@ l'heure, à la tonne mesurée et à la mission, totaux par site et historique (`
 4. Coût du parc sous-traité (prix payé + coûts internes) et comparaison parc propre / sous-traité — après la
    facturation prestataire.
 5. Exports Excel/PDF des tableaux financiers (le CSV est disponible).
-6. Revenus `HOUR` / `KM` : règle de mesure par mission à valider (horamètre/odomètre aux bornes de la mission).
