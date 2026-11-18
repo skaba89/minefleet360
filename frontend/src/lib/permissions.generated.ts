@@ -1072,6 +1072,9 @@ export const GRANTS = {
     "DISPATCHER": [
       "SITE"
     ],
+    "DRIVER": [
+      "SITE"
+    ],
     "FUEL_MANAGER": [
       "TENANT",
       "SITE"
