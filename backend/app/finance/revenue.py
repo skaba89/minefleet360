@@ -4,8 +4,9 @@ Décision du 17 novembre 2026 : revenu = tarif en vigueur × quantité MESURÉE,
 - TONNE : tonnes nettes des pesées valides des missions rattachées au contrat (pesée non annulée ; saisie
   dégradée seulement si approuvée), tarif en vigueur à la date UTC de la pesée ;
 - MISSION : forfait par mission terminée sur la période, tarif en vigueur à la date UTC de fin ;
-- HOUR / KM : aucune mesure par mission n'existe encore (compteurs par engin, non par mission) : quantité
-  non mesurée, revenu « insuffisant » ; aucune répartition inventée ;
+- HOUR / KM (décision du 18 novembre 2026) : quantité = relevé du compteur de l'engin juste après la fin
+  moins relevé juste avant le départ, chacun dans une fenêtre de 2 h ; sans ces deux relevés, avec une remise
+  à zéro entre les deux ou une mission réaffectée (autre engin) : quantité non mesurée, « insuffisant » ;
 - pas de tarif en vigueur à la date d'un fait mesuré : revenu « partiel » (minimum) ou « insuffisant » ;
 - pesée dégradée en attente d'approbation : exclue et signalée (revenu « partiel »).
 Marge du site = revenus des contrats − coût complet des engins du site (`vehicle_costs`), seulement dans une
@@ -15,7 +16,7 @@ même devise. Les missions terminées sans contrat rendent la marge « partielle
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Literal
 
@@ -26,6 +27,7 @@ from app.authz.dependencies import Authorized
 from app.costs.service import CENT, SEVERITY, site_totals, vehicle_costs
 from app.dispatch.models import Mission, MissionEvent, WeighingTicket, WeighingTicketDecision
 from app.finance.models import ContractTariff
+from app.fleet.models import VehicleMeterReading
 from app.legal.contracts import contract_references
 
 Status = Literal["COMPLETE", "PARTIAL", "INSUFFICIENT"]
@@ -40,6 +42,8 @@ class ContractRevenue(BaseModel):
     currency: str | None
     status: Status
     tonnes: Decimal  # tonnes nettes mesurées valorisées ou non
+    hours: Decimal = Decimal("0")  # heures moteur mesurées (début/fin de mission) et valorisées
+    km: Decimal = Decimal("0")  # km mesurés (début/fin de mission) et valorisés
     missions_completed: int
     missing: list[str]
 
@@ -62,6 +66,8 @@ class _Acc:
     site_id: uuid.UUID
     amounts: dict[str, Decimal] = field(default_factory=lambda: defaultdict(Decimal))
     tonnes: Decimal = Decimal("0")
+    hours: Decimal = Decimal("0")
+    km: Decimal = Decimal("0")
     missions: int = 0
     missing: set[str] = field(default_factory=set)
     valued: bool = False
@@ -71,6 +77,67 @@ class _Acc:
         if not self.missing:
             return "COMPLETE"
         return "PARTIAL" if self.valued and len(self.amounts) == 1 else "INSUFFICIENT"
+
+
+METER_WINDOW = timedelta(hours=2)
+METER_KIND = {"HOUR": "HOUR_METER", "KM": "ODOMETER_KM"}
+
+
+def _measured(
+    auth: Authorized, mission_id: uuid.UUID, vehicle_id: uuid.UUID, basis: str, finished_at: datetime
+) -> tuple[Decimal | None, str]:
+    """Heures moteur ou km de la mission : relevé après la fin − relevé avant le départ (fenêtres de 2 h)."""
+    db = auth.db
+    events = db.execute(
+        select(MissionEvent.event_type, func.min(MissionEvent.occurred_at))
+        .where(MissionEvent.mission_id == mission_id, MissionEvent.event_type.in_(("DEPARTED", "REASSIGNED")))
+        .group_by(MissionEvent.event_type)
+    ).all()
+    seen = dict(events)
+    if "REASSIGNED" in seen:
+        return None, "mission réaffectée : compteur d'un seul engin non mesurable"
+    departed = seen.get("DEPARTED")
+    if departed is None:
+        return None, "départ non enregistré"
+    kind = METER_KIND[basis]
+    readings = VehicleMeterReading
+    before = db.execute(
+        select(readings.value, readings.read_at)
+        .where(
+            readings.vehicle_id == vehicle_id,
+            readings.meter_kind == kind,
+            readings.read_at <= departed,
+            readings.read_at >= departed - METER_WINDOW,
+        )
+        .order_by(readings.read_at.desc())
+        .limit(1)
+    ).first()
+    after = db.execute(
+        select(readings.value, readings.read_at)
+        .where(
+            readings.vehicle_id == vehicle_id,
+            readings.meter_kind == kind,
+            readings.read_at >= finished_at,
+            readings.read_at <= finished_at + METER_WINDOW,
+        )
+        .order_by(readings.read_at.asc())
+        .limit(1)
+    ).first()
+    if before is None or after is None:
+        side = "au départ" if before is None else "à la fin"
+        return None, f"relevé {kind} manquant {side} (fenêtre de 2 h)"
+    reset = db.execute(
+        select(func.count()).where(
+            readings.vehicle_id == vehicle_id,
+            readings.meter_kind == kind,
+            readings.reset_reason.is_not(None),
+            readings.read_at > before.read_at,
+            readings.read_at <= after.read_at,
+        )
+    ).scalar_one()
+    if reset or after.value < before.value:
+        return None, f"remise à zéro du compteur {kind} pendant la mission"
+    return after.value - before.value, ""
 
 
 def _tariffs(auth: Authorized, contract_ids: set[uuid.UUID]) -> dict[uuid.UUID, list[ContractTariff]]:
@@ -130,7 +197,13 @@ def contract_revenues(
         )
     ).all()
     completed = db.execute(
-        select(Mission.contract_id, Mission.site_id, func.min(MissionEvent.occurred_at))
+        select(
+            Mission.contract_id,
+            Mission.site_id,
+            func.min(MissionEvent.occurred_at),
+            Mission.mission_id,
+            Mission.vehicle_id,
+        )
         .join(MissionEvent, MissionEvent.mission_id == Mission.mission_id)
         .where(
             *scope,
@@ -138,7 +211,7 @@ def contract_revenues(
             MissionEvent.occurred_at >= start,
             MissionEvent.occurred_at < end,
         )
-        .group_by(Mission.mission_id, Mission.contract_id, Mission.site_id)
+        .group_by(Mission.mission_id, Mission.contract_id, Mission.site_id, Mission.vehicle_id)
     ).all()
     contract_ids = {r[0] for r in tickets if r[0]} | {r[0] for r in completed if r[0]}
     versions = _tariffs(auth, contract_ids)
@@ -153,9 +226,9 @@ def contract_revenues(
         a.tonnes += tonnes
         day = weighed_at.date()
         tariff = _in_force(versions[contract_id], day)
-        if tariff is None or tariff.basis in ("TONNE", "HOUR", "KM"):
+        if tariff is None or tariff.basis == "TONNE":
             _value(a, tariff, "TONNE", tonnes, day)
-    for contract_id, site_id, finished_at in completed:
+    for contract_id, site_id, finished_at, mission_id, vehicle_id in completed:
         assert contract_id is not None  # filtré par la requête
         a = acc.setdefault(contract_id, _Acc(site_id))
         a.missions += 1
@@ -164,7 +237,15 @@ def contract_revenues(
         if tariff is None or tariff.basis == "MISSION":
             _value(a, tariff, "MISSION", Decimal("1"), day)
         elif tariff.basis in ("HOUR", "KM"):
-            _value(a, tariff, "MISSION", Decimal("0"), day)  # signale la quantité non mesurée
+            quantity, reason = _measured(auth, mission_id, vehicle_id, tariff.basis, finished_at)
+            if quantity is None:
+                a.missing.add(f"tarif {tariff.basis} : {reason}")
+            else:
+                _value(a, tariff, tariff.basis, quantity, day)
+                if tariff.basis == "HOUR":
+                    a.hours += quantity
+                else:
+                    a.km += quantity
     references = contract_references(db, set(acc))
     out = []
     for contract_id, a in acc.items():
@@ -181,6 +262,8 @@ def contract_revenues(
                 currency=currency,
                 status=a.status,
                 tonnes=a.tonnes.quantize(Decimal("0.001")),
+                hours=a.hours.quantize(Decimal("0.1")),
+                km=a.km.quantize(Decimal("0.1")),
                 missions_completed=a.missions,
                 missing=sorted(a.missing),
             )

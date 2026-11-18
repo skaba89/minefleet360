@@ -1,5 +1,8 @@
 """Revenus par contrat (tarif × quantité mesurée) et marge par site (contrôle de gestion, tranche 3)."""
 
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+
 from fastapi.testclient import TestClient
 
 from tests.conftest import API, Api
@@ -130,3 +133,46 @@ def test_flat_fee_unmeasured_basis_missing_tariff_and_access(client: TestClient,
         params={"from": "2025-01-01T00:00:00Z", "to": "2026-06-01T00:00:00Z"},
     )
     assert too_long.status_code == 422
+
+
+def test_hour_or_km_revenue_from_meter_readings_around_the_mission(
+    client: TestClient,
+    w: World,  # noqa: F811
+    api: Api,
+) -> None:
+    """Décision du 18 novembre 2026 : relevé après la fin − relevé avant le départ, fenêtres de 2 h."""
+    started = datetime.now(UTC)
+    mid = _trip(client, w, None)  # trajet de référence : engin et catégorie
+    mission = client.get(f"{API}/missions/{mid}", headers=w.ops.headers).json()
+    vehicle = client.get(f"{API}/vehicles/{mission['vehicle_id']}", headers=w.ops.headers).json()
+    category = next(
+        c
+        for c in client.get(f"{API}/vehicle-categories", headers=w.t.admin.headers).json()
+        if c["vehicle_category_id"] == vehicle["vehicle_category_id"]
+    )
+    basis, kind, delta = (
+        ("KM", "ODOMETER_KM", "12.5") if category["has_odometer"] else ("HOUR", "HOUR_METER", "0.4")
+    )
+    contract = _billable(client, w, api, {"basis": basis, "unit_price": "10000.0000"})
+    measured = _trip(client, w, contract)
+    unmeasured = _trip(client, w, contract)
+    target = client.get(f"{API}/missions/{measured}", headers=w.ops.headers).json()["vehicle_id"]
+    for value, at in (
+        ("1000.0", started - timedelta(minutes=30)),
+        (str(1000 + float(delta)), datetime.now(UTC)),
+    ):
+        reading = client.post(
+            f"{API}/vehicles/{target}/meter-readings",
+            headers=w.ops.headers,
+            json={"meter_kind": kind, "value": value, "read_at": at.isoformat()},
+        )
+        assert reading.status_code == 201, reading.text
+    assert unmeasured  # mission du même contrat sans relevé : signalée, jamais estimée
+
+    report = _report(client, api.user(w.t, "FINANCE").headers)
+    row = next(c for c in report["contracts"] if c["contract_id"] == contract)
+    expected = (Decimal(delta) * Decimal("10000")).quantize(Decimal("0.01"))
+    assert row["amount"] == str(expected) and row["currency"] == "GNF"
+    assert row[basis.lower() if basis == "KM" else "hours"] == delta
+    assert row["status"] == "PARTIAL" and row["missions_completed"] == 2
+    assert any("manquant au départ" in m for m in row["missing"])

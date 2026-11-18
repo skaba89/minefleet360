@@ -4664,6 +4664,16 @@ export interface components {
             contract_reference: string;
             /** Currency */
             currency: string | null;
+            /**
+             * Hours
+             * @default 0
+             */
+            hours: string;
+            /**
+             * Km
+             * @default 0
+             */
+            km: string;
             /** Missing */
             missing: string[];
             /** Missions Completed */

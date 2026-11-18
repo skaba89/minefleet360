@@ -44,7 +44,7 @@ export function ContractRevenueSection({ days }: { days: string }) {
         <h2>Revenus et marges</h2>
         <ExportButton
           run={async () => {
-            const header = ["Contrat", "Site", "Revenu", "Devise", "Statut", "Tonnes mesurées", "Missions terminées", "Manques"];
+            const header = ["Contrat", "Site", "Revenu", "Devise", "Statut", "Tonnes mesurées", "Heures mesurées", "Km mesurés", "Missions terminées", "Manques"];
             const data = contracts.map((c) => [
               c.contract_reference,
               siteCode.get(c.site_id) ?? c.site_id,
@@ -52,6 +52,8 @@ export function ContractRevenueSection({ days }: { days: string }) {
               c.currency ?? "",
               STATUS_LABEL[c.status],
               c.tonnes,
+              c.hours ?? "",
+              c.km ?? "",
               c.missions_completed,
               c.missing.join(" | "),
             ]);
@@ -112,7 +114,9 @@ export function ContractRevenueSection({ days }: { days: string }) {
                   {c.missing.length > 0 && <div className="small muted">{c.missing.join(" ; ")}</div>}
                 </td>
                 <td>
-                  {c.tonnes} t · {c.missions_completed} mission(s) terminée(s)
+                  {c.tonnes} t
+                  {Number(c.hours ?? 0) > 0 && ` · ${c.hours} h moteur`}
+                  {Number(c.km ?? 0) > 0 && ` · ${c.km} km`} · {c.missions_completed} mission(s) terminée(s)
                 </td>
               </tr>
             ))}
@@ -120,7 +124,8 @@ export function ContractRevenueSection({ days }: { days: string }) {
         </table>
       </DataState>
       <p className="muted small">
-        Revenu = tarif en vigueur × quantité mesurée (pesées valides, missions terminées). Marge = revenus − coût complet des
+        Revenu = tarif en vigueur × quantité mesurée (pesées valides, missions terminées, compteur relevé avant le départ
+        et après la fin de mission, à 2 h près). Marge = revenus − coût complet des
         engins du site, sans conversion de devises ; les missions sans contrat ne sont pas valorisées.
       </p>
     </section>
