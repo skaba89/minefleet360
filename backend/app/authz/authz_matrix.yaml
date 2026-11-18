@@ -1346,6 +1346,9 @@ permissions:
       MECHANIC: [TENANT, SITE]
       FUEL_MANAGER: [TENANT, SITE]
       HSE: [TENANT, SITE]
+      # Conducteur (décision du 18 novembre 2026) : checklist « Prise de poste » seulement, sur son site ;
+      # restriction appliquée par le service (modèles PRE_SHIFT, preuves de ses propres inspections).
+      DRIVER: [SITE]
   hse.checklist.manage:
     tranche: 1c
     kind: action
