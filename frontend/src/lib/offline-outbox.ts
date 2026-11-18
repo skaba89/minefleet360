@@ -38,11 +38,14 @@ export const HSE_INSPECTION_ENDPOINT = "/hse/inspections";
 export const METER_READING_ENDPOINT = "/vehicles/{vehicle_id}/meter-readings";
 /** Signalement de panne (ordre de travail demandé) : création append-only et idempotente. */
 export const WORK_ORDER_ENDPOINT = "/work-orders";
+/** Avancement de mission différé : la mission est dans la charge utile, l'URL réelle est résolue à l'envoi. */
+export const MISSION_EVENT_ENDPOINT = "/missions/{mission_id}/events";
 const ENABLED_ENDPOINTS: ReadonlySet<string> = new Set([
   HSE_INCIDENT_ENDPOINT,
   HSE_INSPECTION_ENDPOINT,
   METER_READING_ENDPOINT,
   WORK_ORDER_ENDPOINT,
+  MISSION_EVENT_ENDPOINT,
 ]);
 
 /** Route synchronisable hors ligne : création append-only et idempotente côté serveur (Idempotency-Key). */

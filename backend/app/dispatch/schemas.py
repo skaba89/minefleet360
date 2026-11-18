@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
 from app.core.http import StrictModel
 
@@ -20,6 +20,11 @@ MissionStatus = Literal[
     "CANCELLED",
 ]
 # Événements déclarés par le dispatcher (2a) ; CREATED est écrit par le serveur.
+# Événements admis en saisie différée hors ligne : avancement seulement (jamais suspension, réaffectation,
+# annulation, qui restent des décisions en ligne).
+DEFERRABLE_EVENTS = frozenset(
+    {"DEPARTED", "ARRIVED_LOADING", "LOADED", "ARRIVED_UNLOADING", "UNLOADED", "COMPLETED"}
+)
 EventType = Literal[
     "DEPARTED",
     "ARRIVED_LOADING",
@@ -113,6 +118,20 @@ class MissionEventCreate(StrictModel):
     reason_code: MissionReason | None = None
     # Réaffectation (US-2.03) : nouvelle affectation du même site.
     vehicle_assignment_id: uuid.UUID | None = None
+    # Saisie terrain différée (file hors ligne, décision du 18 novembre 2026) : antidatage jusqu'à 12 h,
+    # événement marqué MOBILE ; avancement seulement, identifiant client et heure déclarée obligatoires.
+    deferred: bool = False
+    # Affectation connue au moment de la saisie : une mission réaffectée entre-temps refuse l'événement.
+    expected_vehicle_assignment_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def _deferred_is_progress_only(self) -> "MissionEventCreate":
+        if self.deferred:
+            if self.event_type not in DEFERRABLE_EVENTS:
+                raise ValueError("saisie différée : avancement de mission seulement")
+            if self.client_event_id is None or self.occurred_at is None:
+                raise ValueError("saisie différée : client_event_id et occurred_at obligatoires")
+        return self
 
 
 class EventOut(BaseModel):

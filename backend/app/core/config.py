@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     blocking_list_max: int = 20
     # Affectations (D-13, US-1.22/1.23) : valeurs de développement à arbitrer (Q21, Q22).
     assignment_backdate_tolerance: timedelta = timedelta(minutes=15)
+    # Événements de mission saisis hors ligne (décision du 18 novembre 2026) : marqués MOBILE (différés).
+    mission_offline_backdate_tolerance: timedelta = timedelta(hours=12)
     assignment_end_future_tolerance: timedelta = timedelta(minutes=5)
     clock_skew_tolerance: timedelta = timedelta(minutes=5)
     # Statut de sécurité (immobilisation, atelier, suspension…) d'une ressource affectée (D-41) :

@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 
-import { call, read, type Schemas } from "../api/client";
+import { ApiError, call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, ErrorMessage } from "../components/common";
 import { ActionForm, Fact, Options } from "../components/forms";
@@ -17,9 +17,14 @@ import {
   ROTATION_STATUS,
   WEIGHING_STATUS,
 } from "../lib/labels";
+import { useConnectivity } from "../lib/connectivity";
+import { accountOf } from "../lib/hseOfflineSync";
+import { listForAccount, type OutboxEntry } from "../lib/offline-outbox";
+import { DEFERRABLE, pendingEventsOf, projectMission, queueMissionEvent, type ProgressEvent } from "../lib/offlineMissionEvents";
 import { can } from "../lib/permissions";
 import { formatDateTime } from "../lib/time";
 import { useSites } from "../site/SiteContext";
+import { OfflineIncidentQueue } from "./HseOffline";
 import { WeighingForm } from "./WeighingPages";
 
 type Mission = Schemas["MissionOut"];
@@ -27,7 +32,7 @@ type EventType = Schemas["MissionEventCreate"]["event_type"];
 type Reason = NonNullable<Schemas["MissionEventCreate"]["reason_code"]>;
 
 /** Étapes proposées selon l'état (docs/PLAN_LOT2.md §3) ; le serveur reste seul juge des transitions. */
-function nextSteps(m: Mission): EventType[] {
+function nextSteps(m: { status: string; rotations_completed: number }): EventType[] {
   switch (m.status) {
     case "ASSIGNED":
       return ["DEPARTED"];
@@ -75,25 +80,65 @@ export function MissionDetailPage() {
     enabled: Boolean(m) && can(me.grants, "dispatch.weighing.read", m?.site_id),
     queryFn: () => read("/weighing-tickets", { query: { mission_id: missionId, live_only: true, page_size: 200 } }),
   });
+  const online = useConnectivity();
+  const account = accountOf(me);
+  const [outbox, setOutbox] = useState<OutboxEntry[]>([]);
+  const [queuedCount, setQueuedCount] = useState(0);
+  const reloadOutbox = useCallback(() => {
+    listForAccount({ tenantId: account.tenantId, userId: account.userId }).then(setOutbox, () => setOutbox([]));
+  }, [account.tenantId, account.userId]);
+  useEffect(reloadOutbox, [reloadOutbox, queuedCount]);
+  const waiting = pendingEventsOf(outbox, missionId);
+  // Étapes proposées à partir de l'état projeté (événements en attente sur l'appareil compris).
+  const projected = m
+    ? projectMission(
+        m.status,
+        m.rotations_completed,
+        waiting.map((e) => String(e.payload.event_type)),
+      )
+    : null;
   const liveTicket = new Map(
     (tickets.data?.items ?? []).filter((t) => t.status !== "VOIDED").map((t) => [t.rotation_id, t]),
   );
 
+  async function queue(event: ProgressEvent, operationId: string) {
+    if (!m) return;
+    await queueMissionEvent(account, m, event, `${m.vehicle_fleet_number} — ${label(MISSION_EVENTS, event)}`, operationId);
+    attempt.current = null;
+    setQueuedCount((n) => n + 1);
+  }
+
   async function send(event: EventType, extra: { reason_code?: Reason; vehicle_assignment_id?: string } = {}) {
     if (attempt.current?.event !== event) attempt.current = { event, id: crypto.randomUUID() };
+    const operationId = attempt.current.id;
     setPending(true);
     setError(null);
+    const deferrable = DEFERRABLE.has(event) && !extra.reason_code && !extra.vehicle_assignment_id;
+    // Hors ligne, ou d'autres étapes déjà en attente sur l'appareil : l'ordre de saisie est conservé.
+    if (deferrable && (!online || waiting.length > 0)) {
+      try {
+        await queue(event as ProgressEvent, operationId);
+      } finally {
+        setPending(false);
+      }
+      return;
+    }
     try {
       await call("post", "/missions/{mission_id}/events", {
         path: { mission_id: missionId },
         ifMatch: etag,
-        body: { event_type: event, client_event_id: attempt.current.id, ...extra },
+        body: { event_type: event, client_event_id: operationId, deferred: false, ...extra },
       });
       attempt.current = null;
       setPanel(null);
       await queryClient.invalidateQueries({ queryKey: ["mission", missionId] });
       void queryClient.invalidateQueries({ queryKey: ["missions"] });
     } catch (err) {
+      if (deferrable && err instanceof ApiError && err.status === 0) {
+        // Réponse perdue ou coupure : même identifiant d'événement, rejoué depuis la file sans doublon.
+        await queue(event as ProgressEvent, operationId);
+        return;
+      }
       setError(err);
       // Erreur métier (pas une coupure réseau) : l'essai suivant est une nouvelle demande.
       if ((err as { status?: number }).status !== 0) attempt.current = null;
@@ -125,7 +170,7 @@ export function MissionDetailPage() {
             )}
             {canProgress && (
               <div className="toolbar">
-                {nextSteps(m).map((step) => (
+                {nextSteps({ status: projected?.status ?? m.status, rotations_completed: projected?.rotationsCompleted ?? m.rotations_completed }).map((step) => (
                   <button
                     key={step}
                     type="button"
@@ -136,17 +181,17 @@ export function MissionDetailPage() {
                     {label(MISSION_EVENTS, step)}
                   </button>
                 ))}
-                {!["SUSPENDED", "COMPLETED", "CANCELLED"].includes(m.status) && (
+                {online && waiting.length === 0 && !["SUSPENDED", "COMPLETED", "CANCELLED"].includes(m.status) && (
                   <button type="button" disabled={pending} onClick={() => setPanel("suspend")}>
                     Suspendre
                   </button>
                 )}
-                {m.status === "SUSPENDED" && (
+                {online && m.status === "SUSPENDED" && (
                   <button type="button" disabled={pending} onClick={() => setPanel("reassign")}>
                     Réaffecter à un autre véhicule
                   </button>
                 )}
-                {["PLANNED", "ASSIGNED", "SUSPENDED"].includes(m.status) && (
+                {online && waiting.length === 0 && ["PLANNED", "ASSIGNED", "SUSPENDED"].includes(m.status) && (
                   <button type="button" disabled={pending} onClick={() => setPanel("cancel")}>
                     Annuler la mission
                   </button>
@@ -154,6 +199,27 @@ export function MissionDetailPage() {
               </div>
             )}
             {error !== null && panel === null && <ErrorMessage error={error} />}
+            {waiting.length > 0 && (
+              <p className="warn-text small" role="status">
+                {waiting.length} étape(s) saisie(s) sur l'appareil, en attente d'envoi
+                {projected ? ` — état prévu : ${label(MISSION_STATUS, projected.status)}` : ""}. Elles seront appliquées si la
+                mission n'a pas changé entre-temps ; suspension, réaffectation et annulation restent possibles en ligne
+                une fois la file envoyée.
+              </p>
+            )}
+            {canProgress && (
+              <OfflineIncidentQueue
+                account={account}
+                canSync
+                canOpen={false}
+                timeZone={tz}
+                refreshKey={queuedCount}
+                onSynchronized={() => {
+                  reloadOutbox();
+                  void queryClient.invalidateQueries({ queryKey: ["mission", missionId] });
+                }}
+              />
+            )}
             {panel === "suspend" && (
               <ReasonForm
                 title="Suspendre la mission"

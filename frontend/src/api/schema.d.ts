@@ -7021,10 +7021,17 @@ export interface components {
             /** Client Event Id */
             client_event_id?: string | null;
             /**
+             * Deferred
+             * @default false
+             */
+            deferred: boolean;
+            /**
              * Event Type
              * @enum {string}
              */
             event_type: "DEPARTED" | "ARRIVED_LOADING" | "LOADED" | "ARRIVED_UNLOADING" | "UNLOADED" | "COMPLETED" | "SUSPENDED" | "RESUMED" | "REASSIGNED" | "CANCELLED";
+            /** Expected Vehicle Assignment Id */
+            expected_vehicle_assignment_id?: string | null;
             /** Occurred At */
             occurred_at?: string | null;
             /** Reason Code */
