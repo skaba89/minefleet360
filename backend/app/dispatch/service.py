@@ -403,6 +403,7 @@ def _event(
     occurred_at: datetime,
     client_event_id: uuid.UUID | None,
     reason: str | None,
+    source: str = "DISPATCHER",
 ) -> None:
     auth.db.add(
         MissionEvent(
@@ -413,7 +414,7 @@ def _event(
             from_status=from_status,
             to_status=mission.status,
             occurred_at=occurred_at,
-            source="DISPATCHER",
+            source=source,
             client_event_id=client_event_id,
             actor_user_id=auth.user_id,
             reason=reason,
@@ -519,12 +520,20 @@ def create_mission(auth: Authorized, body: MissionCreate) -> MissionOut:
     return out
 
 
-def _occurred_at(auth: Authorized, mission: Mission, requested: datetime | None) -> datetime:
-    """RM-083 : pas dans le futur (tolérance d'horloge), antidatage borné, ordre chronologique préservé."""
+def _occurred_at(
+    auth: Authorized, mission: Mission, requested: datetime | None, *, deferred: bool = False
+) -> datetime:
+    """RM-083 : pas dans le futur (tolérance d'horloge), antidatage borné, ordre chronologique préservé.
+
+    Saisie différée hors ligne : antidatage porté à `mission_offline_backdate_tolerance` (12 h).
+    """
     settings = get_settings()
     now = auth.clock.now()
     at = requested or now
-    if at > now + settings.clock_skew_tolerance or at < now - settings.assignment_backdate_tolerance:
+    backdate = (
+        settings.mission_offline_backdate_tolerance if deferred else settings.assignment_backdate_tolerance
+    )
+    if at > now + settings.clock_skew_tolerance or at < now - backdate:
         raise AppError("VALIDATION_ERROR", details=[{"field": "occurred_at", "type": "out_of_tolerance"}])
     last = auth.db.execute(
         select(func.max(MissionEvent.occurred_at)).where(MissionEvent.mission_id == mission.mission_id)
@@ -596,7 +605,13 @@ def record_event(
     check_version(version, mission.row_version)
     if mission.status in TERMINAL:
         raise AppError("MISSION_STATE_INVALID", details={"status": mission.status})
-    at = _occurred_at(auth, mission, body.occurred_at)
+    if (
+        body.expected_vehicle_assignment_id is not None
+        and body.expected_vehicle_assignment_id != mission.vehicle_assignment_id
+    ):
+        # Saisie faite sur une affectation remplacée depuis : jamais appliquée à la nouvelle.
+        raise AppError("MISSION_STATE_INVALID", details={"reason": "reassigned"})
+    at = _occurred_at(auth, mission, body.occurred_at, deferred=body.deferred)
     source, kind = mission.status, body.event_type
     reason: str | None = body.reason_code
     rotation = _open_rotation(db, mission)
@@ -704,6 +719,7 @@ def record_event(
         occurred_at=at,
         client_event_id=body.client_event_id,
         reason=reason,
+        source="MOBILE" if body.deferred else "DISPATCHER",
     )
     record(
         db,
@@ -715,7 +731,7 @@ def record_event(
         actor_user_id=auth.user_id,
         reason=reason,
         before=before,
-        after={"status": mission.status, **after},
+        after={"status": mission.status, **after, **({"deferred": True} if body.deferred else {})},
         changed_fields=changed,
     )
     db.flush()

@@ -87,6 +87,43 @@ describe("envoi d'une opération hors ligne vers sa route", () => {
     });
   });
 
+  it("une étape de mission relit la version courante puis part avec If-Match, sans la mission dans le corps", async () => {
+    vi.mocked(request)
+      .mockResolvedValueOnce({ data: { mission_id: "33333333-3333-4333-8333-333333333333" }, etag: '"7"' } as never)
+      .mockResolvedValueOnce({ data: { mission_id: "33333333-3333-4333-8333-333333333333", status: "LOADING" } } as never);
+    const step = {
+      ...entry("/missions/{mission_id}/events"),
+      payload: {
+        mission_id: "33333333-3333-4333-8333-333333333333",
+        event_type: "ARRIVED_LOADING",
+        occurred_at: "2026-11-18T05:00:00Z",
+        client_event_id: "11111111-1111-4111-8111-111111111111",
+        deferred: true,
+        expected_vehicle_assignment_id: "44444444-4444-4444-8444-444444444444",
+      },
+    };
+    const ack = await defaultSyncDeps.send(step);
+    expect(ack.id).toBe("33333333-3333-4333-8333-333333333333");
+    expect(request).toHaveBeenNthCalledWith(1, "/missions/33333333-3333-4333-8333-333333333333", { method: "GET" });
+    expect(request).toHaveBeenNthCalledWith(2, "/missions/33333333-3333-4333-8333-333333333333/events", {
+      method: "POST",
+      body: {
+        event_type: "ARRIVED_LOADING",
+        occurred_at: "2026-11-18T05:00:00Z",
+        client_event_id: "11111111-1111-4111-8111-111111111111",
+        deferred: true,
+        expected_vehicle_assignment_id: "44444444-4444-4444-8444-444444444444",
+      },
+      ifMatch: '"7"',
+    });
+  });
+
+  it("une étape dont la mission n'est pas un identifiant n'est jamais envoyée", async () => {
+    const forged = { ...entry("/missions/{mission_id}/events"), payload: { mission_id: "../../platform", event_type: "DEPARTED" } };
+    await expect(defaultSyncDeps.send(forged)).rejects.toThrow("Mission invalide");
+    expect(request).not.toHaveBeenCalled();
+  });
+
   it("une route non prise en charge n'est jamais appelée", async () => {
     await expect(defaultSyncDeps.send(entry("/fuel/issues"))).rejects.toThrow("non prise en charge");
     expect(request).not.toHaveBeenCalled();

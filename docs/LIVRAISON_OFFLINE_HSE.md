@@ -204,3 +204,36 @@ Décision du propriétaire du projet : le conducteur réalise lui-même la check
 - **Limite** : l'inspection n'est pas rattachée à l'engin du conducteur. Le rattachement automatique à son
   affectation en cours reste à faire.
 - **Tests** : `tests/test_hse_driver_pre_shift.py`.
+
+## Avancement des missions hors ligne (18 novembre 2026)
+
+Décisions du propriétaire du projet : une étape est rejouée si l'état de la mission le permet ; l'antidatage
+admis pour une saisie différée est de 12 h, et l'étape est marquée comme différée.
+
+- **Serveur** (`POST /missions/{id}/events`) :
+  - `deferred: true` est admis pour l'avancement seulement (départ, arrivée au chargement, chargement terminé,
+    arrivée au déchargement, déchargé, fin). Il exige `client_event_id` et `occurred_at`. L'antidatage est porté
+    à 12 h (`mission_offline_backdate_tolerance`) au lieu de 15 min. L'événement est enregistré avec la source
+    `MOBILE` et l'audit porte `deferred: true`.
+  - `expected_vehicle_assignment_id` : une mission réaffectée entre-temps refuse l'étape
+    (`MISSION_STATE_INVALID`, `reason: reassigned`).
+  - Transition, ordre chronologique et échéances restent vérifiés comme en ligne. Le rejeu d'un même
+    `client_event_id` ne crée aucun doublon (RM-084).
+- **Application** :
+  - sans réseau, ou quand d'autres étapes de la mission sont déjà en attente, l'étape est mise en file avec son
+    heure réelle ;
+  - l'écran propose les étapes suivantes à partir de l'état projeté ;
+  - suspension, réaffectation et annulation restent en ligne et sont masquées tant que la file de la mission
+    n'est pas envoyée ;
+  - à l'envoi, la version courante est relue (`If-Match`). Le serveur applique ou refuse : le refus est visible
+    dans la file, jamais forcé.
+- **Limites** :
+  - une étape refusée entraîne en général le refus des étapes suivantes de la même mission (visibles et à
+    ressaisir) ;
+  - l'ouverture de l'application sans réseau sur une mission non chargée n'est pas couverte.
+- **Tests** :
+  - pytest `tests/test_mission_events_offline.py` : tolérance hors ligne appliquée (bornes réduites par configuration), marquage `MOBILE`, en ligne refusé, rejeu
+    sans doublon, audit, au-delà de la tolérance refusé, défaut 12 h, réaffectation, état incompatible, suspension non différable, identifiant
+    obligatoire ;
+  - Vitest : projection, sélection de la file, envoi avec relecture de version, URL forgée ;
+  - Playwright `e2e-field/mission-offline.spec.ts`.

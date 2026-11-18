@@ -17,10 +17,12 @@ import {
   isSyncableEndpoint,
   listForAccount,
   METER_READING_ENDPOINT,
+  MISSION_EVENT_ENDPOINT,
   WORK_ORDER_ENDPOINT,
   updateEntry,
   type OutboxEntry,
 } from "./offline-outbox";
+import { label, MISSION_STATUS } from "./labels";
 import { withExclusiveOfflineSync, type LockManagerLike } from "./offline-sync-lock";
 import { transitionAfterResponse } from "./offline-sync-state";
 
@@ -159,6 +161,21 @@ export async function countUnsynchronized(account: Account): Promise<number> {
 }
 
 async function sendEntry(entry: OutboxEntry): Promise<{ id: string; reference: string }> {
+  if (entry.endpoint === MISSION_EVENT_ENDPOINT) {
+    const { mission_id: missionId, ...body } = entry.payload;
+    if (typeof missionId !== "string" || !/^[0-9a-f-]{36}$/i.test(missionId)) throw new Error("Mission invalide");
+    const path = `/missions/${missionId}`;
+    // Version courante relue à l'envoi : l'événement est appliqué s'il reste compatible avec l'état
+    // (transition, ordre chronologique, affectation attendue revérifiés par le serveur), jamais forcé.
+    const current = await request<Schemas["MissionOut"]>(path, { method: "GET" });
+    const { data } = await request<Schemas["MissionOut"]>(`${path}/events`, {
+      method: "POST",
+      body,
+      ifMatch: current.etag,
+    });
+    if (!data?.mission_id) throw new Error("Accusé de réception serveur incomplet");
+    return { id: data.mission_id, reference: label(MISSION_STATUS, data.status) };
+  }
   if (entry.endpoint === WORK_ORDER_ENDPOINT) {
     const { data } = await request<Schemas["WorkOrderOut"]>(entry.endpoint, {
       method: "POST",
