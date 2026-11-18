@@ -105,6 +105,11 @@ class Settings(BaseSettings):
     # Double authentification TOTP (C-03, SEC-04). Clé AES-256 (base64url, 32 octets) obligatoire en
     # recette et production ; dérivée du secret JWT en local/test uniquement (développement).
     mfa_encryption_key: SecretStr | None = Field(default=None, validation_alias="MF_MFA_ENCRYPTION_KEY")
+    # Rotation (docs/ops/ROTATION_SECRETS.md) : ancienne clé, lue en secours le temps du rechiffrement
+    # (`minefleet reseal-mfa-secrets --apply`) et tant que des codes de récupération en dépendent.
+    mfa_encryption_key_previous: SecretStr | None = Field(
+        default=None, validation_alias="MF_MFA_ENCRYPTION_KEY_PREVIOUS"
+    )
     # Clé HMAC des compteurs de limitation d'authentification (rate-limiting partagé PostgreSQL).
     # Dédiée du secret JWT : une rotation de l'un n'invalide pas le service de l'autre. Obligatoire en
     # recette et production ; dérivée du secret JWT en local/test/ci uniquement (développement).
@@ -136,6 +141,12 @@ class Settings(BaseSettings):
     # Codes d'espace refusés à la création d'un tenant client (MATRICE_RBAC §1.3).
     reserved_tenant_codes: tuple[str, ...] = ("mf-platform", "admin", "api", "platform", "support", "www")
     public_web_url: str = "http://localhost:5173"
+
+    @field_validator("mfa_encryption_key_previous", mode="before")
+    @classmethod
+    def _empty_previous_key_is_none(cls, value: object) -> object:
+        # Variable transmise vide par Compose hors rotation : aucune ancienne clé.
+        return None if value in ("", None) else value
 
     @field_validator("jwt_secret")
     @classmethod

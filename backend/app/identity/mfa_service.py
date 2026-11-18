@@ -21,7 +21,7 @@ from app.core.clock import Clock
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.core.http import check_version
-from app.core.secretbox import derive, open_sealed, seal
+from app.core.secretbox import derive, derive_all, open_sealed, seal
 from app.core.security import (
     constant_time_equals,
     credential_fingerprint,
@@ -337,8 +337,15 @@ def verify_challenge(
 
     method: str | None = None
     if totp.looks_like_recovery_code(code):
-        presented = totp.hash_recovery_code(code, _pepper(settings))
-        remaining = [h for h in user.mfa_recovery_hashes if not constant_time_equals(h, presented)]
+        # Pendant une rotation de clé, un code émis sous l'ancienne clé reste valable (usage unique).
+        presented_all = [
+            totp.hash_recovery_code(code, pepper) for pepper in derive_all("recovery-codes", settings)
+        ]
+        remaining = [
+            h
+            for h in user.mfa_recovery_hashes
+            if not any(constant_time_equals(h, presented) for presented in presented_all)
+        ]
         if len(remaining) < len(user.mfa_recovery_hashes):
             user.mfa_recovery_hashes = remaining  # usage unique
             method = "RECOVERY_CODE"

@@ -299,6 +299,84 @@ def deliver_notifications() -> int:
     return 1 if failures else 0
 
 
+def reseal_mfa_secrets(apply: bool) -> int:
+    """Rotation de MF_MFA_ENCRYPTION_KEY : rechiffre sous la clé courante les secrets TOTP encore sous
+    l'ancienne (MF_MFA_ENCRYPTION_KEY_PREVIOUS). Toutes les sociétés, plateforme comprise. Simulation sans
+    --apply. Aucun secret affiché ; une trace d'audit SYSTEM par société modifiée."""
+    from app.core.secretbox import reseal
+    from app.organization.models import Tenant
+
+    settings = get_settings()
+    if settings.mfa_encryption_key is None or settings.mfa_encryption_key_previous is None:
+        print(
+            "Refusé : MF_MFA_ENCRYPTION_KEY et MF_MFA_ENCRYPTION_KEY_PREVIOUS sont requis.", file=sys.stderr
+        )
+        return 2
+    counts = {"current": 0, "resealed": 0, "unreadable": 0}
+    recovery_users = 0
+    db = new_session()
+    try:
+        set_tenant_context(db, PLATFORM_TENANT_ID)
+        tenants = list(db.execute(select(Tenant.tenant_id)).scalars())
+        db.commit()
+        for tenant_id in tenants:
+            set_tenant_context(db, tenant_id)
+            changed = 0
+            users = db.execute(
+                select(UserAccount)
+                .where(
+                    UserAccount.tenant_id == tenant_id,
+                    (UserAccount.mfa_secret_encrypted.is_not(None))
+                    | (UserAccount.mfa_pending_secret_encrypted.is_not(None)),
+                )
+                .with_for_update()
+            ).scalars()
+            for user in users:
+                for attribute, purpose in (
+                    ("mfa_secret_encrypted", "mfa"),
+                    ("mfa_pending_secret_encrypted", "mfa-pending"),
+                ):
+                    sealed = getattr(user, attribute)
+                    if sealed is None:
+                        continue
+                    context = f"{purpose}:{user.tenant_id}:{user.user_account_id}"
+                    value, state = reseal(sealed, context=context, settings=settings)
+                    counts[state] += 1
+                    if state == "resealed":
+                        setattr(user, attribute, value)
+                        changed += 1
+                if user.mfa_enabled and user.mfa_recovery_hashes:
+                    recovery_users += 1
+            if changed and apply:
+                record(
+                    db,
+                    tenant_id=tenant_id,
+                    action="security.mfa_key_rotated",
+                    entity_type="tenant",
+                    entity_id=tenant_id,
+                    actor_kind="SYSTEM",
+                    reason=f"OPS_CLI:{_operator()}"[:200],
+                    after={"resealed": changed},
+                )
+            if apply:
+                db.commit()
+            else:
+                db.rollback()
+    finally:
+        db.close()
+    mode = "" if apply else " (simulation : rien n'est enregistré, ajouter --apply)"
+    print(
+        f"Secrets TOTP : déjà sous la clé courante {counts['current']} ; rechiffrés {counts['resealed']} ; "
+        f"illisibles {counts['unreadable']}{mode}"
+    )
+    print(
+        f"Comptes avec codes de récupération : {recovery_users}. Ces codes ne sont pas rechiffrables : "
+        "garder MF_MFA_ENCRYPTION_KEY_PREVIOUS jusqu'à leur renouvellement, "
+        "ou accepter qu'ils ne valent plus."
+    )
+    return 3 if counts["unreadable"] else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="minefleet")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -317,6 +395,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("deliver-notifications")
     reset = sub.add_parser("reset-platform-mfa")
     reset.add_argument("--email", required=True)
+    reseal_cmd = sub.add_parser("reseal-mfa-secrets")
+    reseal_cmd.add_argument("--apply", action="store_true")
     from app.demo import cli as demo_cli
 
     demo_cli.register(sub)
@@ -343,6 +423,8 @@ def main(argv: list[str] | None = None) -> int:
         return deliver_notifications()
     if args.command == "reset-platform-mfa":
         return reset_platform_mfa(args.email)
+    if args.command == "reseal-mfa-secrets":
+        return reseal_mfa_secrets(args.apply)
     return 1
 
 
