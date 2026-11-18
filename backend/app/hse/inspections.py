@@ -17,6 +17,7 @@ import hashlib
 import json
 import uuid
 from collections import defaultdict
+from dataclasses import replace
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
@@ -184,6 +185,21 @@ def _template_out(t: HseChecklistTemplate) -> TemplateOut:
     )
 
 
+def pre_shift_only(auth: Authorized, site_id: uuid.UUID | None) -> bool:
+    """Vrai si le droit de réaliser une inspection ne vient, pour ce site, que du rôle DRIVER.
+
+    Le conducteur ne réalise que la checklist « Prise de poste » (décision du 18 novembre 2026). `site_id`
+    None : aucun autre rôle ne porte le droit sur au moins un site (filtre des modèles, non liés à un site).
+    """
+    others = replace(
+        auth.principal, grants=tuple(g for g in auth.principal.grants if g.role_code != "DRIVER")
+    )
+    scope = evaluate(others, "hse.inspection.perform")
+    if scope is None:
+        return True
+    return site_id is not None and not scope.covers_site(site_id)
+
+
 @router.get("/hse/checklist-templates", response_model=list[TemplateOut])
 def list_templates(
     auth: Perform, target_type: TargetType | None = None, include_inactive: bool = False
@@ -191,6 +207,8 @@ def list_templates(
     conditions: list[Any] = []
     if target_type is not None:
         conditions.append(HseChecklistTemplate.target_type == target_type)
+    if pre_shift_only(auth, None):
+        conditions.append(HseChecklistTemplate.target_type == "PRE_SHIFT")
     if not include_inactive:
         conditions.append(HseChecklistTemplate.active.is_(True))
     rows = auth.db.execute(
@@ -472,6 +490,9 @@ def perform_inspection(
     ).scalar_one_or_none()
     if template is None or not template.active:
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "hse_checklist_template_id"}])
+    if template.target_type != "PRE_SHIFT" and pre_shift_only(auth, body.site_id):
+        # Modèle invisible pour le conducteur : indiscernable d'un modèle inexistant.
+        raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "hse_checklist_template_id"}])
     if template.target_type == "VEHICLE" and body.vehicle_id is None:
         raise AppError("VALIDATION_ERROR", details=[{"field": "vehicle_id", "type": "missing"}])
     if template.target_type == "WORK_AREA" and not (body.area_note or "").strip():
@@ -707,6 +728,9 @@ async def ingest_evidence(
 )
 async def upload_evidence(hse_inspection_id: uuid.UUID, request: Request, auth: Perform) -> EvidenceOut:
     inspection = inspection_in_scope(auth, hse_inspection_id)
+    if pre_shift_only(auth, inspection.site_id) and inspection.performed_by != auth.user_id:
+        # Le conducteur ne joint des preuves qu'à ses propres inspections.
+        raise AppError("NOT_FOUND")
     return await ingest_evidence(
         auth,
         request,

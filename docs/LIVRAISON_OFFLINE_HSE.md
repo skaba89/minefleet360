@@ -188,3 +188,19 @@ Photos en ligne uniquement. Appareil Android réel non essayé (`docs/qa/PROTOCO
   - Playwright `e2e-field/breakdown-offline.spec.ts` : coupure puis synchronisation unique, réponse perdue sans
     doublon.
 - **Non fait** : essai sur un téléphone Android réel.
+
+## Checklist de prise de poste par le conducteur (18 novembre 2026)
+
+Décision du propriétaire du projet : le conducteur réalise lui-même la checklist « Prise de poste », sur son site.
+
+- **Matrice** : `DRIVER: [SITE]` ajouté à `hse.inspection.perform`. Aucun autre droit n'est ajouté ; en
+  particulier, pas de `hse.inspection.read`, donc pas de lecture des inspections, y compris les siennes.
+- **Restriction côté serveur** (`pre_shift_only`), quand le droit ne vient que du rôle DRIVER :
+  - la liste des modèles ne contient que les checklists `PRE_SHIFT` ;
+  - une inspection sur un autre modèle → `REFERENCE_NOT_FOUND`, indiscernable d'un modèle inexistant ;
+  - les preuves ne se joignent qu'à ses propres inspections → 404 sinon.
+- **Hors ligne** : le parcours d'inspection hors ligne existant s'applique tel quel (outbox, kit, rejeu
+  idempotent). Le kit ne contient pas d'engins pour le conducteur, qui n'a pas de lecture du parc.
+- **Limite** : l'inspection n'est pas rattachée à l'engin du conducteur. Le rattachement automatique à son
+  affectation en cours reste à faire.
+- **Tests** : `tests/test_hse_driver_pre_shift.py`.

@@ -49,8 +49,8 @@ Rôles optionnels : `AUDITOR`.
 | [Carburant](/carburant) | Carburant | — | ✓ | ✓ | ✓ | — | — | — | — | — | — | ✓ | — | ✓ | ✓ |
 | [Pneus](/pneus) | Maintenance | — | — | ✓ | ✓ | — | — | — | ✓ | ✓ | ✓ | — | — | ✓ | ✓ |
 | [Pièces](/pieces) | Maintenance | — | ✓ | ✓ | ✓ | — | — | — | ✓ | — | ✓ | — | — | — | ✓ |
-| [Sécurité (HSE)](/hse) | HSE | — | — | ✓ | ✓ | ✓ | — | — | ✓ | ✓ | — | ✓ | ✓ | — | ✓ |
-| [Inspections HSE](/hse/inspections) | HSE | — | — | ✓ | ✓ | ✓ | — | — | ✓ | ✓ | — | ✓ | ✓ | — | ✓ |
+| [Sécurité (HSE)](/hse) | HSE | — | — | ✓ | ✓ | ✓ | — | ✓ | ✓ | ✓ | — | ✓ | ✓ | — | ✓ |
+| [Inspections HSE](/hse/inspections) | HSE | — | — | ✓ | ✓ | ✓ | — | ✓ | ✓ | ✓ | — | ✓ | ✓ | — | ✓ |
 | [Checklists HSE](/hse/checklists) | HSE | — | — | — | — | — | — | — | — | — | — | — | ✓ | — | — |
 | [Pesées](/pesees) | Dispatch | — | — | ✓ | ✓ | ✓ | — | — | — | — | — | — | ✓ | ✓ | ✓ |
 | [Contrats & assurances](/juridique) | Juridique | — | ✓ | ✓ | ✓ | — | — | — | — | — | — | — | ✓ | ✓ | ✓ |
@@ -243,7 +243,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `hse.incident.manage` | 1c | `POST /hse/incidents/{hse_incident_id}/transition`<br>`GET /hse/incidents/{hse_incident_id}/action-owners`<br>`POST /hse/incidents/{hse_incident_id}/actions`<br>`POST /hse/corrective-actions/{hse_corrective_action_id}/decision`<br>`GET /hse/inspections/{hse_inspection_id}/action-owners`<br>`POST /hse/inspections/{hse_inspection_id}/actions` | `HSE` |
 | `hse.action.complete` | 1c | `POST /hse/corrective-actions/{hse_corrective_action_id}/complete` | `DISPATCHER`, `HSE`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
 | `hse.inspection.read` | 1c | `GET /hse/inspections`<br>`GET /hse/inspections/{hse_inspection_id}`<br>`GET /hse/evidence/{hse_evidence_id}/content` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `HSE`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
-| `hse.inspection.perform` | 1c | `GET /hse/checklist-templates`<br>`POST /hse/inspections`<br>`POST /hse/inspections/{hse_inspection_id}/evidence` | `DISPATCHER`, `FUEL_MANAGER`, `HSE`, `MECHANIC`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
+| `hse.inspection.perform` | 1c | `GET /hse/checklist-templates`<br>`POST /hse/inspections`<br>`POST /hse/inspections/{hse_inspection_id}/evidence` | `DISPATCHER`, `DRIVER`, `FUEL_MANAGER`, `HSE`, `MECHANIC`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
 | `hse.checklist.manage` | 1c | `POST /hse/checklist-templates`<br>`POST /hse/checklist-templates/{template_id}/deactivate` | `HSE` |
 | `cost.vehicle.read` | 1c | `GET /costs/vehicles`<br>`GET /costs/vehicles/{vehicle_id}/history` | `AUDITOR`, `DIRECTION`, `FINANCE`, `OPS_MANAGER`, `WORKSHOP_CHIEF` |
 | `cost.labour_rate.manage` | 1c | `GET /costs/labour-rates`<br>`POST /costs/labour-rates` | `DIRECTION`, `FINANCE` |
@@ -276,7 +276,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `OPS_MANAGER` | 89 | 187 |
 | `DISPATCHER` | 37 | 83 |
 | `HR` | 17 | 36 |
-| `DRIVER` | 4 | 16 |
+| `DRIVER` | 5 | 19 |
 | `WORKSHOP_CHIEF` | 40 | 104 |
 | `MECHANIC` | 17 | 46 |
 | `STOREKEEPER` | 17 | 50 |
