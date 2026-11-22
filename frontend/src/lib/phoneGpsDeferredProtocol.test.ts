@@ -45,7 +45,7 @@ describe("deferred GPS wire protocol", () => {
 
   it("confirms only accepted and duplicate points", () => {
     const batch = buildDeferredGpsBatch([point(1), point(2), point(3), point(4)])!;
-    const [a, b, c, d] = batch.ids;
+    const [a, b, c, d] = [point(1), point(2), point(3), point(4)].map((p) => p.client_point_id) as [string, string, string, string];
     expect(readDeferredGpsAcknowledgement(batch, {
       [a]: "accepted", [b]: "duplicate", [c]: "rejected", [d]: "conflict",
     })).toEqual({ confirmed: [a, b], rejected: [c], conflicts: [d] });
@@ -53,7 +53,8 @@ describe("deferred GPS wire protocol", () => {
 
   it("fails the entire acknowledgement on missing, unknown, or invalid entries", () => {
     const batch = buildDeferredGpsBatch([point(1), point(2)])!;
-    const [a, b] = batch.ids;
+    const a = point(1).client_point_id;
+    const b = point(2).client_point_id;
     for (const response of [
       null, [], "accepted", {}, { [a]: "accepted" },
       { [a]: "accepted", [b]: "invalid" },
