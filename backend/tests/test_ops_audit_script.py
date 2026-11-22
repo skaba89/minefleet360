@@ -101,9 +101,7 @@ def test_a3_verifies_both_images_and_slsa_v1() -> None:
     body = SCRIPT.read_text(encoding="utf-8")
     for image in ("api", "web"):
         lines = [
-            line
-            for line in body.splitlines()
-            if f"/{image}@sha256:" in line and "cosign verify" in line
+            line for line in body.splitlines() if f"/{image}@sha256:" in line and "cosign verify" in line
         ]
         assert len(lines) == 2
         assert any("cosign verify --" in line for line in lines)
