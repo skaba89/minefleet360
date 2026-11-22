@@ -163,6 +163,8 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - name: Vérifier le vecteur GPS sur JVM (hors Android)
+        run: java tests/gps/GpsVaultVectorCheck.java
       - name: Tester transitions, état atomique et reprise SMTP simulée
         run: python -m unittest discover -s tests -p 'test_ops_*.py' -v
       - name: Vérifier la syntaxe des composants de monitoring
