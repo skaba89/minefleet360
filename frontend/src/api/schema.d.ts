@@ -1676,6 +1676,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/gps/shares/{share_id}/deferred-positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deferred Phone Points */
+        post: operations["deferred_phone_points_api_v1_me_gps_shares__share_id__deferred_positions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/gps/shares/{share_id}/positions": {
         parameters: {
             query?: never;
@@ -14995,6 +15012,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PhoneShareOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deferred_phone_points_api_v1_me_gps_shares__share_id__deferred_positions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                share_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: "accepted" | "duplicate" | "rejected" | "conflict";
+                    };
                 };
             };
             /** @description Validation Error */
