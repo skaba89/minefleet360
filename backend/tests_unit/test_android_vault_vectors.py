@@ -15,8 +15,7 @@ _KEY = bytes(range(32))
 _NONCE = bytes(range(12))
 _POINT = b"minefleet-synthetic-point"
 _EXPECTED = bytes.fromhex(
-    "2a6bb87ea389a77ef96ce4f2df9d1008f7bfe419801436124"
-    "cf0bd5b566acb5eb4ff174d0e64adb1c4"
+    "2a6bb87ea389a77ef96ce4f2df9d1008f7bfe419801436124cf0bd5b566acb5eb4ff174d0e64adb1c4"
 )
 
 
