@@ -44,7 +44,9 @@ jobs:
     steps:
       - name: Déterminer la référence à construire
         id: ref
-        run: echo "ref=${{ inputs.ref || github.ref }}" >> "$GITHUB_OUTPUT"
+        env:
+          BUILD_REF: ${{ inputs.ref || github.ref }}
+        run: echo "ref=$BUILD_REF" >> "$GITHUB_OUTPUT"
 
       - name: Extraire le dépôt
         uses: actions/checkout@v7
@@ -93,7 +95,7 @@ jobs:
           push: true
           tags: ${{ steps.tags.outputs.tags }}
           labels: ${{ steps.tags.outputs.labels }}
-          provenance: mode=max
+          provenance: mode=max,version=v1
           sbom: true
           build-args: |
             MF_RELEASE_COMMIT=${{ steps.meta.outputs.commit }}
@@ -108,7 +110,7 @@ jobs:
         run: |
           echo "digest=$IMAGE_REF" >> "$GITHUB_OUTPUT"
           {
-            echo "### Image \`${{ matrix.image }}\` publiée et signée"
+            echo "### Image \`${{ matrix.image }}\` publiée (signature et attestation contrôlées ensuite)"
             echo '```'
             echo "$IMAGE_REF"
             echo '```'
@@ -135,3 +137,27 @@ jobs:
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             --certificate-identity-regexp "^https://github.com/${{ github.repository }}/" \
             "$IMAGE_REF"
+
+      - name: Publier l'attestation SLSA v1 signée (keyless)
+        env:
+          IMAGE_REF: ${{ steps.digest.outputs.digest }}
+        run: |
+          set -euo pipefail
+          umask 077
+          predicate="$(mktemp)"
+          trap 'rm -f "$predicate"' EXIT
+          docker buildx imagetools inspect "$IMAGE_REF" \
+            --format '{{json .Provenance.SLSA}}' > "$predicate"
+          jq -e 'type == "object" and (.buildDefinition | type == "object") and (.runDetails | type == "object")' "$predicate" >/dev/null
+          cosign attest --yes --type https://slsa.dev/provenance/v1 \
+            --predicate "$predicate" "$IMAGE_REF"
+
+      - name: Vérifier l'attestation SLSA v1 (auto-contrôle)
+        env:
+          IMAGE_REF: ${{ steps.digest.outputs.digest }}
+          WORKFLOW_IDENTITY: https://github.com/${{ github.repository }}/.github/workflows/release-images.yml@${{ github.ref }}
+        run: |
+          cosign verify-attestation --type https://slsa.dev/provenance/v1 \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity "$WORKFLOW_IDENTITY" "$IMAGE_REF" >/dev/null
+          echo "Attestation SLSA v1 vérifiée : $IMAGE_REF" >> "$GITHUB_STEP_SUMMARY"

@@ -95,3 +95,28 @@ def test_a2_reads_schema_revision_without_starting_a_container() -> None:
     assert "check_schema_revision" not in "\n".join(
         line for line in body.splitlines() if not line.lstrip().startswith("#")
     )
+
+
+def test_a3_verifies_both_images_and_slsa_v1() -> None:
+    body = SCRIPT.read_text(encoding="utf-8")
+    for image in ("api", "web"):
+        lines = [
+            line for line in body.splitlines() if f"/{image}@sha256:" in line and "cosign verify" in line
+        ]
+        assert len(lines) == 2
+        assert any("cosign verify --" in line for line in lines)
+        assert any(
+            "cosign verify-attestation --type https://slsa.dev/provenance/v1" in line for line in lines
+        )
+        assert all("release-images" in line for line in lines)
+
+
+def test_release_workflow_signs_and_verifies_buildx_provenance() -> None:
+    workflow = SCRIPT.parents[2] / ".github" / "workflows" / "release-images.yml"
+    body = workflow.read_text(encoding="utf-8")
+    assert "provenance: mode=max,version=v1" in body
+    assert ".Provenance.SLSA" in body
+    assert "buildDefinition" in body and "runDetails" in body
+    assert "cosign attest --yes --type https://slsa.dev/provenance/v1" in body
+    assert "cosign verify-attestation --type https://slsa.dev/provenance/v1" in body
+    assert '--certificate-identity "$WORKFLOW_IDENTITY"' in body
