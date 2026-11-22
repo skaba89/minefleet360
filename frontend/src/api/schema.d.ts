@@ -15037,7 +15037,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
-        };
         responses: {
             /** @description Successful Response */
             200: {
