@@ -58,9 +58,13 @@ def _auth(db: Session, clock: FrozenClock, headers: dict[str, str]) -> Authorize
 
 def _count(db: Session, tenant_id: uuid.UUID, share_id: uuid.UUID) -> int:
     set_tenant_context(db, tenant_id)
-    stmt = select(func.count()).select_from(FleetGpsPosition).where(
-        FleetGpsPosition.tenant_id == tenant_id,
-        FleetGpsPosition.phone_share_id == share_id,
+    stmt = (
+        select(func.count())
+        .select_from(FleetGpsPosition)
+        .where(
+            FleetGpsPosition.tenant_id == tenant_id,
+            FleetGpsPosition.phone_share_id == share_id,
+        )
     )
     return int(db.execute(stmt).scalar_one())
 
