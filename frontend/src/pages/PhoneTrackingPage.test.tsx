@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router";
@@ -26,12 +26,14 @@ function setup(prefillVehicles = false) {
 }
 beforeEach(() => {
   auth.permitted = true;
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+  onlineManager.setOnline(true);
   vi.clearAllMocks(); vi.mocked(get).mockReset(); vi.mocked(request).mockReset(); vi.stubGlobal("isSecureContext", true);
   Object.defineProperty(navigator, "geolocation", { configurable: true, value: { getCurrentPosition: locate } });
   vi.mocked(get).mockResolvedValue([{ vehicle_id: "vehicle", fleet_number: "PARC-FICTIF", registration_number: null, site_id: "site" }]);
   vi.mocked(request).mockImplementation(async (path) => ({ data: path === "/me/gps/shares" ? share : undefined, etag: null }));
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); onlineManager.setOnline(true); });
 it("demande le consentement et coupe les envois après l'arrêt", async () => {
   setup();
   const start = await screen.findByRole("button", { name: "Démarrer le partage" });
@@ -128,7 +130,7 @@ it("arrête le partage expiré sans demander la géolocalisation ni conserver de
 });
 
 it("arrête la collecte et exige un nouveau consentement après retrait du droit de partage", async () => {
-  const view = setup();
+  const view = setup(true);
   await screen.findByRole("option", { name: "PARC-FICTIF" });
   fireEvent.click(screen.getByRole("checkbox"));
   fireEvent.click(screen.getByRole("button", { name: "Démarrer le partage" }));
@@ -142,6 +144,7 @@ it("arrête la collecte et exige un nouveau consentement après retrait du droit
   expect(screen.getByText("Votre compte ne peut pas partager de position.")).toBeTruthy();
   expect(vi.mocked(request).mock.calls.some(([path]) => path.endsWith("/stop"))).toBe(true);
   Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+  act(() => window.dispatchEvent(new Event("online")));
   act(() => success({ timestamp: Date.now(), coords: { latitude: 10, longitude: -13, accuracy: 10, speed: null, heading: null } } as GeolocationPosition));
   expect(vi.mocked(request).mock.calls.filter(([path]) => path.endsWith("/positions"))).toHaveLength(0);
   auth.permitted = true;
