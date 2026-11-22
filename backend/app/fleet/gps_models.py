@@ -23,6 +23,9 @@ class FleetGpsPosition(Base):
     device_id: Mapped[str] = mapped_column(String, nullable=False)
     source: Mapped[str] = mapped_column(String, nullable=False, server_default="TRACKER")
     phone_share_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    # Identité du futur canal différé ; NULL pour les positions live et traceurs.
+    client_point_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    client_point_fingerprint: Mapped[str | None] = mapped_column(String)
     latitude: Mapped[float] = mapped_column(Float, nullable=False)
     longitude: Mapped[float] = mapped_column(Float, nullable=False)
     speed_kmh: Mapped[float | None] = mapped_column(Float)
