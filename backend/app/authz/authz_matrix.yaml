@@ -957,6 +957,7 @@ permissions:
       - { method: GET, path: /me/gps/vehicles, shape: collection, success: 200 }
       - { method: POST, path: /me/gps/shares, shape: collection, success: 201 }
       - { method: POST, path: "/me/gps/shares/{share_id}/positions", shape: item, success: 204 }
+      - { method: POST, path: "/me/gps/shares/{share_id}/deferred-positions", shape: item, success: 200 }
       - { method: POST, path: "/me/gps/shares/{share_id}/stop", shape: item, success: 204 }
     audit: { action: gps.phone.start }
     grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT, SITE], DISPATCHER: [SITE], DRIVER: [SITE] }

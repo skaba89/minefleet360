@@ -5,12 +5,22 @@ from anyio import fail_after
 from fastapi import APIRouter, Depends, Header, Request, Response
 from starlette.concurrency import run_in_threadpool
 
-from app.authz.dependencies import Authorized, ClockDep, DbSession, Require, reject_unknown_query
+from app.authz.dependencies import (
+    Authorized,
+    ClockDep,
+    DbSession,
+    Require,
+    SettingsDep,
+    authenticate,
+    reject_unknown_query,
+)
 from app.authz.routing import SecuredRoute
 from app.core.errors import AppError
 from app.core.http import Page, Pagination
 from app.core.security import parse_composite_token
 from app.fleet import gps_live_service as service
+from app.fleet.gps_deferred_service import PointStatus, ingest_deferred
+from app.fleet.gps_deferred_transport import read_deferred_batch
 from app.fleet.gps_live_schemas import (
     DriverAccountIn,
     DriverAccountOut,
@@ -53,6 +63,25 @@ def start_phone(body: PhoneStartIn, auth: ShareAuth) -> PhoneShareOut:
 def phone_point(share_id: uuid.UUID, body: PhonePointIn, auth: ShareAuth) -> Response:
     service.phone_point(auth, share_id, body)
     return Response(status_code=204)
+
+
+@router.post("/me/gps/shares/{share_id}/deferred-positions")
+async def deferred_phone_points(
+    share_id: uuid.UUID, request: Request, auth: ShareAuth, settings: SettingsDep
+) -> dict[str, PointStatus]:
+    # Libère la connexion de lecture avant l'attente réseau (aucun verrou métier).
+    if not settings.gps_deferred_enabled:
+        raise AppError("NOT_FOUND")
+    await run_in_threadpool(auth.db.rollback)
+    batch = await read_deferred_batch(request, settings)
+
+    def persist() -> dict[str, PointStatus]:
+        # Réévalue session et droits après réception du lot.
+        principal = authenticate(auth.db, auth.clock, settings, request.headers.get("authorization"))
+        current = Require("fleet.gps.share")(request, principal, auth.db, auth.clock)
+        return {str(key): status for key, status in ingest_deferred(current, share_id, batch).items()}
+
+    return await run_in_threadpool(persist)
 
 
 @router.post("/me/gps/shares/{share_id}/stop", status_code=204)

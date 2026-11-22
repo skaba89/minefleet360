@@ -212,7 +212,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `dispatch.weighing.approve` | 1c | `POST /weighing-tickets/{weighing_ticket_id}/approve` | `OPS_MANAGER` |
 | `dispatch.weighing.correct` | 1c | `POST /weighing-tickets/{weighing_ticket_id}/void`<br>`POST /weighing-tickets/{weighing_ticket_id}/correct` | `OPS_MANAGER` |
 | `dispatch.indicators.read` | 1c | `GET /dispatch-indicators` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER` |
-| `fleet.gps.share` | 1c | `GET /me/gps/vehicles`<br>`POST /me/gps/shares`<br>`POST /me/gps/shares/{share_id}/positions`<br>`POST /me/gps/shares/{share_id}/stop` | `DISPATCHER`, `DRIVER`, `OPS_MANAGER`, `TENANT_ADMIN` |
+| `fleet.gps.share` | 1c | `GET /me/gps/vehicles`<br>`POST /me/gps/shares`<br>`POST /me/gps/shares/{share_id}/positions`<br>`POST /me/gps/shares/{share_id}/deferred-positions`<br>`POST /me/gps/shares/{share_id}/stop` | `DISPATCHER`, `DRIVER`, `OPS_MANAGER`, `TENANT_ADMIN` |
 | `fleet.gps.manage` | 1c | `GET /vehicles/{vehicle_id}/gps/tracker`<br>`POST /vehicles/{vehicle_id}/gps/tracker`<br>`POST /vehicles/{vehicle_id}/gps/tracker/revoke` | `OPS_MANAGER`, `TENANT_ADMIN` |
 | `workforce.driver.link_account` | 1c | `GET /drivers/{driver_id}/gps-account`<br>`POST /drivers/{driver_id}/gps-account` | `TENANT_ADMIN` |
 | `fuel.stock.read` | 1c | `GET /fuel/dashboard`<br>`GET /fuel/tanks`<br>`GET /fuel/pumps`<br>`GET /fuel/pumps/{fuel_pump_id}/meter-readings`<br>`GET /fuel/pumps/{fuel_pump_id}/reconciliations`<br>`GET /fuel/issues`<br>`GET /fuel/stocktakes`<br>`GET /fuel/alerts`<br>`GET /fuel/vehicles/{vehicle_id}/consumption` | `AUDITOR`, `DIRECTION`, `FINANCE`, `FUEL_MANAGER`, `OPS_MANAGER`, `TENANT_ADMIN` |
@@ -271,12 +271,12 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | Rôle | Permissions | Routes API accessibles |
 |---|---:|---:|
 | `PLATFORM_ADMIN` | 12 | 33 |
-| `TENANT_ADMIN` | 70 | 132 |
+| `TENANT_ADMIN` | 70 | 133 |
 | `DIRECTION` | 43 | 104 |
-| `OPS_MANAGER` | 89 | 187 |
-| `DISPATCHER` | 37 | 83 |
+| `OPS_MANAGER` | 89 | 188 |
+| `DISPATCHER` | 37 | 84 |
 | `HR` | 17 | 36 |
-| `DRIVER` | 5 | 19 |
+| `DRIVER` | 5 | 20 |
 | `WORKSHOP_CHIEF` | 40 | 104 |
 | `MECHANIC` | 17 | 46 |
 | `STOREKEEPER` | 17 | 50 |
