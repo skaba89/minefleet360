@@ -37,9 +37,11 @@ def test_deferred_identity_constraints_and_rls(client: TestClient, w: World, api
     }
     insert = text(
         "INSERT INTO fleet_gps_position (tenant_id, vehicle_id, site_id, device_id, "
-        "phone_share_id, source, client_point_id, client_point_fingerprint, latitude, longitude, recorded_at) "
+        "phone_share_id, source, client_point_id, client_point_fingerprint, "
+        "latitude, longitude, recorded_at) "
         "VALUES (:tenant, :vehicle, :site, :device, :share, :source, :point, :fingerprint, 9.5, -13.7, :at)"
     )
+    count = text("SELECT count(*) FROM fleet_gps_position WHERE phone_share_id = :share")
     engine = create_engine(get_settings().database_url(), pool_size=1, max_overflow=0)
     try:
         with engine.begin() as conn:
@@ -68,13 +70,9 @@ def test_deferred_identity_constraints_and_rls(client: TestClient, w: World, api
                 insert,
                 {**params, "point": None, "fingerprint": None, "at": now + timedelta(seconds=60)},
             )
-            assert conn.execute(
-                text("SELECT count(*) FROM fleet_gps_position WHERE phone_share_id = :share"), {"share": share}
-            ).scalar_one() == 2
+            assert conn.execute(count, {"share": share}).scalar_one() == 2
         with engine.begin() as conn:
             conn.execute(text("SELECT set_config('app.tenant_id', :t, true)"), {"t": str(other.tenant_id)})
-            assert conn.execute(
-                text("SELECT count(*) FROM fleet_gps_position WHERE phone_share_id = :share"), {"share": share}
-            ).scalar_one() == 0
+            assert conn.execute(count, {"share": share}).scalar_one() == 0
     finally:
         engine.dispose()
