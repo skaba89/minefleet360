@@ -1,11 +1,12 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router";
 import { get, request } from "../api/client";
 import { PhoneTrackingPage } from "./PhoneTrackingPage";
 
-vi.mock("../auth/AuthContext", () => ({ useMe: () => ({ timezone: "Africa/Conakry", grants: [{ role_code: "OPS_MANAGER", scope_type: "TENANT", site_id: null }] }) }));
+const auth = vi.hoisted(() => ({ permitted: true }));
+vi.mock("../auth/AuthContext", () => ({ useMe: () => ({ timezone: "Africa/Conakry", grants: auth.permitted ? [{ role_code: "OPS_MANAGER", scope_type: "TENANT", site_id: null }] : [] }) }));
 vi.mock("../api/client", async (original) => ({ ...await original<typeof import("../api/client")>(), get: vi.fn(), request: vi.fn() }));
 const share = { phone_share_id: "share", vehicle_id: "vehicle", started_at: new Date().toISOString(), expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() };
 let success: PositionCallback;
@@ -19,15 +20,20 @@ function setup(prefillVehicles = false) {
       total: 1,
     });
   }
-  return { ...render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/mon-suivi?vehicle=vehicle"]}><PhoneTrackingPage /></MemoryRouter></QueryClientProvider>), client };
+  const page = () => <QueryClientProvider client={client}><MemoryRouter initialEntries={["/mon-suivi?vehicle=vehicle"]}><PhoneTrackingPage /></MemoryRouter></QueryClientProvider>;
+  const view = render(page());
+  return { ...view, client, refreshProfile: () => view.rerender(page()) };
 }
 beforeEach(() => {
+  auth.permitted = true;
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+  onlineManager.setOnline(true);
   vi.clearAllMocks(); vi.mocked(get).mockReset(); vi.mocked(request).mockReset(); vi.stubGlobal("isSecureContext", true);
   Object.defineProperty(navigator, "geolocation", { configurable: true, value: { getCurrentPosition: locate } });
   vi.mocked(get).mockResolvedValue([{ vehicle_id: "vehicle", fleet_number: "PARC-FICTIF", registration_number: null, site_id: "site" }]);
   vi.mocked(request).mockImplementation(async (path) => ({ data: path === "/me/gps/shares" ? share : undefined, etag: null }));
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); onlineManager.setOnline(true); });
 it("demande le consentement et coupe les envois après l'arrêt", async () => {
   setup();
   const start = await screen.findByRole("button", { name: "Démarrer le partage" });
@@ -121,4 +127,30 @@ it("arrête le partage expiré sans demander la géolocalisation ni conserver de
   expect(locate).not.toHaveBeenCalled();
   expect(vi.mocked(request).mock.calls.some(([path]) => path.endsWith("/stop"))).toBe(true);
   expect(vi.mocked(request).mock.calls.some(([path]) => path.endsWith("/positions"))).toBe(false);
+});
+
+it("arrête la collecte et exige un nouveau consentement après retrait du droit de partage", async () => {
+  const view = setup(true);
+  await screen.findByRole("option", { name: "PARC-FICTIF" });
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(screen.getByRole("button", { name: "Démarrer le partage" }));
+  await waitFor(() => expect(locate).toHaveBeenCalledOnce());
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+  act(() => window.dispatchEvent(new Event("offline")));
+  act(() => success({ timestamp: Date.now(), coords: { latitude: 9.5, longitude: -13.7, accuracy: 12, speed: null, heading: null } } as GeolocationPosition));
+  expect(await screen.findByText(/Hors réseau : 1 relevé/)).toBeTruthy();
+  auth.permitted = false;
+  view.refreshProfile();
+  expect(screen.getByText("Votre compte ne peut pas partager de position.")).toBeTruthy();
+  expect(vi.mocked(request).mock.calls.some(([path]) => path.endsWith("/stop"))).toBe(true);
+  Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+  act(() => window.dispatchEvent(new Event("online")));
+  act(() => success({ timestamp: Date.now(), coords: { latitude: 10, longitude: -13, accuracy: 10, speed: null, heading: null } } as GeolocationPosition));
+  expect(vi.mocked(request).mock.calls.filter(([path]) => path.endsWith("/positions"))).toHaveLength(0);
+  auth.permitted = true;
+  view.refreshProfile();
+  const start = await screen.findByRole("button", { name: "Démarrer le partage" }) as HTMLButtonElement;
+  expect(start.disabled).toBe(true);
+  expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(false);
+  expect(locate).toHaveBeenCalledOnce();
 });

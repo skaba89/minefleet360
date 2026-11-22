@@ -17,8 +17,15 @@ interface Share { phone_share_id: string; vehicle_id: string; started_at: string
 
 export function PhoneTrackingPage() {
   const me = useMe();
+  // Démonter le collecteur dès que le profil ne permet plus le partage.
+  // Son cleanup invalide les callbacks GPS et purge la file en mémoire.
+  if (!can(me.grants, "fleet.gps.share")) return <p>Votre compte ne peut pas partager de position.</p>;
+  return <AuthorizedPhoneTracking />;
+}
+
+function AuthorizedPhoneTracking() {
+  const me = useMe();
   const [params] = useSearchParams();
-  const permitted = can(me.grants, "fleet.gps.share");
   const online = useConnectivity();
   const [vehiclePage, setVehiclePage] = useState(1);
   const vehicles = useQuery({
@@ -33,7 +40,6 @@ export function PhoneTrackingPage() {
         total: firstPage ? (Array.isArray(firstPage) ? firstPage.length : firstPage.total) : 0,
       };
     },
-    enabled: permitted,
   });
   const [vehicleId, setVehicleId] = useState(params.get("vehicle") ?? "");
   const [consent, setConsent] = useState(false);
@@ -167,7 +173,6 @@ export function PhoneTrackingPage() {
     finally { if (generation.current === run) setBusy(false); }
   }
 
-  if (!permitted) return <p>Votre compte ne peut pas partager de position.</p>;
   const vehicleOptions = Array.isArray(vehicles.data) ? vehicles.data : vehicles.data?.items ?? [];
   const vehicleTotal = Array.isArray(vehicles.data) ? vehicles.data.length : vehicles.data?.total ?? 0;
   const chosen = vehicleOptions.find((v) => v.vehicle_id === vehicleId);
