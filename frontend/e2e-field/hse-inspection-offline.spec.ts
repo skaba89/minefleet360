@@ -125,19 +125,28 @@ test("réponse perdue : l'inspection créée n'est pas dupliquée au rejeu", asy
 });
 
 /** Service worker actif, shell en cache, profil terrain ET kit d'inspection préparés (tranche 3). */
-async function waitForOfflineInspectionReady(page: Page): Promise<void> {
+async function waitForOfflineInspectionReady(page: Page, templateName: string): Promise<void> {
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
   await page.waitForFunction(
-    async () => {
+    async (expectedTemplate) => {
       if (!navigator.serviceWorker.controller) return false;
       const shell = await caches.match("/index.html");
       const profile = localStorage.getItem("minefleet-field-profile-v1");
       const kit = localStorage.getItem("minefleet-field-inspection-kit-v1");
-      return !!shell && !!profile && !!kit;
+      if (!shell || !profile || !kit) return false;
+      const field = JSON.parse(profile);
+      const inspection = JSON.parse(kit);
+      const age = Date.now() - Date.parse(inspection.saved_at);
+      return field.workspace_code === inspection.workspace_code
+        && field.user_account_id === inspection.user_account_id
+        && Array.isArray(inspection.sites) && inspection.sites.length > 0
+        && Array.isArray(inspection.templates)
+        && inspection.templates.some((t: { name: string }) => t.name === expectedTemplate)
+        && age >= 0 && age <= 7 * 24 * 3600 * 1000;
     },
-    undefined,
+    templateName,
     { timeout: 20_000 },
   );
 }
@@ -151,7 +160,7 @@ test("ouverture de l'application sans réseau : inspection depuis le kit puis sy
   const note = `Inspection démarrage hors ligne ${Date.now()}`;
   await uiLogin(page, performer());
   await openInspections(page); // prépare le kit : sites, checklists actives, engins
-  await waitForOfflineInspectionReady(page);
+  await waitForOfflineInspectionReady(page, templateName);
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByRole("heading", { name: /mode hors ligne/ })).toBeVisible();
