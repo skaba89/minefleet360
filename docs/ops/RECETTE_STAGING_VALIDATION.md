@@ -70,17 +70,24 @@ rollback automatique).
 
 ### A3 — Images et signatures
 
+Définir API_IMAGE et WEB_IMAGE à partir des digests réels du manifeste actif.
+
 ```bash
-docker inspect --format '{{index .RepoDigests 0}}' <image-api> <image-web>      # digests réels
-cosign verify --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  --certificate-identity-regexp '^https://github.com/skaba89/minefleet360/' \
-  ghcr.io/skaba89/minefleet360/api@sha256:<digest>
-cosign verify-attestation --type https://slsa.dev/provenance/v1 <mêmes options> \
-  ghcr.io/skaba89/minefleet360/api@sha256:<digest>
+for IMAGE in "$API_IMAGE" "$WEB_IMAGE"; do
+  cosign verify --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+    --certificate-identity-regexp '^https://github.com/skaba89/minefleet360/\.github/workflows/release-images\.yml@refs/(heads/main|tags/v[^/]+)$' "$IMAGE"
+  cosign verify-attestation --type https://slsa.dev/provenance/v1 \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+    --certificate-identity-regexp '^https://github.com/skaba89/minefleet360/\.github/workflows/release-images\.yml@refs/(heads/main|tags/v[^/]+)$' "$IMAGE"
+done
 ```
 
-**Attendu** : vérifications Cosign/attestation SLSA en succès ; aucun tag flottant (`latest`, `main`)
-référencé par le compose courant.
+La provenance SLSA v1 embarquée par Buildx ne remplace pas son attestation keyless signée par le workflow
+de publication. Pour les anciennes images sans attestation, publier une nouvelle release validée ;
+ne pas neutraliser A3.
+
+**Attendu** : vérifications Cosign/attestation SLSA en succès pour les deux images ; aucun tag flottant
+(`latest`, `main`) référencé par le compose courant.
 
 ### A4 — Permissions et isolation PostgreSQL (canaries en lecture de catalogue)
 
