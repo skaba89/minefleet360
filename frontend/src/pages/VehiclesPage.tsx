@@ -10,7 +10,7 @@ import { ActionForm, intOrNull, Options, orNull } from "../components/forms";
 import { FUEL, label, OWNERSHIP, VEHICLE_STATUS } from "../lib/labels";
 import { can } from "../lib/permissions";
 import { useSites } from "../site/SiteContext";
-import { vehicleTypeIcon } from "../lib/vehicleTypeIcon";
+import { fleetIconHref, vehicleTypeIcon } from "../lib/vehicleTypeIcon";
 
 type VehicleCreate = Schemas["VehicleCreate"];
 export type VehicleStatusCode = "AVAILABLE" | "IN_MAINTENANCE" | "IMMOBILIZED" | "OUT_OF_SERVICE" | "RETIRED";
@@ -185,15 +185,17 @@ function CreateVehicle({ onClose }: { onClose: () => void }) {
             .filter((c) => c.is_active)
             .map((c) => (
               <option key={c.vehicle_category_id} value={c.vehicle_category_id}>
-                {vehicleTypeIcon(c)} {c.label_fr}
+                {c.label_fr}
               </option>
             ))}
         </select>
       </label>
       {form.vehicle_category_id && (
         <p className="muted small" role="status">
-          <span aria-hidden="true">{vehicleTypeIcon((categories.data ?? []).find((c) => c.vehicle_category_id === form.vehicle_category_id))}</span>{" "}
-          Icône utilisée sur la carte GPS pour cette catégorie.
+          <span className="fleet-category-preview-icon" aria-hidden="true">
+            <svg viewBox="0 0 40 32"><use href={fleetIconHref(vehicleTypeIcon((categories.data ?? []).find((c) => c.vehicle_category_id === form.vehicle_category_id)))} /></svg>
+          </span>{" "}
+          Icône vectorielle utilisée sur la carte GPS pour cette catégorie.
         </p>
       )}
       <label>
