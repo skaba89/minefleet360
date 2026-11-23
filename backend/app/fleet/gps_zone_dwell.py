@@ -8,6 +8,7 @@ and tenant authorization are owned by the existing PostGIS/RLS layer.
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from math import asin, cos, radians, sin, sqrt
+from uuid import UUID
 
 
 @dataclass(frozen=True)
@@ -81,3 +82,39 @@ def is_prolonged_stop(points: list[DwellPoint], *, threshold_minutes: int, max_g
     if not 1 <= threshold_minutes <= 1440:
         raise ValueError("Threshold must be between 1 and 1440 minutes")
     return dwell_minutes(points, max_gap_minutes=max_gap_minutes) >= threshold_minutes
+
+
+@dataclass(frozen=True)
+class ZoneDwellSample:
+    """One measured GPS position with its active geofence membership from PostGIS."""
+
+    point: DwellPoint
+    active_zone_ids: frozenset[UUID]
+
+
+def zone_dwell_minutes(
+    samples: list[ZoneDwellSample],
+    *,
+    zone_id: UUID,
+    max_speed_kmh: float = 3.0,
+    max_drift_m: float = 40.0,
+    max_gap_minutes: int = 5,
+) -> float:
+    """Measure only the last uninterrupted stationary segment inside one active zone.
+
+    Membership must be computed for each position under the caller's tenant/site
+    RLS scope. Leaving the zone resets dwell time even if the vehicle is stationary
+    immediately outside. Re-entry starts a new segment. This is not an alert engine.
+    """
+    current_segment: list[DwellPoint] = []
+    for sample in samples:
+        if zone_id not in sample.active_zone_ids:
+            current_segment.clear()
+        else:
+            current_segment.append(sample.point)
+    return dwell_minutes(
+        current_segment,
+        max_speed_kmh=max_speed_kmh,
+        max_drift_m=max_drift_m,
+        max_gap_minutes=max_gap_minutes,
+    )
