@@ -45,7 +45,7 @@ it("liste les alertes avec leur détail mesuré et la limite du site", async () 
   expect(await screen.findByText("CAM-1")).toBeTruthy();
   expect(screen.getByText("72.5 km/h au maximum pour 50.0 km/h autorisés")).toBeTruthy();
   expect(screen.getByText("En cours")).toBeTruthy();
-  expect(screen.getByText("Entrée en zone interdite")).toBeTruthy();
+  expect(screen.getAllByText("Entrée en zone interdite")).toHaveLength(2);
   expect(screen.getByText("Zone explosifs")).toBeTruthy();
   expect(await screen.findByText(/Alerte au-delà de 50.0 km\/h mesurés\. Perte de signal non surveillée\./)).toBeTruthy();
   expect(get).toHaveBeenCalledWith("/gps/alerts", { site_id: "s1", unacknowledged: true, page_size: 100 });
@@ -83,7 +83,7 @@ it("affiche une perte de signal avec l'heure de la dernière position mesurée",
   );
   show();
   expect(await screen.findByText("Perte de signal")).toBeTruthy();
-  expect(screen.getByText("Dernière position mesurée 04/11/2026 07:40")).toBeTruthy();
+  expect(await screen.findByText("Dernière position mesurée 04/11/2026 07:40")).toBeTruthy();
   expect(await screen.findByText(/Perte de signal signalée après 15 min sans position/)).toBeTruthy();
 });
 
@@ -101,4 +101,26 @@ it("enregistre le choix personnel e-mail et SMS et signale l'absence de fourniss
     }),
   );
   expect(await screen.findByText("Choix enregistrés.")).toBeTruthy();
+});
+
+it("filtre les alertes par type via l'API sans changer les permissions", async () => {
+  show();
+  expect(await screen.findByText("CAM-1")).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Type d'alerte"), { target: { value: "RESTRICTED_ZONE_ENTRY" } });
+  await waitFor(() =>
+    expect(get).toHaveBeenCalledWith("/gps/alerts", {
+      site_id: "s1",
+      unacknowledged: true,
+      kind: "RESTRICTED_ZONE_ENTRY",
+      page_size: 100,
+    }),
+  );
+  fireEvent.change(screen.getByLabelText("Type d'alerte"), { target: { value: "" } });
+  await waitFor(() =>
+    expect(get).toHaveBeenLastCalledWith("/gps/alerts", {
+      site_id: "s1",
+      unacknowledged: true,
+      page_size: 100,
+    }),
+  );
 });

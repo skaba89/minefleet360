@@ -157,13 +157,14 @@ export function GpsAlertsPage() {
   const { siteId, timezoneOf } = useSites();
   const queryClient = useQueryClient();
   const [pendingOnly, setPendingOnly] = useState(true);
+  const [kindFilter, setKindFilter] = useState<Alert["kind"] | "">("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
   const allowed = can(me.grants, "fleet.gps_alert.read", siteId);
   const managing = can(me.grants, "fleet.gps_alert.manage", siteId);
   const alerts = useQuery({
-    queryKey: ["gps-alerts", siteId, pendingOnly],
-    queryFn: () => get<{ items: Alert[]; total: number }>("/gps/alerts", { site_id: siteId, unacknowledged: pendingOnly, page_size: 100 }),
+    queryKey: ["gps-alerts", siteId, pendingOnly, kindFilter],
+    queryFn: () => get<{ items: Alert[]; total: number }>("/gps/alerts", { site_id: siteId, unacknowledged: pendingOnly, ...(kindFilter ? { kind: kindFilter } : {}), page_size: 100 }),
     enabled: allowed,
     refetchInterval: 30_000,
   });
@@ -201,6 +202,15 @@ export function GpsAlertsPage() {
         <label className="checkbox">
           <input type="checkbox" checked={pendingOnly} onChange={(e) => setPendingOnly(e.target.checked)} />
           Seulement les alertes non prises en compte
+        </label>
+        <label>
+          Type d'alerte
+          <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value as Alert["kind"] | "")}>
+            <option value="">Tous les types</option>
+            {(Object.entries(ALERT_KIND) as [Alert["kind"], string][]).map(([kind, text]) => (
+              <option key={kind} value={kind}>{text}</option>
+            ))}
+          </select>
         </label>
         {error != null && <ErrorMessage error={error} />}
         <DataState loading={alerts.isLoading} error={alerts.error} empty={!alerts.data?.items.length} emptyText="Aucune alerte.">
