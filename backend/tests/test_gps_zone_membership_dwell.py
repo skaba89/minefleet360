@@ -49,14 +49,16 @@ def test_missing_zone_and_gaps_do_not_estimate_presence() -> None:
     zone = uuid4()
     assert zone_dwell_minutes([sample(0, frozenset()), sample(4, frozenset())], zone_id=zone) == 0.0
     assert (
-        zone_dwell_minutes([sample(0, frozenset({zone})), sample(10, frozenset({zone}))], zone_id=zone)
-        == 0.0
+        zone_dwell_minutes([sample(0, frozenset({zone})), sample(10, frozenset({zone}))], zone_id=zone) == 0.0
     )
 
 
 def test_movement_cancels_the_stationary_segment() -> None:
     zone = uuid4()
-    assert zone_dwell_minutes(
-        [sample(0, frozenset({zone})), sample(3, frozenset({zone}), lat=10.01)],
-        zone_id=zone,
-    ) == 0.0
+    assert (
+        zone_dwell_minutes(
+            [sample(0, frozenset({zone})), sample(3, frozenset({zone}), lat=10.01)],
+            zone_id=zone,
+        )
+        == 0.0
+    )
