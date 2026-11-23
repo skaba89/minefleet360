@@ -28,6 +28,21 @@ test("zones de site : création OPS_MANAGER depuis l'UI, lecture DISPATCHER sans
   await page.getByRole("button", { name: "Nouvelle zone" }).click();
   await page.getByLabel("Code").fill(zoneCode);
   await page.getByLabel("Nom").fill(zoneName);
+  // Le nouveau dessin sur carte complète, sans remplacer, la saisie par coordonnées.
+  const drawMap = page.getByRole("region", { name: "Dessiner une zone sur la carte" });
+  await expect(drawMap).toBeVisible();
+  const canvas = drawMap.locator(".maplibregl-canvas");
+  await expect(canvas).toBeVisible();
+  await canvas.click({ position: { x: 90, y: 90 } });
+  await expect(drawMap.getByText("1 sommet(s) saisi(s)")).toBeVisible();
+  await canvas.click({ position: { x: 180, y: 90 } });
+  await canvas.click({ position: { x: 140, y: 175 } });
+  await expect(drawMap.getByText("3 sommet(s) saisi(s)")).toBeVisible();
+  await drawMap.getByRole("button", { name: "Annuler le dernier sommet" }).click();
+  await expect(drawMap.getByText("2 sommet(s) saisi(s)")).toBeVisible();
+  await drawMap.getByRole("button", { name: "Effacer le dessin" }).click();
+  await expect(drawMap.getByText("0 sommet(s) saisi(s)")).toBeVisible();
+  // Continuité du comportement historique : le formulaire texte reste éditable.
   await page
     .getByLabel("Sommets (une ligne « latitude, longitude » par sommet, 3 minimum)")
     .fill("10.4312, -12.7654\n10.4456, -12.7701\n10.4378, -12.7745");
