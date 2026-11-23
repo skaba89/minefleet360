@@ -153,3 +153,61 @@ it("shows the category pictogram for each fleet vehicle without changing its GPS
   expect(excavatorMarker.className).toContain("fleet-marker--offline");
   expect(calls.positions.get(excavatorMarker)).toEqual([-12.9, 10.1]);
 });
+
+it("conserve chaque silhouette SVG pendant les nouvelles mesures et changements d'état GPS", async () => {
+  const onSelect = vi.fn();
+  const { rerender } = render(
+    <FleetMap
+      vehicles={[
+        truck({ typeIcon: "dump-truck", state: "moving" }),
+        truck({ id: "exc", label: "PEL-01", typeIcon: "excavator", latitude: 10.3, longitude: -12.7 }),
+      ]}
+      selectedId="v1"
+      onSelect={onSelect}
+    />,
+  );
+  const selected = await screen.findByRole("button", { name: /CAM-01/ });
+  const excavator = screen.getByRole("button", { name: /PEL-01/ });
+  expect(selected.querySelector("use")?.getAttribute("href")).toBe("/fleet-icons.svg#dump-truck");
+  expect(excavator.querySelector("use")?.getAttribute("href")).toBe("/fleet-icons.svg#excavator");
+  expect(selected.className).toContain("fleet-marker--selected");
+
+  rerender(
+    <FleetMap
+      vehicles={[
+        truck({ typeIcon: "dump-truck", latitude: 10.4, longitude: -12.5, state: "offline", stateLabel: "Signal ancien ou invalide" }),
+        truck({ id: "exc", label: "PEL-01", typeIcon: "excavator", latitude: 10.5, longitude: -12.6 }),
+      ]}
+      selectedId="v1"
+      onSelect={onSelect}
+    />,
+  );
+  expect(calls.positions.get(selected)).toEqual([-12.5, 10.4]);
+  expect(calls.positions.get(excavator)).toEqual([-12.6, 10.5]);
+  expect(selected.querySelector("use")?.getAttribute("href")).toBe("/fleet-icons.svg#dump-truck");
+  expect(excavator.querySelector("use")?.getAttribute("href")).toBe("/fleet-icons.svg#excavator");
+  expect(selected.className).toContain("fleet-marker--offline");
+  expect(selected.className).toContain("fleet-marker--selected");
+  fireEvent.click(excavator);
+  expect(onSelect).toHaveBeenCalledWith("exc");
+});
+
+it("met à jour l'icône quand la catégorie du véhicule change, sans déplacer sa position", async () => {
+  const { rerender } = render(
+    <FleetMap vehicles={[truck({ typeIcon: "road-truck" })]} selectedId={null} onSelect={vi.fn()} />,
+  );
+  const marker = await screen.findByRole("button", { name: /CAM-01/ });
+  expect(marker.querySelector("use")?.getAttribute("href")).toBe("/fleet-icons.svg#road-truck");
+  rerender(
+    <FleetMap vehicles={[truck({ typeIcon: "tanker" })]} selectedId={null} onSelect={vi.fn()} />,
+  );
+  expect(marker.querySelector("use")?.getAttribute("href")).toBe("/fleet-icons.svg#tanker");
+  expect(calls.positions.get(marker)).toEqual([-12.9, 10.1]);
+});
+
+it("utilise une silhouette SVG locale de repli si la catégorie n'est pas disponible", async () => {
+  render(<FleetMap vehicles={[truck()]} selectedId={null} onSelect={vi.fn()} />);
+  const marker = await screen.findByRole("button", { name: /CAM-01/ });
+  expect(marker.querySelector("use")?.getAttribute("href")).toBe("/fleet-icons.svg#fleet");
+  expect(marker.querySelector(".fleet-marker-type-icon")?.getAttribute("aria-hidden")).toBe("true");
+});
