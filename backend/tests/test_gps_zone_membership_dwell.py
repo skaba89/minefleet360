@@ -5,7 +5,6 @@ from uuid import UUID, uuid4
 
 from app.fleet.gps_zone_dwell import DwellPoint, ZoneDwellSample, zone_dwell_minutes
 
-
 BASE = datetime(2026, 11, 23, 11, 0, tzinfo=UTC)
 
 
@@ -49,7 +48,10 @@ def test_another_zone_cannot_extend_dwell() -> None:
 def test_missing_zone_and_gaps_do_not_estimate_presence() -> None:
     zone = uuid4()
     assert zone_dwell_minutes([sample(0, frozenset()), sample(4, frozenset())], zone_id=zone) == 0.0
-    assert zone_dwell_minutes([sample(0, frozenset({zone})), sample(10, frozenset({zone}))], zone_id=zone) == 0.0
+    assert (
+        zone_dwell_minutes([sample(0, frozenset({zone})), sample(10, frozenset({zone}))], zone_id=zone)
+        == 0.0
+    )
 
 
 def test_movement_cancels_the_stationary_segment() -> None:
