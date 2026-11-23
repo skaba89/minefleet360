@@ -41,7 +41,7 @@ test("auditeur : tonnage mesuré et coût complet valorisé en GNF", async ({ pa
 test("auditeur : trajet GPS d'un camion avec franchissement de zones (consultation journalisée)", async ({ page }) => {
   await login(page, demo("AUDITOR"));
   await open(page, "Flotte GPS");
-  await expect(page.getByText("Camions localisés")).toBeVisible();
+  await expect(page.getByText("Véhicules et engins localisés")).toBeVisible();
   await open(page, "Véhicules");
   await page.getByRole("link", { name: "DEMO-CAM-001" }).first().click();
   await page.getByLabel("Finalité").selectOption({ label: "Analyse d'exploitation" });
