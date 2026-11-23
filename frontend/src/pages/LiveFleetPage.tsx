@@ -7,6 +7,7 @@ import { useMe } from "../auth/AuthContext";
 import { AccessDenied, DataState } from "../components/common";
 import { can } from "../lib/permissions";
 import { GPS_SIGNAL_LABEL, gpsSignalState } from "../lib/gpsSignal";
+import { vehicleTypeIcon } from "../lib/vehicleTypeIcon";
 import { gpsRetryDelayMs } from "../lib/gpsRetry";
 import { useConnectivity } from "../lib/connectivity";
 import { formatDateTime } from "../lib/time";
@@ -93,6 +94,12 @@ export function LiveFleetPage() {
     };
   }, [siteId, permitted, online, queryClient]);
   const vehicles = useQuery({ queryKey: ["gps-vehicle-labels", siteId], queryFn: () => get<{ items: Schemas["VehicleOut"][] }>("/vehicles", { site_id: siteId, page_size: 200 }), enabled: permitted });
+  const categories = useQuery({
+    queryKey: ["vehicle-categories"],
+    queryFn: () => get<Schemas["VehicleCategoryOut"][]>("/vehicle-categories"),
+    enabled: permitted,
+  });
+  const categoriesById = useMemo(() => new Map((categories.data ?? []).map((c) => [c.vehicle_category_id, c])), [categories.data]);
   const byId = useMemo(() => new Map((vehicles.data?.items ?? []).map((v) => [v.vehicle_id, v])), [vehicles.data]);
   const vehicleLabel = (id: string) => byId.get(id)?.registration_number || byId.get(id)?.fleet_number || id.slice(0, 8);
   const shown = useMemo(
@@ -115,6 +122,7 @@ export function LiveFleetPage() {
         return {
           id: point.vehicle_id,
           label: vehicleLabel(point.vehicle_id),
+          typeIcon: vehicleTypeIcon(categoriesById.get(byId.get(point.vehicle_id)?.vehicle_category_id ?? "")),
           latitude: point.latitude,
           longitude: point.longitude,
           state,
@@ -125,7 +133,7 @@ export function LiveFleetPage() {
         };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [shown, now, byId],
+    [shown, now, byId, categoriesById],
   );
   if (!permitted) return <AccessDenied />;
 
@@ -158,6 +166,7 @@ export function LiveFleetPage() {
         </aside>
       </div>
       {vehicles.error && <p className="muted small">Les noms du parc sont indisponibles ; les identifiants des véhicules restent affichés.</p>}
+      {categories.error && <p className="muted small">Catégories indisponibles : icône générique affichée pour les véhicules concernés.</p>}
       <DataState loading={gps.isLoading} error={gps.error} empty={shown.length === 0} emptyText="Aucune position GPS disponible pour ce périmètre.">
         <div className="live-fleet-table">
           <table>
