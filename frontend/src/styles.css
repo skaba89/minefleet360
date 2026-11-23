@@ -149,8 +149,10 @@ pre { white-space:pre-wrap; word-break:break-word; background:var(--bg); border-
 .fleet-marker-label { display:none; }.fleet-map--labels .fleet-marker, .fleet-marker--selected, .fleet-marker:hover, .fleet-marker:focus-visible { padding:.15rem .45rem; }
 .fleet-map--labels .fleet-marker-label, .fleet-marker--selected .fleet-marker-label, .fleet-marker:hover .fleet-marker-label, .fleet-marker:focus-visible .fleet-marker-label { display:inline; }
 .fleet-marker { display:inline-flex; align-items:center; justify-content:center; gap:.2rem; }
-.fleet-marker-type-icon { display:inline-flex; font-size:1.15rem; line-height:1; align-items:center; justify-content:center; min-width:1.4rem; }
-.fleet-marker--selected .fleet-marker-type-icon { font-size:1.2rem; }
+.fleet-marker-type-icon { display:block; width:29px; height:24px; flex:none; color:inherit; }
+.fleet-marker--selected .fleet-marker-type-icon { width:32px; height:26px; }
+.fleet-category-preview-icon { display:inline-flex; width:48px; height:38px; background:#173e55; color:#fff; border-radius:7px; vertical-align:middle; align-items:center; justify-content:center; padding:4px; }
+.fleet-category-preview-icon svg { display:block; width:100%; height:100%; }
 .fleet-marker-arrow { display:inline-block; width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-bottom:9px solid currentColor; }
 /* Relecture de trajet : marqueur plein = mesure, pointillé = entre deux mesures, gris = signal interrompu. */
 .track-replay { padding:.5rem; }.track-replay-canvas { width:100%; height:clamp(300px,50vh,560px); border-radius:5px; overflow:hidden; }
