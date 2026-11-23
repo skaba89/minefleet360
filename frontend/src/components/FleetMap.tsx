@@ -10,6 +10,7 @@ import { compass } from "../lib/replay";
 export interface MapVehicle {
   id: string;
   label: string;
+  typeIcon?: string;
   latitude: number;
   longitude: number;
   state: GpsSignalState;
@@ -149,6 +150,10 @@ export function FleetMap({
         glide(entry.marker, target);
       }
       entry.button.className = `fleet-marker fleet-marker--${v.state}${v.id === selectedId ? " fleet-marker--selected" : ""}`;
+      const icon = document.createElement("span");
+      icon.className = "fleet-marker-type-icon";
+      icon.textContent = v.typeIcon ?? "🚗";
+      icon.setAttribute("aria-hidden", "true");
       const text = document.createElement("span");
       text.className = "fleet-marker-label";
       text.textContent = v.label;
@@ -158,9 +163,9 @@ export function FleetMap({
         arrow.className = "fleet-marker-arrow";
         arrow.setAttribute("aria-hidden", "true");
         arrow.style.transform = `rotate(${v.headingDeg}deg)`;
-        entry.button.replaceChildren(arrow, text);
+        entry.button.replaceChildren(icon, arrow, text);
       } else {
-        entry.button.replaceChildren(text);
+        entry.button.replaceChildren(icon, text);
       }
       entry.button.title = markerTitle(v);
       entry.button.setAttribute("aria-label", markerTitle(v));
