@@ -1,18 +1,19 @@
 import { layers, namedFlavor } from "@protomaps/basemaps";
 import type { StyleSpecification } from "maplibre-gl";
 
-/**
- * Fond de carte auto-hébergé (décision du 4 novembre 2026, docs/GPS_LIVE_MAP.md) : extrait OpenStreetMap de la
- * Guinée au format PMTiles, servi par le conteneur web sous /basemap/. Aucune position consultée n'est envoyée à un
- * tiers. Sans ce fichier (développement, CI), la carte reste utilisable sur un fond neutre.
- */
+/** Regional PMTiles are self-hosted: GPS coordinates are never sent to external tile providers. */
 export const BASEMAP_PATH = "/basemap/guinee.pmtiles";
+export const FRANCE_BASEMAP_PATH = "/basemap/france.pmtiles";
 export const OSM_ATTRIBUTION = "© contributeurs OpenStreetMap (ODbL)";
+export type BasemapRegion = "guinee" | "france";
+export const BASEMAPS: Record<BasemapRegion, string> = {
+  guinee: BASEMAP_PATH,
+  france: FRANCE_BASEMAP_PATH,
+};
 
-/** Le fichier est présent si le serveur le sert (et non la page de l'application). */
-export async function basemapAvailable(fetcher: typeof fetch = fetch): Promise<boolean> {
+async function archiveAvailable(path: string, fetcher: typeof fetch): Promise<boolean> {
   try {
-    const response = await fetcher(BASEMAP_PATH, { method: "HEAD" });
+    const response = await fetcher(path, { method: "HEAD" });
     const type = response.headers.get("content-type") ?? "";
     return response.ok && !type.includes("text/html");
   } catch {
@@ -20,23 +21,49 @@ export async function basemapAvailable(fetcher: typeof fetch = fetch): Promise<b
   }
 }
 
+/** Backwards-compatible single-region check used in existing tests. */
+export async function basemapAvailable(fetcher: typeof fetch = fetch): Promise<boolean> {
+  return archiveAvailable(BASEMAP_PATH, fetcher);
+}
+
+/** Check each optional regional file independently; one missing archive must not hide another. */
+export async function availableBasemaps(fetcher: typeof fetch = fetch): Promise<BasemapRegion[]> {
+  const [guinee, france] = await Promise.all([
+    archiveAvailable(BASEMAP_PATH, fetcher),
+    archiveAvailable(FRANCE_BASEMAP_PATH, fetcher),
+  ]);
+  return [ ...(guinee ? (["guinee"] as const) : []), ...(france ? (["france"] as const) : []) ];
+}
+
 /**
- * Style MapLibre. Les couches de texte du fond sont écartées : elles exigeraient des polices (glyphes) hébergées en
- * plus ; les engins sont étiquetés par des marqueurs HTML.
+ * Combine disjoint regional tiles into one MapLibre style with unique sources and layer IDs.
+ * Keep a single neutral background. Exclude symbol layers (no local glyphs yet).
  */
-export function mapStyle(withBasemap: boolean): StyleSpecification {
-  if (!withBasemap) {
+export function mapStyle(regions: boolean | readonly BasemapRegion[]): StyleSpecification {
+  const available: readonly BasemapRegion[] = typeof regions === "boolean" ? (regions ? ["guinee"] : []) : regions;
+  if (available.length === 0) {
     return {
       version: 8,
       sources: {},
       layers: [{ id: "fond-neutre", type: "background", paint: { "background-color": "#eef1f4" } }],
     };
   }
-  return {
-    version: 8,
-    sources: {
-      protomaps: { type: "vector", url: `pmtiles://${BASEMAP_PATH}`, attribution: OSM_ATTRIBUTION },
-    },
-    layers: layers("protomaps", namedFlavor("light"), { lang: "fr" }).filter((layer) => layer.type !== "symbol"),
-  };
+
+  const sources: StyleSpecification["sources"] = {};
+  const baseLayers: StyleSpecification["layers"] = [
+    { id: "fond-neutre", type: "background", paint: { "background-color": "#eef1f4" } },
+  ];
+  for (const region of available) {
+    const sourceId = `protomaps-${region}`;
+    sources[sourceId] = {
+      type: "vector",
+      url: `pmtiles://${BASEMAPS[region]}`,
+      attribution: OSM_ATTRIBUTION,
+    };
+    for (const layer of layers(sourceId, namedFlavor("light"), { lang: "fr" })) {
+      if (layer.type === "symbol" || layer.type === "background") continue;
+      baseLayers.push({ ...layer, id: `${region}-${layer.id}` });
+    }
+  }
+  return { version: 8, sources, layers: baseLayers };
 }
