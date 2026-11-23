@@ -10,6 +10,7 @@ import { ActionForm, intOrNull, Options, orNull } from "../components/forms";
 import { FUEL, label, OWNERSHIP, VEHICLE_STATUS } from "../lib/labels";
 import { can } from "../lib/permissions";
 import { useSites } from "../site/SiteContext";
+import { fleetIconHref, vehicleTypeIcon } from "../lib/vehicleTypeIcon";
 
 type VehicleCreate = Schemas["VehicleCreate"];
 export type VehicleStatusCode = "AVAILABLE" | "IN_MAINTENANCE" | "IMMOBILIZED" | "OUT_OF_SERVICE" | "RETIRED";
@@ -189,6 +190,14 @@ function CreateVehicle({ onClose }: { onClose: () => void }) {
             ))}
         </select>
       </label>
+      {form.vehicle_category_id && (
+        <p className="muted small" role="status">
+          <span className="fleet-category-preview-icon" aria-hidden="true">
+            <svg viewBox="0 0 40 32"><use href={fleetIconHref(vehicleTypeIcon((categories.data ?? []).find((c) => c.vehicle_category_id === form.vehicle_category_id)))} /></svg>
+          </span>{" "}
+          Icône vectorielle utilisée sur la carte GPS pour cette catégorie.
+        </p>
+      )}
       <label>
         N° de parc (unique, définitif)
         <input required pattern="\S{1,30}" maxLength={30} value={form.fleet_number} onChange={set("fleet_number")} />

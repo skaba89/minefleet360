@@ -140,3 +140,16 @@ it("oriente une flèche selon le cap mesuré, seulement en mouvement et si l'éq
     expect(marker.getAttribute("aria-label")).not.toMatch(/cap/);
   }
 });
+
+it("shows the category pictogram for each fleet vehicle without changing its GPS status", async () => {
+  render(<FleetMap vehicles={[
+    truck({ typeIcon: "dump-truck" }),
+    truck({ id: "v2", label: "PEL-01", typeIcon: "excavator", state: "offline", stateLabel: "Signal ancien" }),
+  ]} selectedId={null} onSelect={vi.fn()} />);
+  const truckMarker = await screen.findByRole("button", { name: /CAM-01/ });
+  const excavatorMarker = screen.getByRole("button", { name: /PEL-01/ });
+  expect(truckMarker.querySelector(".fleet-marker-type-icon use")?.getAttribute("href")).toBe("/fleet-icons.svg#dump-truck");
+  expect(excavatorMarker.querySelector(".fleet-marker-type-icon use")?.getAttribute("href")).toBe("/fleet-icons.svg#excavator");
+  expect(excavatorMarker.className).toContain("fleet-marker--offline");
+  expect(calls.positions.get(excavatorMarker)).toEqual([-12.9, 10.1]);
+});
