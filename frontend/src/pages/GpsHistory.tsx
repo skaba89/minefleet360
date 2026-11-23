@@ -6,6 +6,7 @@ import { useMe } from "../auth/AuthContext";
 import { Badge, DataState, ErrorMessage } from "../components/common";
 import { ActionForm, Options } from "../components/forms";
 import { TrackReplay } from "../components/TrackReplay";
+import { GeofenceDrawMap } from "../components/GeofenceDrawMap";
 import { label } from "../lib/labels";
 import { can } from "../lib/permissions";
 import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
@@ -277,9 +278,13 @@ function GeofenceForm({ onCancel, onDone }: { onCancel: () => void; onDone: () =
           <Options map={GEOFENCE_KIND} />
         </select>
       </label>
+      <GeofenceDrawMap
+        value={form.points}
+        onChange={(points) => setForm((current) => ({ ...current, points }))}
+      />
       <label>
         Sommets (une ligne « latitude, longitude » par sommet, 3 minimum)
-        <textarea required rows={6} value={form.points} onChange={(e) => setForm({ ...form, points: e.target.value })} />
+        <textarea required rows={6} value={form.points} onChange={(e) => setForm((current) => ({ ...current, points: e.target.value }))} />
       </label>
     </ActionForm>
   );
