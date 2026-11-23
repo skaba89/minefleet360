@@ -4,7 +4,7 @@ import * as maplibregl from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { Protocol } from "pmtiles";
 
-import { basemapAvailable, mapStyle } from "./basemap";
+import { availableBasemaps, mapStyle } from "./basemap";
 
 export const GUINEA_CENTER: [number, number] = [-11.3, 10.4];
 
@@ -20,14 +20,15 @@ export function reducedMotion(): boolean {
  * indisponible : l'appelant affiche alors une alternative textuelle.
  */
 export async function createMap(container: HTMLElement): Promise<{ map: maplibregl.Map; withBasemap: boolean }> {
-  const withBasemap = await basemapAvailable();
+  const regions = await availableBasemaps();
+  const withBasemap = regions.length > 0;
   if (withBasemap && !protocolRegistered) {
     maplibregl.addProtocol("pmtiles", new Protocol().tile);
     protocolRegistered = true;
   }
   const map = new maplibregl.Map({
     container,
-    style: mapStyle(withBasemap),
+    style: mapStyle(regions),
     center: GUINEA_CENTER,
     zoom: 6,
     attributionControl: { compact: true },
