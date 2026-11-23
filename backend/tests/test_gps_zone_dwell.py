@@ -6,7 +6,6 @@ import pytest
 
 from app.fleet.gps_zone_dwell import DwellPoint, dwell_minutes, is_prolonged_stop
 
-
 BASE = datetime(2026, 11, 23, 10, 0, tzinfo=UTC)
 
 
