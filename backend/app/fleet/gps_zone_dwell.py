@@ -77,9 +77,7 @@ def dwell_minutes(
     return (last.recorded_at - anchor.recorded_at).total_seconds() / 60.0
 
 
-def is_prolonged_stop(
-    points: list[DwellPoint], *, threshold_minutes: int, max_gap_minutes: int = 5
-) -> bool:
+def is_prolonged_stop(points: list[DwellPoint], *, threshold_minutes: int, max_gap_minutes: int = 5) -> bool:
     if not 1 <= threshold_minutes <= 1440:
         raise ValueError("Threshold must be between 1 and 1440 minutes")
     return dwell_minutes(points, max_gap_minutes=max_gap_minutes) >= threshold_minutes
