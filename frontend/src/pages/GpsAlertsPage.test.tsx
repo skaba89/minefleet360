@@ -102,3 +102,25 @@ it("enregistre le choix personnel e-mail et SMS et signale l'absence de fourniss
   );
   expect(await screen.findByText("Choix enregistrés.")).toBeTruthy();
 });
+
+it("filtre les alertes par type via l'API sans changer les permissions", async () => {
+  show();
+  expect(await screen.findByText("CAM-1")).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Type d'alerte"), { target: { value: "RESTRICTED_ZONE_ENTRY" } });
+  await waitFor(() =>
+    expect(get).toHaveBeenCalledWith("/gps/alerts", {
+      site_id: "s1",
+      unacknowledged: true,
+      kind: "RESTRICTED_ZONE_ENTRY",
+      page_size: 100,
+    }),
+  );
+  fireEvent.change(screen.getByLabelText("Type d'alerte"), { target: { value: "" } });
+  await waitFor(() =>
+    expect(get).toHaveBeenLastCalledWith("/gps/alerts", {
+      site_id: "s1",
+      unacknowledged: true,
+      page_size: 100,
+    }),
+  );
+});
