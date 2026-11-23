@@ -5,12 +5,13 @@ import { useEffect, useRef, useState } from "react";
 import type { GpsSignalState } from "../lib/gpsSignal";
 import { createMap, reducedMotion } from "../lib/maplibre";
 import { compass } from "../lib/replay";
+import { fleetIconHref, type FleetIconName } from "../lib/vehicleTypeIcon";
 
 /** Engin à afficher : position **mesurée** (jamais estimée), état du signal et textes déjà formatés. */
 export interface MapVehicle {
   id: string;
   label: string;
-  typeIcon?: string;
+  typeIcon?: FleetIconName;
   latitude: number;
   longitude: number;
   state: GpsSignalState;
@@ -150,10 +151,13 @@ export function FleetMap({
         glide(entry.marker, target);
       }
       entry.button.className = `fleet-marker fleet-marker--${v.state}${v.id === selectedId ? " fleet-marker--selected" : ""}`;
-      const icon = document.createElement("span");
-      icon.className = "fleet-marker-type-icon";
-      icon.textContent = v.typeIcon ?? "🚗";
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      icon.setAttribute("class", "fleet-marker-type-icon");
+      icon.setAttribute("viewBox", "0 0 40 32");
       icon.setAttribute("aria-hidden", "true");
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      use.setAttribute("href", fleetIconHref(v.typeIcon ?? "fleet"));
+      icon.appendChild(use);
       const text = document.createElement("span");
       text.className = "fleet-marker-label";
       text.textContent = v.label;
