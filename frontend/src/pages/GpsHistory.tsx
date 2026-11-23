@@ -7,6 +7,7 @@ import { Badge, DataState, ErrorMessage } from "../components/common";
 import { ActionForm, Options } from "../components/forms";
 import { TrackReplay } from "../components/TrackReplay";
 import { GeofenceDrawMap } from "../components/GeofenceDrawMap";
+import { GeofenceOverviewMap } from "../components/GeofenceOverviewMap";
 import { label } from "../lib/labels";
 import { can } from "../lib/permissions";
 import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
@@ -169,6 +170,9 @@ export function GeofencesPage() {
       </div>
       {creating && <GeofenceForm onCancel={() => setCreating(false)} onDone={reload} />}
       {error !== null && <ErrorMessage error={error} />}
+      {!fences.isLoading && !fences.error && (fences.data?.length ?? 0) > 0 && (
+        <GeofenceOverviewMap zones={fences.data ?? []} />
+      )}
       <DataState loading={fences.isLoading} error={fences.error} empty={(fences.data ?? []).length === 0} emptyText="Aucune zone.">
         <table>
           <thead>
