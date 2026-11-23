@@ -1,7 +1,7 @@
 """Zone membership must reset dwell when a vehicle exits or changes zones."""
 
 from datetime import UTC, datetime, timedelta
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from app.fleet.gps_zone_dwell import DwellPoint, ZoneDwellSample, zone_dwell_minutes
 
@@ -9,7 +9,7 @@ from app.fleet.gps_zone_dwell import DwellPoint, ZoneDwellSample, zone_dwell_min
 BASE = datetime(2026, 11, 23, 11, 0, tzinfo=UTC)
 
 
-def sample(minutes: int, zones: frozenset, *, lat: float = 10.0) -> ZoneDwellSample:
+def sample(minutes: int, zones: frozenset[UUID], *, lat: float = 10.0) -> ZoneDwellSample:
     return ZoneDwellSample(
         point=DwellPoint(BASE + timedelta(minutes=minutes), lat, -12.0, 0.0),
         active_zone_ids=zones,
