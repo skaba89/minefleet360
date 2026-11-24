@@ -153,7 +153,7 @@ export function LiveFleetPage() {
         {can(me.grants, "fleet.gps.share", siteId) && <Link className="button-link" to="/mon-suivi">Partager mon téléphone</Link>}
       </div>
       <div className="live-fleet-metrics" aria-label="État des signaux GPS">
-        <div className="card"><span className="muted">Camions localisés</span><strong>{shown.length}</strong></div>
+        <div className="card"><span className="muted">Véhicules et engins localisés</span><strong>{shown.length}</strong></div>
         <div className="card"><span className="muted">En mouvement</span><strong>{moving}</strong></div>
         <div className="card"><span className="muted">Signal ancien</span><strong>{offline}</strong></div>
         <div className="card"><span className="muted">Téléphones localisés</span><strong>{shown.filter((p) => p.source === "PHONE").length}</strong></div>
