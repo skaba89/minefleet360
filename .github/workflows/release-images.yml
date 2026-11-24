@@ -80,6 +80,10 @@ jobs:
         id: tags
         uses: docker/metadata-action@v6
         with:
+          # Tag sha-* et labels du commit réellement extrait (input `ref`), pas de github.sha :
+          # un déclenchement manuel depuis main avec ref=<ancien commit> ne doit pas étiqueter
+          # l'image du nom du HEAD de main.
+          context: git
           images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.image }}
           tags: |
             type=semver,pattern={{version}}
