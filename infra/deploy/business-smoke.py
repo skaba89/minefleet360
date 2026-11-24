@@ -179,6 +179,15 @@ def run(base: str, credentials: dict[str, str]) -> list[str]:
 
 
 def main() -> int:
+    if sys.argv[1:] == ["--check-credentials"]:
+        # Offline preflight: refuse an incomplete file before any container is touched.
+        try:
+            load_credentials(os.environ.get("MF_SMOKE_CREDENTIALS_FILE", ""))
+        except (SmokeError, ValueError, OSError) as error:
+            print(f"FAIL: business smoke credentials: {error}", file=sys.stderr)
+            return 2
+        print("OK: business smoke credentials file is complete")
+        return 0
     base = os.environ.get("MINEFLEET_STAGING_URL", "").rstrip("/")
     if not re.fullmatch(r"https://[a-zA-Z0-9._:-]+", base):
         print("FAIL: MINEFLEET_STAGING_URL must be a credential-free HTTPS origin", file=sys.stderr)

@@ -519,6 +519,9 @@ printf '200'
 
 FAKE_SMOKE = r'''#!/usr/bin/env python3
 import json, os, sys
+if sys.argv[1:] == ["--check-credentials"]:
+    text = open(os.environ["MF_SMOKE_CREDENTIALS_FILE"]).read()
+    sys.exit(0 if "MF_SMOKE_WORKSPACE=" in text else 2)
 state = json.load(open(os.path.join(os.environ["FAKE_ROOT"], "state.json")))
 with open(os.path.join(os.environ["FAKE_ROOT"], "smoke.log"), "a") as log:
     log.write(state["running"]["api"] + "\n")
@@ -546,6 +549,7 @@ class StagingReleaseScriptTests(unittest.TestCase):
         planned_basemap: str | None = None,
         extra_env: dict[str, str] | None = None,
         cosign: bool = True,
+        smoke_content: str = "MF_SMOKE_WORKSPACE=demo\n",
     ) -> tuple[subprocess.CompletedProcess[str], dict[str, str]]:
         with tempfile.TemporaryDirectory() as root:
             base = Path(root)
@@ -592,7 +596,7 @@ class StagingReleaseScriptTests(unittest.TestCase):
             secrets.write_text(f"MF_ENV={secrets_environment}\nTEST_ONLY_PLACEHOLDER=value\n")
             secrets.chmod(permissions)
             smoke = base / "smoke.env"
-            smoke.write_text("MF_SMOKE_WORKSPACE=demo\n")
+            smoke.write_text(smoke_content)
             smoke.chmod(0o600)
             backups = base / "backups"
             backups.mkdir()
@@ -727,6 +731,19 @@ class StagingReleaseScriptTests(unittest.TestCase):
         self.assertIn("PostgreSQL untouched", result.stdout)
         self.assertIn("RELEASE OK", result.stdout)
         self.assert_postgres_never_touched(log, out["state"])
+
+    def test_incomplete_smoke_credentials_block_before_any_mutation(self) -> None:
+        for action in ("apply", "rollback"):
+            with self.subTest(action):
+                result, out = self.run_script(action, db_revision="0077", smoke_content="")
+                self.assertEqual(result.returncode, 2)
+                for verb in (" pull ", " up ", "pg_dump"):
+                    self.assertNotIn(verb, f" {out['docker.log']} ")
+
+    def test_apply_runs_business_smoke_on_running_version_before_backup(self) -> None:
+        result, out = self.run_script("apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(out["smoke.log"].splitlines()[0], "sha256:old-api")
 
     def test_release_never_deletes_existing_backups(self) -> None:
         result, out = self.run_script("apply")
