@@ -76,3 +76,39 @@ version de développement native ainsi que les permissions système sont
 nécessaires (Expo Go ne suffit pas). Les systèmes mobiles peuvent arrêter
 la collecte après fermeture forcée de l'application ; ne promettre aucune
 surveillance permanente.
+
+## Lot Expo — adaptateur de tâche native préparé
+
+Le module `src/expoLocationAdapter.mjs` est une véritable enveloppe
+pour `expo-location` / `expo-task-manager` (modules injectés) :
+- vérifie l'enregistrement global de la tâche, la disponibilité du
+  TaskManager, les autorisations avant-plan et arrière-plan, puis
+  l'activation des services de localisation ;
+- démarre `startLocationUpdatesAsync` avec notification Android visible,
+  indicateur iOS, distance minimale et intervalle de mesure indicatif ;
+- s'arrête via `stopLocationUpdatesAsync` ; appelle le moteur de purge
+  fourni par l'application ; tolère les répétitions de start/stop.
+- ne réclame **jamais** automatiquement la permission background : elle
+  doit être expliquée puis demandée par l'écran de consentement.
+
+La CI exécute les tests Node de l'adaptateur via le glob existant
+`node --test ../mobile/tests/*.test.mjs`.
+
+**Le suivi de bout en bout n'est pas encore actif** :
+- pas encore de projet Expo installable ni de dépendances React Native ;
+- pas encore de `TaskManager.defineTask` global recevant les coordonnées ;
+- pas encore de coffre chiffré, de stockage de session ni de transport
+  sécurisé et authentifié vers l'API MineFleet360 ;
+- pas de permission OS demandée depuis une interface.
+
+Le futur écran natif doit charger `TaskManager.defineTask` au niveau global
+**avant** tout démarrage et brancher un service de réception des points qui
+revérifie la session/expiration et conserve les données chiffrées uniquement
+avec consentement actif. Aucune coordonnée ne doit être journalisée.
+
+Documentation officielle (SDK 58) :
+- https://docs.expo.dev/versions/v58.0.0/sdk/location/
+- https://docs.expo.dev/versions/latest/sdk/task-manager/
+
+Éviter de déployer ce lot seul comme une application GPS : l'adaptateur
+n'est pas connecté à la collecte effective. Il n'affecte pas la page web.
