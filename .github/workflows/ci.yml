@@ -181,6 +181,7 @@ jobs:
             infra/deploy/check-preproduction.sh \
             infra/deploy/offsite-common.sh \
             infra/deploy/staging-release.sh \
+            infra/deploy/inspect-staging-gps.sh \
             infra/deploy/upload-offsite-backup.sh \
             infra/deploy/verify-offsite-backup.sh
       - name: Valider la configuration Compose staging sans démarrage
