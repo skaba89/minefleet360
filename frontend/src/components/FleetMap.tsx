@@ -95,6 +95,8 @@ export function FleetMap({
   const [ready, setReady] = useState(false);
   const [withBasemap, setWithBasemap] = useState<boolean | null>(null);
   const [failure, setFailure] = useState(false);
+  const [followSelected, setFollowSelected] = useState(true);
+  const lastFollowed = useRef<{ id: string; longitude: number; latitude: number } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -198,14 +200,25 @@ export function FleetMap({
   useEffect(() => {
     const map = mapRef.current;
     const target = vehicles.find((v) => v.id === selectedId && validPosition(v));
-    if (!map || !ready || !target) return;
+    if (!followSelected || !target) {
+      lastFollowed.current = null;
+      return;
+    }
+    if (!map || !ready) return;
+    const previous = lastFollowed.current;
+    if (previous?.id === target.id && previous.longitude === target.longitude && previous.latitude === target.latitude) return;
+    // Follow only received GPS measurements; never estimate a missing position.
     map.easeTo({ center: [target.longitude, target.latitude], zoom: Math.max(map.getZoom(), 13), duration: reducedMotion() ? 0 : 600 });
-    // Recentrer seulement au changement de sélection, pas à chaque nouvelle position.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, ready]);
+    lastFollowed.current = { id: target.id, longitude: target.longitude, latitude: target.latitude };
+  }, [selectedId, vehicles, ready, followSelected]);
 
   return (
     <section className="card fleet-map" aria-label="Carte des engins">
+      {selectedId && (
+        <button type="button" aria-pressed={followSelected} onClick={() => setFollowSelected((value) => !value)}>
+          {followSelected ? "Suivi automatique activé" : "Activer le suivi automatique"}
+        </button>
+      )}
       {failure ? (
         <p role="status">Carte indisponible sur cet appareil (WebGL). La liste des engins reste à jour.</p>
       ) : (

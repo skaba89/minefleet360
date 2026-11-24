@@ -72,6 +72,7 @@ beforeEach(() => {
   vi.stubGlobal("matchMedia", () => ({ matches: true }));
   calls.positions.clear();
   calls.setData.mockReset();
+  calls.easeTo.mockReset();
   calls.addProtocol.mockReset();
 });
 afterEach(() => {
@@ -210,4 +211,38 @@ it("utilise une silhouette SVG locale de repli si la catégorie n'est pas dispon
   const marker = await screen.findByRole("button", { name: /CAM-01/ });
   expect(marker.querySelector("use")?.getAttribute("href")).toBe("/fleet-icons.svg#fleet");
   expect(marker.querySelector(".fleet-marker-type-icon")?.getAttribute("aria-hidden")).toBe("true");
+});
+
+it("suit les nouvelles positions mesurées du véhicule sélectionné sans interpolation fictive", async () => {
+  const { rerender } = render(<FleetMap vehicles={[truck()]} selectedId="v1" onSelect={vi.fn()} />);
+  await screen.findByRole("button", { name: /CAM-01/ });
+  await waitFor(() => expect(calls.easeTo).toHaveBeenCalled());
+  expect(calls.easeTo.mock.lastCall?.[0]).toMatchObject({ center: [-12.9, 10.1] });
+  calls.easeTo.mockClear();
+
+  rerender(<FleetMap vehicles={[truck({ latitude: 10.2, longitude: -12.8 })]} selectedId="v1" onSelect={vi.fn()} />);
+  await waitFor(() => expect(calls.easeTo).toHaveBeenCalledTimes(1));
+  expect(calls.easeTo.mock.lastCall?.[0]).toMatchObject({ center: [-12.8, 10.2] });
+  calls.easeTo.mockClear();
+
+  // Only the visual signal status changes: no camera movement without a new GPS measure.
+  rerender(<FleetMap vehicles={[truck({ latitude: 10.2, longitude: -12.8, state: "offline" })]} selectedId="v1" onSelect={vi.fn()} />);
+  expect(calls.easeTo).not.toHaveBeenCalled();
+});
+
+it("permet de suspendre et reprendre le suivi GPS du véhicule sans arrêter son marqueur", async () => {
+  const { rerender } = render(<FleetMap vehicles={[truck()]} selectedId="v1" onSelect={vi.fn()} />);
+  await screen.findByRole("button", { name: /CAM-01/ });
+  const toggle = screen.getByRole("button", { name: "Suivi automatique activé" });
+  fireEvent.click(toggle);
+  expect(screen.getByRole("button", { name: "Activer le suivi automatique" }).getAttribute("aria-pressed")).toBe("false");
+  calls.easeTo.mockClear();
+
+  rerender(<FleetMap vehicles={[truck({ latitude: 10.3, longitude: -12.7 })]} selectedId="v1" onSelect={vi.fn()} />);
+  expect(calls.easeTo).not.toHaveBeenCalled();
+  expect(calls.positions.get(screen.getByRole("button", { name: /CAM-01/ }))).toEqual([-12.7, 10.3]);
+
+  fireEvent.click(screen.getByRole("button", { name: "Activer le suivi automatique" }));
+  await waitFor(() => expect(calls.easeTo).toHaveBeenCalledTimes(1));
+  expect(calls.easeTo.mock.lastCall?.[0]).toMatchObject({ center: [-12.7, 10.3] });
 });
