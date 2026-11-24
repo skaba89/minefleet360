@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "kind": "local-fallback-rollback",
+  "environment": "staging",
+  "deployment_variant": "edge",
+  "provenance": "local-archive-unsigned",
+  "forward_migration_head": "0077",
+  "database_strategy": "application-only-forward-schema",
+  "schema_compatibility_review": "EXEMPLE : référence de la revue prouvant que l'API de secours fonctionne sur le schéma cible",
+  "created_at": "2026-11-24T20:00:00Z",
+  "created_by": "example-only-do-not-deploy",
+  "api": {
+    "release_commit": "2222222222222222222222222222222222222222",
+    "migration_head": "0076",
+    "image_id": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "archive": "/opt/minefleet-image-archives/api-2222222.tar",
+    "archive_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "web": {
+    "release_commit": "3333333333333333333333333333333333333333",
+    "image_id": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "archive": "/opt/minefleet-image-archives/web-3333333.tar",
+    "archive_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}

@@ -45,7 +45,8 @@ rclone copyto --quiet --immutable "$encrypted" "$remote_object" </dev/null
 rclone copyto --quiet --immutable "$checksum" "$remote_checksum" </dev/null
 
 # Retention is confined to the MineFleet namespace. Unrelated remote objects are excluded.
-rclone delete --quiet --min-age "${MF_OFFSITE_RETENTION_DAYS}d" \
+# A release (MF_BACKUP_SKIP_RETENTION=1) uploads but never deletes existing recovery points.
+[[ "${MF_BACKUP_SKIP_RETENTION:-}" == 1 ]] || rclone delete --quiet --min-age "${MF_OFFSITE_RETENTION_DAYS}d" \
   --filter '+ minefleet-????????T??????Z.dump.gpg' \
   --filter '+ minefleet-????????T??????Z.dump.gpg.sha256' \
   --filter '- **' "$MF_OFFSITE_REMOTE" </dev/null

@@ -1,17 +1,24 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "environment": "staging",
   "deployment_variant": "edge",
   "release_commit": "1111111111111111111111111111111111111111",
-  "migration_head": "0063",
-  "api_image": "ghcr.io/skaba89/minefleet-api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-  "web_image": "ghcr.io/skaba89/minefleet-web@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-  "created_at": "2026-11-05T20:00:00Z",
+  "migration_head": "0077",
+  "api_image": "ghcr.io/skaba89/minefleet360/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "web_image": "ghcr.io/skaba89/minefleet360/web@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "created_at": "2026-11-24T20:00:00Z",
   "created_by": "example-only-do-not-deploy",
   "rollback": {
-    "release_commit": "2222222222222222222222222222222222222222",
-    "api_image": "ghcr.io/skaba89/minefleet-api@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "web_image": "ghcr.io/skaba89/minefleet-web@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-    "database_strategy": "application-only-forward-schema"
+    "api": {
+      "release_commit": "2222222222222222222222222222222222222222",
+      "image": "ghcr.io/skaba89/minefleet360/api@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "migration_head": "0076"
+    },
+    "web": {
+      "release_commit": "3333333333333333333333333333333333333333",
+      "image": "ghcr.io/skaba89/minefleet360/web@sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "database_strategy": "application-only-forward-schema",
+    "schema_compatibility_review": "EXEMPLE : référence de la revue prouvant que l'API de rollback fonctionne sur le schéma cible"
   }
 }
