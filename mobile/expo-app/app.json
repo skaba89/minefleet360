@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "MineFleet360 Conducteur",
+    "slug": "minefleet360-driver",
+    "scheme": "minefleet360",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.minefleet360.driver"
+    },
+    "android": {
+      "package": "com.minefleet360.driver"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "MineFleet360 utilise la localisation uniquement lorsque vous lancez un contrôle GPS.",
+          "locationAlwaysAndWhenInUsePermission": "Le suivi en arrière-plan exigera votre consentement et une session de partage active.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ]
+    ],
+    "extra": {
+      "gpsBackgroundTrackingEnabled": false
+    }
+  }
+}
