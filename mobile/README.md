@@ -47,3 +47,32 @@ Références internes :
 
 Le GPS de la page web et les traceurs physiques continuent à fonctionner
 indépendamment de ce prototype. Aucune migration ni déploiement VPS ne sont requis.
+
+## Lot suivant — orchestration du cycle de vie natif (PR dédiée)
+
+Le contrôleur `backgroundGpsCoordinator.mjs` enchaîne les décisions de
+`backgroundGpsGate.mjs` avec un **adaptateur natif injecté** :
+`startNative`, `stopNative` et `purgeQueuedPoints`.
+
+- `reconcile(context)` réévalue le consentement, l'autorisation du véhicule,
+  la validité de la session, les permissions système et le réseau.
+- Les transitions sont sérialisées : un arrêt demandé pendant un démarrage
+  ne doit pas laisser le suivi actif.
+- Une coupure réseau suspend le suivi ; une révocation/expiration coupe
+  le suivi et exige la purge des points locaux.
+- `stop()` déclenche un arrêt et une purge explicites.
+- Si l'adaptateur natif refuse de démarrer, une tentative d'arrêt est effectuée
+  et aucun état « running » n'est déclaré.
+
+**Limite critique :** ce code n'inclut aucun adaptateur Android/iOS, aucun
+stockage chiffré réel, ni aucun échange de jeton avec le serveur. Un contexte
+`authenticated` / `authorizedVehicle` doit provenir d'une vérification
+fiable et fraîche ; un booléen local ne constitue pas une preuve durable
+d'autorisation. Le lot n'active ni localisation ni transmission réelle.
+
+Pour des mises à jour de localisation en arrière-plan avec Expo, la tâche
+doit être définie au niveau global via `TaskManager.defineTask`, et une
+version de développement native ainsi que les permissions système sont
+nécessaires (Expo Go ne suffit pas). Les systèmes mobiles peuvent arrêter
+la collecte après fermeture forcée de l'application ; ne promettre aucune
+surveillance permanente.
