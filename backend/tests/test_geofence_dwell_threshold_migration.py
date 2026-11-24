@@ -1,10 +1,20 @@
 """Contract tests for the opt-in additive geofence dwell threshold migration."""
 
-from importlib import import_module
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
+
+
+def load_migration():
+    path = Path(__file__).resolve().parents[1] / "alembic" / "versions" / "0077_geofence_dwell_threshold.py"
+    spec = spec_from_file_location("gps_dwell_threshold_0077", path)
+    assert spec is not None and spec.loader is not None
+    module = module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_dwell_threshold_migration_is_additive_and_disabled_by_default() -> None:
-    migration = import_module("alembic.versions.0077_geofence_dwell_threshold")
+    migration = load_migration()
     assert migration.revision == "0077"
     assert migration.down_revision == "0076"
 
@@ -21,5 +31,5 @@ def test_dwell_threshold_migration_is_additive_and_disabled_by_default() -> None
 
 
 def test_downgrade_is_explicitly_guarded() -> None:
-    migration = import_module("alembic.versions.0077_geofence_dwell_threshold")
+    migration = load_migration()
     assert "guard_destructive" in migration.downgrade.__code__.co_names
