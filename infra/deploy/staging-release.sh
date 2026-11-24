@@ -266,6 +266,8 @@ if [[ "$smoke_credentials" != /* || ! -f "$smoke_credentials" || -L "$smoke_cred
   echo "FAIL: MF_SMOKE_CREDENTIALS_FILE must be an absolute 600/400 file (fictitious staging account)" >&2
   exit 2
 fi
+# Content checked before any mutation (staging 2026-11-24: an empty file only failed after the swap).
+MF_SMOKE_CREDENTIALS_FILE="$smoke_credentials" python3 business-smoke.py --check-credentials || exit 2
 
 live_check() {
   MINEFLEET_STAGING_URL="$MINEFLEET_STAGING_URL" \
@@ -408,6 +410,8 @@ fi
 
 # apply: a release never starts without a healthy target and a new, readable recovery point.
 live_check
+# Baseline: the business paths must already work on the running version (proves credentials too).
+MINEFLEET_STAGING_URL="$MINEFLEET_STAGING_URL" MF_SMOKE_CREDENTIALS_FILE="$smoke_credentials"   python3 business-smoke.py
 backup_database
 
 selected_env="$release_env"
