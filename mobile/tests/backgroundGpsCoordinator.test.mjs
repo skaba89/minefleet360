@@ -84,11 +84,13 @@ test("missing native adapter methods are rejected", () => {
 });
 
 test("native startup failure never reports successful running state", async () => {
+  const events = [];
   const coordinator = createBackgroundGpsCoordinator({
-    startNative: async () => { throw new Error("native permission revoked"); },
-    stopNative: async () => undefined,
-    purgeQueuedPoints: async () => undefined,
+    startNative: async () => { events.push("start"); throw new Error("native permission revoked"); },
+    stopNative: async () => { events.push("stop"); },
+    purgeQueuedPoints: async () => { events.push("purge"); },
   });
   await assert.rejects(coordinator.reconcile(context()), /native permission revoked/);
   assert.equal(coordinator.status(), "stopped");
+  assert.deepEqual(events, ["start", "stop"]);
 });
