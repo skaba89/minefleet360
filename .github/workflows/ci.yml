@@ -175,7 +175,9 @@ jobs:
             infra/deploy/notify-alert-smtp.py \
             infra/deploy/offsite_config.py \
             infra/deploy/run-alert-monitor.py \
-            infra/deploy/release_manifest.py
+            infra/deploy/release_manifest.py \
+            infra/deploy/runtime_guard.py \
+            infra/deploy/business-smoke.py
           bash -n \
             infra/deploy/backup.sh \
             infra/deploy/check-preproduction.sh \

@@ -46,11 +46,14 @@ trap - EXIT
 offsite_config_file="${MF_OFFSITE_CONFIG_FILE:-$script_dir/offsite.env}"
 if [[ ! -e "$offsite_config_file" && ! -L "$offsite_config_file" ]]; then
   echo "WARNING: backup only local; offsite backup NOT configured (offsite.env absent)" >&2
+  # A release (staging-release.sh) never deletes existing recovery points: retention is the daily job's.
+  [[ "${MF_BACKUP_SKIP_RETENTION:-}" == 1 ]] && exit 0
   find "$backup_dir" -maxdepth 1 -type f -name 'minefleet-*.dump' -printf '%T@ %p\0' \
     | sort -zrn | tail -z -n +8 | cut -z -d' ' -f2- | xargs -0r rm --
   exit 0
 fi
 MF_OFFSITE_CONFIG_FILE="$offsite_config_file" bash "$script_dir/upload-offsite-backup.sh" "$dump"
 # Apply local retention only once the current archive has been verified and transferred.
+[[ "${MF_BACKUP_SKIP_RETENTION:-}" == 1 ]] && exit 0
 find "$backup_dir" -maxdepth 1 -type f -name 'minefleet-*.dump' -printf '%T@ %p\0' \
   | sort -zrn | tail -z -n +8 | cut -z -d' ' -f2- | xargs -0r rm --
