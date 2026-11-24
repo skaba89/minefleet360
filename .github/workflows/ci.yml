@@ -218,6 +218,8 @@ jobs:
           python ../scripts/export_openapi.py --output "${RUNNER_TEMP}/minefleet-openapi.json"
           npx openapi-typescript "${RUNNER_TEMP}/minefleet-openapi.json" -o src/api/schema.d.ts
           git diff --exit-code -- src/api/schema.d.ts
+      - name: Vérifier les garde-fous du futur GPS mobile natif
+        run: node --test ../mobile/tests/*.test.mjs
       - name: Types
         run: npm run typecheck
       - name: Tests unitaires
