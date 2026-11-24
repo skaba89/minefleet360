@@ -31,7 +31,19 @@ export function createBackgroundGpsCoordinator(native) {
     if (decision.action === "allow") {
       if (state !== "running") {
         // Do not silently become 'running' when native startup fails.
-        await native.startNative();
+        try {
+          await native.startNative();
+        } catch (error) {
+          // A native adapter may have partially started before rejecting.
+          // Best-effort stop; never report the GPS session as running.
+          try {
+            await native.stopNative();
+          } catch {
+            // Surface the original startup failure; the caller must fail closed.
+          }
+          state = "stopped";
+          throw error;
+        }
         state = "running";
       }
       return { state, decision };
