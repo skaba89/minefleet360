@@ -11,7 +11,9 @@ from app.fleet.gps_zone_dwell_policy import evaluate_zone_dwell
 BASE = datetime(2026, 11, 24, 7, 0, tzinfo=UTC)
 
 
-def sample(minutes: int, zones: frozenset[UUID], *, lat: float = 10.0, speed: float | None = 0.0) -> ZoneDwellSample:
+def sample(
+    minutes: int, zones: frozenset[UUID], *, lat: float = 10.0, speed: float | None = 0.0
+) -> ZoneDwellSample:
     return ZoneDwellSample(
         point=DwellPoint(BASE + timedelta(minutes=minutes), lat, -12.0, speed),
         active_zone_ids=zones,
