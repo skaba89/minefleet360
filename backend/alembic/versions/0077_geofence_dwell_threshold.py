@@ -6,6 +6,7 @@ Revises: 0076
 NULL means disabled, including for all pre-existing zones. The existing site_geofence
 RLS, audit/touch triggers, tenant/site relations and GPS ingestion remain unchanged.
 """
+
 from app.core.migration_tools import guard_destructive, run_sql
 
 revision = "0077"
