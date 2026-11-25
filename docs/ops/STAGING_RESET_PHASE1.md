@@ -25,7 +25,11 @@ La sortie contient uniquement des métadonnées de structure, des compteurs et d
 
 `MF_DEPLOY_DIR` permet de définir un autre emplacement du fichier d'environnement staging. Le conteneur autorisé reste strictement `minefleet-db-1`.
 
-## Étapes suivantes — NON IMPLÉMENTÉES
+## Étapes suivantes
+
+Implémentées par `staging-reset.sh` : voir `docs/ops/STAGING_RESET.md` (runbook) et `docs/audit/preuves/staging/RESET_LAB_2026-11-25.md` (preuves de laboratoire). Liste initiale conservée ci-dessous.
+
+### Liste initiale
 
 1. Auditer migrations, données de référence et clés étrangères pour construire une classification de suppression exhaustive.
 2. Créer un reset explicitement réservé au staging, d'abord en dry-run, avec confirmation et garanties de récupération.

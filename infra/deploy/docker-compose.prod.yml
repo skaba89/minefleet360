@@ -169,7 +169,10 @@ services:
       - web
 
 volumes:
+  # Volume PostgreSQL : nom explicite, identique par défaut au volume historique minefleet_db-data.
+  # MF_DB_VOLUME n'est modifié que par staging-reset.sh (bascule ou retour arrière, #532).
   db-data:
+    name: ${MF_DB_VOLUME:-minefleet_db-data}
   mail-capture:
   caddy-data:
   caddy-config:
