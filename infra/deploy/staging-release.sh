@@ -101,7 +101,8 @@ compose() {
   docker compose "${compose_files[@]}" --env-file "$secrets_file" --env-file "$selected_env" "$@"
 }
 compose_project="minefleet"
-expected_db_volume="${MF_EXPECTED_DB_VOLUME:-${compose_project}_db-data}"
+configured_db_volume="$(sed -n 's/^MF_DB_VOLUME=//p' "$secrets_file")"
+expected_db_volume="${MF_EXPECTED_DB_VOLUME:-${configured_db_volume:-${compose_project}_db-data}}"
 
 # Read-only parse of the real staging configuration. --quiet prevents secret expansion in output.
 compose config --quiet

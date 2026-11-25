@@ -550,6 +550,7 @@ class StagingReleaseScriptTests(unittest.TestCase):
         extra_env: dict[str, str] | None = None,
         cosign: bool = True,
         smoke_content: str = "MF_SMOKE_WORKSPACE=demo\n",
+        secrets_extra: str = "",
     ) -> tuple[subprocess.CompletedProcess[str], dict[str, str]]:
         with tempfile.TemporaryDirectory() as root:
             base = Path(root)
@@ -593,7 +594,9 @@ class StagingReleaseScriptTests(unittest.TestCase):
             manifest_path = base / "release.json"
             manifest_path.write_text(json.dumps(value))
             secrets = base / "staging.env"
-            secrets.write_text(f"MF_ENV={secrets_environment}\nTEST_ONLY_PLACEHOLDER=value\n")
+            secrets.write_text(
+                f"MF_ENV={secrets_environment}\nTEST_ONLY_PLACEHOLDER=value\n{secrets_extra}"
+            )
             secrets.chmod(permissions)
             smoke = base / "smoke.env"
             smoke.write_text(smoke_content)
@@ -709,6 +712,15 @@ class StagingReleaseScriptTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertNotIn("pg_dump", out["docker.log"])
                 self.assertNotIn(" up ", f" {out['docker.log']} ")
+
+    def test_database_volume_follows_mf_db_volume_after_a_reset_cutover(self) -> None:
+        # staging-reset.sh (#532) points MF_DB_VOLUME at the new volume: the release must follow it.
+        moved = {"FAKE_DB_VOLUME": "minefleet-reset-20261125t000000z_db-data"}
+        result, _ = self.run_script("plan", approval=False, extra_env=moved,
+                                    secrets_extra="MF_DB_VOLUME=minefleet-reset-20261125t000000z_db-data\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        result, _ = self.run_script("plan", approval=False, extra_env=moved)
+        self.assertNotEqual(result.returncode, 0)
 
     def test_planned_runtime_drift_is_refused(self) -> None:
         # e.g. the script is run from another checkout: the basemap bind would change.

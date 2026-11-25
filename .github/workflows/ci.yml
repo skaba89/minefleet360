@@ -177,8 +177,12 @@ jobs:
             infra/deploy/run-alert-monitor.py \
             infra/deploy/release_manifest.py \
             infra/deploy/runtime_guard.py \
-            infra/deploy/business-smoke.py
+            infra/deploy/business-smoke.py \
+            infra/deploy/staging_reset.py \
+            infra/deploy/staging-reset-admin-check.py
           bash -n \
+            infra/deploy/staging-reset.sh \
+            infra/deploy/staging-reset-inventory.sh \
             infra/deploy/backup.sh \
             infra/deploy/check-preproduction.sh \
             infra/deploy/offsite-common.sh \
