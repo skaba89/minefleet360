@@ -61,7 +61,9 @@ def test_registry_constraints_and_rls(api: Api) -> None:
             with rejected(conn, "23514"):
                 conn.execute(sensor, {**sp, "kind": "INVALID", "external": "S4"})
             with rejected(conn, "42501"):
-                conn.execute(text("UPDATE iot_sensor SET status = 'RETIRED' WHERE sensor_id = :id"), {"id": sid})
+                conn.execute(
+                    text("UPDATE iot_sensor SET status = 'RETIRED' WHERE sensor_id = :id"), {"id": sid}
+                )
             with rejected(conn, "42501"):
                 conn.execute(text("DELETE FROM iot_gateway WHERE gateway_id = :id"), {"id": g})
 
@@ -74,8 +76,6 @@ def test_registry_constraints_and_rls(api: Api) -> None:
             with rejected(conn, "23503"):
                 conn.execute(gateway, {**params, "t": second.tenant_id, "site": second.sites["S1"]})
             with rejected(conn, "23503"):
-                conn.execute(
-                    sensor, {**sp, "t": second.tenant_id, "site": second.sites["S1"], "m": other_m}
-                )
+                conn.execute(sensor, {**sp, "t": second.tenant_id, "site": second.sites["S1"], "m": other_m})
     finally:
         engine.dispose()
