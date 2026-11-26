@@ -76,9 +76,7 @@ def test_offline_fuel_issue_replay_creates_it_once(client: TestClient, api: Api)
     assert (altered.status_code, altered.json()["code"]) == (422, "IDEMPOTENCY_KEY_REUSED")
 
 
-def test_rejected_issue_does_not_consume_the_key_and_key_is_per_account(
-    client: TestClient, api: Api
-) -> None:
+def test_rejected_issue_does_not_consume_the_key_and_key_is_per_account(client: TestClient, api: Api) -> None:
     tenant, tank, ops_headers, vehicle_id, driver_id, meter_kind = _stocked_scenario(client, api)
     key = str(uuid.uuid4())
     too_much = _offline(
