@@ -1,12 +1,15 @@
+import json
 import uuid
 from datetime import datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
+from app.core.errors import AppError
 from app.core.http import Page, Pagination
+from app.core.idempotency import claim, optional_idempotency_key
 from app.fuel import dashboard, service
 from app.fuel.consumption import vehicle_consumption
 from app.fuel.schemas import (
@@ -285,8 +288,35 @@ def list_vehicle_consumption(
 
 
 @router.post("/fuel/issues", response_model=FuelIssueOut, status_code=status.HTTP_201_CREATED)
-def create_issue(body: IssueCreate, auth: IssueRequest) -> FuelIssueOut:
-    issue = service.create_issue(auth, body)
+def create_issue(
+    body: IssueCreate,
+    auth: IssueRequest,
+    response: Response,
+    idempotency_key: Annotated[str | None, Depends(optional_idempotency_key)],
+) -> FuelIssueOut:
+    if idempotency_key is None:
+        issue = service.create_issue(auth, body)
+        return FuelIssueOut.model_validate(service.issue_output(auth, issue))
+    # Sortie rejouée depuis la file terrain (même contrat que POST /hse/inspections) : clé liée au
+    # tenant ET au compte authentifié, corps empreinté, permission et portée revérifiées à chaque envoi.
+    payload = json.dumps(body.model_dump(mode="json"), sort_keys=True, separators=(",", ":")).encode("utf-8")
+    owned = claim(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        user_account_id=auth.user_id,
+        key=idempotency_key,
+        method="POST",
+        path="/fuel/issues",
+        body=payload,
+        now=auth.clock.now(),
+    )
+    if owned.replay is not None:
+        if owned.replay.resource_type != "fuel_issue":
+            raise AppError("IDEMPOTENCY_KEY_REUSED")
+        issue = service.issue_in_scope(auth, owned.replay.resource_id)
+        response.headers["Idempotency-Replayed"] = "true"
+        return FuelIssueOut.model_validate(service.issue_output(auth, issue))
+    issue = service.create_issue(auth, body, idempotency_claim=owned)
     return FuelIssueOut.model_validate(service.issue_output(auth, issue))
 
 

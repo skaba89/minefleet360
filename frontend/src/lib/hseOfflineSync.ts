@@ -12,6 +12,7 @@
 import { ApiError, request, type Schemas } from "../api/client";
 import {
   enqueue,
+  FUEL_ISSUE_ENDPOINT,
   HSE_INCIDENT_ENDPOINT,
   HSE_INSPECTION_ENDPOINT,
   isSyncableEndpoint,
@@ -156,6 +157,36 @@ export async function queueBreakdown(
   return entry;
 }
 
+export type FuelIssueDraft = Schemas["IssueCreate"];
+
+/**
+ * Sortie de carburant (demande de ravitaillement) saisie sans réseau : `requested_at` porte l'heure de la
+ * demande. La sortie arrive PENDING_APPROVAL : l'approbation reste un contrôle séparé, jamais contourné.
+ */
+export async function queueFuelIssue(
+  account: Account,
+  siteId: string,
+  body: FuelIssueDraft,
+  summary: string,
+  nowIso = new Date().toISOString(),
+  operationId: string = crypto.randomUUID(),
+): Promise<OutboxEntry> {
+  const entry: OutboxEntry = {
+    operationId,
+    tenantId: account.tenantId,
+    userId: account.userId,
+    siteId,
+    endpoint: FUEL_ISSUE_ENDPOINT,
+    payload: { ...body },
+    createdAt: nowIso,
+    status: "pending",
+    attempts: 0,
+    summary: summary.slice(0, 200),
+  };
+  await enqueue(entry);
+  return entry;
+}
+
 export async function countUnsynchronized(account: Account): Promise<number> {
   return (await listForAccount(account)).filter((e) => e.status === "pending" || e.status === "syncing").length;
 }
@@ -204,6 +235,15 @@ async function sendEntry(entry: OutboxEntry): Promise<{ id: string; reference: s
     });
     if (!data?.hse_inspection_id || !data.reference) throw new Error("Accusé de réception serveur incomplet");
     return { id: data.hse_inspection_id, reference: data.reference };
+  }
+  if (entry.endpoint === FUEL_ISSUE_ENDPOINT) {
+    const { data } = await request<Schemas["FuelIssueOut"]>(entry.endpoint, {
+      method: "POST",
+      body: entry.payload,
+      idempotencyKey: entry.operationId,
+    });
+    if (!data?.fuel_issue_id) throw new Error("Accusé de réception serveur incomplet");
+    return { id: data.fuel_issue_id, reference: `sortie ${data.liters} L — ${data.tank_code}` };
   }
   if (entry.endpoint !== HSE_INCIDENT_ENDPOINT) throw new Error("Opération hors ligne non prise en charge");
   const { data } = await request<Schemas["IncidentOut"]>(entry.endpoint, {

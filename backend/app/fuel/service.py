@@ -12,6 +12,7 @@ from app.audit.contracts import record
 from app.authz.dependencies import Authorized
 from app.core.errors import AppError
 from app.core.http import PageParams
+from app.core.idempotency import IdempotencyClaim, complete
 from app.core.tenancy import set_tenant_context
 from app.fleet.models import Vehicle, VehicleCategory
 from app.fuel.models import (
@@ -1193,7 +1194,9 @@ def _validate_vehicle_and_driver(auth: Authorized, body: IssueCreate, tank: Tank
     return vehicle, driver
 
 
-def create_issue(auth: Authorized, body: IssueCreate) -> Issue:
+def create_issue(
+    auth: Authorized, body: IssueCreate, *, idempotency_claim: IdempotencyClaim | None = None
+) -> Issue:
     tank = _tank(auth, body.fuel_tank_id, lock=True)
     now = auth.clock.now()
     if body.requested_at > now + timedelta(seconds=5) or body.requested_at < now - timedelta(hours=24):
@@ -1225,9 +1228,30 @@ def create_issue(auth: Authorized, body: IssueCreate) -> Issue:
     auth.db.add(issue)
     auth.db.flush()
     _audit(auth, "fuel.issue.request", issue.fuel_issue_id, issue.site_id)
+    if idempotency_claim is not None:
+        # Clé finalisée dans la transaction de la sortie : un échec annule les deux (pas de doublon,
+        # pas de litre réservé, pas de clé bloquée « en cours »).
+        complete(
+            auth.db,
+            idempotency_claim,
+            response_status=201,
+            resource_type="fuel_issue",
+            resource_id=issue.fuel_issue_id,
+            completed_at=now,
+        )
     auth.db.commit()
     # COMMIT clôt SET LOCAL ; rétablir le contexte RLS pour la projection de réponse.
     set_tenant_context(auth.db, auth.tenant_id)
+    return issue
+
+
+def issue_in_scope(auth: Authorized, issue_id: uuid.UUID) -> Issue:
+    """Relecture d'une sortie rejouée (Idempotency-Key) : même tenant et site dans la portée."""
+    issue = auth.db.scalar(
+        select(Issue).where(Issue.tenant_id == auth.tenant_id, Issue.fuel_issue_id == issue_id)
+    )
+    if issue is None or not _in_scope(auth, issue.site_id):
+        raise AppError("NOT_FOUND")
     return issue
 
 
