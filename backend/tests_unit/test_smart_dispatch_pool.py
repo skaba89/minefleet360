@@ -5,7 +5,6 @@ from uuid import UUID
 
 import pytest
 
-from app.authz.dependencies import Authorized
 from app.core.errors import AppError
 from app.dispatch import smart_pool
 
@@ -15,7 +14,7 @@ NOW = datetime(2026, 11, 26, tzinfo=UTC)
 
 
 def test_pool_rejects_missing_permission(monkeypatch: pytest.MonkeyPatch) -> None:
-    auth = MagicMock(spec=Authorized)
+    auth = MagicMock(spec=["principal", "scope", "db", "clock", "tenant_id"])
     monkeypatch.setattr(smart_pool, "evaluate", lambda *_: None)
     with pytest.raises(AppError):
         smart_pool.eligible_pool(auth, SITE)
@@ -23,7 +22,7 @@ def test_pool_rejects_missing_permission(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_pool_filters_blocked_assignments(monkeypatch: pytest.MonkeyPatch) -> None:
-    auth = MagicMock(spec=Authorized)
+    auth = MagicMock(spec=["principal", "scope", "db", "clock", "tenant_id"])
     auth.tenant_id = TENANT
     auth.clock.now.return_value = NOW
     scope = MagicMock()
