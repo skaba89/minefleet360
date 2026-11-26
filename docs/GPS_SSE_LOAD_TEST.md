@@ -23,4 +23,6 @@ La sonde refuse HTTP hors localhost, les identifiants dans l'URL et l'exécution
 
 Les tests unitaires `scripts/gps/test_benchmark_stream.py` sont lancés avec la CI `gps-benchmark-tests` sur les changements de `scripts/gps/**`. N'effectuer aucune mesure de charge depuis la CI sur un environnement partagé.
 
+Mesure sous trafic continu (26 nov, base de démonstration locale) : `demo live-feed` (315 positions acceptées via la vraie API traceur) pendant 20 connexions SSE tenues — 0 erreur, 0 trame initiale manquante, première trame p50 55,7 / p99 76,5 ms et 120 mises à jour diffusées en direct. Protocole et limites : [`audit/preuves/gps/SSE_SOUS_TRAFIC_2026-11-26.md`](audit/preuves/gps/SSE_SOUS_TRAFIC_2026-11-26.md).
+
 Prochain chantier : décider et implémenter une notification transmise entre workers (par ex. PostgreSQL LISTEN/NOTIFY, après mesure des volumes) avec snapshot SQL soumis à autorisation RLS, périodicité de revalidation et rattrapage après interruption. Le score audité ne change pas sans preuve supplémentaire.
