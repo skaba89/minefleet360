@@ -45,6 +45,7 @@ from app.hse.inspections import router as hse_inspections_router
 from app.hse.router import router as hse_router
 from app.identity.auth_service import AuthLimiters
 from app.identity.router import auth_router, me_router, role_router, user_router
+from app.iot.router import router as iot_router
 from app.legal.router import router as legal_router
 from app.maintenance.parts_router import router as parts_router
 from app.maintenance.purchase_order_router import router as purchase_order_router
@@ -185,6 +186,7 @@ def create_app(clock: Clock | None = None, email_sender: EmailSender | None = No
         maintenance_router,
         reliability_router,
         tyre_router,
+        iot_router,
         costs_router,
         legal_router,
         parts_router,

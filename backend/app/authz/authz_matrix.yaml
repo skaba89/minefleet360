@@ -1574,6 +1574,40 @@ permissions:
     grants:
       { TENANT_ADMIN: [TENANT], DIRECTION: [TENANT], FINANCE: [TENANT], AUDITOR: [TENANT] }
 
+  # Industrial IoT registry: manufacturer labels are tenant-wide reference data.
+  iot.registry.read:
+    tranche: 2a
+    kind: read
+    site_bound: true
+    routes:
+      - { method: GET, path: /iot/manufacturers, shape: collection, success: 200 }
+      - { method: GET, path: /iot/gateways, shape: collection, success: 200 }
+      - { method: GET, path: /iot/sensors, shape: collection, success: 200 }
+    grants:
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      MECHANIC: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  iot.manufacturer.create:
+    tranche: 2a
+    kind: create
+    site_bound: false
+    routes: [{ method: POST, path: /iot/manufacturers, shape: collection, success: 201 }]
+    audit: { action: iot.manufacturer.create }
+    grants: { TENANT_ADMIN: [TENANT] }
+  iot.registry.manage:
+    tranche: 2a
+    kind: create
+    site_bound: true
+    routes:
+      - { method: POST, path: /iot/gateways, shape: collection, success: 201 }
+      - { method: POST, path: /iot/sensors, shape: collection, success: 201 }
+    audit: { action: iot.gateway.create }
+    grants: { TENANT_ADMIN: [TENANT], OPS_MANAGER: [TENANT, SITE], WORKSHOP_CHIEF: [TENANT, SITE] }
+
 public_routes:
   # Authentification machine obligatoire dans la route ; aucun accès anonyme aux données.
   - { method: POST, path: /gps/telemetry }

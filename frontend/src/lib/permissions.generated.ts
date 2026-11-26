@@ -1296,6 +1296,51 @@ export const GRANTS = {
       "SITE"
     ]
   },
+  "iot.manufacturer.create": {
+    "TENANT_ADMIN": [
+      "TENANT"
+    ]
+  },
+  "iot.registry.manage": {
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
+  "iot.registry.read": {
+    "AUDITOR": [
+      "TENANT"
+    ],
+    "DIRECTION": [
+      "TENANT"
+    ],
+    "HSE": [
+      "TENANT",
+      "SITE"
+    ],
+    "MECHANIC": [
+      "TENANT",
+      "SITE"
+    ],
+    "OPS_MANAGER": [
+      "TENANT",
+      "SITE"
+    ],
+    "TENANT_ADMIN": [
+      "TENANT"
+    ],
+    "WORKSHOP_CHIEF": [
+      "TENANT",
+      "SITE"
+    ]
+  },
   "legal.contract.create": {
     "OPS_MANAGER": [
       "TENANT",

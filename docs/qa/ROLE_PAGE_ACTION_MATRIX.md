@@ -265,25 +265,28 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `billing.subscription.read` | 2a | `GET /tenant/subscription` | `AUDITOR`, `DIRECTION`, `FINANCE`, `TENANT_ADMIN` |
 | `billing.invoice.manage` | 2a | `POST /platform/tenants/{tenant_id}/invoices`<br>`GET /platform/tenants/{tenant_id}/invoices`<br>`GET /platform/tenants/{tenant_id}/invoices/{invoice_id}`<br>`POST /platform/tenants/{tenant_id}/invoices/{invoice_id}/issue`<br>`POST /platform/tenants/{tenant_id}/invoices/{invoice_id}/void` | `PLATFORM_ADMIN` |
 | `billing.invoice.read` | 2a | `GET /tenant/invoices`<br>`GET /tenant/invoices/{invoice_id}` | `AUDITOR`, `DIRECTION`, `FINANCE`, `TENANT_ADMIN` |
+| `iot.registry.read` | 2a | `GET /iot/manufacturers`<br>`GET /iot/gateways`<br>`GET /iot/sensors` | `AUDITOR`, `DIRECTION`, `HSE`, `MECHANIC`, `OPS_MANAGER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
+| `iot.manufacturer.create` | 2a | `POST /iot/manufacturers` | `TENANT_ADMIN` |
+| `iot.registry.manage` | 2a | `POST /iot/gateways`<br>`POST /iot/sensors` | `OPS_MANAGER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
 
 ## 5. Couverture par rôle
 
 | Rôle | Permissions | Routes API accessibles |
 |---|---:|---:|
 | `PLATFORM_ADMIN` | 12 | 33 |
-| `TENANT_ADMIN` | 70 | 133 |
-| `DIRECTION` | 43 | 104 |
-| `OPS_MANAGER` | 89 | 188 |
+| `TENANT_ADMIN` | 73 | 139 |
+| `DIRECTION` | 44 | 107 |
+| `OPS_MANAGER` | 91 | 193 |
 | `DISPATCHER` | 37 | 84 |
 | `HR` | 17 | 36 |
 | `DRIVER` | 5 | 20 |
-| `WORKSHOP_CHIEF` | 40 | 104 |
-| `MECHANIC` | 17 | 46 |
+| `WORKSHOP_CHIEF` | 42 | 109 |
+| `MECHANIC` | 18 | 49 |
 | `STOREKEEPER` | 17 | 50 |
 | `FUEL_MANAGER` | 28 | 63 |
-| `HSE` | 34 | 80 |
+| `HSE` | 35 | 83 |
 | `FINANCE` | 31 | 65 |
-| `AUDITOR` | 44 | 107 |
+| `AUDITOR` | 45 | 110 |
 
 ## 6. Anomalies détectées mécaniquement
 
