@@ -11,9 +11,7 @@ SITE = UUID(int=2)
 VEHICLE = UUID(int=3)
 DESTINATION = UUID(int=4)
 NOW = datetime(2026, 11, 26, tzinfo=UTC)
-ESTIMATE = RouteEstimate(
-    TENANT, SITE, VEHICLE, DESTINATION, NOW - timedelta(seconds=30), NOW, NOW, 1000, 120
-)
+ESTIMATE = RouteEstimate(TENANT, SITE, VEHICLE, DESTINATION, NOW - timedelta(seconds=30), NOW, NOW, 1000, 120)
 
 
 def eta(estimate: RouteEstimate) -> int | None:
