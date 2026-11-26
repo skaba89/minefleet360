@@ -4,6 +4,10 @@
 Usage:
   MF_GPS_BENCH_URL=https://staging.example.org MF_GPS_BENCH_TOKEN=... \
     python scripts/gps/benchmark_stream.py --concurrency 10 --hold-seconds 5
+
+Sur un flux inactif, le serveur ne revalide la session (heartbeat) que toutes les
+INTERVAL_SECONDS (15 s) : --timeout doit dépasser cet intervalle (ex. 20), sinon
+chaque connexion se termine en TimeoutError avant le prochain heartbeat.
 """
 
 import argparse
@@ -70,19 +74,21 @@ def observe(
     except threading.BrokenBarrierError:
         return Result(0, None, 0, 0, 1)
     started = time.perf_counter()
+    status_code = 0
+    first_ms: float | None = None
+    snapshots = heartbeats = 0
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
+            status_code = response.status
             if "text/event-stream" not in response.headers.get("Content-Type", ""):
-                return Result(response.status, None, 0, 0, 1)
+                return Result(status_code, None, 0, 0, 1)
             deadline = started + hold_seconds
-            first_ms: float | None = None
-            snapshots = heartbeats = 0
             consumed = 0
             while time.perf_counter() < deadline:
                 line = response.readline(8193)
                 consumed += len(line)
                 if len(line) > 8192 or consumed > 3_000_000:
-                    return Result(response.status, first_ms, snapshots, heartbeats, 1)
+                    return Result(status_code, first_ms, snapshots, heartbeats, 1)
                 if not line:
                     break
                 if first_ms is None:
@@ -92,12 +98,17 @@ def observe(
                     snapshots += 1
                 elif line.startswith(b": heartbeat"):
                     heartbeats += 1
-            return Result(response.status, first_ms, snapshots, heartbeats, 0)
+            return Result(status_code, first_ms, snapshots, heartbeats, 0)
     except urllib.error.HTTPError as exc:
         # Do not print response body, which could contain tenant information.
         return Result(exc.code, None, 0, 0, 0 if exc.code == 429 else 1)
     except (urllib.error.URLError, TimeoutError, OSError):
-        return Result(0, None, 0, 0, 1)
+        # Coupure ou timeout pendant la tenue : les mesures déjà collectées sont conservées
+        # (première trame, snapshots, heartbeats) — le compteur failures reste incrémenté.
+        # Attention : un flux inactif ne reçoit une revalidation serveur que toutes les
+        # INTERVAL_SECONDS (15 s, gps_stream_router) ; --timeout doit dépasser cet intervalle,
+        # sinon la tenue se termine systématiquement en TimeoutError avant le prochain heartbeat.
+        return Result(status_code, first_ms, snapshots, heartbeats, 1)
 
 
 def summarize(results: list[Result]) -> dict:

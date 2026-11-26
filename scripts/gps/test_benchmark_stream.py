@@ -91,3 +91,28 @@ class StreamBenchTests(TestCase):
                 "https://example.com", "dummy", None, threading.Barrier(1), 5, 1
             )
         self.assertEqual(result.failures, 1)
+
+    def test_timeout_during_hold_preserves_measurements(self):
+        class TimeoutAfterFirstLine(StubResponse):
+            def __init__(self):
+                super().__init__(b"")
+                self.read_once = False
+
+            def readline(self, size):
+                if not self.read_once:
+                    self.read_once = True
+                    return b"event: snapshot\n"
+                raise TimeoutError("timed out")
+
+        response = TimeoutAfterFirstLine()
+        with patch.object(benchmark.urllib.request, "urlopen", return_value=response):
+            result = benchmark.observe(
+                "https://example.com", "dummy", None, threading.Barrier(1), 5, 1
+            )
+        # Le timeout réseau pendant la tenue incrémente failures mais ne jette plus la
+        # première trame déjà reçue (bug constaté à la première exécution réelle :
+        # heartbeat serveur toutes les 15 s > --timeout 10 sur flux inactif).
+        self.assertEqual(result.failures, 1)
+        self.assertEqual(result.status, 200)
+        self.assertIsNotNone(result.first_event_ms)
+        self.assertEqual(result.snapshots, 1)
