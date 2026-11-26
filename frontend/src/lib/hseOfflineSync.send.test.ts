@@ -151,6 +151,35 @@ describe("envoi d'une opération hors ligne vers sa route", () => {
     await expect(defaultSyncDeps.send(entry("/fuel/issues"))).rejects.toThrow("incomplet");
   });
 
+  it("un ticket de pesée part vers /weighing-tickets avec sa clé et son numéro imprimé", async () => {
+    vi.mocked(request).mockResolvedValue({
+      data: { weighing_ticket_id: "pesée-1", ticket_number: "T-2026-0042" },
+    } as never);
+    const ticket = {
+      ...entry("/weighing-tickets"),
+      payload: {
+        rotation_id: "88888888-8888-4888-8888-888888888888",
+        weighbridge_location_id: "99999999-9999-4999-8999-999999999999",
+        ticket_number: "T-2026-0042",
+        source: "WEIGHBRIDGE",
+        weighed_at: "2026-11-26T05:00:00Z",
+        gross_kg: 52000,
+        tare_kg: 18000,
+      },
+    };
+    expect(await defaultSyncDeps.send(ticket)).toEqual({ id: "pesée-1", reference: "T-2026-0042" });
+    expect(request).toHaveBeenCalledWith("/weighing-tickets", {
+      method: "POST",
+      body: ticket.payload,
+      idempotencyKey: "11111111-1111-4111-8111-111111111111",
+    });
+  });
+
+  it("un accusé de pesée sans numéro de ticket est une erreur (jamais « synchronisé »)", async () => {
+    vi.mocked(request).mockResolvedValue({ data: { weighing_ticket_id: "pesée-1" } } as never);
+    await expect(defaultSyncDeps.send(entry("/weighing-tickets"))).rejects.toThrow("incomplet");
+  });
+
   it("une route non prise en charge n'est jamais appelée", async () => {
     await expect(defaultSyncDeps.send(entry("/fuel/purchases"))).rejects.toThrow("non prise en charge");
     expect(request).not.toHaveBeenCalled();

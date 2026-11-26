@@ -19,6 +19,7 @@ import {
   listForAccount,
   METER_READING_ENDPOINT,
   MISSION_EVENT_ENDPOINT,
+  WEIGHING_TICKET_ENDPOINT,
   WORK_ORDER_ENDPOINT,
   updateEntry,
   type OutboxEntry,
@@ -187,6 +188,37 @@ export async function queueFuelIssue(
   return entry;
 }
 
+export type WeighingTicketDraft = Schemas["WeighingCreate"];
+
+/**
+ * Ticket de pesée saisi sans réseau au pont bascule : le numéro de ticket imprimé et l'heure de la pesée
+ * voyagent dans la charge utile ; le tonnage reste soumis à l'approbation (ajout seul, RM-073) et la
+ * dédup métier RM-074 (pont + numéro) reste intacte pour les renvois sans clé.
+ */
+export async function queueWeighingTicket(
+  account: Account,
+  siteId: string,
+  body: WeighingTicketDraft,
+  summary: string,
+  nowIso = new Date().toISOString(),
+  operationId: string = crypto.randomUUID(),
+): Promise<OutboxEntry> {
+  const entry: OutboxEntry = {
+    operationId,
+    tenantId: account.tenantId,
+    userId: account.userId,
+    siteId,
+    endpoint: WEIGHING_TICKET_ENDPOINT,
+    payload: { ...body },
+    createdAt: nowIso,
+    status: "pending",
+    attempts: 0,
+    summary: summary.slice(0, 200),
+  };
+  await enqueue(entry);
+  return entry;
+}
+
 export async function countUnsynchronized(account: Account): Promise<number> {
   return (await listForAccount(account)).filter((e) => e.status === "pending" || e.status === "syncing").length;
 }
@@ -244,6 +276,15 @@ async function sendEntry(entry: OutboxEntry): Promise<{ id: string; reference: s
     });
     if (!data?.fuel_issue_id) throw new Error("Accusé de réception serveur incomplet");
     return { id: data.fuel_issue_id, reference: `sortie ${data.liters} L — ${data.tank_code}` };
+  }
+  if (entry.endpoint === WEIGHING_TICKET_ENDPOINT) {
+    const { data } = await request<Schemas["WeighingOut"]>(entry.endpoint, {
+      method: "POST",
+      body: entry.payload,
+      idempotencyKey: entry.operationId,
+    });
+    if (!data?.weighing_ticket_id || !data?.ticket_number) throw new Error("Accusé de réception serveur incomplet");
+    return { id: data.weighing_ticket_id, reference: data.ticket_number };
   }
   if (entry.endpoint !== HSE_INCIDENT_ENDPOINT) throw new Error("Opération hors ligne non prise en charge");
   const { data } = await request<Schemas["IncidentOut"]>(entry.endpoint, {

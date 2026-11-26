@@ -42,6 +42,8 @@ export const WORK_ORDER_ENDPOINT = "/work-orders";
 export const MISSION_EVENT_ENDPOINT = "/missions/{mission_id}/events";
 /** Sortie de carburant (demande de ravitaillement) : création append-only et idempotente, PENDING_APPROVAL à l'arrivée. */
 export const FUEL_ISSUE_ENDPOINT = "/fuel/issues";
+/** Ticket de pesée (pont bascule) : création append-only et idempotente ; la dédup RM-074 reste intacte sans clé. */
+export const WEIGHING_TICKET_ENDPOINT = "/weighing-tickets";
 const ENABLED_ENDPOINTS: ReadonlySet<string> = new Set([
   HSE_INCIDENT_ENDPOINT,
   HSE_INSPECTION_ENDPOINT,
@@ -49,6 +51,7 @@ const ENABLED_ENDPOINTS: ReadonlySet<string> = new Set([
   WORK_ORDER_ENDPOINT,
   MISSION_EVENT_ENDPOINT,
   FUEL_ISSUE_ENDPOINT,
+  WEIGHING_TICKET_ENDPOINT,
 ]);
 
 /** Route synchronisable hors ligne : création append-only et idempotente côté serveur (Idempotency-Key). */
