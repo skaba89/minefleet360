@@ -1,0 +1,1 @@
+"""Industrial IoT registry domain."""
