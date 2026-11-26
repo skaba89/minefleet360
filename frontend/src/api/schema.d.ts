@@ -1407,6 +1407,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/iot/gateways": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Gateways */
+        get: operations["list_gateways_api_v1_iot_gateways_get"];
+        put?: never;
+        /** Create Gateway */
+        post: operations["create_gateway_api_v1_iot_gateways_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/iot/manufacturers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Manufacturers */
+        get: operations["list_manufacturers_api_v1_iot_manufacturers_get"];
+        put?: never;
+        /** Create Manufacturer */
+        post: operations["create_manufacturer_api_v1_iot_manufacturers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/iot/sensors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Sensors */
+        get: operations["list_sensors_api_v1_iot_sensors_get"];
+        put?: never;
+        /** Create Sensor */
+        post: operations["create_sensor_api_v1_iot_sensors_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/legal-contracts": {
         parameters: {
             query?: never;
@@ -5663,6 +5717,65 @@ export interface components {
              */
             start: string;
         };
+        /** GatewayCreate */
+        GatewayCreate: {
+            /** External Id */
+            external_id: string;
+            /**
+             * Manufacturer Id
+             * Format: uuid
+             */
+            manufacturer_id: string;
+            /** Model */
+            model: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "SIMULATED" | "PHYSICAL";
+        };
+        /** GatewayOut */
+        GatewayOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** External Id */
+            external_id: string;
+            /**
+             * Gateway Id
+             * Format: uuid
+             */
+            gateway_id: string;
+            /**
+             * Manufacturer Id
+             * Format: uuid
+             */
+            manufacturer_id: string;
+            /** Model */
+            model: string;
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "SIMULATED" | "PHYSICAL";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "REGISTERED" | "RETIRED";
+        };
         /** GeofenceCreate */
         GeofenceCreate: {
             /** Code */
@@ -6782,6 +6895,26 @@ export interface components {
             /** Workspace Code */
             workspace_code: string;
         };
+        /** ManufacturerCreate */
+        ManufacturerCreate: {
+            /** Name */
+            name: string;
+        };
+        /** ManufacturerOut */
+        ManufacturerOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Manufacturer Id
+             * Format: uuid
+             */
+            manufacturer_id: string;
+            /** Name */
+            name: string;
+        };
         /** MaterialCreate */
         MaterialCreate: {
             /** Code */
@@ -7435,6 +7568,17 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** Page[GatewayOut] */
+        Page_GatewayOut_: {
+            /** Items */
+            items: components["schemas"]["GatewayOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
         /** Page[GpsAlertOut] */
         Page_GpsAlertOut_: {
             /** Items */
@@ -7494,6 +7638,17 @@ export interface components {
         Page_InvoiceSummary_: {
             /** Items */
             items: components["schemas"]["InvoiceSummary"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[ManufacturerOut] */
+        Page_ManufacturerOut_: {
+            /** Items */
+            items: components["schemas"]["ManufacturerOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -7582,6 +7737,17 @@ export interface components {
         Page_RoleAssignmentOut_: {
             /** Items */
             items: components["schemas"]["RoleAssignmentOut"][];
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Total */
+            total: number;
+        };
+        /** Page[SensorOut] */
+        Page_SensorOut_: {
+            /** Items */
+            items: components["schemas"]["SensorOut"][];
             /** Page */
             page: number;
             /** Page Size */
@@ -8794,6 +8960,75 @@ export interface components {
              * Format: uuid
              */
             vehicle_id: string;
+        };
+        /** SensorCreate */
+        SensorCreate: {
+            /** External Id */
+            external_id: string;
+            /**
+             * Gateway Id
+             * Format: uuid
+             */
+            gateway_id: string;
+            /**
+             * Manufacturer Id
+             * Format: uuid
+             */
+            manufacturer_id: string;
+            /** Model */
+            model: string;
+            /**
+             * Sensor Kind
+             * @enum {string}
+             */
+            sensor_kind: "TPMS" | "HUB_TEMPERATURE" | "WHEEL_LOOSENING" | "COMBINED";
+        };
+        /** SensorOut */
+        SensorOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** External Id */
+            external_id: string;
+            /**
+             * Gateway Id
+             * Format: uuid
+             */
+            gateway_id: string;
+            /**
+             * Manufacturer Id
+             * Format: uuid
+             */
+            manufacturer_id: string;
+            /** Model */
+            model: string;
+            /**
+             * Sensor Id
+             * Format: uuid
+             */
+            sensor_id: string;
+            /**
+             * Sensor Kind
+             * @enum {string}
+             */
+            sensor_kind: "TPMS" | "HUB_TEMPERATURE" | "WHEEL_LOOSENING" | "COMBINED";
+            /**
+             * Site Id
+             * Format: uuid
+             */
+            site_id: string;
+            /**
+             * Source Kind
+             * @enum {string}
+             */
+            source_kind: "SIMULATED" | "PHYSICAL";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "REGISTERED" | "RETIRED";
         };
         /**
          * ServiceDeclarationCreate
@@ -14396,6 +14631,213 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InsuranceExpiringOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_gateways_api_v1_iot_gateways_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_GatewayOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_gateway_api_v1_iot_gateways_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GatewayCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GatewayOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_manufacturers_api_v1_iot_manufacturers_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_ManufacturerOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_manufacturer_api_v1_iot_manufacturers_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManufacturerCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ManufacturerOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sensors_api_v1_iot_sensors_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_SensorOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_sensor_api_v1_iot_sensors_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SensorCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SensorOut"];
                 };
             };
             /** @description Validation Error */
