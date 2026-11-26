@@ -8,7 +8,14 @@ from sqlalchemy import select, text
 
 from app.core.db import new_session
 from app.iot.models import IoTGateway, IoTManufacturer, IoTSensor
-from app.iot.schemas import GatewayCreate, GatewayOut, ManufacturerCreate, ManufacturerOut, SensorCreate, SensorOut
+from app.iot.schemas import (
+    GatewayCreate,
+    GatewayOut,
+    ManufacturerCreate,
+    ManufacturerOut,
+    SensorCreate,
+    SensorOut,
+)
 from tests.conftest import Api
 
 
