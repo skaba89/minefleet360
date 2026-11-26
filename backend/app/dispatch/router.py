@@ -1,3 +1,4 @@
+import json
 import uuid
 from typing import Annotated
 
@@ -6,7 +7,9 @@ from pydantic import AwareDatetime, BaseModel
 
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
+from app.core.errors import AppError
 from app.core.http import IfMatch, Page, Pagination, etag
+from app.core.idempotency import claim, optional_idempotency_key
 from app.dispatch import service, weighing
 from app.dispatch.models import Material, SiteLocation
 from app.dispatch.schemas import (
@@ -214,8 +217,33 @@ def record_weighing_ticket(
     body: WeighingCreate,
     auth: Annotated[Authorized, Depends(Require("dispatch.weighing.record"))],
     response: Response,
+    idempotency_key: Annotated[str | None, Depends(optional_idempotency_key)],
 ) -> WeighingOut:
-    out, created = weighing.record_ticket(auth, body)
+    if idempotency_key is None:
+        out, created = weighing.record_ticket(auth, body)
+        if not created:
+            response.status_code = status.HTTP_200_OK  # renvoi identique (RM-074)
+        return out
+    # Pesée rejouée depuis la file terrain (même contrat que POST /fuel/issues) : clé liée au tenant ET
+    # au compte authentifié, corps empreinté, permission et portée revérifiées à chaque envoi.
+    payload = json.dumps(body.model_dump(mode="json"), sort_keys=True, separators=(",", ":")).encode("utf-8")
+    owned = claim(
+        auth.db,
+        tenant_id=auth.tenant_id,
+        user_account_id=auth.user_id,
+        key=idempotency_key,
+        method="POST",
+        path="/weighing-tickets",
+        body=payload,
+        now=auth.clock.now(),
+    )
+    if owned.replay is not None:
+        if owned.replay.resource_type != "weighing_ticket":
+            raise AppError("IDEMPOTENCY_KEY_REUSED")
+        ticket = weighing.ticket_in_scope(auth, owned.replay.resource_id)
+        response.headers["Idempotency-Replayed"] = "true"
+        return weighing.tickets_out(auth, [ticket])[0]
+    out, created = weighing.record_ticket(auth, body, idempotency_claim=owned)
     if not created:
         response.status_code = status.HTTP_200_OK  # renvoi identique (RM-074)
     return out

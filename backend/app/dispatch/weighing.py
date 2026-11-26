@@ -21,6 +21,7 @@ from app.authz.dependencies import Authorized
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.http import PageParams
+from app.core.idempotency import IdempotencyClaim, complete
 from app.core.logging import security_logger
 from app.dispatch.models import (
     Material,
@@ -353,7 +354,9 @@ def _same(ticket: WeighingTicket, body: WeighingFields, rotation_id: uuid.UUID) 
     return ticket.rotation_id == rotation_id and all(getattr(ticket, f) == getattr(body, f) for f in COMPARED)
 
 
-def record_ticket(auth: Authorized, body: WeighingCreate) -> tuple[WeighingOut, bool]:
+def record_ticket(
+    auth: Authorized, body: WeighingCreate, *, idempotency_claim: IdempotencyClaim | None = None
+) -> tuple[WeighingOut, bool]:
     """US-2.05 : pesée d'une rotation. Renvoie (ticket, créé) ; un renvoi identique rend le même ticket."""
     db = auth.db
     rotation, mission = _rotation_in_scope(auth, body.rotation_id)
@@ -369,6 +372,17 @@ def record_ticket(auth: Authorized, body: WeighingCreate) -> tuple[WeighingOut, 
     if existing is not None:
         # RM-074 : renvoi tardif (même hors délai, revue L2B-R-08) → même ticket ; sinon conflit.
         if _same(existing, body, body.rotation_id):
+            if idempotency_claim is not None:
+                # Le renvoi identique finalise aussi la clé du terrain (le rejeu hors ligne aboutit ici
+                # si le ticket existait déjà sous une clé perdue) : même effet, aucun état « en cours ».
+                complete(
+                    db,
+                    idempotency_claim,
+                    response_status=200,
+                    resource_type="weighing_ticket",
+                    resource_id=existing.weighing_ticket_id,
+                    completed_at=auth.clock.now(),
+                )
             out = tickets_out(auth, [existing])[0]
             db.commit()
             return out, False
@@ -381,6 +395,17 @@ def record_ticket(auth: Authorized, body: WeighingCreate) -> tuple[WeighingOut, 
         raise AppError("ROTATION_ALREADY_WEIGHED")
     ticket = _new_ticket(auth, body, rotation, mission, replaces=None)
     _audit(auth, "weighing_ticket.create", ticket, after=_values(ticket))
+    if idempotency_claim is not None:
+        # Clé finalisée dans la transaction du ticket : un échec annule les deux (pas de double pesée,
+        # pas de tonnage doublé, pas de clé bloquée « en cours »).
+        complete(
+            db,
+            idempotency_claim,
+            response_status=201,
+            resource_type="weighing_ticket",
+            resource_id=ticket.weighing_ticket_id,
+            completed_at=auth.clock.now(),
+        )
     out = tickets_out(auth, [ticket])[0]
     db.commit()
     return out, True

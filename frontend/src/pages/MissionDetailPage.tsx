@@ -18,7 +18,7 @@ import {
   WEIGHING_STATUS,
 } from "../lib/labels";
 import { useConnectivity } from "../lib/connectivity";
-import { accountOf } from "../lib/hseOfflineSync";
+import { accountOf, queueWeighingTicket } from "../lib/hseOfflineSync";
 import { listForAccount, type OutboxEntry } from "../lib/offline-outbox";
 import { DEFERRABLE, pendingEventsOf, projectMission, queueMissionEvent, type ProgressEvent } from "../lib/offlineMissionEvents";
 import { can } from "../lib/permissions";
@@ -316,7 +316,33 @@ export function MissionDetailPage() {
                   setWeighing(null);
                   void queryClient.invalidateQueries({ queryKey: ["weighing-tickets"] });
                 }}
-                onSubmit={(fields) => call("post", "/weighing-tickets", { body: { ...fields, rotation_id: weighing } })}
+                onSubmit={async (fields) => {
+                  const body = { ...fields, rotation_id: weighing };
+                  const summary = `${fields.ticket_number} — ${fields.gross_kg} kg`;
+                  if (!online) {
+                    // Pesée au pont bascule sans réseau : le ticket part dans la file du compte, tonnage
+                    // toujours soumis à l'approbation à l'arrivée (ajout seul, RM-073).
+                    await queueWeighingTicket(account, m.site_id, body, summary);
+                    setWeighing(null);
+                    setQueuedCount((n) => n + 1);
+                    return;
+                  }
+                  // Clé d'idempotence dès l'envoi direct : si la réponse se perd, le ticket part dans la
+                  // file avec la même clé et son rejeu renvoie la pesée déjà enregistrée (aucun doublon
+                  // de tonnage) ; la dédup RM-074 reste le filet pour les renvois sans clé.
+                  const operationId = crypto.randomUUID();
+                  try {
+                    await call("post", "/weighing-tickets", { body, idempotencyKey: operationId });
+                  } catch (error) {
+                    if (error instanceof ApiError && error.status === 0) {
+                      await queueWeighingTicket(account, m.site_id, body, summary, new Date().toISOString(), operationId);
+                      setWeighing(null);
+                      setQueuedCount((n) => n + 1);
+                      return;
+                    }
+                    throw error;
+                  }
+                }}
               />
             )}
             <h2>Chronologie</h2>
