@@ -124,8 +124,35 @@ describe("envoi d'une opération hors ligne vers sa route", () => {
     expect(request).not.toHaveBeenCalled();
   });
 
+  it("une sortie de carburant part vers /fuel/issues avec sa clé, sans le libellé local", async () => {
+    vi.mocked(request).mockResolvedValue({
+      data: { fuel_issue_id: "sortie-1", liters: "50.000", tank_code: "CUVE-01" },
+    } as never);
+    const issue = {
+      ...entry("/fuel/issues"),
+      payload: {
+        fuel_tank_id: "55555555-5555-4555-8555-555555555555",
+        vehicle_id: "66666666-6666-4666-8666-666666666666",
+        driver_id: "77777777-7777-4777-8777-777777777777",
+        liters: 50,
+        requested_at: "2026-11-26T05:00:00Z",
+      },
+    };
+    expect(await defaultSyncDeps.send(issue)).toEqual({ id: "sortie-1", reference: "sortie 50.000 L — CUVE-01" });
+    expect(request).toHaveBeenCalledWith("/fuel/issues", {
+      method: "POST",
+      body: issue.payload,
+      idempotencyKey: "11111111-1111-4111-8111-111111111111",
+    });
+  });
+
+  it("un accusé de sortie incomplet est une erreur (jamais « synchronisé »)", async () => {
+    vi.mocked(request).mockResolvedValue({ data: { liters: "50.000" } } as never);
+    await expect(defaultSyncDeps.send(entry("/fuel/issues"))).rejects.toThrow("incomplet");
+  });
+
   it("une route non prise en charge n'est jamais appelée", async () => {
-    await expect(defaultSyncDeps.send(entry("/fuel/issues"))).rejects.toThrow("non prise en charge");
+    await expect(defaultSyncDeps.send(entry("/fuel/purchases"))).rejects.toThrow("non prise en charge");
     expect(request).not.toHaveBeenCalled();
   });
 });

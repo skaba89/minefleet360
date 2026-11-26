@@ -1,15 +1,18 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { call, read, type Schemas } from "../api/client";
+import { ApiError, call, read, type Schemas } from "../api/client";
 import { useMe } from "../auth/AuthContext";
 import { AccessDenied, Badge, DataState, ErrorMessage, Pager } from "../components/common";
 import { ActionForm, Options } from "../components/forms";
 import { Icon } from "../components/Icon";
+import { useConnectivity } from "../lib/connectivity";
+import { accountOf, queueFuelIssue } from "../lib/hseOfflineSync";
 import { can } from "../lib/permissions";
 import { formatDateTime, utcToZonedInput, zonedInputToUtc } from "../lib/time";
 import { useSites } from "../site/SiteContext";
 import { FuelDashboard } from "./FuelDashboard";
+import { OfflineIncidentQueue } from "./HseOffline";
 
 type Tank = Schemas["TankOut"];
 type Pump = Schemas["FuelPumpOut"];
@@ -95,6 +98,7 @@ export function FuelPage() {
   const [anomalyOpeningId, setAnomalyOpeningId] = useState<string | null>(null);
   const [pumpOnlyAnomalies, setPumpOnlyAnomalies] = useState(false);
   const [issuePage, setIssuePage] = useState(1);
+  const [queued, setQueued] = useState(0);
   const [consumptionPage, setConsumptionPage] = useState(1);
   const [vehicleId, setVehicleId] = useState("");
   const [consumptionMeter, setConsumptionMeter] = useState<"" | MeterKind>("");
@@ -364,12 +368,22 @@ export function FuelPage() {
       {panel === "pump" && <PumpCreateForm tanks={tankItems} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "tank" && <TankForm siteId={siteId} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "receipt" && <ReceiptForm tanks={tankItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
-      {panel === "issue" && <IssueForm siteId={siteId} tanks={tankItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
+      {panel === "issue" && <IssueForm siteId={siteId} tanks={tankItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} onQueued={() => { setPanel(null); setQueued((n) => n + 1); }} />}
       {panel === "stocktake" && <StocktakeForm tanks={tankItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "threshold" && <ThresholdForm tanks={tankItems} tankId={selectedTankId} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "supplier" && <SupplierForm siteId={siteId} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "purchase" && <PurchaseForm tanks={tankItems} suppliers={supplierItems} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
       {panel === "purchase-receipt" && <PurchaseReceiptForm purchase={purchaseItems.find((item) => item.fuel_purchase_order_id === selectedPurchaseId)} timezoneOf={timezoneOf} onCancel={() => setPanel(null)} onDone={() => void refresh()} />}
+      {canRequest && (
+        <OfflineIncidentQueue
+          account={accountOf(me)}
+          canSync
+          canOpen
+          timeZone={timezoneOf(siteId)}
+          refreshKey={queued}
+          onSynchronized={() => void queryClient.invalidateQueries({ queryKey: ["fuel-issues"] })}
+        />
+      )}
 
       <div className="card">
         <div className="page-head"><div><h2>Pompes et rapprochements</h2><p className="muted">Volumes issus des compteurs, rapprochés des ravitaillements approuvés.</p></div></div>
@@ -681,7 +695,9 @@ function ReceiptForm({ tanks, timezoneOf, onCancel, onDone }: { tanks: Tank[]; t
   </ActionForm>;
 }
 
-function IssueForm({ siteId, tanks, timezoneOf, onCancel, onDone }: { siteId: string | null; tanks: Tank[]; timezoneOf: (siteId: string | null | undefined) => string; onCancel: () => void; onDone: () => void }) {
+function IssueForm({ siteId, tanks, timezoneOf, onCancel, onDone, onQueued }: { siteId: string | null; tanks: Tank[]; timezoneOf: (siteId: string | null | undefined) => string; onCancel: () => void; onDone: () => void; onQueued: () => void }) {
+  const me = useMe();
+  const online = useConnectivity();
   const assignments = useQuery({
     queryKey: ["fuel-active-assignments", siteId],
     queryFn: () => read("/vehicle-assignments", { query: { site_id: siteId, status: "ACTIVE", page_size: 200 } }),
@@ -696,16 +712,39 @@ function IssueForm({ siteId, tanks, timezoneOf, onCancel, onDone }: { siteId: st
   const [date, setDate] = useState(utcToZonedInput(new Date(), timezoneOf(tanks[0]?.site_id)));
   const selectedTank = tanks.find((tank) => tank.fuel_tank_id === tankId);
   const assignment = activeAssignments.find((item) => item.vehicle_assignment_id === assignmentId);
-  return <ActionForm title="Demande de ravitaillement" submitLabel="Enregistrer la demande" onCancel={onCancel} onDone={onDone} onSubmit={() => call("post", "/fuel/issues", { body: {
-    fuel_tank_id: tankId,
-    vehicle_id: assignment?.vehicle_id ?? "",
-    driver_id: assignment?.driver_id ?? "",
-    liters: Number(litersValue),
-    meter_kind: meterKind || null,
-    meter_value: meterValue ? Number(meterValue) : null,
-    full_tank: fullTank,
-    requested_at: zonedInputToUtc(date, timezoneOf(selectedTank?.site_id)).toISOString(),
-  } })}>
+  return <ActionForm title="Demande de ravitaillement" submitLabel="Enregistrer la demande" onCancel={onCancel} onDone={onDone} onSubmit={async () => {
+    const body = {
+      fuel_tank_id: tankId,
+      vehicle_id: assignment?.vehicle_id ?? "",
+      driver_id: assignment?.driver_id ?? "",
+      liters: Number(litersValue),
+      meter_kind: meterKind || null,
+      meter_value: meterValue ? Number(meterValue) : null,
+      full_tank: fullTank,
+      requested_at: zonedInputToUtc(date, timezoneOf(selectedTank?.site_id)).toISOString(),
+    };
+    const account = accountOf(me);
+    const summary = `${selectedTank?.code ?? ""} — ${assignment?.vehicle_fleet_number ?? ""} — ${litersValue} L`;
+    if (!online) {
+      // Saisie sans réseau : la demande part dans la file du compte et arrive PENDING_APPROVAL.
+      await queueFuelIssue(account, selectedTank?.site_id ?? "", body, summary);
+      onQueued();
+      return;
+    }
+    // Clé d'idempotence dès l'envoi direct : si la réponse se perd, la demande part dans la file avec
+    // la même clé et son rejeu renvoie la sortie déjà créée (aucun doublon).
+    const operationId = crypto.randomUUID();
+    try {
+      await call("post", "/fuel/issues", { body, idempotencyKey: operationId });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 0) {
+        await queueFuelIssue(account, selectedTank?.site_id ?? "", body, summary, new Date().toISOString(), operationId);
+        onQueued();
+        return;
+      }
+      throw error;
+    }
+  }}>
     <label>Cuve<select required value={tankId} onChange={(e) => setTankId(e.target.value)}>{tanks.map((tank) => <option key={tank.fuel_tank_id} value={tank.fuel_tank_id}>{tank.code} · {FUEL_TYPES[tank.fuel_type]} · {liters(tank.available_liters)} disponible</option>)}</select></label>
     <label>Véhicule et conducteur<select required value={assignmentId} onChange={(e) => setAssignmentId(e.target.value)}><option value="">Choisir une affectation active</option>{activeAssignments.map((item) => <option key={item.vehicle_assignment_id} value={item.vehicle_assignment_id}>{item.vehicle_fleet_number} — {item.driver_display_name}</option>)}</select></label>
     <DataState loading={assignments.isLoading} error={assignments.error} empty={activeAssignments.length === 0} emptyText="Aucune affectation active disponible sur ce site."><span className="muted small">Le serveur vérifiera à nouveau l'affectation au moment de l'enregistrement.</span></DataState>

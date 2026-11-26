@@ -40,12 +40,15 @@ export const METER_READING_ENDPOINT = "/vehicles/{vehicle_id}/meter-readings";
 export const WORK_ORDER_ENDPOINT = "/work-orders";
 /** Avancement de mission différé : la mission est dans la charge utile, l'URL réelle est résolue à l'envoi. */
 export const MISSION_EVENT_ENDPOINT = "/missions/{mission_id}/events";
+/** Sortie de carburant (demande de ravitaillement) : création append-only et idempotente, PENDING_APPROVAL à l'arrivée. */
+export const FUEL_ISSUE_ENDPOINT = "/fuel/issues";
 const ENABLED_ENDPOINTS: ReadonlySet<string> = new Set([
   HSE_INCIDENT_ENDPOINT,
   HSE_INSPECTION_ENDPOINT,
   METER_READING_ENDPOINT,
   WORK_ORDER_ENDPOINT,
   MISSION_EVENT_ENDPOINT,
+  FUEL_ISSUE_ENDPOINT,
 ]);
 
 /** Route synchronisable hors ligne : création append-only et idempotente côté serveur (Idempotency-Key). */
