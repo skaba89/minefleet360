@@ -46,7 +46,8 @@ def test_pool_filters_blocked_assignments(monkeypatch: pytest.MonkeyPatch) -> No
     ]
     auth.db.execute.return_value.scalars.return_value = rows
     monkeypatch.setattr(
-        smart_pool, "running_blockers",
+        smart_pool,
+        "running_blockers",
         lambda _db, facts, _now: ["BLOCKED"] if facts.vehicle_assignment_id == UUID(int=3) else [],
     )
     result = smart_pool.eligible_pool(auth, SITE)
