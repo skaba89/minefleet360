@@ -42,9 +42,7 @@ def _active_site(auth: Authorized, site_id: uuid.UUID) -> None:
         raise AppError("REFERENCE_NOT_FOUND", details=[{"field": "site_id"}])
 
 
-def _audit(
-    auth: Authorized, entity: str, entity_id: uuid.UUID, site_id: uuid.UUID | None = None
-) -> None:
+def _audit(auth: Authorized, entity: str, entity_id: uuid.UUID, site_id: uuid.UUID | None = None) -> None:
     record(
         auth.db,
         tenant_id=auth.tenant_id,
