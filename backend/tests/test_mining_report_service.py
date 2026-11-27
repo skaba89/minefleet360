@@ -119,7 +119,8 @@ def test_readiness_report_history(api: Api) -> None:
             record_draft_readiness(auth, site_id=site, revision_id=revision, tolerance_m=2.0)
             for _ in range(3)
         ]
-        reader = replace(auth, principal=replace(principal, grants=(Grant("DISPATCHER", "SITE", site),)))
+        reader_principal = replace(principal, grants=(Grant("DISPATCHER", "SITE", site),))
+        reader = replace(auth, principal=reader_principal)
         first, cursor = list_readiness_reports(reader, site_id=site, revision_id=revision, limit=2)
         assert len(first) == 2
         assert cursor == first[-1].report_id
@@ -129,7 +130,9 @@ def test_readiness_report_history(api: Api) -> None:
         assert [row.report_id for row in first + second] == sorted(
             (item.report_id for item in results), reverse=True
         )
-        detail = get_readiness_report(reader, site_id=site, revision_id=revision, report_id=first[0].report_id)
+        detail = get_readiness_report(
+            reader, site_id=site, revision_id=revision, report_id=first[0].report_id
+        )
         assert detail.summary == first[0]
         assert detail.findings == (ReadinessFinding("EMPTY_GRAPH"),)
         with pytest.raises(AppError) as error:
