@@ -48,7 +48,8 @@ Classification complète (20 périmètres, 5 états) : **`docs/audit/AUDIT_PHASE
 | Module | Fonctionnalité | État | Preuve | Écart | Priorité | Action |
 |---|---|---|---|---|---|---|
 | Dispatch | Lecture cohérente et prévalidation du brouillon | COMPLET ET VÉRIFIÉ (DEV) | 70 tests ciblés sur cette branche, dont deux parcours PostGIS | Revue et recette | P0 | Soumettre le lot |
-| Dispatch | Rapport persistant, revues technique et HSE | ABSENT | Schéma à la tête 0088 et service de lecture | Traçabilité et protection contre les changements après revue | P0 | Persister le rapport et identifier le jeu de données contrôlé |
+| Dispatch | Rapport de prévalidation | COMPLET ET VÉRIFIÉ (DEV) | Migration 0089, test PostGIS de capture concurrente, audit, RLS, relecture et annulation de transaction | Revue et recette | P0 | Qualifier la migration en recette |
+| Dispatch | Revues technique et HSE | ABSENT | Aucune décision humaine dans le service de capture | Procédure quatre yeux et revalidation après changement | P0 | Lier les décisions à une révision figée |
 | Flotte | Profils techniques versionnés | PARTIEL | #592, migration 0088 | Approbation, échéance et justificatifs | P0 | Rattacher la qualification à la version |
 | GPS | Gestion des événements tardifs et futurs | PARTIEL | #575 et audit GPS | Recalcul et quarantaine | P0 | Tester les événements futurs hors rétention brute |
 | Exploitation | Restauration depuis un coffre externe réel | BLOQUÉ | Protocole de restauration et dossier GO/NO-GO | Exercice sur coffre réel et RPO/RTO à mesurer | P0 | Faire exécuter le protocole sur la sauvegarde de recette |
@@ -97,7 +98,7 @@ Classification complète (20 périmètres, 5 états) : **`docs/audit/AUDIT_PHASE
 
 ## 11. Prochaine action prioritaire
 
-1. Faire relire la lecture PostGIS de prévalidation, puis persister les constats avec leur tolérance et une référence aux données inspectées. Préparer ensuite la revue technique et HSE à quatre yeux.
+1. Faire relire la prévalidation et le rapport immuable. Définir les transitions de revue et les responsabilités technique et HSE, puis tester la concurrence entre revue, modification et activation.
 2. **Approbation humaine** des étapes ①-④ du plan VPS (`docs/ops/PLAN_CUTOVER_VPS.md`) ; aligner `~/minefleet360` sur git selon le plan en 4 étapes.
 3. **GPS, après décision sur la rétention** : tranche suivante du §1.3 — **conservation brute `telematics_raw_event`** (ledger d'ingestion avec issue de traitement, rétention courte par défaut, purge tracée ; prépare la quarantaine de l'horodatage futur ; bornée par l'avis juriste sur la rétention).
 4. Stabilisation du flake e2e hors-ligne (retry ciblé + diagnostic persisté) — à coordonner avec le flux dispatch propriétaire des specs.

@@ -44,5 +44,14 @@ introuvable. Un dépassement de capacité interrompt la lecture avant toute conc
 (1 000 nœuds, 1 000 tronçons, 1 000 catégories actives par tronçon, 10 000 associations au total).
 
 Les constats décrivent les données visibles au début de la lecture. Une modification validée après cet
-instant impose une nouvelle inspection. L’étape suivante consiste à conserver le rapport, les références
-de ses entrées et sa tolérance pour que les responsables technique et HSE puissent examiner la même version.
+instant impose une nouvelle inspection. Le service interne
+`capture_draft_report` conserve la révision, l’auteur, l’instant PostgreSQL de la lecture, la tolérance,
+la version du validateur, ses entrées et ses constats. Il exige aussi la permission
+`dispatch.location.manage` sur le site. Le rapport et l’événement `dispatch.draft.inspect` sont
+écrits dans la transaction de l’appelant. Deux captures simultanées avec le même acteur,
+les mêmes entrées, la même tolérance et la même version renvoient le même identifiant.
+
+L’empreinte SHA-256 porte sur les entrées effectivement évaluées par ce validateur. L’approbation
+d’une révision devra également couvrir les relevés, les géométries, la provenance et les conditions
+opérationnelles qui dépassent le périmètre de cette inspection. Les décisions humaines technique et HSE
+restent à implémenter.

@@ -1,8 +1,10 @@
 """Inspect a draft with the same PostgreSQL statement snapshot for every check."""
 
+from collections.abc import Sequence
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import text
+from sqlalchemy import Row, text
 
 from app.authz.dependencies import Authorized
 from app.core.errors import AppError
@@ -37,13 +39,15 @@ _SNAPSHOT = text(
       WHERE c.is_active
       ORDER BY a.segment_id, a.vehicle_category_id LIMIT 10001
     ), categories AS (
-      SELECT segment_id, array_agg(vehicle_category_id) AS ids FROM allowed GROUP BY segment_id
+      SELECT segment_id, array_agg(vehicle_category_id ORDER BY vehicle_category_id) AS ids
+      FROM allowed GROUP BY segment_id
     ), items AS (
       SELECT node_id, NULL::uuid AS segment_id FROM nodes
       UNION ALL
       SELECT NULL::uuid, segment_id FROM segments
     )
-    SELECT i.node_id, s.*, p.segment_id AS policy_id, p.max_gross_mass_kg, p.max_speed_kmh,
+    SELECT statement_timestamp() AS inspected_at, i.node_id, s.*, p.segment_id AS policy_id,
+           p.max_gross_mass_kg, p.max_speed_kmh,
            p.max_height_mm, p.max_width_mm, p.max_length_mm, p.uphill_permille, p.downhill_permille,
            COALESCE(c.ids, ARRAY[]::uuid[]) AS categories
     FROM revision r LEFT JOIN items i ON true
@@ -51,6 +55,7 @@ _SNAPSHOT = text(
     LEFT JOIN categories c ON c.segment_id = s.segment_id
     LEFT JOIN mining_road_restriction p ON p.tenant_id = r.tenant_id AND p.site_id = r.site_id
       AND p.revision_id = r.revision_id AND p.segment_id = s.segment_id
+    ORDER BY i.node_id NULLS LAST, s.segment_id
     """
 )
 
@@ -59,6 +64,15 @@ def inspect_draft_readiness(
     auth: Authorized, *, site_id: UUID, revision_id: UUID, tolerance_m: float
 ) -> tuple[ReadinessFinding, ...]:
     """Read-only technical findings for the supplied survey tolerance, prior to human review."""
+    rows = read_draft_snapshot(auth, site_id=site_id, revision_id=revision_id, tolerance_m=tolerance_m)
+    return evaluate_snapshot(
+        rows, tenant_id=auth.tenant_id, site_id=site_id, revision_id=revision_id, tolerance_m=tolerance_m
+    )
+
+
+def read_draft_snapshot(
+    auth: Authorized, *, site_id: UUID, revision_id: UUID, tolerance_m: float
+) -> Sequence[Row[Any]]:
     require_draft_inspection(auth, site_id, tolerance_m)
     tenant_id = auth.tenant_id
     rows = auth.db.execute(_SNAPSHOT, {"tenant": tenant_id, "site": site_id, "revision": revision_id}).all()
@@ -73,6 +87,14 @@ def inspect_draft_readiness(
         or sum(len(row.categories) for row in roads) > 10000
     ):
         raise AppError("CONFLICT")
+    return rows
+
+
+def evaluate_snapshot(
+    rows: Sequence[Row[Any]], *, tenant_id: UUID, site_id: UUID, revision_id: UUID, tolerance_m: float
+) -> tuple[ReadinessFinding, ...]:
+    nodes = [row.node_id for row in rows if row.node_id is not None]
+    roads = [row for row in rows if row.segment_id is not None]
     segments = [
         GraphSegment(
             row.segment_id,
