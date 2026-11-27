@@ -55,7 +55,7 @@ def preview(auth, seconds: int = 60):
 
 
 def test_preview_direct_route(auth):
-    assert preview(auth) == MiningRoute((A, C), 100, 10)
+    assert preview(auth) == MiningRoute((A, C), 100, 10, (DIRECT,))
     assert auth.db.execute.call_args.args[1] == {"tenant": TENANT, "site": SITE, "revision": REV}
 
 
@@ -63,7 +63,7 @@ def test_closure_in_same_snapshot(auth):
     auth.db.execute.return_value.all.return_value.append(
         SimpleNamespace(kind="closure", segment_id=DIRECT, starts_at=NOW, ends_at=None)
     )
-    assert preview(auth) == MiningRoute((A, B, C), 200, 40)
+    assert preview(auth) == MiningRoute((A, B, C), 200, 40, (FIRST, SECOND))
     assert auth.db.execute.call_count == 1
 
 
