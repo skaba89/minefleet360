@@ -133,7 +133,8 @@ def policy(segment_id: UUID, mass: int = 40000) -> SimpleNamespace:
 
 
 def test_restricted_preview_uses_same_snapshot(auth):
-    auth.db.execute.return_value.all.return_value.extend([policy(DIRECT, 39000), policy(FIRST), policy(SECOND)])
+    policies = [policy(DIRECT, 39000), policy(FIRST), policy(SECOND)]
+    auth.db.execute.return_value.all.return_value.extend(policies)
     assert preview(auth, vehicle=VEHICLE) == MiningRoute((A, B, C), 200, 40, (FIRST, SECOND))
     assert auth.db.execute.call_count == 1
 
