@@ -89,10 +89,13 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
             with rejected(conn, "23514"):
                 conn.execute(dimensions, {**policy_params, "height": 0, "width": 3000, "length": 12000})
             conn.execute(dimensions, {**policy_params, "height": 4000, "width": 3000, "length": 12000})
-            assert conn.execute(
-                text("SELECT max_height_mm FROM mining_road_restriction WHERE segment_id = :segment"),
-                policy_params,
-            ).scalar_one() == 4000
+            assert (
+                conn.execute(
+                    text("SELECT max_height_mm FROM mining_road_restriction WHERE segment_id = :segment"),
+                    policy_params,
+                ).scalar_one()
+                == 4000
+            )
             with rejected(conn, "23505"):
                 conn.execute(restriction, policy_params)
             with rejected(conn, "23503"):
