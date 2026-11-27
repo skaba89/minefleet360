@@ -70,6 +70,37 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
                 conn.execute(segment, {**road, "duration": 0})
             with rejected(conn, "23514"):
                 conn.execute(segment, {**road, "destination": a})
+            restriction = text(
+                "INSERT INTO mining_road_restriction "
+                "(tenant_id, site_id, revision_id, segment_id, max_gross_mass_kg, max_speed_kmh, provenance) "
+                "VALUES (:t, :site, :rev, :segment, :mass, 30, 'Survey')"
+            )
+            policy_params = {**params, "segment": segment_id, "mass": 40000}
+            with rejected(conn, "23514"):
+                conn.execute(restriction, {**policy_params, "mass": 0})
+            conn.execute(restriction, policy_params)
+            with rejected(conn, "23505"):
+                conn.execute(restriction, policy_params)
+            with rejected(conn, "23503"):
+                conn.execute(restriction, {**policy_params, "site": first.sites["S2"]})
+            with rejected(conn, "42501"):
+                conn.execute(restriction, {**policy_params, "t": second.tenant_id})
+            category = conn.execute(
+                text("SELECT vehicle_category_id FROM vehicle_category WHERE tenant_id = :t LIMIT 1"),
+                scope,
+            ).scalar_one()
+            allow = text(
+                "INSERT INTO mining_road_allowed_category "
+                "(tenant_id, site_id, revision_id, segment_id, vehicle_category_id) "
+                "VALUES (:t, :site, :rev, :segment, :category)"
+            )
+            conn.execute(allow, {**policy_params, "category": category})
+            with rejected(conn, "23505"):
+                conn.execute(allow, {**policy_params, "category": category})
+            with rejected(conn, "42501"):
+                conn.execute(text("UPDATE mining_road_restriction SET max_speed_kmh = 100"))
+            with rejected(conn, "42501"):
+                conn.execute(text("DELETE FROM mining_road_allowed_category"))
             closure = text(
                 "INSERT INTO mining_route_closure "
                 "(tenant_id, site_id, revision_id, segment_id, starts_at, ends_at, reason) "
@@ -103,6 +134,8 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
             assert conn.execute(text("SELECT count(*) FROM mining_route_node")).scalar_one() == 0
             assert conn.execute(text("SELECT count(*) FROM mining_route_segment")).scalar_one() == 0
             assert conn.execute(text("SELECT count(*) FROM mining_route_closure")).scalar_one() == 0
+            assert conn.execute(text("SELECT count(*) FROM mining_road_restriction")).scalar_one() == 0
+            assert conn.execute(text("SELECT count(*) FROM mining_road_allowed_category")).scalar_one() == 0
             with rejected(conn, "23503"):
                 conn.execute(
                     node,
