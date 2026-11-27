@@ -53,3 +53,19 @@ def test_tie_break_is_deterministic_and_cycles_safe() -> None:
 def test_known_origin_equals_destination() -> None:
     assert route([edge(A, B, 10)], A, A) == MiningRoute((A,), 0, 0)
     assert route([], A, A) is None
+
+
+def test_parallel_segments_have_deterministic_trace() -> None:
+    first = replace(edge(A, D, 10), segment_id=UUID(int=10))
+    second = replace(edge(A, D, 10), segment_id=UUID(int=11))
+    expected = MiningRoute((A, D), 100, 10, (UUID(int=10),))
+    assert route([first, second]) == expected
+    assert route([second, first]) == expected
+    assert route([replace(first, open_for_vehicle=False), second]) == MiningRoute(
+        (A, D), 100, 10, (UUID(int=11),)
+    )
+
+
+def test_partial_trace_is_not_returned() -> None:
+    first = replace(edge(A, B, 10), segment_id=UUID(int=10))
+    assert route([first, edge(B, D, 20)]) == MiningRoute((A, B, D), 200, 30)
