@@ -99,7 +99,8 @@ def test_readiness_report_history(api: Api) -> None:
         for rev, version in ((revision, 1), (empty_revision, 2)):
             db.execute(
                 text(
-                    "INSERT INTO mining_route_revision (tenant_id, site_id, revision_id, version, provenance) "
+                    "INSERT INTO mining_route_revision "
+                    "(tenant_id, site_id, revision_id, version, provenance) "
                     "VALUES (:t, :s, :r, :v, 'Synthetic')"
                 ),
                 {"t": tenant.tenant_id, "s": site, "r": rev, "v": version},
