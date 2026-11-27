@@ -40,6 +40,8 @@ def load_draft_restrictions(auth: Authorized, *, site_id: UUID, revision_id: UUI
                    p.uphill_permille, p.downhill_permille,
                    ARRAY(
                      SELECT a.vehicle_category_id FROM mining_road_allowed_category a
+                     JOIN vehicle_category c ON c.tenant_id = a.tenant_id
+                       AND c.vehicle_category_id = a.vehicle_category_id AND c.is_active
                      WHERE a.tenant_id = p.tenant_id AND a.site_id = p.site_id
                        AND a.revision_id = p.revision_id AND a.segment_id = p.segment_id
                      ORDER BY a.vehicle_category_id LIMIT 1001
@@ -52,7 +54,11 @@ def load_draft_restrictions(auth: Authorized, *, site_id: UUID, revision_id: UUI
     ).all()
     if not rows:
         raise AppError("NOT_FOUND")
-    if len(rows) > 1000 or any(len(row.categories) > 1000 for row in rows):
+    if (
+        len(rows) > 1000
+        or any(len(row.categories) > 1000 for row in rows)
+        or sum(len(row.categories) for row in rows) > 10000
+    ):
         raise AppError("CONFLICT")
     return [
         RoadRestriction(
