@@ -129,7 +129,10 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
             with rejected(conn, "42501"):
                 conn.execute(restriction, {**policy_params, "t": second.tenant_id})
             category = conn.execute(
-                text("SELECT vehicle_category_id FROM vehicle_category WHERE tenant_id = :t AND is_active LIMIT 1"),
+                text(
+                    "SELECT vehicle_category_id FROM vehicle_category "
+                    "WHERE tenant_id = :t AND is_active LIMIT 1"
+                ),
                 scope,
             ).scalar_one()
             allow = text(
