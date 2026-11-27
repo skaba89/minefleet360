@@ -1,6 +1,7 @@
 """Directional grades from qualified survey samples, not GPS altitude estimates."""
 
 from dataclasses import dataclass
+from itertools import pairwise
 
 
 @dataclass(frozen=True)
@@ -27,7 +28,7 @@ def surveyed_grades(points: list[SurveyPoint]) -> DirectionalGrades | None:
     if points[0].horizontal_chainage_mm != 0:
         return None
     uphill = downhill = 0
-    for previous, current in zip(points, points[1:], strict=False):
+    for previous, current in pairwise(points):
         distance = current.horizontal_chainage_mm - previous.horizontal_chainage_mm
         if distance <= 0:
             return None
