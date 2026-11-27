@@ -11,11 +11,12 @@ schéma strict) avec l'assertion attendue par le tableau §1.3 :
 - identités injectées dans le corps → 422, aucune position de plus ;
 - horodatage antérieur à l'activation du traceur → 409 (pré-vol anti-attribution).
 
-Écarts assumés, non simulés : le tableau §1.3 prévoit aussi « événement en
-retard » (flag `late` + recalcul), « décalage d'horloge » (`clock_skew_suspect`),
-« horodatage futur » (quarantaine) et la conservation brute (`telematics_raw_event`,
-§1.5) — aucun n'est encore implémenté au service ; aucun test ne prétend les
-couvrir. L'audit GPS (`AUDIT_GPS_2026-11-26.md` §4) garde ces chantiers ouverts.
+Écarts assumés, non simulés ici : les drapeaux de qualité `late` et
+`clock_skew_suspect` sont implémentés à l'ingestion (0084) et testés par
+`test_gps_quality_flags.py` ; restent ouverts — le recalcul des états/géofences
+après position tardive, la quarantaine de l'horodatage futur et la conservation
+brute (`telematics_raw_event`, §1.5). L'audit GPS (`AUDIT_GPS_2026-11-26.md` §4)
+garde ces chantiers ouverts.
 """
 
 import uuid

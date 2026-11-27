@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     # Fenêtre pendant laquelle un rejeu hors ligne est garanti sans double effet (D-14, à valider au pilote).
     # Rétention des positions GPS (jours) appliquée par `minefleet purge-gps` ; 7 jours minimum en base.
     gps_retention_days: int = Field(default=180, ge=7, le=3650)
+    # Qualité §1.3 (`INTEGRATION_GPS_OFFLINE`) : au-delà de ce retard, la position est
+    # stockée avec `late` (recalcul des états concernés hors périmètre de ce drapeau).
+    gps_late_threshold_seconds: int = Field(default=900, ge=0, le=86400)
+    # Écart |received_at − recorded_at| au-delà duquel la position est marquée
+    # `clock_skew_suspect` (§1.3 : conserver les deux horodatages, jamais corriger).
+    gps_clock_skew_tolerance_seconds: int = Field(default=300, ge=0, le=86400)
     # Canal GPS différé expérimental : aucune activation implicite.
     gps_deferred_enabled: bool = False
     idempotency_ttl: timedelta = Field(
