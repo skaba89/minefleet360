@@ -27,8 +27,9 @@ def preview_draft_route(
     """Preview topology or qualified hypothetical vehicle compatibility, never authorization.
 
     One SQL statement reads the site, draft revision, roads, closures and
-    requested vehicle restrictions under the same PostgreSQL MVCC snapshot. Changes after that snapshot still require
-    revalidation; this is not an operational dispatch authorization.
+    requested vehicle restrictions under the same PostgreSQL MVCC snapshot.
+    Changes after that snapshot still require revalidation; this is not an
+    operational dispatch authorization.
     """
     scope = evaluate(auth.principal, "dispatch.location.read")
     if auth.principal.tenant_kind != "CUSTOMER" or scope is None or not scope.covers_site(site_id):
