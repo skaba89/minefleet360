@@ -397,9 +397,12 @@ def change_iot_entitlement(tenant_id: uuid.UUID, enabled: bool, reason: str, app
                 text("SELECT pg_advisory_xact_lock(hashtextextended('iot.entitlement:' || :key, 0))"),
                 {"key": str(tenant_id)},
             )
-            before = db.scalar(
-                text("SELECT provisioning_enabled FROM iot_entitlement WHERE tenant_id = :t"), params
-            ) is True
+            before = (
+                db.scalar(
+                    text("SELECT provisioning_enabled FROM iot_entitlement WHERE tenant_id = :t"), params
+                )
+                is True
+            )
             if before == enabled:
                 print("Aucun changement nécessaire.")
                 return 0
