@@ -80,6 +80,7 @@ def charges_degradees_generiques() -> list[tuple[str, bytes]]:
     def _charge(**surcharge) -> bytes:
         valeurs = {**base, **surcharge}
         return corps.format(**valeurs).encode()
+
     return [
         ("latitude_hors_borne", _charge(lat=95.0)),
         ("longitude_hors_borne", _charge(lon=-200.0)),
