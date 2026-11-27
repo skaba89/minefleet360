@@ -12,6 +12,7 @@ from app.core.clock import SystemClock
 from app.core.db import new_session
 from app.core.errors import AppError
 from app.core.tenancy import set_tenant_context
+from app.dispatch.mining_geodesic import inspect_draft_lengths
 from app.dispatch.mining_preview import preview_draft_route
 from app.dispatch.mining_routes import MiningRoute
 from tests.conftest import Api
@@ -85,6 +86,30 @@ def test_preview_postgis_and_isolation(api: Api) -> None:
             )
 
         assert preview(first, site, site) == MiningRoute((a, c), 100, 10)
+        principal = Principal(
+            user_id=first.admin.user_id,
+            tenant_id=first.tenant_id,
+            tenant_kind="CUSTOMER",
+            session_id=uuid.uuid4(),
+            grants=(Grant("DISPATCHER", "SITE", site),),
+        )
+        scope = evaluate(principal, "dispatch.location.read")
+        assert scope is not None
+        auth = Authorized(principal, scope, db, SystemClock())
+        findings = inspect_draft_lengths(auth, site_id=site, revision_id=revision, tolerance_m=15)
+        assert len(findings) == 3
+        for finding in findings:
+            if finding.segment_id == direct:
+                assert 210 < finding.measured_m < 230
+                assert not finding.within_tolerance
+            else:
+                assert 105 < finding.measured_m < 115
+                assert finding.within_tolerance
+        with pytest.raises(ValueError):
+            inspect_draft_lengths(auth, site_id=site, revision_id=revision, tolerance_m=-1)
+        with pytest.raises(AppError) as error:
+            inspect_draft_lengths(auth, site_id=site, revision_id=uuid.uuid4(), tolerance_m=15)
+        assert error.value.code == "NOT_FOUND"
         db.commit()
         # A closure committed by an independent session must be seen by the next preview.
         with new_session() as writer:
