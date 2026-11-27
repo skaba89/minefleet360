@@ -36,3 +36,8 @@ class FleetGpsPosition(Base):
     received_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
+    # Qualité §1.3 (`INTEGRATION_GPS_OFFLINE`) évaluée à l'ingestion : « tardif » et
+    # « décalage d'horloge » au-delà des seuils configurables (0084). NULL = antérieur
+    # à l'évaluation ; les deux horodatages restent stockés, jamais corrigés.
+    late: Mapped[bool | None] = mapped_column()
+    clock_skew_suspect: Mapped[bool | None] = mapped_column()
