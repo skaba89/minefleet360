@@ -42,16 +42,16 @@ def restrict_roads(
         return []
     policies: dict[UUID, RoadRestriction] = {}
     duplicates: set[UUID] = set()
-    for policy in restrictions:
+    for rule in restrictions:
         if (
-            policy.tenant_id != vehicle.tenant_id
-            or policy.site_id != vehicle.site_id
-            or policy.revision_id != revision_id
+            rule.tenant_id != vehicle.tenant_id
+            or rule.site_id != vehicle.site_id
+            or rule.revision_id != revision_id
         ):
             continue
-        if policy.segment_id in policies:
-            duplicates.add(policy.segment_id)
-        policies[policy.segment_id] = policy
+        if rule.segment_id in policies:
+            duplicates.add(rule.segment_id)
+        policies[rule.segment_id] = rule
     result: list[GraphSegment] = []
     for item in segments:
         road = item.road
