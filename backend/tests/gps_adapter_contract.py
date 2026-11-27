@@ -76,6 +76,7 @@ def charges_degradees_generiques() -> list[tuple[str, bytes]]:
         ' "recorded_at": "{ts}", "sequence": {seq}{extra}}}'
     )
     base = dict(lat=9.5, lon=-13.5, ts="2026-11-26T12:00:00+00:00", seq=1, extra="")
+
     def _charge(**surcharge) -> bytes:
         valeurs = {**base, **surcharge}
         return corps.format(**valeurs).encode()
