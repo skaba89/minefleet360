@@ -35,21 +35,25 @@ def inspect_readiness(
     known = {item.segment_id for item in segments}
     policies: dict[UUID, RoadRestriction] = {}
     measured: dict[UUID, LengthFinding] = {}
-    for rule in restrictions:
-        key = rule.segment_id
-        if (rule.tenant_id, rule.site_id, rule.revision_id) != (tenant_id, site_id, revision_id):
+    for supplied_rule in restrictions:
+        key = supplied_rule.segment_id
+        if (supplied_rule.tenant_id, supplied_rule.site_id, supplied_rule.revision_id) != (
+            tenant_id,
+            site_id,
+            revision_id,
+        ):
             findings.append(ReadinessFinding("FOREIGN_RESTRICTION", key))
             continue
         if key not in known or key in policies:
             findings.append(ReadinessFinding("UNEXPECTED_OR_DUPLICATE_RESTRICTION", key))
             continue
-        policies[key] = rule
-    for length in lengths:
-        key = length.segment_id
+        policies[key] = supplied_rule
+    for supplied_length in lengths:
+        key = supplied_length.segment_id
         if key not in known or key in measured:
             findings.append(ReadinessFinding("UNEXPECTED_OR_DUPLICATE_LENGTH", key))
             continue
-        measured[key] = length
+        measured[key] = supplied_length
     for key in sorted(known):
         rule = policies.get(key)
         if rule is None:
