@@ -33,7 +33,11 @@ class ReviewHistory:
         for item in self.decisions:
             if item.stage == "TECHNICAL":
                 return TechnicalReview(
-                    self.report_id, item.actor_user_id, self.digest_version, self.evidence_digest, item.decision
+                    self.report_id,
+                    item.actor_user_id,
+                    self.digest_version,
+                    self.evidence_digest,
+                    item.decision,
                 )
         return None
 
@@ -68,7 +72,9 @@ def load_review_history(
     if len(rows) > 2:
         raise AppError("CONFLICT")
     decisions = tuple(
-        HistoricalDecision(row.decision_id, row.stage, row.decision, row.actor_user_id, row.reason, row.created_at)
+        HistoricalDecision(
+            row.decision_id, row.stage, row.decision, row.actor_user_id, row.reason, row.created_at
+        )
         for row in rows
         if row.decision_id is not None
     )
