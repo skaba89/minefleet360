@@ -10,9 +10,7 @@ from app.core.errors import AppError
 from app.dispatch.mining_restrictions import RoadRestriction
 
 
-def load_draft_restrictions(
-    auth: Authorized, *, site_id: UUID, revision_id: UUID
-) -> list[RoadRestriction]:
+def load_draft_restrictions(auth: Authorized, *, site_id: UUID, revision_id: UUID) -> list[RoadRestriction]:
     """Read policies and category membership in one bounded SQL snapshot.
 
     Missing categories remain an empty allowlist. Unknown clearances and grades
