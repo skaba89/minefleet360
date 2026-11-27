@@ -129,7 +129,7 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
             with rejected(conn, "42501"):
                 conn.execute(restriction, {**policy_params, "t": second.tenant_id})
             category = conn.execute(
-                text("SELECT vehicle_category_id FROM vehicle_category WHERE tenant_id = :t LIMIT 1"),
+                text("SELECT vehicle_category_id FROM vehicle_category WHERE tenant_id = :t AND is_active LIMIT 1"),
                 scope,
             ).scalar_one()
             allow = text(
@@ -149,7 +149,7 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
             assert permission is not None
             with Session(bind=conn) as db:
                 auth = Authorized(principal, permission, db, SystemClock())
-                assert load_draft_restrictions(auth, scope["site"], rev) == [
+                assert load_draft_restrictions(auth, site_id=scope["site"], revision_id=rev) == [
                     RoadRestriction(
                         first.tenant_id,
                         scope["site"],
@@ -166,10 +166,10 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
                     )
                 ]
                 with pytest.raises(AppError) as error:
-                    load_draft_restrictions(auth, first.sites["S2"], rev)
+                    load_draft_restrictions(auth, site_id=first.sites["S2"], revision_id=rev)
                 assert error.value.code == "PERMISSION_DENIED"
                 with pytest.raises(AppError) as error:
-                    load_draft_restrictions(auth, scope["site"], uuid.uuid4())
+                    load_draft_restrictions(auth, site_id=scope["site"], revision_id=uuid.uuid4())
                 assert error.value.code == "NOT_FOUND"
             with rejected(conn, "23505"):
                 conn.execute(allow, {**policy_params, "category": category})
