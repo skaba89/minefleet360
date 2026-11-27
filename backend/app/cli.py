@@ -409,14 +409,16 @@ def change_iot_entitlement(tenant_id: uuid.UUID, enabled: bool, reason: str, app
             db.execute(
                 text(
                     "INSERT INTO iot_entitlement (tenant_id, provisioning_enabled) VALUES (:t, :enabled) "
-                    "ON CONFLICT (tenant_id) DO UPDATE SET provisioning_enabled = EXCLUDED.provisioning_enabled, "
+                    "ON CONFLICT (tenant_id) DO UPDATE SET "
+                    "provisioning_enabled = EXCLUDED.provisioning_enabled, "
                     "updated_at = now()"
                 ),
                 params,
             )
             db.execute(
                 text(
-                    "INSERT INTO audit_event (tenant_id, actor_kind, action, entity_type, entity_id, outcome, "
+                    "INSERT INTO audit_event (tenant_id, actor_kind, action, "
+                    "entity_type, entity_id, outcome, "
                     "reason, changed_fields, before_data, after_data) "
                     "VALUES (:t, 'SYSTEM', 'iot.entitlement.change', 'iot_entitlement', :t, 'SUCCESS', "
                     ":reason, ARRAY['provisioning_enabled'], "
