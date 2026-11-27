@@ -36,27 +36,27 @@ def test_closure_forces_alternative() -> None:
     result = shortest_mining_route(
         roads([CLOSED]), tenant_id=TENANT, site_id=SITE, origin_id=A, destination_id=C
     )
-    assert result == MiningRoute((A, B, C), 200, 40)
+    assert result == MiningRoute((A, B, C), 200, 40, (FIRST.segment_id, SECOND.segment_id))
 
 
 def test_future_closure_inside_window_blocks_road() -> None:
-    assert DIRECT.road not in roads([replace(CLOSED, starts_at=NOW + timedelta(minutes=5))])
+    assert replace(DIRECT.road, segment_id=DIRECT.segment_id) not in roads([replace(CLOSED, starts_at=NOW + timedelta(minutes=5))])
 
 
 def test_expired_and_later_closures_do_not_block() -> None:
     expired = replace(CLOSED, starts_at=NOW - timedelta(hours=1), ends_at=NOW)
     later = replace(CLOSED, starts_at=END + timedelta(seconds=1))
-    assert DIRECT.road in roads([expired, later])
+    assert replace(DIRECT.road, segment_id=DIRECT.segment_id) in roads([expired, later])
 
 
 def test_foreign_closure_does_not_block() -> None:
-    assert DIRECT.road in roads([replace(CLOSED, tenant_id=UUID(int=99))])
-    assert DIRECT.road in roads([replace(CLOSED, revision_id=UUID(int=99))])
+    assert replace(DIRECT.road, segment_id=DIRECT.segment_id) in roads([replace(CLOSED, tenant_id=UUID(int=99))])
+    assert replace(DIRECT.road, segment_id=DIRECT.segment_id) in roads([replace(CLOSED, revision_id=UUID(int=99))])
 
 
 def test_invalid_closure_fails_closed() -> None:
-    assert DIRECT.road not in roads([replace(CLOSED, ends_at=NOW)])
-    assert DIRECT.road not in roads([replace(CLOSED, starts_at=NOW.replace(tzinfo=None))])
+    assert replace(DIRECT.road, segment_id=DIRECT.segment_id) not in roads([replace(CLOSED, ends_at=NOW)])
+    assert replace(DIRECT.road, segment_id=DIRECT.segment_id) not in roads([replace(CLOSED, starts_at=NOW.replace(tzinfo=None))])
 
 
 def test_duplicate_segment_and_foreign_graph_excluded() -> None:
