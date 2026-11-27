@@ -63,6 +63,10 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
             }
             conn.execute(segment, road)
             with rejected(conn, "23514"):
+                conn.execute(segment, {**road, "wkt": "LINESTRING(-13.499 9.5,-13.5 9.5)"})
+            with rejected(conn, "23514"):
+                conn.execute(segment, {**road, "wkt": "LINESTRING(-13.5 9.5,-13.498 9.5)"})
+            with rejected(conn, "23514"):
                 conn.execute(segment, {**road, "duration": 0})
             with rejected(conn, "23514"):
                 conn.execute(segment, {**road, "destination": a})
