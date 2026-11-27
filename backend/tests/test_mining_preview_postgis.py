@@ -14,6 +14,7 @@ from app.core.errors import AppError
 from app.core.tenancy import set_tenant_context
 from app.dispatch.mining_geodesic import inspect_draft_lengths
 from app.dispatch.mining_preview import preview_draft_route
+from app.dispatch.mining_restrictions import VehicleProfile
 from app.dispatch.mining_routes import MiningRoute
 from tests.conftest import Api
 
@@ -66,7 +67,7 @@ def test_preview_postgis_and_isolation(api: Api) -> None:
         assert direct is not None
         db.commit()
 
-        def preview(tenant, grant_site, requested_site):
+        def preview(tenant, grant_site, requested_site, vehicle=None):
             principal = Principal(
                 user_id=tenant.admin.user_id,
                 tenant_id=tenant.tenant_id,
@@ -85,6 +86,7 @@ def test_preview_postgis_and_isolation(api: Api) -> None:
                 destination_id=c,
                 departure=departure,
                 horizon=departure + timedelta(minutes=1),
+                vehicle=vehicle,
             )
 
         assert preview(first, site, site) == MiningRoute((a, c), 100, 10, (direct,))
@@ -113,6 +115,44 @@ def test_preview_postgis_and_isolation(api: Api) -> None:
             inspect_draft_lengths(auth, site_id=site, revision_id=uuid.uuid4(), tolerance_m=15)
         assert error.value.code == "NOT_FOUND"
         db.commit()
+        # Persist policies independently; no implicit permission for unknown roads.
+        with new_session() as writer:
+            set_tenant_context(writer, first.tenant_id)
+            category = writer.execute(
+                text(
+                    "SELECT vehicle_category_id FROM vehicle_category "
+                    "WHERE tenant_id = :t AND is_active LIMIT 1"
+                ),
+                params,
+            ).scalar_one()
+            for segment_id in segment_ids:
+                policy = {**params, "segment": segment_id, "category": category}
+                writer.execute(
+                    text(
+                        "INSERT INTO mining_road_restriction "
+                        "(tenant_id, site_id, revision_id, segment_id, max_gross_mass_kg, "
+                        "max_speed_kmh, provenance, max_height_mm, max_width_mm, max_length_mm, "
+                        "uphill_permille, downhill_permille) "
+                        "VALUES (:t, :site, :rev, :segment, 40000, 30, 'Test', 4500, 3500, 13000, 80, 60)"
+                    ),
+                    policy,
+                )
+                writer.execute(
+                    text(
+                        "INSERT INTO mining_road_allowed_category "
+                        "(tenant_id, site_id, revision_id, segment_id, vehicle_category_id) "
+                        "VALUES (:t, :site, :rev, :segment, :category)"
+                    ),
+                    policy,
+                )
+            writer.commit()
+        vehicle = VehicleProfile(first.tenant_id, site, category, 40000, 4000, 3000, 12000, 100, 80)
+        assert preview(first, site, site, vehicle) == MiningRoute((a, c), 100, 12, (direct,))
+        unknown = VehicleProfile(first.tenant_id, site, category, 40000)
+        assert preview(first, site, site, unknown) is None
+        overweight = VehicleProfile(first.tenant_id, site, category, 40001, 4000, 3000, 12000, 100, 80)
+        assert preview(first, site, site, overweight) is None
+        db.commit()
         # A closure committed by an independent session must be seen by the next preview.
         with new_session() as writer:
             set_tenant_context(writer, first.tenant_id)
@@ -126,6 +166,7 @@ def test_preview_postgis_and_isolation(api: Api) -> None:
             )
             writer.commit()
         assert preview(first, site, site) == MiningRoute((a, b, c), 200, 40, tuple(segment_ids[1:]))
+        assert preview(first, site, site, vehicle) == MiningRoute((a, b, c), 200, 40, tuple(segment_ids[1:]))
         with pytest.raises(AppError) as error:
             preview(first, first.sites["S2"], site)
         assert error.value.code == "PERMISSION_DENIED"
