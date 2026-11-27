@@ -52,7 +52,8 @@ _SNAPSHOT = text(
     )
     SELECT i.node_id, n.node_geometry, n.node_provenance, r.version,
            r.provenance AS revision_provenance,
-           s.*, p.segment_id AS policy_id, p.provenance AS policy_provenance, p.max_gross_mass_kg, p.max_speed_kmh,
+           s.*, p.segment_id AS policy_id, p.provenance AS policy_provenance,
+           p.max_gross_mass_kg, p.max_speed_kmh,
            p.max_height_mm, p.max_width_mm, p.max_length_mm, p.uphill_permille, p.downhill_permille,
            COALESCE(c.ids, ARRAY[]::uuid[]) AS categories
     FROM revision r LEFT JOIN items i ON true
