@@ -10,9 +10,7 @@ from app.core.errors import AppError
 from app.dispatch.mining_restrictions import RoadRestriction
 
 
-def load_draft_restrictions(
-    auth: Authorized, site_id: UUID, revision_id: UUID
-) -> list[RoadRestriction]:
+def load_draft_restrictions(auth: Authorized, site_id: UUID, revision_id: UUID) -> list[RoadRestriction]:
     """Read complete bounded restrictions and active category allowlists.
 
     Unknown dimensions and grades are preserved. This snapshot alone cannot
