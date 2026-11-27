@@ -19,8 +19,10 @@ from app.fleet.gps_payload_adapters import (
 )
 from tests.gps_adapter_contract import (
     charges_avec_identites_injectees,
+    charges_degradees_generiques,
     charges_inanalysables,
     check_adapter_contract,
+    violations_d_invariants,
 )
 
 
@@ -153,6 +155,98 @@ def test_identites_injectees_jamais_transportees_par_le_contrat_v1():
             assert exc.code == "VALIDATION_ERROR"
         else:
             raise AssertionError(f"{label} : une identité injectée serait passée")
+
+
+def test_invariants_tenus_sur_le_message_valide():
+    """Les invariants génériques (§1.3) sont tenus par un message correct."""
+    _, attendu = _charge_et_attendu()
+    assert violations_d_invariants(attendu) == []
+
+
+def test_scenarios_degrades_tous_refuses_par_le_contrat_v1():
+    """Coordonnées hors borne, séquences invalides, horodatage naïf, identité vide :
+    le contrat natif refuse chaque charge dégradée en VALIDATION_ERROR."""
+    adapter = MineFleetJsonV1Adapter()
+    for label, payload in charges_degradees_generiques():
+        try:
+            adapter.decode(payload)
+        except AppError as exc:
+            assert exc.code == "VALIDATION_ERROR", f"{label} : code {exc.code}"
+        else:
+            raise AssertionError(f"{label} : charge dégradée décodée sans refus")
+
+
+def test_harnais_attrape_invariant_violee():
+    """Un décodeur qui « décode » une coordonnée hors borne est signalé."""
+    charge, attendu = _charge_et_attendu()
+
+    class HorsBorne:
+        metadata = GpsAdapterMetadata(adapter_id="x-hors-borne", vendor="x", protocol="json", version="1")
+        max_payload_bytes = 1024
+
+        def decode(self, payload: bytes) -> GpsDeviceMessage:
+            return GpsDeviceMessage(
+                device_id="A",
+                latitude=95.0,
+                longitude=2.0,
+                recorded_at=datetime(2026, 11, 26, tzinfo=UTC),
+                sequence=1,
+            )
+
+    violations = check_adapter_contract(HorsBorne(), charge_valide=charge, attendu=attendu)
+    assert any("latitude hors [-90, 90]" in v for v in violations)
+
+
+def test_harnais_attrape_decodeur_non_deterministe():
+    """Le même doublon décodé deux fois doit donner exactement le même message."""
+    charge, attendu = _charge_et_attendu()
+
+    class Instable:
+        metadata = GpsAdapterMetadata(adapter_id="x-instable", vendor="x", protocol="json", version="1")
+        max_payload_bytes = 1024
+        appels = 0
+
+        def decode(self, payload: bytes) -> GpsDeviceMessage:
+            self.appels += 1
+            if self.appels >= 2:
+                return GpsDeviceMessage(
+                    device_id="A",
+                    latitude=1.0,
+                    longitude=2.0,
+                    recorded_at=datetime(2026, 11, 26, tzinfo=UTC),
+                    sequence=2,
+                )
+            return attendu
+
+    violations = check_adapter_contract(Instable(), charge_valide=charge, attendu=attendu)
+    assert any("doublon : décodage non déterministe" in v for v in violations)
+
+
+def test_harnais_attrape_etat_cache_apres_refus():
+    """Un refus intercalé ne doit pas corrompre les décodages suivants (désordre)."""
+    charge, attendu = _charge_et_attendu()
+
+    class EtatCache:
+        metadata = GpsAdapterMetadata(adapter_id="x-etat", vendor="x", protocol="json", version="1")
+        max_payload_bytes = 1024
+        valides_vus = 0
+
+        def decode(self, payload: bytes) -> GpsDeviceMessage:
+            if payload == b"":
+                raise AppError("VALIDATION_ERROR")
+            self.valides_vus += 1
+            if self.valides_vus >= 3:
+                return GpsDeviceMessage(
+                    device_id="A",
+                    latitude=3.0,
+                    longitude=4.0,
+                    recorded_at=datetime(2026, 11, 26, tzinfo=UTC),
+                    sequence=3,
+                )
+            return attendu
+
+    violations = check_adapter_contract(EtatCache(), charge_valide=charge, attendu=attendu)
+    assert any("désordre : décodage modifié après un refus" in v for v in violations)
 
 
 def test_registre_reste_explicite():

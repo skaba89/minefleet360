@@ -55,6 +55,8 @@ class GpsProviderPort(Protocol):
 | Perte de réseau (appareil) | Les trackers mettent en mémoire et renvoient en rafale | Traiter comme « en retard »; le silence d'un appareil au-delà d'un seuil produit un état `no_signal` (pas une position inventée) | Pas d'interpolation silencieuse |
 | Perte de réseau (serveur) | Webhook en échec | Réessais côté fournisseur ou rattrapage par polling à partir du dernier curseur | Rattrapage idempotent |
 
+Répartition des responsabilités : le **décodeur** (harnais contractuel `tests/gps_adapter_contract.py`) préserve l'information — déterminisme sur doublon, aucun état caché entre appels, invariants de coordonnées/séquence/horodatage/grandeurs, refus normalisé `VALIDATION_ERROR` des charges dégradées ; le **service d'ingestion** décide — retard, désordre chronologique, décalage d'horloge, horodatage futur, quarantaine. Les traitements service-level (flags `late`, `clock_skew_suspect`, quarantaine) sont à couvrir par le simulateur (§ Simulateur) avec les assertions du tableau ci-dessus.
+
 ### 1.4 Géofences PostGIS
 - Stockage `geofence` (tenant, site, nom, type : site, chargement, déchargement, atelier, zone interdite ; `geometry(Polygon, 4326)` ; période de validité) avec index GiST. Calcul métrique via `geography` ou projection locale appropriée (à choisir après validation du système de coordonnées du site).
 - Contrôle de validité à la création : `ST_IsValid`, surface non nulle, coordonnées dans le pays/site attendu.
