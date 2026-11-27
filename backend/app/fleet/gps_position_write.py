@@ -17,9 +17,7 @@ from app.fleet.gps_ingestion_preflight import preflight_gps_ingestion
 from app.fleet.gps_models import FleetGpsPosition
 
 
-def _drapeaux_qualite(
-    position: GpsPosition, received_at: datetime
-) -> tuple[bool, bool]:
+def _drapeaux_qualite(position: GpsPosition, received_at: datetime) -> tuple[bool, bool]:
     """§1.3 : drapeaux `late` et `clock_skew_suspect` au-delà des seuils configurables.
 
     Les deux horodatages restent stockés tels quels, jamais corrigés ; le
