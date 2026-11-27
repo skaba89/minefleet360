@@ -12,6 +12,9 @@ class VehicleProfile:
     site_id: UUID
     category_id: UUID
     gross_mass_kg: int | None
+    height_mm: int | None = None
+    width_mm: int | None = None
+    length_mm: int | None = None
 
 
 @dataclass(frozen=True)
@@ -23,6 +26,13 @@ class RoadRestriction:
     allowed_categories: frozenset[UUID]
     max_gross_mass_kg: int
     max_speed_kmh: int
+    max_height_mm: int | None = None
+    max_width_mm: int | None = None
+    max_length_mm: int | None = None
+
+
+def _fits_dimension(actual: int | None, ceiling: int | None) -> bool:
+    return actual is not None and ceiling is not None and 0 < actual <= ceiling
 
 
 def restrict_roads(
@@ -31,11 +41,14 @@ def restrict_roads(
     vehicle: VehicleProfile,
     *,
     revision_id: UUID,
+    require_dimensions: bool = True,
 ) -> list[GraphSegment]:
     """Fail closed for missing/ambiguous restrictions or unverified gross mass.
 
     Reference durations may only increase to respect the speed ceiling.
     Nominal payload capacity is not evidence of actual gross vehicle mass.
+    Dimensions are required by default. Explicit mass-only previews are not
+    evidence of clearance and must never authorize operational dispatch.
     """
     mass = vehicle.gross_mass_kg
     if mass is None or mass <= 0:
@@ -71,6 +84,12 @@ def restrict_roads(
             or vehicle.category_id not in policy.allowed_categories
             or policy.max_gross_mass_kg < mass
             or policy.max_speed_kmh <= 0
+        ):
+            continue
+        if require_dimensions and not (
+            _fits_dimension(vehicle.height_mm, policy.max_height_mm)
+            and _fits_dimension(vehicle.width_mm, policy.max_width_mm)
+            and _fits_dimension(vehicle.length_mm, policy.max_length_mm)
         ):
             continue
         # ceil(distance_m * 3.6 / speed_kmh), using exact integer arithmetic.
