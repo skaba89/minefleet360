@@ -14,6 +14,8 @@ from app.core.errors import AppError
 from app.core.tenancy import set_tenant_context
 from app.dispatch.mining_geodesic import inspect_draft_lengths
 from app.dispatch.mining_preview import preview_draft_route
+from app.dispatch.mining_readiness import ReadinessFinding
+from app.dispatch.mining_readiness_snapshot import inspect_draft_readiness
 from app.dispatch.mining_restrictions import VehicleProfile
 from app.dispatch.mining_routes import MiningRoute
 from tests.conftest import Api
@@ -114,6 +116,11 @@ def test_preview_postgis_and_isolation(api: Api) -> None:
         with pytest.raises(AppError) as error:
             inspect_draft_lengths(auth, site_id=site, revision_id=uuid.uuid4(), tolerance_m=15)
         assert error.value.code == "NOT_FOUND"
+        snapshot = inspect_draft_readiness(auth, site_id=site, revision_id=revision, tolerance_m=15)
+        assert set(snapshot) == {
+            *(ReadinessFinding("MISSING_RESTRICTION", segment_id) for segment_id in segment_ids),
+            ReadinessFinding("MISSING_OR_FAILED_LENGTH_CHECK", direct),
+        }
         db.commit()
         # Persist policies independently; no implicit permission for unknown roads.
         with new_session() as writer:
@@ -146,6 +153,11 @@ def test_preview_postgis_and_isolation(api: Api) -> None:
                     policy,
                 )
             writer.commit()
+        set_tenant_context(db, first.tenant_id)
+        assert inspect_draft_readiness(auth, site_id=site, revision_id=revision, tolerance_m=15) == (
+            ReadinessFinding("MISSING_OR_FAILED_LENGTH_CHECK", direct),
+        )
+        assert inspect_draft_readiness(auth, site_id=site, revision_id=revision, tolerance_m=150) == ()
         vehicle = VehicleProfile(first.tenant_id, site, category, 40000, 4000, 3000, 12000, 100, 80)
         assert preview(first, site, site, vehicle) == MiningRoute((a, c), 100, 12, (direct,))
         unknown = VehicleProfile(first.tenant_id, site, category, 40000)

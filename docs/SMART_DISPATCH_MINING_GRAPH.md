@@ -33,3 +33,16 @@ La durée de référence dépend du profil véhicule, de la charge, du sens et d
 6. Activation explicite par site, désactivée par défaut ; plan de désactivation et rollback testé.
 
 Aucune promesse d'ETA précis ou de navigation sécurisée avant ces preuves. Cette note ne constitue pas un référentiel opérationnel.
+
+## Prévalidation d’un brouillon
+
+Le service interne `inspect_draft_readiness` lit la révision DRAFT d’un site actif avec la permission
+`dispatch.location.read`. Une instruction PostgreSQL rassemble les nœuds, les tronçons, les longueurs
+sphéroïdales PostGIS, les restrictions et les catégories actives. La tolérance de levé en mètres est
+explicite, finie et positive ou nulle. Une révision vide produit un constat distinct d’une révision
+introuvable. Un dépassement de capacité interrompt la lecture avant toute conclusion partielle
+(1 000 nœuds, 1 000 tronçons, 1 000 catégories actives par tronçon, 10 000 associations au total).
+
+Les constats décrivent les données visibles au début de la lecture. Une modification validée après cet
+instant impose une nouvelle inspection. L’étape suivante consiste à conserver le rapport, les références
+de ses entrées et sa tolérance pour que les responsables technique et HSE puissent examiner la même version.
