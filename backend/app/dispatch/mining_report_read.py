@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import text
@@ -38,7 +39,7 @@ def _require_read(auth: Authorized, site_id: UUID) -> None:
         raise AppError("MFA_ENROLLMENT_REQUIRED")
 
 
-def _summary(row: Row) -> ReportSummary:
+def _summary(row: Row[Any]) -> ReportSummary:
     return ReportSummary(
         row.report_id,
         row.digest_version,
