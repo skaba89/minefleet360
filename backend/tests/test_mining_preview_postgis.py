@@ -47,6 +47,7 @@ def test_preview_postgis_and_isolation(api: Api) -> None:
             )
         a, b, c = nodes
         direct = None
+        segment_ids = []
         for origin, destination, duration in ((a, c, 10), (a, b, 20), (b, c, 20)):
             segment = db.execute(
                 text(
@@ -58,6 +59,7 @@ def test_preview_postgis_and_isolation(api: Api) -> None:
                 ),
                 {**params, "origin": origin, "destination": destination, "duration": duration},
             ).scalar_one()
+            segment_ids.append(segment)
             if origin == a and destination == c:
                 direct = segment
         assert direct is not None
@@ -84,7 +86,7 @@ def test_preview_postgis_and_isolation(api: Api) -> None:
                 horizon=departure + timedelta(minutes=1),
             )
 
-        assert preview(first, site, site) == MiningRoute((a, c), 100, 10)
+        assert preview(first, site, site) == MiningRoute((a, c), 100, 10, (direct,))
         db.commit()
         # A closure committed by an independent session must be seen by the next preview.
         with new_session() as writer:
@@ -98,7 +100,7 @@ def test_preview_postgis_and_isolation(api: Api) -> None:
                 {**params, "segment": direct, "start": departure},
             )
             writer.commit()
-        assert preview(first, site, site) == MiningRoute((a, b, c), 200, 40)
+        assert preview(first, site, site) == MiningRoute((a, b, c), 200, 40, tuple(segment_ids[1:]))
         with pytest.raises(AppError) as error:
             preview(first, first.sites["S2"], site)
         assert error.value.code == "PERMISSION_DENIED"
