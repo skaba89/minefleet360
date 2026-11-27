@@ -48,11 +48,7 @@ def available_roads(
         return []
     blocked: set[UUID] = set()
     for closure in closures:
-        if (
-            closure.tenant_id != tenant_id
-            or closure.site_id != site_id
-            or closure.revision_id != revision_id
-        ):
+        if closure.tenant_id != tenant_id or closure.site_id != site_id or closure.revision_id != revision_id:
             continue
         end = closure.ends_at
         if (
@@ -77,7 +73,5 @@ def available_roads(
     return [
         item.road
         for item in scoped
-        if item.segment_id not in blocked
-        and item.segment_id not in duplicates
-        and item.road.open_for_vehicle
+        if item.segment_id not in blocked and item.segment_id not in duplicates and item.road.open_for_vehicle
     ]
