@@ -1,6 +1,6 @@
 """Conservative closure filtering for a trusted, single-revision graph snapshot."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from uuid import UUID
 
@@ -71,7 +71,7 @@ def available_roads(
             duplicates.add(item.segment_id)
         seen.add(item.segment_id)
     return [
-        item.road
+        replace(item.road, segment_id=item.segment_id)
         for item in scoped
         if item.segment_id not in blocked and item.segment_id not in duplicates and item.road.open_for_vehicle
     ]
