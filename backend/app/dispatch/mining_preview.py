@@ -24,7 +24,7 @@ def preview_draft_route(
     horizon: datetime,
     vehicle: VehicleProfile | None = None,
 ) -> MiningRoute | None:
-    """Preview topology or qualified hypothetical vehicle compatibility, never authorization.
+    """Preview topology or compatibility with a supplied hypothetical vehicle profile.
 
     One SQL statement reads the site, draft revision, roads, closures and
     requested vehicle restrictions under the same PostgreSQL MVCC snapshot.
@@ -42,7 +42,7 @@ def preview_draft_route(
         "tenant": auth.tenant_id,
         "site": site_id,
         "revision": revision_id,
-        "category": vehicle.category_id if vehicle is not None else None,
+        "include_policies": vehicle is not None,
     }
     rows = auth.db.execute(
         text(
@@ -66,18 +66,19 @@ def preview_draft_route(
                 AND revision_id IN (SELECT revision_id FROM revision)
               ORDER BY closure_id LIMIT 1001
             ), policies AS (
-              SELECT p.*, ARRAY(
-                SELECT a.vehicle_category_id FROM mining_road_allowed_category a
-                JOIN vehicle_category c ON c.tenant_id = a.tenant_id
-                  AND c.vehicle_category_id = a.vehicle_category_id AND c.is_active
-                  AND c.vehicle_category_id = CAST(:category AS uuid)
-                WHERE a.tenant_id = p.tenant_id AND a.site_id = p.site_id
-                  AND a.revision_id = p.revision_id AND a.segment_id = p.segment_id
-                ORDER BY a.vehicle_category_id LIMIT 1001
-              ) AS categories
+              SELECT p.segment_id, p.max_gross_mass_kg, p.max_speed_kmh,
+                     p.max_height_mm, p.max_width_mm, p.max_length_mm,
+                     p.uphill_permille, p.downhill_permille,
+                     ARRAY(
+                       SELECT a.vehicle_category_id FROM mining_road_allowed_category a
+                       JOIN vehicle_category c ON c.tenant_id = a.tenant_id
+                         AND c.vehicle_category_id = a.vehicle_category_id AND c.is_active
+                       WHERE a.tenant_id = p.tenant_id AND a.site_id = p.site_id
+                         AND a.revision_id = p.revision_id AND a.segment_id = p.segment_id
+                       ORDER BY a.vehicle_category_id LIMIT 1001
+                     ) AS categories
               FROM mining_road_restriction p
-              WHERE CAST(:category AS uuid) IS NOT NULL
-                AND p.tenant_id = :tenant AND p.site_id = :site
+              WHERE :include_policies AND p.tenant_id = :tenant AND p.site_id = :site
                 AND p.revision_id IN (SELECT revision_id FROM revision)
               ORDER BY p.segment_id LIMIT 1001
             )
@@ -138,7 +139,7 @@ def preview_draft_route(
             or sum(len(row.categories) for row in policy_rows) > 10000
         ):
             raise AppError("CONFLICT")
-        policies = [
+        restrictions = [
             RoadRestriction(
                 auth.tenant_id,
                 site_id,
@@ -155,7 +156,7 @@ def preview_draft_route(
             )
             for row in policy_rows
         ]
-        segments = restrict_roads(segments, policies, vehicle, revision_id=revision_id)
+        segments = restrict_roads(segments, restrictions, vehicle, revision_id=revision_id)
     roads = available_roads(
         segments,
         closures,

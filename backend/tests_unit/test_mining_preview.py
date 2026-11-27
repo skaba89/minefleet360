@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -43,7 +44,7 @@ def auth(monkeypatch):
     return auth
 
 
-def preview(auth, seconds: int = 60, vehicle: VehicleProfile | None = None):
+def preview(auth, seconds: int = 60):
     return mining_preview.preview_draft_route(
         auth,
         site_id=SITE,
@@ -52,7 +53,6 @@ def preview(auth, seconds: int = 60, vehicle: VehicleProfile | None = None):
         destination_id=C,
         departure=NOW,
         horizon=NOW + timedelta(seconds=seconds),
-        vehicle=vehicle,
     )
 
 
@@ -62,7 +62,7 @@ def test_preview_direct_route(auth):
         "tenant": TENANT,
         "site": SITE,
         "revision": REV,
-        "category": None,
+        "include_policies": False,
     }
 
 
@@ -114,7 +114,7 @@ def test_route_beyond_planning_window_rejected(auth):
 
 
 CATEGORY = UUID(int=20)
-VEHICLE = VehicleProfile(TENANT, SITE, CATEGORY, 40000, 4000, 3000, 12000, 100, 80)
+PROFILE = VehicleProfile(TENANT, SITE, CATEGORY, 40000, 4000, 3000, 12000, 100, 100)
 
 
 def policy(segment_id: UUID, mass: int = 40000) -> SimpleNamespace:
@@ -124,45 +124,88 @@ def policy(segment_id: UUID, mass: int = 40000) -> SimpleNamespace:
         categories=[CATEGORY],
         max_gross_mass_kg=mass,
         max_speed_kmh=30,
-        max_height_mm=4500,
-        max_width_mm=3500,
-        max_length_mm=13000,
-        uphill_permille=100,
+        max_height_mm=4000,
+        max_width_mm=3000,
+        max_length_mm=12000,
+        uphill_permille=80,
         downhill_permille=80,
     )
 
 
-def test_restricted_preview_uses_same_snapshot(auth):
-    policies = [policy(DIRECT, 39000), policy(FIRST), policy(SECOND)]
-    auth.db.execute.return_value.all.return_value.extend(policies)
-    assert preview(auth, vehicle=VEHICLE) == MiningRoute((A, B, C), 200, 40, (FIRST, SECOND))
+def restricted_preview(auth, profile: VehicleProfile = PROFILE):
+    return mining_preview.preview_draft_route(
+        auth,
+        site_id=SITE,
+        revision_id=REV,
+        origin_id=A,
+        destination_id=C,
+        departure=NOW,
+        horizon=NOW + timedelta(seconds=60),
+        vehicle=profile,
+    )
+
+
+def test_restricted_preview_uses_compatible_detour(auth):
+    auth.db.execute.return_value.all.return_value.extend(
+        [policy(DIRECT, 39999), policy(FIRST), policy(SECOND)]
+    )
+    assert restricted_preview(auth) == MiningRoute((A, B, C), 200, 40, (FIRST, SECOND))
     assert auth.db.execute.call_count == 1
+    assert auth.db.execute.call_args.args[1]["include_policies"] is True
 
 
-def test_restricted_preview_requires_complete_policies(auth):
-    assert preview(auth, vehicle=VEHICLE) is None
+def test_restricted_preview_missing_policies_fails_closed(auth):
+    assert restricted_preview(auth) is None
+
+
+def test_restricted_preview_respects_closure_and_grade(auth):
+    direct = policy(DIRECT)
+    direct.uphill_permille = 101
+    auth.db.execute.return_value.all.return_value.extend(
+        [
+            direct,
+            policy(FIRST),
+            policy(SECOND),
+            SimpleNamespace(kind="closure", segment_id=SECOND, starts_at=NOW, ends_at=None),
+        ]
+    )
+    assert restricted_preview(auth) is None
+
+
+def test_restricted_preview_foreign_profile_rejected(auth):
+    with pytest.raises(AppError) as error:
+        restricted_preview(auth, replace(PROFILE, tenant_id=REV))
+    assert error.value.code == "PERMISSION_DENIED"
+    auth.db.execute.assert_not_called()
+
+
+def test_restricted_preview_policy_overflow(auth):
+    auth.db.execute.return_value.all.return_value.extend([policy(DIRECT)] * 1001)
+    with pytest.raises(AppError) as error:
+        restricted_preview(auth)
+    assert error.value.code == "CONFLICT"
+
+
+def test_restricted_preview_incomplete_grade_fails_closed(auth):
     incomplete = policy(DIRECT)
     incomplete.uphill_permille = None
     auth.db.execute.return_value.all.return_value.append(incomplete)
-    assert preview(auth, vehicle=VEHICLE) is None
+    assert restricted_preview(auth) is None
 
 
-def test_restricted_preview_respects_closure_and_speed(auth):
-    auth.db.execute.return_value.all.return_value.extend(
-        [
-            policy(DIRECT),
-            policy(FIRST),
-            policy(SECOND),
-            SimpleNamespace(kind="closure", segment_id=DIRECT, starts_at=NOW, ends_at=None),
-        ]
+def test_restricted_preview_speed_and_horizon(auth):
+    direct = policy(DIRECT)
+    direct.max_speed_kmh = 6
+    auth.db.execute.return_value.all.return_value.append(direct)
+    assert restricted_preview(auth) == MiningRoute((A, C), 100, 60, (DIRECT,))
+    result = mining_preview.preview_draft_route(
+        auth,
+        site_id=SITE,
+        revision_id=REV,
+        origin_id=A,
+        destination_id=C,
+        departure=NOW,
+        horizon=NOW + timedelta(seconds=59),
+        vehicle=PROFILE,
     )
-    assert preview(auth, seconds=39, vehicle=VEHICLE) is None
-    assert preview(auth, vehicle=VEHICLE) == MiningRoute((A, B, C), 200, 40, (FIRST, SECOND))
-
-
-def test_foreign_vehicle_denied_before_query(auth):
-    foreign = VehicleProfile(UUID(int=99), SITE, CATEGORY, 40000)
-    with pytest.raises(AppError) as error:
-        preview(auth, vehicle=foreign)
-    assert error.value.code == "PERMISSION_DENIED"
-    auth.db.execute.assert_not_called()
+    assert result is None
