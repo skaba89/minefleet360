@@ -4,7 +4,6 @@ from dataclasses import replace
 from uuid import uuid4
 
 import pytest
-
 from sqlalchemy import text
 
 from app.authz.dependencies import Authorized
