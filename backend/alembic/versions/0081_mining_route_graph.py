@@ -71,7 +71,7 @@ CREATE INDEX ix_mining_route_segment_path ON mining_route_segment USING gist (pa
 SELECT app.apply_tenant_rls('mining_route_segment', 'SELECT, INSERT');
 
 CREATE FUNCTION app.check_mining_route_segment_geometry() RETURNS trigger
-LANGUAGE plpgsql SECURITY INVOKER AS $
+LANGUAGE plpgsql SECURITY INVOKER AS $mining_geometry$
 DECLARE
   origin_position geometry;
   destination_position geometry;
@@ -92,7 +92,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$mining_geometry$;
 CREATE TRIGGER trg_mining_route_segment_geometry
   BEFORE INSERT OR UPDATE ON mining_route_segment
   FOR EACH ROW EXECUTE FUNCTION app.check_mining_route_segment_geometry();
