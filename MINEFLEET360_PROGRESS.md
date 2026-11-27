@@ -1,7 +1,7 @@
 # MINEFLEET360_PROGRESS.md
 
-**Dernière mise à jour : 27 novembre 2026 — itération « diagnostic flake #572 + drapeaux qualité GPS §1.3 + dispatch minier en flux »**
-**Dépôt : skaba89/minefleet360 — main `c2ed25d3`** (`feat(fleet): référentiel versionné des profils techniques miniers (#592)`, 27 nov 2026)
+**Mise à jour du 27 novembre 2026.** Prévalidation technique du réseau minier.
+Branche principale examinée à `f2009230` après les fusions #592, #591 et #593.
 
 > Document de continuité : réutiliser en début de chaque session pour éviter doublons et pertes de contexte. Méthode : chaque affirmation est classée **Vérifié** (exécuté/constaté ici), **Présent non validé** (dans main mais non exécuté ici), **Partiel**, **Absent** — complété par un cinquième état **Bloqué** (prêt, en attente d'une autorisation humaine) ; classification complète dans `docs/audit/AUDIT_PHASE_ZERO_2026-11-26.md`.
 
@@ -9,11 +9,11 @@
 
 ## 1. Dernier commit analysé
 
-`c2ed25d3` — merge #592 (référentiel versionné des profils techniques miniers), 27 nov 2026. Clone local neuf à jour (sandbox recyclée : re-clonage + venv refaits, aucun artefact produit perdu — le dépôt et `download/` sont les seules sources de vérité). Journées 26-27 nov analysées : #545→#547 (benchmark GPS, harnais contractuel, SSE sous trafic), #562 (phase 2 GPS close + simulateur §1.3), #572 (dispatch, flake diagnostiqué), #575 (drapeaux qualité GPS), #578→#592 (dispatch minier : traçabilité tronçons, restrictions de circulation et dimensionnelles, gabarits, pentes directionnelles, prévisualisations, profils techniques versionnés).
+Historique de la passe précédente à `c2ed25d3` — merge #592 (référentiel versionné des profils techniques miniers), 27 nov 2026. Clone local neuf à jour (sandbox recyclée : re-clonage + venv refaits, aucun artefact produit perdu — le dépôt et `download/` sont les seules sources de vérité). Journées 26-27 nov analysées : #545→#547 (benchmark GPS, harnais contractuel, SSE sous trafic), #562 (phase 2 GPS close + simulateur §1.3), #572 (dispatch, flake diagnostiqué), #575 (drapeaux qualité GPS), #578→#592 (dispatch minier : traçabilité tronçons, restrictions de circulation et dimensionnelles, gabarits, pentes directionnelles, prévisualisations, profils techniques versionnés).
 
 ## 2. État des PR et CI
 
-- **PR ouverte : 1** — #591 « contrôle technique préalable des réseaux miniers », **9/9 verte** (`d41c76a8`), en attente de fusion humaine.
+- **Fusions constatées**. #592 à `c2ed25d3`, #591 à `388f348`, puis #593 à `f2009230`.
 - **main `c2ed25d3` : 9/9 verte** (backend, tenant-isolation, demo-journeys, ops-monitoring, frontend, browser-smoke, SAST, secret scanning, backup-restore) — vérifié par API GitHub le 27 nov.
 - **Incident « PR en erreur » du 27 nov** : job `tenant-isolation` rouge sur #572 — test e2e `hse-inspection-offline.spec.ts:154` (chromium) en timeout 30 s sur un bouton après `reload()` hors ligne. Croisement : même job déjà rouge sur `main@5daf68f0` sur un AUTRE test (`hse-offline.spec.ts:138`), repassé sans correctif entre-jeu → **flake e2e hors-ligne chromium**, code dispatch non impliqué. Le job a été repris (rerun 403 « already running » : déjà en reprise) et est **revenu success** : #572 9/9 puis fusionnée. Journal complet téléchargé via `curl -L` (le contournement de la redirection Azure du 26 nov a fonctionné). Diagnostic consigné sur la PR ([commentaire](https://github.com/skaba89/minefleet360/pull/572#issuecomment-7216377067)) avec suggestion de stabilisation (attendre l'élément avec `expect(...).toBeVisible()` tolérant après reload au lieu d'un `click()` strict à 30 s).
 - Bilan flake cumulé : **4 occurrences en 2 jours** (26 nov Android ×2, 27 nov chromium ×2) — seuil de récurrence défini en §9 du 26 nov **atteint** : le remède outillé (retry ciblé + diagnostic d'étape persisté) est en backlog au flux propriétaire.
@@ -42,6 +42,17 @@ Classification complète (20 périmètres, 5 états) : **`docs/audit/AUDIT_PHASE
 - **Vérifié (nouveau)** : **drapeaux de qualité GPS §1.3** `late`/`clock_skew_suspect` évalués à l'ingestion, seuils configurables, 4 scénarios par vraie API avec attente réelle (#575, 0084) ; **simulateur service-level §1.3** 5 scénarios (#562) ; **harnais contractuel d'adaptateurs** 13 tests (#546).
 - **Présent non validé (nouveau, terrain)** : **dispatch minier réseau** — fermetures de pistes, restrictions directionnelles/dimensionnelles, gabarits, pentes, prévisualisation d'itinéraires, profils techniques versionnés (#569→#592) : en CI verte, aucune validation terrain.
 - **Écarts GPS restants (§1.3/§1.5)** : recalcul des états après tardif ; quarantaine de l'horodatage futur ; conservation brute `telematics_raw_event` (rétention : avis juriste requis).
+
+### Matrice de reprise du 27 novembre
+
+| Module | Fonctionnalité | État | Preuve | Écart | Priorité | Action |
+|---|---|---|---|---|---|---|
+| Dispatch | Lecture cohérente et prévalidation du brouillon | COMPLET ET VÉRIFIÉ (DEV) | 70 tests ciblés sur cette branche, dont deux parcours PostGIS | Revue et recette | P0 | Soumettre le lot |
+| Dispatch | Rapport persistant, revues technique et HSE | ABSENT | Schéma à la tête 0088 et service de lecture | Traçabilité et protection contre les changements après revue | P0 | Persister le rapport et identifier le jeu de données contrôlé |
+| Flotte | Profils techniques versionnés | PARTIEL | #592, migration 0088 | Approbation, échéance et justificatifs | P0 | Rattacher la qualification à la version |
+| GPS | Gestion des événements tardifs et futurs | PARTIEL | #575 et audit GPS | Recalcul et quarantaine | P0 | Tester les événements futurs hors rétention brute |
+| Exploitation | Restauration depuis un coffre externe réel | BLOQUÉ | Protocole de restauration et dossier GO/NO-GO | Exercice sur coffre réel et RPO/RTO à mesurer | P0 | Faire exécuter le protocole sur la sauvegarde de recette |
+| Mobile et GPS | Qualification terrain | BLOQUÉ | Protocoles Android et traceur du dossier QA | Appareils, modèle et firmware à qualifier | P0 | Essais sur équipements identifiés |
 
 ## 5. Preuve exécutée ce 27 nov
 
@@ -81,14 +92,14 @@ Classification complète (20 périmètres, 5 états) : **`docs/audit/AUDIT_PHASE
 ## 10. État DEV / REC / PROD
 
 - **DEV** : clone neuf `c2ed25d3` + venv refaits (27 nov) ; reconstruisible en ~10 min après recyclage (scripts persistés).
-- **REC (staging OVH)** : rc.6 en service ; **staging opérationnel** (état rapporté par la session de déploiement du 27 nov) : `https://minefleet.51-75-248-4.sslip.io` health 200 via Caddy, admin plateforme créé, seed démo validé (26 contrôles, données 100 % virtuelles, seed 42), `staging-reset.sh` sur main, validation sur base candidate isolée (#532). **Suivre main : après fusion de #591, construire la rc suivante (étape ④ du plan, verrouillée)**.
+- **REC (staging OVH)** : rc.6 en service ; **staging opérationnel** (état rapporté par la session de déploiement du 27 nov) : `https://minefleet.51-75-248-4.sslip.io` health 200 via Caddy, admin plateforme créé, seed démo validé (26 contrôles, données 100 % virtuelles, seed 42), `staging-reset.sh` sur main, validation sur base candidate isolée (#532). **Suivre main : construire la rc suivante (étape ④ du plan, verrouillée)**.
 - **PROD** : **inexistante** — conforme au verdict.
 
 ## 11. Prochaine action prioritaire
 
-1. **Fusion de #591** (9/9, prête) — puis construire la rc suivante (étape ④ du plan cutover, après approbation).
+1. Faire relire la lecture PostGIS de prévalidation, puis persister les constats avec leur tolérance et une référence aux données inspectées. Préparer ensuite la revue technique et HSE à quatre yeux.
 2. **Approbation humaine** des étapes ①-④ du plan VPS (`docs/ops/PLAN_CUTOVER_VPS.md`) ; aligner `~/minefleet360` sur git selon le plan en 4 étapes.
-3. **Moi, à la fusion de #591** : tranche suivante du §1.3 — **conservation brute `telematics_raw_event`** (ledger d'ingestion avec issue de traitement, rétention courte par défaut, purge tracée ; prépare la quarantaine de l'horodatage futur ; bornée par l'avis juriste sur la rétention).
+3. **GPS, après décision sur la rétention** : tranche suivante du §1.3 — **conservation brute `telematics_raw_event`** (ledger d'ingestion avec issue de traitement, rétention courte par défaut, purge tracée ; prépare la quarantaine de l'horodatage futur ; bornée par l'avis juriste sur la rétention).
 4. Stabilisation du flake e2e hors-ligne (retry ciblé + diagnostic persisté) — à coordonner avec le flux dispatch propriétaire des specs.
 5. Arbitrage restant : réceptions/inventaires carburant hors ligne (écritures de stock) ou retour au protocole pilote.
 6. **Révoquer le jeton GitHub transmis par chat.**

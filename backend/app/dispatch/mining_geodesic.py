@@ -19,6 +19,26 @@ class LengthFinding:
     within_tolerance: bool
 
 
+def require_draft_inspection(auth: Authorized, site_id: UUID, tolerance_m: float) -> None:
+    scope = evaluate(auth.principal, "dispatch.location.read")
+    if auth.principal.tenant_kind != "CUSTOMER" or scope is None or not scope.covers_site(site_id):
+        raise AppError("PERMISSION_DENIED")
+    if auth.principal.mfa_enrollment_pending:
+        raise AppError("MFA_ENROLLMENT_REQUIRED")
+    if not isfinite(tolerance_m) or tolerance_m < 0:
+        raise ValueError("tolerance must be finite and nonnegative")
+
+
+def check_length(segment_id: UUID, declared_m: int, measured_m: float, tolerance_m: float) -> LengthFinding:
+    valid = (
+        isfinite(measured_m)
+        and measured_m > 0
+        and declared_m > 0
+        and abs(measured_m - declared_m) <= tolerance_m
+    )
+    return LengthFinding(segment_id, declared_m, measured_m, valid)
+
+
 def inspect_draft_lengths(
     auth: Authorized,
     *,
@@ -31,13 +51,7 @@ def inspect_draft_lengths(
     A complete bounded draft snapshot is required. The caller must qualify the
     tolerance for the survey; a passing comparison is not a road safety approval.
     """
-    scope = evaluate(auth.principal, "dispatch.location.read")
-    if auth.principal.tenant_kind != "CUSTOMER" or scope is None or not scope.covers_site(site_id):
-        raise AppError("PERMISSION_DENIED")
-    if auth.principal.mfa_enrollment_pending:
-        raise AppError("MFA_ENROLLMENT_REQUIRED")
-    if not isfinite(tolerance_m) or tolerance_m < 0:
-        raise ValueError("tolerance must be finite and nonnegative")
+    require_draft_inspection(auth, site_id, tolerance_m)
     rows = auth.db.execute(
         text(
             """
@@ -66,14 +80,6 @@ def inspect_draft_lengths(
     segments = [row for row in rows if row.kind == "segment"]
     if len(segments) > 1000:
         raise AppError("CONFLICT")
-    findings: list[LengthFinding] = []
-    for row in segments:
-        measured = float(row.measured_m)
-        valid = (
-            isfinite(measured)
-            and measured > 0
-            and row.distance_m > 0
-            and abs(measured - row.distance_m) <= tolerance_m
-        )
-        findings.append(LengthFinding(row.segment_id, row.distance_m, measured, valid))
-    return findings
+    return [
+        check_length(row.segment_id, row.distance_m, float(row.measured_m), tolerance_m) for row in segments
+    ]
