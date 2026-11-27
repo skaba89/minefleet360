@@ -58,7 +58,12 @@ def preview(auth, seconds: int = 60, vehicle: VehicleProfile | None = None):
 
 def test_preview_direct_route(auth):
     assert preview(auth) == MiningRoute((A, C), 100, 10, (DIRECT,))
-    assert auth.db.execute.call_args.args[1] == {"tenant": TENANT, "site": SITE, "revision": REV}
+    assert auth.db.execute.call_args.args[1] == {
+        "tenant": TENANT,
+        "site": SITE,
+        "revision": REV,
+        "category": None,
+    }
 
 
 def test_closure_in_same_snapshot(auth):
@@ -128,9 +133,7 @@ def policy(segment_id: UUID, mass: int = 40000) -> SimpleNamespace:
 
 
 def test_restricted_preview_uses_same_snapshot(auth):
-    auth.db.execute.return_value.all.return_value.extend(
-        [policy(DIRECT, 39000), policy(FIRST), policy(SECOND)]
-    )
+    auth.db.execute.return_value.all.return_value.extend([policy(DIRECT, 39000), policy(FIRST), policy(SECOND)])
     assert preview(auth, vehicle=VEHICLE) == MiningRoute((A, B, C), 200, 40, (FIRST, SECOND))
     assert auth.db.execute.call_count == 1
 
