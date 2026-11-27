@@ -21,8 +21,6 @@ class IoTEntitlement(Base):
 
 def provisioning_enabled(db: Session, tenant_id: uuid.UUID) -> bool:
     return (
-        db.scalar(
-            select(IoTEntitlement.provisioning_enabled).where(IoTEntitlement.tenant_id == tenant_id)
-        )
+        db.scalar(select(IoTEntitlement.provisioning_enabled).where(IoTEntitlement.tenant_id == tenant_id))
         is True
     )
