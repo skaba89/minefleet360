@@ -38,7 +38,8 @@ def test_preview_postgis_and_isolation(api: Api) -> None:
             nodes.append(
                 db.execute(
                     text(
-                        "INSERT INTO mining_route_node (tenant_id, site_id, revision_id, position, provenance) "
+                        "INSERT INTO mining_route_node "
+                        "(tenant_id, site_id, revision_id, position, provenance) "
                         "VALUES (:t, :site, :rev, ST_GeomFromText(:wkt, 4326), 'Test') RETURNING node_id"
                     ),
                     {**params, "wkt": wkt},
