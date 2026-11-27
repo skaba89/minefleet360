@@ -7,8 +7,8 @@ from app.dispatch.mining_routes import RoadSegment
 
 TENANT, SITE, REV, SEG, A, B, CATEGORY, OTHER = (UUID(int=i) for i in range(1, 9))
 EDGE = GraphSegment(SEG, REV, RoadSegment(TENANT, SITE, A, B, 1000, 60, True))
-VEHICLE = VehicleProfile(TENANT, SITE, CATEGORY, 40000)
-POLICY = RoadRestriction(TENANT, SITE, REV, SEG, frozenset({CATEGORY}), 40000, 30)
+VEHICLE = VehicleProfile(TENANT, SITE, CATEGORY, 40000, 4000, 3000, 12000)
+POLICY = RoadRestriction(TENANT, SITE, REV, SEG, frozenset({CATEGORY}), 40000, 30, 4500, 3500, 13000)
 
 
 def allowed(
@@ -58,3 +58,25 @@ def test_closed_or_foreign_segment_rejected() -> None:
     assert allowed([POLICY], edge=replace(EDGE, revision_id=OTHER)) == []
     foreign = replace(EDGE, road=replace(EDGE.road, site_id=OTHER))
     assert allowed([POLICY], edge=foreign) == []
+
+
+def test_dimension_boundaries() -> None:
+    exact = replace(VEHICLE, height_mm=4500, width_mm=3500, length_mm=13000)
+    assert len(allowed([POLICY], exact)) == 1
+    for field, value in (("height_mm", 4501), ("width_mm", 3501), ("length_mm", 13001)):
+        assert allowed([POLICY], replace(exact, **{field: value})) == []
+
+
+def test_missing_or_invalid_dimensions_rejected() -> None:
+    for field in ("height_mm", "width_mm", "length_mm"):
+        for value in (None, 0, -1):
+            assert allowed([POLICY], replace(VEHICLE, **{field: value})) == []
+    for field in ("max_height_mm", "max_width_mm", "max_length_mm"):
+        for value in (None, 0, -1):
+            assert allowed([replace(POLICY, **{field: value})]) == []
+
+
+def test_explicit_mass_only_preview() -> None:
+    legacy = VehicleProfile(TENANT, SITE, CATEGORY, 40000)
+    assert allowed([POLICY], legacy) == []
+    assert len(restrict_roads([EDGE], [POLICY], legacy, revision_id=REV, require_dimensions=False)) == 1
