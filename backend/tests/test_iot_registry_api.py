@@ -2,6 +2,7 @@
 
 from fastapi.testclient import TestClient
 
+from app.cli import change_iot_entitlement
 from tests.conftest import API, Api
 
 
@@ -16,6 +17,9 @@ def test_registry_api(client: TestClient, api: Api) -> None:
     assert client.get(f"{base}/gateways").status_code == 401
     assert client.get(f"{base}/gateways", headers=driver).status_code == 403
     assert client.post(f"{base}/manufacturers", headers=local, json={"name": "OEM"}).status_code == 403
+    assert client.post(f"{base}/manufacturers", headers=admin, json={"name": "Blocked"}).status_code == 403
+    assert change_iot_entitlement(tenant.tenant_id, True, "Test registry", True) == 0
+    assert change_iot_entitlement(other.tenant_id, True, "Test isolation", True) == 0
     made = client.post(f"{base}/manufacturers", headers=admin, json={"name": "Demo OEM"})
     assert made.status_code == 201, made.text
     manufacturer_id = made.json()["manufacturer_id"]
@@ -50,3 +54,9 @@ def test_registry_api(client: TestClient, api: Api) -> None:
         assert client.get(url, headers=other.admin.headers).json()["total"] == 0
         assert client.get(url, headers=admin, params={"tenant_id": str(other.tenant_id)}).status_code == 422
     assert client.get(f"{base}/manufacturers", headers=other.admin.headers).json()["total"] == 0
+    assert change_iot_entitlement(tenant.tenant_id, False, "Test revocation", True) == 0
+    assert client.post(f"{base}/manufacturers", headers=admin, json={"name": "Blocked"}).status_code == 403
+    assert client.post(f"{base}/gateways", headers=local, json=body).status_code == 403
+    assert client.post(f"{base}/sensors", headers=local, json=sensor).status_code == 403
+    for collection in ("manufacturers", "gateways", "sensors"):
+        assert client.get(f"{base}/{collection}", headers=admin).json()["total"] == 1

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from app.audit.models import AuditEvent
 from app.authz.dependencies import Authorized
 from app.authz.principal import PermissionScope, Principal
+from app.cli import change_iot_entitlement
 from app.core.clock import SystemClock
 from app.core.db import new_session
 from app.core.errors import AppError
@@ -20,6 +21,7 @@ from tests.conftest import Api
 def test_registry_service_scope_and_audit(api: Api) -> None:
     tenant = api.tenant()
     other = api.tenant()
+    assert change_iot_entitlement(tenant.tenant_id, True, "Test registry", True) == 0
     principal = Principal(
         user_id=tenant.admin.user_id,
         tenant_id=tenant.tenant_id,
