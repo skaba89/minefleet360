@@ -88,7 +88,25 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
                 conn.execute(dimensions, {**policy_params, "height": 4000, "width": None, "length": 12000})
             with rejected(conn, "23514"):
                 conn.execute(dimensions, {**policy_params, "height": 0, "width": 3000, "length": 12000})
-            conn.execute(dimensions, {**policy_params, "height": 4000, "width": 3000, "length": 12000})
+            grades = text(
+                "INSERT INTO mining_road_restriction "
+                "(tenant_id, site_id, revision_id, segment_id, max_gross_mass_kg, max_speed_kmh, "
+                "provenance, max_height_mm, max_width_mm, max_length_mm, uphill_permille, downhill_permille) "
+                "VALUES (:t, :site, :rev, :segment, :mass, 30, 'Survey', 4000, 3000, 12000, :up, :down)"
+            )
+            with rejected(conn, "23514"):
+                conn.execute(grades, {**policy_params, "up": -1, "down": 0})
+            with rejected(conn, "23514"):
+                conn.execute(grades, {**policy_params, "up": 80, "down": None})
+            conn.execute(grades, {**policy_params, "up": 80, "down": 0})
+            stored_grades = conn.execute(
+                text(
+                    "SELECT uphill_permille, downhill_permille FROM mining_road_restriction "
+                    "WHERE segment_id = :segment"
+                ),
+                policy_params,
+            ).one()
+            assert tuple(stored_grades) == (80, 0)
             assert (
                 conn.execute(
                     text("SELECT max_height_mm FROM mining_road_restriction WHERE segment_id = :segment"),
