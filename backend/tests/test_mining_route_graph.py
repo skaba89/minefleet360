@@ -36,7 +36,7 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
         "INSERT INTO mining_route_segment (tenant_id, site_id, revision_id, origin_id, destination_id, "
         "path, distance_m, duration_seconds, provenance) "
         "VALUES (:t, :site, :rev, :origin, :destination, ST_GeomFromText(:wkt, 4326), "
-        "100, :duration, 'Synthetic survey')"
+        "100, :duration, 'Synthetic survey') RETURNING segment_id"
     )
     try:
         with engine.begin() as conn:
@@ -61,7 +61,7 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
                 "wkt": "LINESTRING(-13.5 9.5,-13.499 9.5)",
                 "duration": 30,
             }
-            conn.execute(segment, road)
+            segment_id = conn.execute(segment, road).scalar_one()
             with rejected(conn, "23514"):
                 conn.execute(segment, {**road, "wkt": "LINESTRING(-13.499 9.5,-13.5 9.5)"})
             with rejected(conn, "23514"):
@@ -70,6 +70,28 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
                 conn.execute(segment, {**road, "duration": 0})
             with rejected(conn, "23514"):
                 conn.execute(segment, {**road, "destination": a})
+            closure = text(
+                "INSERT INTO mining_route_closure "
+                "(tenant_id, site_id, revision_id, segment_id, starts_at, ends_at, reason) "
+                "VALUES (:t, :site, :rev, :segment, now(), now() + interval '1 hour', 'Test closure')"
+            )
+            closure_params = {**params, "segment": segment_id}
+            conn.execute(closure, closure_params)
+            with rejected(conn, "23514"):
+                conn.execute(
+                    text(
+                        "INSERT INTO mining_route_closure "
+                        "(tenant_id, site_id, revision_id, segment_id, starts_at, ends_at, reason) "
+                        "VALUES (:t, :site, :rev, :segment, now(), now(), 'Invalid interval')"
+                    ),
+                    closure_params,
+                )
+            with rejected(conn, "23503"):
+                conn.execute(closure, {**closure_params, "site": first.sites["S2"]})
+            with rejected(conn, "42501"):
+                conn.execute(closure, {**closure_params, "t": second.tenant_id})
+            with rejected(conn, "42501"):
+                conn.execute(text("DELETE FROM mining_route_closure"))
             with rejected(conn, "42501"):
                 conn.execute(text("UPDATE mining_route_revision SET status = 'APPROVED'"))
             with rejected(conn, "42501"):
@@ -80,6 +102,7 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
             assert conn.execute(text("SELECT count(*) FROM mining_route_revision")).scalar_one() == 0
             assert conn.execute(text("SELECT count(*) FROM mining_route_node")).scalar_one() == 0
             assert conn.execute(text("SELECT count(*) FROM mining_route_segment")).scalar_one() == 0
+            assert conn.execute(text("SELECT count(*) FROM mining_route_closure")).scalar_one() == 0
             with rejected(conn, "23503"):
                 conn.execute(
                     node,
