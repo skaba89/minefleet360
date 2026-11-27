@@ -15,6 +15,8 @@ class VehicleProfile:
     height_mm: int | None = None
     width_mm: int | None = None
     length_mm: int | None = None
+    max_uphill_permille: int | None = None
+    max_downhill_permille: int | None = None
 
 
 @dataclass(frozen=True)
@@ -29,10 +31,16 @@ class RoadRestriction:
     max_height_mm: int | None = None
     max_width_mm: int | None = None
     max_length_mm: int | None = None
+    uphill_permille: int | None = None
+    downhill_permille: int | None = None
 
 
 def _fits_dimension(actual: int | None, ceiling: int | None) -> bool:
     return actual is not None and ceiling is not None and 0 < actual <= ceiling
+
+
+def _fits_grade(actual: int | None, ceiling: int | None) -> bool:
+    return actual is not None and ceiling is not None and 0 <= actual <= ceiling
 
 
 def restrict_roads(
@@ -42,6 +50,7 @@ def restrict_roads(
     *,
     revision_id: UUID,
     require_dimensions: bool = True,
+    require_grades: bool = True,
 ) -> list[GraphSegment]:
     """Fail closed for missing/ambiguous restrictions or unverified gross mass.
 
@@ -49,6 +58,8 @@ def restrict_roads(
     Nominal payload capacity is not evidence of actual gross vehicle mass.
     Dimensions are required by default. Explicit mass-only previews are not
     evidence of clearance and must never authorize operational dispatch.
+    Directional grades are required by default: maximum surveyed uphill and
+    downhill grades in permille, not average slope or GPS altitude estimates.
     """
     mass = vehicle.gross_mass_kg
     if mass is None or mass <= 0:
@@ -90,6 +101,11 @@ def restrict_roads(
             _fits_dimension(vehicle.height_mm, policy.max_height_mm)
             and _fits_dimension(vehicle.width_mm, policy.max_width_mm)
             and _fits_dimension(vehicle.length_mm, policy.max_length_mm)
+        ):
+            continue
+        if require_grades and not (
+            _fits_grade(policy.uphill_permille, vehicle.max_uphill_permille)
+            and _fits_grade(policy.downhill_permille, vehicle.max_downhill_permille)
         ):
             continue
         # ceil(distance_m * 3.6 / speed_kmh), using exact integer arithmetic.

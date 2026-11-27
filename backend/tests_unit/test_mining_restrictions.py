@@ -7,8 +7,8 @@ from app.dispatch.mining_routes import RoadSegment
 
 TENANT, SITE, REV, SEG, A, B, CATEGORY, OTHER = (UUID(int=i) for i in range(1, 9))
 EDGE = GraphSegment(SEG, REV, RoadSegment(TENANT, SITE, A, B, 1000, 60, True))
-VEHICLE = VehicleProfile(TENANT, SITE, CATEGORY, 40000, 4000, 3000, 12000)
-POLICY = RoadRestriction(TENANT, SITE, REV, SEG, frozenset({CATEGORY}), 40000, 30, 4500, 3500, 13000)
+VEHICLE = VehicleProfile(TENANT, SITE, CATEGORY, 40000, 4000, 3000, 12000, 100, 80)
+POLICY = RoadRestriction(TENANT, SITE, REV, SEG, frozenset({CATEGORY}), 40000, 30, 4500, 3500, 13000, 100, 80)
 
 
 def allowed(
@@ -79,4 +79,29 @@ def test_missing_or_invalid_dimensions_rejected() -> None:
 def test_explicit_mass_only_preview() -> None:
     legacy = VehicleProfile(TENANT, SITE, CATEGORY, 40000)
     assert allowed([POLICY], legacy) == []
-    assert len(restrict_roads([EDGE], [POLICY], legacy, revision_id=REV, require_dimensions=False)) == 1
+    result = restrict_roads(
+        [EDGE], [POLICY], legacy, revision_id=REV, require_dimensions=False, require_grades=False
+    )
+    assert len(result) == 1
+
+
+def test_directional_grade_limits() -> None:
+    assert len(allowed([POLICY])) == 1
+    assert allowed([replace(POLICY, uphill_permille=101)]) == []
+    assert allowed([replace(POLICY, downhill_permille=81)]) == []
+    assert len(allowed([replace(POLICY, uphill_permille=0, downhill_permille=0)])) == 1
+
+
+def test_missing_or_invalid_grade_evidence() -> None:
+    for field in ("uphill_permille", "downhill_permille"):
+        for value in (None, -1):
+            assert allowed([replace(POLICY, **{field: value})]) == []
+    for field in ("max_uphill_permille", "max_downhill_permille"):
+        for value in (None, -1):
+            assert allowed([POLICY], replace(VEHICLE, **{field: value})) == []
+
+
+def test_reverse_direction_can_have_different_eligibility() -> None:
+    reverse = replace(EDGE, road=replace(EDGE.road, origin_id=B, destination_id=A))
+    reverse_policy = replace(POLICY, uphill_permille=80, downhill_permille=100)
+    assert allowed([reverse_policy], edge=reverse) == []
