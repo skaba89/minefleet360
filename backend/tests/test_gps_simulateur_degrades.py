@@ -105,7 +105,8 @@ def test_coordonnees_invalides_refusees_sans_ecriture(client, w: World) -> None:
         f"{API}/gps/telemetry",
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         content=b'{"device_id": "' + device.encode() + b'", "latitude": NaN, "longitude": -13.7,'
-        b' "recorded_at": "' + (depart + timedelta(seconds=1)).isoformat().encode()
+        b' "recorded_at": "'
+        + (depart + timedelta(seconds=1)).isoformat().encode()
         + b'", "sequence": 1, "accuracy_m": 8.0}',
     )
     assert resp.status_code == 422, resp.text
