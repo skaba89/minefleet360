@@ -1,13 +1,21 @@
 """Integration checks for the draft-only PostGIS graph."""
 
+import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 
 import pytest
 from sqlalchemy import Connection, create_engine, text
 from sqlalchemy.exc import DBAPIError
+from sqlalchemy.orm import Session
 
+from app.authz.dependencies import Authorized
+from app.authz.principal import Grant, Principal, evaluate
+from app.core.clock import SystemClock
 from app.core.config import get_settings
+from app.core.errors import AppError
+from app.dispatch.mining_restriction_read import load_draft_restrictions
+from app.dispatch.mining_restrictions import RoadRestriction
 from tests.conftest import Api
 
 
@@ -130,6 +138,39 @@ def test_draft_graph_constraints_and_rls(api: Api) -> None:
                 "VALUES (:t, :site, :rev, :segment, :category)"
             )
             conn.execute(allow, {**policy_params, "category": category})
+            principal = Principal(
+                user_id=first.admin.user_id,
+                tenant_id=first.tenant_id,
+                tenant_kind="CUSTOMER",
+                session_id=uuid.uuid4(),
+                grants=(Grant("DISPATCHER", "SITE", scope["site"]),),
+            )
+            permission = evaluate(principal, "dispatch.location.read")
+            assert permission is not None
+            with Session(bind=conn) as db:
+                auth = Authorized(principal, permission, db, SystemClock())
+                assert load_draft_restrictions(auth, scope["site"], rev) == [
+                    RoadRestriction(
+                        first.tenant_id,
+                        scope["site"],
+                        rev,
+                        segment_id,
+                        frozenset({category}),
+                        40000,
+                        30,
+                        4000,
+                        3000,
+                        12000,
+                        80,
+                        0,
+                    )
+                ]
+                with pytest.raises(AppError) as error:
+                    load_draft_restrictions(auth, first.sites["S2"], rev)
+                assert error.value.code == "PERMISSION_DENIED"
+                with pytest.raises(AppError) as error:
+                    load_draft_restrictions(auth, scope["site"], uuid.uuid4())
+                assert error.value.code == "NOT_FOUND"
             with rejected(conn, "23505"):
                 conn.execute(allow, {**policy_params, "category": category})
             with rejected(conn, "42501"):
