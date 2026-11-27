@@ -9,16 +9,12 @@ from app.dispatch.mining_routes import RoadSegment
 
 TENANT, SITE, REV, A, B, SEG, CATEGORY, OTHER = (UUID(int=i) for i in range(1, 9))
 EDGE = GraphSegment(SEG, REV, RoadSegment(TENANT, SITE, A, B, 100, 20, True))
-RULE = RoadRestriction(
-    TENANT, SITE, REV, SEG, frozenset({CATEGORY}), 40000, 30, 4500, 3500, 13000, 80, 0
-)
+RULE = RoadRestriction(TENANT, SITE, REV, SEG, frozenset({CATEGORY}), 40000, 30, 4500, 3500, 13000, 80, 0)
 LENGTH = LengthFinding(SEG, 100, 101.0, True)
 
 
 def inspect(rules: list[RoadRestriction], lengths: list[LengthFinding]) -> tuple[ReadinessFinding, ...]:
-    return inspect_readiness(
-        [A, B], [EDGE], rules, lengths, tenant_id=TENANT, site_id=SITE, revision_id=REV
-    )
+    return inspect_readiness([A, B], [EDGE], rules, lengths, tenant_id=TENANT, site_id=SITE, revision_id=REV)
 
 
 def test_complete_evidence() -> None:
@@ -51,9 +47,5 @@ def test_duplicate_and_foreign_evidence() -> None:
     assert ReadinessFinding("FOREIGN_RESTRICTION", SEG) in inspect(
         [RULE, replace(RULE, tenant_id=OTHER)], [LENGTH]
     )
-    assert ReadinessFinding("UNEXPECTED_OR_DUPLICATE_RESTRICTION", SEG) in inspect(
-        [RULE, RULE], [LENGTH]
-    )
-    assert ReadinessFinding("UNEXPECTED_OR_DUPLICATE_LENGTH", SEG) in inspect(
-        [RULE], [LENGTH, LENGTH]
-    )
+    assert ReadinessFinding("UNEXPECTED_OR_DUPLICATE_RESTRICTION", SEG) in inspect([RULE, RULE], [LENGTH])
+    assert ReadinessFinding("UNEXPECTED_OR_DUPLICATE_LENGTH", SEG) in inspect([RULE], [LENGTH, LENGTH])
