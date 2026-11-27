@@ -12,7 +12,7 @@ from app.core.db import new_session
 from app.core.errors import AppError
 from app.core.tenancy import set_tenant_context
 from app.dispatch.mining_readiness import ReadinessFinding
-from app.dispatch.mining_readiness_snapshot import inspect_draft_readiness
+from app.dispatch.mining_readiness_snapshot import inspect_draft_evidence, inspect_draft_readiness
 from tests.conftest import Api
 
 
@@ -126,6 +126,13 @@ def test_readiness_complete_evidence_and_missing_category(api: Api) -> None:
         def inspect(tolerance: float = 2.0):
             return inspect_draft_readiness(auth, site_id=site, revision_id=params["r"], tolerance_m=tolerance)
 
+        def evidence(tolerance: float = 2.0):
+            return inspect_draft_evidence(auth, site_id=site, revision_id=params["r"], tolerance_m=tolerance)
+
+        initial = evidence()
+        assert initial.digest_version == "mining-readiness-v1"
+        assert len(initial.digest) == 64
+        assert initial == evidence()
         assert inspect() == (ReadinessFinding("MISSING_RESTRICTION", params["segment"]),)
         db.execute(
             text(
@@ -136,6 +143,8 @@ def test_readiness_complete_evidence_and_missing_category(api: Api) -> None:
             ),
             params,
         )
+        incomplete = evidence()
+        assert incomplete.digest != initial.digest
         assert inspect() == (ReadinessFinding("INCOMPLETE_RESTRICTION", params["segment"]),)
         category = db.execute(
             text(
@@ -152,5 +161,10 @@ def test_readiness_complete_evidence_and_missing_category(api: Api) -> None:
             ),
             {**params, "category": category},
         )
+        complete = evidence()
+        assert complete.digest != incomplete.digest
+        assert complete == evidence()
+        assert complete.findings == ()
+        assert evidence(3.0).digest != complete.digest
         assert inspect() == ()
         assert inspect(0.0) == (ReadinessFinding("MISSING_OR_FAILED_LENGTH_CHECK", params["segment"]),)
