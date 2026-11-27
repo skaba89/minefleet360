@@ -19,6 +19,7 @@ class RoadSegment:
     distance_m: int
     duration_seconds: int
     open_for_vehicle: bool
+    segment_id: UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,7 @@ class MiningRoute:
     nodes: tuple[UUID, ...]
     distance_m: int
     duration_seconds: int
+    segment_ids: tuple[UUID, ...] = ()
 
 
 def shortest_mining_route(
@@ -36,7 +38,7 @@ def shortest_mining_route(
     origin_id: UUID,
     destination_id: UUID,
 ) -> MiningRoute | None:
-    """Find the quickest directed path, breaking ties by distance and node IDs."""
+    """Find the quickest directed path, breaking ties by distance, node IDs and segment IDs."""
     graph: dict[UUID, list[RoadSegment]] = defaultdict(list)
     nodes: set[UUID] = set()
     for segment in segments:
@@ -53,22 +55,24 @@ def shortest_mining_route(
         nodes.update((segment.origin_id, segment.destination_id))
     if origin_id not in nodes or destination_id not in nodes:
         return None
-    start = (0, 0, (origin_id,))
-    queue: list[tuple[int, int, tuple[UUID, ...]]] = [start]
-    best: dict[UUID, tuple[int, int, tuple[UUID, ...]]] = {origin_id: start}
+    start = (0, 0, (origin_id,), ())
+    queue: list[tuple[int, int, tuple[UUID, ...], tuple[int, ...]]] = [start]
+    best: dict[UUID, tuple[int, int, tuple[UUID, ...], tuple[int, ...]]] = {origin_id: start}
     while queue:
-        duration, distance, path = heappop(queue)
+        duration, distance, path, trace = heappop(queue)
         current = path[-1]
-        if best[current] != (duration, distance, path):
+        if best[current] != (duration, distance, path, trace):
             continue
         if current == destination_id:
-            return MiningRoute(path, distance, duration)
+            segment_ids = tuple(UUID(int=value) for value in trace) if all(value >= 0 for value in trace) else ()
+            return MiningRoute(path, distance, duration, segment_ids)
         for segment in graph[current]:
             target = segment.destination_id
             candidate = (
                 duration + segment.duration_seconds,
                 distance + segment.distance_m,
                 (*path, target),
+                (*trace, segment.segment_id.int if segment.segment_id is not None else -1),
             )
             if target not in best or candidate < best[target]:
                 best[target] = candidate
