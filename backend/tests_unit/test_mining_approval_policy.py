@@ -39,13 +39,13 @@ def test_stale_and_failed_evidence() -> None:
 def test_separation_of_duties() -> None:
     assert review_blockers(HISTORY, EVIDENCE, stage="TECHNICAL", reviewer_id=AUTHOR) == ("SELF_REVIEW",)
     assert review_blockers(HISTORY, EVIDENCE, stage="HSE", reviewer_id=HSE) == ("TECHNICAL_REVIEW_REQUIRED",)
-    assert review_blockers(
-        HISTORY, EVIDENCE, stage="HSE", reviewer_id=TECH, technical_review=TECHNICAL
-    ) == ("REVIEWER_NOT_INDEPENDENT",)
+    assert review_blockers(HISTORY, EVIDENCE, stage="HSE", reviewer_id=TECH, technical_review=TECHNICAL) == (
+        "REVIEWER_NOT_INDEPENDENT",
+    )
     same_author = replace(TECHNICAL, actor_user_id=AUTHOR)
-    assert review_blockers(
-        HISTORY, EVIDENCE, stage="HSE", reviewer_id=HSE, technical_review=same_author
-    ) == ("REVIEWER_NOT_INDEPENDENT",)
+    assert review_blockers(HISTORY, EVIDENCE, stage="HSE", reviewer_id=HSE, technical_review=same_author) == (
+        "REVIEWER_NOT_INDEPENDENT",
+    )
 
 
 def test_hse_requires_matching_positive_technical_review() -> None:
@@ -55,6 +55,6 @@ def test_hse_requires_matching_positive_technical_review() -> None:
         replace(TECHNICAL, evidence_digest="b" * 64),
         replace(TECHNICAL, decision="REJECTED"),
     ):
-        assert review_blockers(
-            HISTORY, EVIDENCE, stage="HSE", reviewer_id=HSE, technical_review=review
-        ) == ("INVALID_TECHNICAL_REVIEW",)
+        assert review_blockers(HISTORY, EVIDENCE, stage="HSE", reviewer_id=HSE, technical_review=review) == (
+            "INVALID_TECHNICAL_REVIEW",
+        )
