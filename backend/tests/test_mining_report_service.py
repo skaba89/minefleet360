@@ -31,14 +31,20 @@ def test_record_draft_report(api: Api) -> None:
             {"t": tenant.tenant_id, "s": site, "r": revision},
         )
         principal = Principal(
-            tenant.admin.user_id, tenant.tenant_id, "CUSTOMER", uuid4(), (Grant("OPS_MANAGER", "SITE", site),)
+            tenant.admin.user_id,
+            tenant.tenant_id,
+            "CUSTOMER",
+            uuid4(),
+            (Grant("OPS_MANAGER", "SITE", site),),
         )
         scope = evaluate(principal, "dispatch.location.manage")
         assert scope is not None
         auth = Authorized(principal, scope, db, SystemClock())
 
         def save(subject=auth, requested_site=site):
-            return record_draft_readiness(subject, site_id=requested_site, revision_id=revision, tolerance_m=2)
+            return record_draft_readiness(
+                subject, site_id=requested_site, revision_id=revision, tolerance_m=2
+            )
 
         dispatcher = replace(principal, grants=(Grant("DISPATCHER", "SITE", site),))
         with pytest.raises(AppError) as error:
