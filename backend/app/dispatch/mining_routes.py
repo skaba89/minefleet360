@@ -55,7 +55,7 @@ def shortest_mining_route(
         return None
     start = (0, 0, (origin_id,))
     queue: list[tuple[int, int, tuple[UUID, ...]]] = [start]
-    best = {origin_id: start}
+    best: dict[UUID, tuple[int, int, tuple[UUID, ...]]] = {origin_id: start}
     while queue:
         duration, distance, path = heappop(queue)
         current = path[-1]
