@@ -377,6 +377,66 @@ def reseal_mfa_secrets(apply: bool) -> int:
     return 3 if counts["unreadable"] else 0
 
 
+def change_iot_entitlement(tenant_id: uuid.UUID, enabled: bool, reason: str, apply: bool) -> int:
+    """Owner-only operation; entitlement and audit are committed together."""
+    from sqlalchemy import create_engine, text
+
+    reason = reason.strip()
+    if not reason or len(reason) > 200:
+        print("Refusé : motif obligatoire (200 caractères maximum).", file=sys.stderr)
+        return 2
+    engine = create_engine(get_settings().database_url(owner=True), pool_size=1, max_overflow=0)
+    try:
+        with Session(engine) as db:
+            set_tenant_context(db, tenant_id)
+            params = {"t": tenant_id, "enabled": enabled}
+            if db.scalar(text("SELECT tenant_id FROM tenant WHERE tenant_id = :t"), params) is None:
+                print("Refusé : société cliente inconnue.", file=sys.stderr)
+                return 3
+            db.execute(
+                text("SELECT pg_advisory_xact_lock(hashtextextended('iot.entitlement:' || :key, 0))"),
+                {"key": str(tenant_id)},
+            )
+            before = (
+                db.scalar(
+                    text("SELECT provisioning_enabled FROM iot_entitlement WHERE tenant_id = :t"), params
+                )
+                is True
+            )
+            if before == enabled:
+                print("Aucun changement nécessaire.")
+                return 0
+            if not apply:
+                print(f"Simulation : {tenant_id}, {before} -> {enabled}.")
+                return 0
+            db.execute(
+                text(
+                    "INSERT INTO iot_entitlement (tenant_id, provisioning_enabled) VALUES (:t, :enabled) "
+                    "ON CONFLICT (tenant_id) DO UPDATE SET "
+                    "provisioning_enabled = EXCLUDED.provisioning_enabled, "
+                    "updated_at = now()"
+                ),
+                params,
+            )
+            db.execute(
+                text(
+                    "INSERT INTO audit_event (tenant_id, actor_kind, action, "
+                    "entity_type, entity_id, outcome, "
+                    "reason, changed_fields, before_data, after_data) "
+                    "VALUES (:t, 'SYSTEM', 'iot.entitlement.change', 'iot_entitlement', :t, 'SUCCESS', "
+                    ":reason, ARRAY['provisioning_enabled'], "
+                    "jsonb_build_object('provisioning_enabled', CAST(:before AS boolean)), "
+                    "jsonb_build_object('provisioning_enabled', CAST(:enabled AS boolean)))"
+                ),
+                {**params, "before": before, "reason": f"OPS_CLI:{_operator()}: {reason}"[:300]},
+            )
+            db.commit()
+            print(f"Activation IoT : {tenant_id}, {before} -> {enabled}.")
+            return 0
+    finally:
+        engine.dispose()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="minefleet")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -397,10 +457,19 @@ def main(argv: list[str] | None = None) -> int:
     reset.add_argument("--email", required=True)
     reseal_cmd = sub.add_parser("reseal-mfa-secrets")
     reseal_cmd.add_argument("--apply", action="store_true")
+    entitlement = sub.add_parser("iot-entitlement")
+    entitlement.add_argument("--tenant-id", type=uuid.UUID, required=True)
+    mode = entitlement.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--enable", action="store_true")
+    mode.add_argument("--disable", action="store_true")
+    entitlement.add_argument("--reason", required=True)
+    entitlement.add_argument("--apply", action="store_true")
     from app.demo import cli as demo_cli
 
     demo_cli.register(sub)
     args = parser.parse_args(argv)
+    if args.command == "iot-entitlement":
+        return change_iot_entitlement(args.tenant_id, args.enable, args.reason, args.apply)
     if args.command == "demo":
         return demo_cli.run(args)
     if args.command == "create-platform-admin":
