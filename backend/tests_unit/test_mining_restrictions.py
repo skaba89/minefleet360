@@ -8,9 +8,7 @@ from app.dispatch.mining_routes import RoadSegment
 TENANT, SITE, REV, SEG, A, B, CATEGORY, OTHER = (UUID(int=i) for i in range(1, 9))
 EDGE = GraphSegment(SEG, REV, RoadSegment(TENANT, SITE, A, B, 1000, 60, True))
 VEHICLE = VehicleProfile(TENANT, SITE, CATEGORY, 40000, 4000, 3000, 12000, 100, 80)
-POLICY = RoadRestriction(
-    TENANT, SITE, REV, SEG, frozenset({CATEGORY}), 40000, 30, 4500, 3500, 13000, 100, 80
-)
+POLICY = RoadRestriction(TENANT, SITE, REV, SEG, frozenset({CATEGORY}), 40000, 30, 4500, 3500, 13000, 100, 80)
 
 
 def allowed(
