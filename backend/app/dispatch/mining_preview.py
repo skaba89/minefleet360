@@ -26,9 +26,10 @@ def preview_draft_route(
 ) -> MiningRoute | None:
     """Preview topology or compatibility with a supplied hypothetical vehicle profile.
 
-    One SQL statement reads the site, draft revision, roads and closures under
-    the same PostgreSQL MVCC snapshot. Changes after that snapshot still require
-    revalidation; this is not an operational dispatch authorization.
+    One SQL statement reads the site, draft revision, roads, closures and
+    requested vehicle restrictions under the same PostgreSQL MVCC snapshot.
+    Changes after that snapshot still require revalidation; this is not an
+    operational dispatch authorization.
     """
     scope = evaluate(auth.principal, "dispatch.location.read")
     if auth.principal.tenant_kind != "CUSTOMER" or scope is None or not scope.covers_site(site_id):
@@ -37,7 +38,12 @@ def preview_draft_route(
         raise AppError("MFA_ENROLLMENT_REQUIRED")
     if vehicle is not None and (vehicle.tenant_id != auth.tenant_id or vehicle.site_id != site_id):
         raise AppError("PERMISSION_DENIED")
-    params = {"tenant": auth.tenant_id, "site": site_id, "revision": revision_id}
+    params = {
+        "tenant": auth.tenant_id,
+        "site": site_id,
+        "revision": revision_id,
+        "include_policies": vehicle is not None,
+    }
     rows = auth.db.execute(
         text(
             """
@@ -72,7 +78,7 @@ def preview_draft_route(
                        ORDER BY a.vehicle_category_id LIMIT 1001
                      ) AS categories
               FROM mining_road_restriction p
-              WHERE p.tenant_id = :tenant AND p.site_id = :site
+              WHERE :include_policies AND p.tenant_id = :tenant AND p.site_id = :site
                 AND p.revision_id IN (SELECT revision_id FROM revision)
               ORDER BY p.segment_id LIMIT 1001
             )

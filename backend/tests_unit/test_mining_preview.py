@@ -58,7 +58,12 @@ def preview(auth, seconds: int = 60):
 
 def test_preview_direct_route(auth):
     assert preview(auth) == MiningRoute((A, C), 100, 10, (DIRECT,))
-    assert auth.db.execute.call_args.args[1] == {"tenant": TENANT, "site": SITE, "revision": REV}
+    assert auth.db.execute.call_args.args[1] == {
+        "tenant": TENANT,
+        "site": SITE,
+        "revision": REV,
+        "include_policies": False,
+    }
 
 
 def test_closure_in_same_snapshot(auth):
@@ -146,6 +151,7 @@ def test_restricted_preview_uses_compatible_detour(auth):
     )
     assert restricted_preview(auth) == MiningRoute((A, B, C), 200, 40, (FIRST, SECOND))
     assert auth.db.execute.call_count == 1
+    assert auth.db.execute.call_args.args[1]["include_policies"] is True
 
 
 def test_restricted_preview_missing_policies_fails_closed(auth):
@@ -178,3 +184,28 @@ def test_restricted_preview_policy_overflow(auth):
     with pytest.raises(AppError) as error:
         restricted_preview(auth)
     assert error.value.code == "CONFLICT"
+
+
+def test_restricted_preview_incomplete_grade_fails_closed(auth):
+    incomplete = policy(DIRECT)
+    incomplete.uphill_permille = None
+    auth.db.execute.return_value.all.return_value.append(incomplete)
+    assert restricted_preview(auth) is None
+
+
+def test_restricted_preview_speed_and_horizon(auth):
+    direct = policy(DIRECT)
+    direct.max_speed_kmh = 6
+    auth.db.execute.return_value.all.return_value.append(direct)
+    assert restricted_preview(auth) == MiningRoute((A, C), 100, 60, (DIRECT,))
+    result = mining_preview.preview_draft_route(
+        auth,
+        site_id=SITE,
+        revision_id=REV,
+        origin_id=A,
+        destination_id=C,
+        departure=NOW,
+        horizon=NOW + timedelta(seconds=59),
+        vehicle=PROFILE,
+    )
+    assert result is None
