@@ -64,7 +64,8 @@ def shortest_mining_route(
         if best[current] != (duration, distance, path, trace):
             continue
         if current == destination_id:
-            segment_ids = tuple(UUID(int=value) for value in trace) if all(value >= 0 for value in trace) else ()
+            complete = all(value >= 0 for value in trace)
+            segment_ids = tuple(UUID(int=value) for value in trace) if complete else ()
             return MiningRoute(path, distance, duration, segment_ids)
         for segment in graph[current]:
             target = segment.destination_id
