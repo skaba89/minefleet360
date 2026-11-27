@@ -43,13 +43,15 @@ _SNAPSHOT = text(
       WHERE c.is_active
       ORDER BY a.segment_id, a.vehicle_category_id LIMIT 10001
     ), categories AS (
-      SELECT segment_id, array_agg(vehicle_category_id ORDER BY vehicle_category_id) AS ids FROM allowed GROUP BY segment_id
+      SELECT segment_id, array_agg(vehicle_category_id ORDER BY vehicle_category_id) AS ids
+      FROM allowed GROUP BY segment_id
     ), items AS (
       SELECT node_id, NULL::uuid AS segment_id FROM nodes
       UNION ALL
       SELECT NULL::uuid, segment_id FROM segments
     )
-    SELECT i.node_id, n.node_geometry, n.node_provenance, r.version, r.provenance AS revision_provenance,
+    SELECT i.node_id, n.node_geometry, n.node_provenance, r.version,
+           r.provenance AS revision_provenance,
            s.*, p.segment_id AS policy_id, p.provenance AS policy_provenance, p.max_gross_mass_kg, p.max_speed_kmh,
            p.max_height_mm, p.max_width_mm, p.max_length_mm, p.uphill_permille, p.downhill_permille,
            COALESCE(c.ids, ARRAY[]::uuid[]) AS categories
