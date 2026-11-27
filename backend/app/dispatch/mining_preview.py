@@ -26,8 +26,8 @@ def preview_draft_route(
 ) -> MiningRoute | None:
     """Preview topology or qualified hypothetical vehicle compatibility, never authorization.
 
-    One SQL statement reads the site, draft revision, roads and closures under
-    the same PostgreSQL MVCC snapshot. Changes after that snapshot still require
+    One SQL statement reads the site, draft revision, roads, closures and
+    requested vehicle restrictions under the same PostgreSQL MVCC snapshot. Changes after that snapshot still require
     revalidation; this is not an operational dispatch authorization.
     """
     scope = evaluate(auth.principal, "dispatch.location.read")
@@ -37,7 +37,12 @@ def preview_draft_route(
         raise AppError("MFA_ENROLLMENT_REQUIRED")
     if vehicle is not None and (vehicle.tenant_id != auth.tenant_id or vehicle.site_id != site_id):
         raise AppError("PERMISSION_DENIED")
-    params = {"tenant": auth.tenant_id, "site": site_id, "revision": revision_id}
+    params = {
+        "tenant": auth.tenant_id,
+        "site": site_id,
+        "revision": revision_id,
+        "category": vehicle.category_id if vehicle is not None else None,
+    }
     rows = auth.db.execute(
         text(
             """
@@ -64,12 +69,14 @@ def preview_draft_route(
                 SELECT a.vehicle_category_id FROM mining_road_allowed_category a
                 JOIN vehicle_category c ON c.tenant_id = a.tenant_id
                   AND c.vehicle_category_id = a.vehicle_category_id AND c.is_active
+                  AND c.vehicle_category_id = CAST(:category AS uuid)
                 WHERE a.tenant_id = p.tenant_id AND a.site_id = p.site_id
                   AND a.revision_id = p.revision_id AND a.segment_id = p.segment_id
                 ORDER BY a.vehicle_category_id LIMIT 1001
               ) AS categories
               FROM mining_road_restriction p
-              WHERE p.tenant_id = :tenant AND p.site_id = :site
+              WHERE CAST(:category AS uuid) IS NOT NULL
+                AND p.tenant_id = :tenant AND p.site_id = :site
                 AND p.revision_id IN (SELECT revision_id FROM revision)
               ORDER BY p.segment_id LIMIT 1001
             )
