@@ -69,9 +69,9 @@ def test_qualification_lifecycle_and_audit(api: Api) -> None:
         def propose(subject=auth, requested_site=site, **overrides):
             return _propose(subject, requested_site, **overrides)
 
-        dispatcher = replace(principal, grants=(Grant("DISPATCHER", "SITE", site),))
+        hse = replace(principal, grants=(Grant("HSE", "SITE", site),))
         with pytest.raises(AppError) as error:
-            propose(replace(auth, principal=dispatcher))
+            propose(replace(auth, principal=hse))
         assert error.value.code == "PERMISSION_DENIED"
         with pytest.raises(AppError) as error:
             propose(requested_site=tenant.sites["S2"])

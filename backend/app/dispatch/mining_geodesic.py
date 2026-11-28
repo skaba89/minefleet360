@@ -20,7 +20,7 @@ class LengthFinding:
 
 
 def require_draft_inspection(auth: Authorized, site_id: UUID, tolerance_m: float) -> None:
-    scope = evaluate(auth.principal, "dispatch.location.read")
+    scope = evaluate(auth.principal, "dispatch.readiness.read")
     if auth.principal.tenant_kind != "CUSTOMER" or scope is None or not scope.covers_site(site_id):
         raise AppError("PERMISSION_DENIED")
     if auth.principal.mfa_enrollment_pending:

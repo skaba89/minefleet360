@@ -212,6 +212,10 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `dispatch.weighing.approve` | 1c | `POST /weighing-tickets/{weighing_ticket_id}/approve` | `OPS_MANAGER` |
 | `dispatch.weighing.correct` | 1c | `POST /weighing-tickets/{weighing_ticket_id}/void`<br>`POST /weighing-tickets/{weighing_ticket_id}/correct` | `OPS_MANAGER` |
 | `dispatch.indicators.read` | 1c | `GET /dispatch-indicators` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER` |
+| `dispatch.readiness.read` | 2a | *(aucune route)* | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
+| `dispatch.readiness.record` | 2a | *(aucune route)* | `DISPATCHER`, `OPS_MANAGER` |
+| `dispatch.readiness.reject` | 2a | *(aucune route)* | `HSE`, `OPS_MANAGER` |
+| `dispatch.readiness.approve` | 2a | *(aucune route)* | `HSE`, `OPS_MANAGER` |
 | `fleet.gps.share` | 1c | `GET /me/gps/vehicles`<br>`POST /me/gps/shares`<br>`POST /me/gps/shares/{share_id}/positions`<br>`POST /me/gps/shares/{share_id}/deferred-positions`<br>`POST /me/gps/shares/{share_id}/stop` | `DISPATCHER`, `DRIVER`, `OPS_MANAGER`, `TENANT_ADMIN` |
 | `fleet.gps.manage` | 1c | `GET /vehicles/{vehicle_id}/gps/tracker`<br>`POST /vehicles/{vehicle_id}/gps/tracker`<br>`POST /vehicles/{vehicle_id}/gps/tracker/revoke` | `OPS_MANAGER`, `TENANT_ADMIN` |
 | `workforce.driver.link_account` | 1c | `GET /drivers/{driver_id}/gps-account`<br>`POST /drivers/{driver_id}/gps-account` | `TENANT_ADMIN` |
@@ -274,23 +278,23 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | Rôle | Permissions | Routes API accessibles |
 |---|---:|---:|
 | `PLATFORM_ADMIN` | 12 | 33 |
-| `TENANT_ADMIN` | 73 | 139 |
-| `DIRECTION` | 44 | 107 |
-| `OPS_MANAGER` | 91 | 193 |
-| `DISPATCHER` | 37 | 84 |
+| `TENANT_ADMIN` | 74 | 139 |
+| `DIRECTION` | 45 | 107 |
+| `OPS_MANAGER` | 95 | 193 |
+| `DISPATCHER` | 39 | 84 |
 | `HR` | 17 | 36 |
 | `DRIVER` | 5 | 20 |
-| `WORKSHOP_CHIEF` | 42 | 109 |
+| `WORKSHOP_CHIEF` | 43 | 109 |
 | `MECHANIC` | 18 | 49 |
 | `STOREKEEPER` | 17 | 50 |
 | `FUEL_MANAGER` | 28 | 63 |
-| `HSE` | 35 | 83 |
-| `FINANCE` | 31 | 65 |
-| `AUDITOR` | 45 | 110 |
+| `HSE` | 38 | 83 |
+| `FINANCE` | 32 | 65 |
+| `AUDITOR` | 46 | 110 |
 
 ## 6. Anomalies détectées mécaniquement
 
-- Permissions déclarées sans route : aucune.
+- Permissions déclarées sans route : `dispatch.readiness.read`, `dispatch.readiness.record`, `dispatch.readiness.reject`, `dispatch.readiness.approve`.
 - Permissions marquées `tranche: later` avec routes implémentées : aucune.
 - `organization.tenant.list` porte aussi le GET item `/platform/tenants/{{tenant_id}}` (dénommage list/read assumé, documenté dans l'en-tête du YAML).
 
