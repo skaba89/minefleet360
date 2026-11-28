@@ -49,7 +49,7 @@ portent **aucune** permission dispatch.
 | `dispatch.readiness.read` | TENANT_ADMIN, DIRECTION, OPS_MANAGER (TENANT+SITE), DISPATCHER, WORKSHOP_CHIEF, HSE, FINANCE, AUDITOR | inspection du brouillon (géodésie, aperçu, clôtures, restrictions), rapports, historique de revue |
 | `dispatch.readiness.record` | OPS_MANAGER (TENANT+SITE), DISPATCHER (SITE) | enregistrement des rapports ; proposition et retrait de qualification de tolérance |
 | `dispatch.readiness.reject` | OPS_MANAGER (TENANT+SITE), HSE (TENANT+SITE) | rejet motivé TECHNICAL (OPS_MANAGER) ou HSE ; le rôle attendu est revérifié par étape dans le service |
-| `dispatch.readiness.approve` | OPS_MANAGER (TENANT+SITE), HSE (TENANT+SITE) | aujourd'hui : approbation de qualification de tolérance (quatre yeux) ; Phase 5 : approbation positive du réseau (revue technique + HSE indépendante) |
+| `dispatch.readiness.approve` | OPS_MANAGER (TENANT+SITE), HSE (TENANT+SITE) | approbation de qualification de tolérance (quatre yeux) et approbation positive du rapport — revue technique OPS_MANAGER puis HSE indépendante (`approve_readiness_report`, Phase 5) |
 
 Justifications ancrées dans l'existant :
 
@@ -91,17 +91,20 @@ Justifications ancrées dans l'existant :
 | mining_review_read.py | historique de revue | `readiness.read` |
 | mining_report_service.py | enregistrement rapport | `readiness.record` |
 | mining_tolerance_service.py | proposition/retrait + approbation | `readiness.record` / `readiness.approve` |
-| mining_review_service.py | rejet motivé | `readiness.reject` |
+| mining_review_service.py | rejet motivé / approbation positive | `readiness.reject` / `readiness.approve` |
 
 Tests d'épinglage : `backend/tests/test_mining_permissions.py` (déclarations
-exactly, grille d'évaluation 13 rôles × 4 permissions, DISPATCHER lit mais ne
-rejette pas, PLATFORM_ADMIN refusé, inadéquation rôle/étape refusée).
+exactes, grille d'évaluation 13 rôles × 4 permissions, DISPATCHER lit mais ne
+rejette pas, PLATFORM_ADMIN refusé, inadéquation rôle/étape refusée) et
+`backend/tests/test_mining_approval_service.py` (quatre yeux, indépendance HSE,
+qualification courante, concurrence, preuves périmées).
 
 ## 6. Priorités et limites
 
 1. Aucune autre permission readiness n'est introduite sans nouveau besoin
-   documenté ; `dispatch.readiness.approve` gagne sa seconde fonction (Phase 5)
-   sans changement d'attributions.
+   documenté ; `dispatch.readiness.approve` sert ses deux fonctions (qualification
+   de tolérance et approbation positive du rapport, Phase 5 livrée) sans
+   changement d'attributions.
 2. La matrice reste la seule source de vérité : toute évolution passe par
    `authz_matrix.yaml` + tests d'épinglage, jamais par un contournement en
    service.

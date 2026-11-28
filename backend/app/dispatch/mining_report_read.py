@@ -23,6 +23,9 @@ class ReportSummary:
     actor_user_id: UUID
     created_at: datetime
     finding_count: int
+    # Approved survey tolerance the report was computed with; grandfathered
+    # pre-0091 reports carry None and can never be approved.
+    tolerance_qualification_id: UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -48,6 +51,7 @@ def _summary(row: Row[Any]) -> ReportSummary:
         row.actor_user_id,
         row.created_at,
         row.finding_count,
+        row.tolerance_qualification_id,
     )
 
 
@@ -75,7 +79,8 @@ def list_readiness_reports(
                 AND report_id = :before
             ), reports AS (
               SELECT r.report_id, r.digest_version, r.evidence_digest, r.tolerance_m,
-                     r.actor_user_id, r.created_at, jsonb_array_length(r.findings) AS finding_count
+                     r.actor_user_id, r.created_at, jsonb_array_length(r.findings) AS finding_count,
+                     r.tolerance_qualification_id
               FROM mining_readiness_report r JOIN revision USING (revision_id)
               WHERE r.tenant_id = :tenant AND r.site_id = :site
                 AND (CAST(:before AS uuid) IS NULL OR (r.created_at, r.report_id) <
@@ -110,7 +115,7 @@ def get_readiness_report(
         text(
             """
             SELECT report_id, digest_version, evidence_digest, tolerance_m, actor_user_id, created_at,
-                   jsonb_array_length(findings) AS finding_count,
+                   jsonb_array_length(findings) AS finding_count, tolerance_qualification_id,
                    CASE WHEN jsonb_array_length(findings) <= 3000 THEN findings END AS findings
             FROM mining_readiness_report
             WHERE tenant_id = :tenant AND site_id = :site AND revision_id = :revision
