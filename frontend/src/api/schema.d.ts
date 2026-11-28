@@ -2866,6 +2866,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sites/{site_id}/mining/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Mining Revisions
+         * @description Survey revisions of one site, newest first; the UI picks one to browse its reports.
+         */
+        get: operations["list_mining_revisions_api_v1_sites__site_id__mining_revisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports": {
         parameters: {
             query?: never;
@@ -8990,6 +9010,25 @@ export interface components {
              * Format: uuid
              */
             report_id: string;
+        };
+        /** ReadinessRevisionOut */
+        ReadinessRevisionOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Provenance */
+            provenance: string;
+            /** Report Count */
+            report_count: number;
+            /**
+             * Revision Id
+             * Format: uuid
+             */
+            revision_id: string;
+            /** Version */
+            version: number;
         };
         /** ReceiptCreate */
         ReceiptCreate: {
@@ -18534,6 +18573,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GpsPolicyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_mining_revisions_api_v1_sites__site_id__mining_revisions_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                site_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessRevisionOut"][];
                 };
             };
             /** @description Validation Error */

@@ -237,6 +237,15 @@ MENU_ENTRIES: list[dict[str, object]] = [
         "source": "Layout.tsx:68",
     },
     {
+        "path": "/mine",
+        "label": "Revue minière",
+        "domain": "Dispatch",
+        "permissions": ["dispatch.readiness.read"],
+        "rule": "any",
+        "site_scoped": False,
+        "source": "Layout.tsx:76",
+    },
+    {
         "path": "/juridique",
         "label": "Contrats & assurances",
         "domain": "Juridique",

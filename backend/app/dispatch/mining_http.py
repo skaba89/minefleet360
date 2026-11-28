@@ -20,6 +20,9 @@ from app.dispatch.mining_report_read import (
 from app.dispatch.mining_report_read import (
     list_readiness_reports as list_reports,
 )
+from app.dispatch.mining_report_read import (
+    list_site_revisions,
+)
 from app.dispatch.mining_report_schemas import (
     ReadinessDecisionOut,
     ReadinessReportCreate,
@@ -27,6 +30,7 @@ from app.dispatch.mining_report_schemas import (
     ReadinessReportPageOut,
     ReadinessReviewCreate,
     ReadinessReviewHistoryOut,
+    ReadinessRevisionOut,
 )
 from app.dispatch.mining_report_service import record_draft_readiness
 from app.dispatch.mining_review_read import HistoricalDecision, load_review_history
@@ -43,6 +47,22 @@ ReadinessRead = Annotated[Authorized, Depends(Require("dispatch.readiness.read")
 ReadinessRecord = Annotated[Authorized, Depends(Require("dispatch.readiness.record"))]
 ReadinessReject = Annotated[Authorized, Depends(Require("dispatch.readiness.reject"))]
 ReadinessApprove = Annotated[Authorized, Depends(Require("dispatch.readiness.approve"))]
+
+
+@router.get(
+    "/sites/{site_id}/mining/revisions",
+    response_model=list[ReadinessRevisionOut],
+)
+def list_mining_revisions(
+    site_id: uuid.UUID,
+    auth: ReadinessRead,
+    limit: int = 50,
+) -> list[ReadinessRevisionOut]:
+    """Survey revisions of one site, newest first; the UI picks one to browse its reports."""
+    return [
+        ReadinessRevisionOut.from_revision(revision)
+        for revision in list_site_revisions(auth, site_id=site_id, limit=limit)
+    ]
 
 
 @router.post(

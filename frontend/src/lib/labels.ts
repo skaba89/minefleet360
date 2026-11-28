@@ -550,3 +550,20 @@ export const HSE_ANSWER: Record<string, string> = {
 };
 
 export const HSE_RESULT: Record<string, string> = { PASS: "Conforme", FAIL: "Non conforme (critique)" };
+
+// --- Mine : rapports de préparation et revue ---------------------------------------------------
+
+export const MINING_STAGE: Record<string, string> = {
+  TECHNICAL: "Étape technique",
+  HSE: "Étape HSE",
+};
+
+export const MINING_DECISION: Record<string, string> = {
+  APPROVED: "Approuvé",
+  REJECTED: "Rejeté",
+};
+
+export const MINING_DECISION_TONE: Record<string, "ok" | "bad" | "neutral"> = {
+  APPROVED: "ok",
+  REJECTED: "bad",
+};
