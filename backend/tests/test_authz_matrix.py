@@ -11,13 +11,24 @@ import re
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
+from app.authz.dependencies import Authorized
 from app.authz.matrix import load_matrix
+from app.authz.principal import Grant, Principal, evaluate
+from app.core.clock import SystemClock
+from app.core.db import new_session
+from app.core.tenancy import set_tenant_context
+from app.dispatch.mining_report_service import record_draft_readiness
+from app.dispatch.mining_tolerance_service import (
+    approve_tolerance_qualification,
+    propose_tolerance_qualification,
+)
 from app.hse import inspections as hse_inspections
 from app.legal import router as legal_router
 from app.legal.malware_scan import ScanVerdict
@@ -26,6 +37,21 @@ from tests.conftest import API, Api, TenantFixture
 MATRIX = load_matrix()
 PARAM = re.compile(r"\{(\w+)\}")
 SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
+    # Boucle readiness (Phase 6) : corps valides pour que les refus RBAC (403)
+    # s'expriment avant toute validation de service ; les identifiants réels sont
+    # inutiles aux cas refusés (l'autorisation précède l'exécution).
+    ("POST", "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports"): {
+        "tolerance_m": 2.0,
+        "tolerance_qualification_id": "00000000-0000-0000-0000-000000000099",
+    },
+    ("POST", "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}/reject"): {
+        "stage": "TECHNICAL",
+        "reason": "Refus motivé du tour RBAC",
+    },
+    ("POST", "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}/approve"): {
+        "stage": "TECHNICAL",
+        "reason": "Approbation du tour RBAC",
+    },
     ("POST", "/gps/alerts/{gps_alert_id}/acknowledge"): {},
     ("PUT", "/sites/{site_id}/gps-policy"): {"speed_limit_kmh": 40},
     ("PUT", "/me/alert-notifications"): {"email_enabled": False, "sms_enabled": False},
@@ -556,6 +582,9 @@ def world(api: Api, client: TestClient) -> Iterator[World]:
         },
     )
     assert invoice.status_code == 201, invoice.text
+    # Boucle readiness (Phase 6) : cibles des routes readiness du tour RBAC
+    # (révision propre, qualification approuvée quatre-yeux, rapport enregistré).
+    mining_revision, mining_report = _mining_world(client, a, ops, hse)
     objects = {
         "subscription_id": uuid.UUID(subscription.json()["subscription_id"]),
         "invoice_id": uuid.UUID(invoice.json()["invoice_id"]),
@@ -589,6 +618,8 @@ def world(api: Api, client: TestClient) -> Iterator[World]:
         "plan_id": uuid.UUID(plan.json()["plan_id"]),
         # Cycle documentaire juridique : le contrat de la société A (liste des justificatifs).
         "contract_id": uuid.UUID(contract.json()["contract_id"]),
+        "revision_id": mining_revision,
+        "report_id": mining_report,
     }
     yield World(a, b, personas, b_personas, objects)
     patcher.undo()
@@ -685,6 +716,103 @@ def _routes() -> list[tuple[str, str, str]]:
         if perm.tranche != "later"
         for route in perm.routes
     ]
+
+
+def _mining_world(
+    client: TestClient, a: TenantFixture, ops: Persona, hse: Persona
+) -> tuple[uuid.UUID, uuid.UUID]:
+    """Boucle readiness pour le tour RBAC : révision propre (zéro anomalie), qualification
+    approuvée quatre-yeux, rapport enregistré — cibles des routes readiness (Phase 6).
+
+    Réutilise les personas du monde (aucun utilisateur créé : le plan SaaS du module
+    plafonne le quota) ; leurs identifiants viennent de /me."""
+    site = a.sites["S1"]
+    ops_id = uuid.UUID(client.get(f"{API}/me", headers=ops.headers).json()["user_account_id"])
+    hse_id = uuid.UUID(client.get(f"{API}/me", headers=hse.headers).json()["user_account_id"])
+    revision = uuid.uuid4()
+    with new_session() as db:
+        set_tenant_context(db, a.tenant_id)
+        params = {"t": a.tenant_id, "s": site, "r": revision}
+        db.execute(
+            text(
+                "INSERT INTO mining_route_revision (tenant_id, site_id, revision_id, version, provenance) "
+                "VALUES (:t, :s, :r, 1, 'Synthetic survey')"
+            ),
+            params,
+        )
+        for key, longitude in (("a", -13.5), ("b", -13.499)):
+            params[key] = uuid.uuid4()
+            db.execute(
+                text(
+                    "INSERT INTO mining_route_node (tenant_id, site_id, revision_id, node_id, "
+                    "position, provenance) VALUES (:t, :s, :r, :node, "
+                    "ST_SetSRID(ST_Point(:lon, 9.5), 4326), 'Synthetic survey')"
+                ),
+                {**params, "node": params[key], "lon": longitude},
+            )
+        params["segment"] = uuid.uuid4()
+        db.execute(
+            text(
+                "INSERT INTO mining_route_segment (tenant_id, site_id, revision_id, segment_id, "
+                "origin_id, destination_id, path, distance_m, duration_seconds, provenance) "
+                "SELECT :t, :s, :r, :segment, x.node_id, y.node_id, ST_MakeLine(x.position, y.position), "
+                "110, 20, 'Synthetic survey' FROM mining_route_node x, mining_route_node y "
+                "WHERE x.node_id = :a AND y.node_id = :b"
+            ),
+            params,
+        )
+        db.execute(
+            text(
+                "INSERT INTO mining_road_restriction (tenant_id, site_id, revision_id, segment_id, "
+                "max_gross_mass_kg, max_speed_kmh, max_height_mm, max_width_mm, max_length_mm, "
+                "uphill_permille, downhill_permille, provenance) "
+                "VALUES (:t, :s, :r, :segment, 40000, 30, 4500, 3500, 13000, 80, 60, 'Synthetic survey')"
+            ),
+            params,
+        )
+        category = db.execute(
+            text(
+                "SELECT vehicle_category_id FROM vehicle_category WHERE tenant_id = :t AND is_active "
+                "ORDER BY vehicle_category_id LIMIT 1"
+            ),
+            params,
+        ).scalar_one()
+        db.execute(
+            text(
+                "INSERT INTO mining_road_allowed_category (tenant_id, site_id, revision_id, segment_id, "
+                "vehicle_category_id) VALUES (:t, :s, :r, :segment, :category)"
+            ),
+            {**params, "category": category},
+        )
+
+        def mining_principal(user_id: uuid.UUID, role: str) -> Authorized:
+            built = Principal(user_id, a.tenant_id, "CUSTOMER", uuid.uuid4(), (Grant(role, "SITE", site),))
+            return Authorized(built, evaluate(built, "dispatch.readiness.record"), db, SystemClock())
+
+        qualification = propose_tolerance_qualification(
+            mining_principal(ops_id, "OPS_MANAGER"),
+            site_id=site,
+            tolerance_m=2.0,
+            survey_source="Topographic campaign RBAC",
+            measurement_method="GNSS RTK",
+            instrument_precision_m=0.05,
+            surveyed_on=date.today() - timedelta(days=1),
+            referential_version="topo-ref-v3",
+            justification="Levé périmétrique du réseau d'haulage",
+            responsible_user_id=ops_id,
+        )
+        approve_tolerance_qualification(
+            mining_principal(hse_id, "HSE"), site_id=site, qualification_id=qualification
+        )
+        report = record_draft_readiness(
+            mining_principal(ops_id, "OPS_MANAGER"),
+            site_id=site,
+            revision_id=revision,
+            tolerance_m=2.0,
+            tolerance_qualification_id=qualification,
+        )
+        db.commit()
+    return revision, report.report_id
 
 
 def _call(client: TestClient, method: str, path: str, headers: dict[str, str], ids: dict[str, uuid.UUID]):  # type: ignore[no-untyped-def]

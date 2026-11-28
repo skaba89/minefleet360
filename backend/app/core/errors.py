@@ -154,7 +154,7 @@ CATALOG: dict[str, ErrorDef] = {
         "La remise en service doit être validée par une autre personne que le mécanicien de l'intervention.",
     ),
     "SELF_APPROVAL_FORBIDDEN": ErrorDef(
-        422, "Une saisie dégradée doit être approuvée par une autre personne que celle qui l'a saisie."
+        422, "Cette action doit être validée par une autre personne que son auteur."
     ),
     "PREVENTIVE_SELF_APPROVAL_FORBIDDEN": ErrorDef(
         422, "Le dernier entretien déclaré doit être approuvé par une autre personne que le déclarant."

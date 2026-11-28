@@ -11,6 +11,7 @@ from app.core.errors import AppError
 from app.core.http import IfMatch, Page, Pagination, etag
 from app.core.idempotency import claim, optional_idempotency_key
 from app.dispatch import service, weighing
+from app.dispatch.mining_http import router as mining_readiness_router
 from app.dispatch.models import Material, SiteLocation
 from app.dispatch.schemas import (
     IndicatorsOut,
@@ -286,3 +287,6 @@ def dispatch_indicators(
     period_end: AwareDatetime | None = None,
 ) -> IndicatorsOut:
     return weighing.indicators(auth, site_id=site_id, period_start=period_start, period_end=period_end)
+
+
+router.include_router(mining_readiness_router)

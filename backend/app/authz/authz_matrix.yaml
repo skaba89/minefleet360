@@ -956,7 +956,10 @@ permissions:
     tranche: 2a
     kind: read
     site_bound: true
-    routes: []
+    routes:
+      - { method: GET, path: "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports", shape: collection, success: 200 }
+      - { method: GET, path: "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}", shape: item, success: 200 }
+      - { method: GET, path: "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}/review", shape: item, success: 200 }
     grants:
       TENANT_ADMIN: [TENANT]
       DIRECTION: [TENANT]
@@ -970,7 +973,8 @@ permissions:
     tranche: 2a
     kind: create
     site_bound: true
-    routes: []
+    routes:
+      - { method: POST, path: "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports", shape: collection, success: 201 }
     grants:
       OPS_MANAGER: [TENANT, SITE]
       DISPATCHER: [SITE]
@@ -978,7 +982,8 @@ permissions:
     tranche: 2a
     kind: action
     site_bound: true
-    routes: []
+    routes:
+      - { method: POST, path: "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}/reject", shape: item, success: 201 }
     grants:
       OPS_MANAGER: [TENANT, SITE]
       HSE: [TENANT, SITE]
@@ -986,7 +991,8 @@ permissions:
     tranche: 2a
     kind: action
     site_bound: true
-    routes: []
+    routes:
+      - { method: POST, path: "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}/approve", shape: item, success: 201 }
     grants:
       OPS_MANAGER: [TENANT, SITE]
       HSE: [TENANT, SITE]
