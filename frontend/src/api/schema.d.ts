@@ -2987,9 +2987,11 @@ export interface paths {
         };
         /**
          * Preview Mining Route
-         * @description Advisory topology preview over the draft survey: closures applied, no vehicle
-         *     authorization, no GPS snapping. An absent or too-long path is an explicit
-         *     unavailable result, never a partial itinerary.
+         * @description Advisory preview over the draft survey: closures applied, optionally the
+         *     road restrictions evaluated against the resolved technical profile of a
+         *     vehicle parked at this site. Never a vehicle authorization, never GPS
+         *     snapping. An absent or too-long path is an explicit unavailable result,
+         *     never a partial itinerary.
          */
         get: operations["preview_mining_route_api_v1_sites__site_id__mining_revisions__revision_id__route_preview_get"];
         put?: never;
@@ -18890,6 +18892,7 @@ export interface operations {
                 destination_id: string;
                 departure: string;
                 horizon: string;
+                vehicle_id?: string | null;
             };
             header?: {
                 authorization?: string | null;

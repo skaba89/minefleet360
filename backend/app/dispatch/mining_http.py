@@ -45,6 +45,7 @@ from app.dispatch.mining_review_service import (
 from app.dispatch.mining_review_service import (
     reject_readiness_report as reject_service,
 )
+from app.dispatch.mining_vehicle_profile_read import resolve_vehicle_profile
 
 router = APIRouter(tags=["dispatch"], route_class=SecuredRoute)
 
@@ -82,16 +83,24 @@ def preview_mining_route(
     destination_id: uuid.UUID,
     departure: datetime,
     horizon: datetime,
+    vehicle_id: uuid.UUID | None = None,
 ) -> RoutePreviewOut:
-    """Advisory topology preview over the draft survey: closures applied, no vehicle
-    authorization, no GPS snapping. An absent or too-long path is an explicit
-    unavailable result, never a partial itinerary."""
+    """Advisory preview over the draft survey: closures applied, optionally the
+    road restrictions evaluated against the resolved technical profile of a
+    vehicle parked at this site. Never a vehicle authorization, never GPS
+    snapping. An absent or too-long path is an explicit unavailable result,
+    never a partial itinerary."""
     if origin_id == destination_id:
         raise AppError("VALIDATION_ERROR")
     if departure.tzinfo is None or horizon.tzinfo is None:
         raise AppError("VALIDATION_ERROR")
     if not (timedelta(0) < horizon - departure <= timedelta(days=92)):
         raise AppError("VALIDATION_ERROR")
+    vehicle = (
+        resolve_vehicle_profile(auth, site_id=site_id, vehicle_id=vehicle_id)
+        if vehicle_id is not None
+        else None
+    )
     route = preview_draft_route(
         auth,
         site_id=site_id,
@@ -100,6 +109,7 @@ def preview_mining_route(
         destination_id=destination_id,
         departure=departure,
         horizon=horizon,
+        vehicle=vehicle,
     )
     if route is None:
         return RoutePreviewOut(found=False, nodes=[], segment_ids=[], distance_m=None, duration_seconds=None)

@@ -87,10 +87,11 @@ Justifications ancrées dans l'existant :
 | mining_preview.py | aperçu brouillon | `readiness.read` |
 | mining_closure_read.py | clôtures du brouillon | `readiness.read` |
 | mining_restriction_read.py | restrictions du brouillon | `readiness.read` |
+| mining_vehicle_profile_read.py | résolution du profil technique d'un véhicule (dernière version ingérée) | `readiness.read` |
 | mining_report_read.py | lecture rapports | `readiness.read` |
 | mining_review_read.py | historique de revue | `readiness.read` |
 | mining_report_service.py | enregistrement rapport | `readiness.record` |
-| mining_http.py | routes REST readiness (Phases 6-8 : révisions d'un site, enregistrement, lecture, historique, rejet, approbation, aperçu d'itinéraire du brouillon) | `readiness.record` / `readiness.read` / `readiness.reject` / `readiness.approve` |
+| mining_http.py | routes REST readiness (Phases 6-9 : révisions d'un site, enregistrement, lecture, historique, rejet, approbation, aperçu d'itinéraire du brouillon, profil véhicule facultatif) | `readiness.record` / `readiness.read` / `readiness.reject` / `readiness.approve` |
 | mining_tolerance_service.py | proposition/retrait + approbation | `readiness.record` / `readiness.approve` |
 | mining_review_service.py | rejet motivé / approbation positive | `readiness.reject` / `readiness.approve` |
 
@@ -103,7 +104,11 @@ périmées), `backend/tests/test_mining_readiness_http.py` (contrats HTTP :
 statuts, charges utiles, audit de décision),
 `backend/tests/test_mining_route_preview_http.py` (aperçu d'itinéraire :
 résultat explicite sans itinéraire partiel, validations de fenêtre, 403/404,
-révision étrangère indiscernable) et
+révision étrangère indiscernable),
+`backend/tests/test_mining_route_preview_vehicle_http.py` (aperçu restreint :
+profil compatible, dernière version de preuve gagne et échoue fermé, véhicule
+inconnu/étranger 404, véhicule garé ailleurs 403, preuve manquante 422,
+catégorie non autorisée) et
 `frontend/src/pages/MiningReadinessPage.test.tsx` (écran `/mine` : levés,
 relevés, historique, décisions gated par les permissions générées).
 
