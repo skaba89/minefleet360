@@ -93,9 +93,9 @@ def test_record_draft_report(api: Api) -> None:
                 tolerance_qualification_id=qualification_id,
             )
 
-        dispatcher = replace(principal, grants=(Grant("DISPATCHER", "SITE", site),))
+        hse = replace(principal, grants=(Grant("HSE", "SITE", site),))
         with pytest.raises(AppError) as error:
-            save(replace(auth, principal=dispatcher))
+            save(replace(auth, principal=hse))
         assert error.value.code == "PERMISSION_DENIED"
         with pytest.raises(AppError) as error:
             save(requested_site=tenant.sites["S2"])

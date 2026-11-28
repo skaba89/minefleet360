@@ -948,6 +948,50 @@ permissions:
     grants: *weighing_readers
 
 
+  # Préparation réseau minier (rapports de conformité, décisions de revue).
+  # Lecture = miroir de dispatch.location.read ; écritures resserrées :
+  # relevé OPS_MANAGER + DISPATCHER, rejet et approbation OPS_MANAGER + HSE.
+  # PLATFORM_ADMIN n'est jamais attribué (rôle PLATFORM uniquement).
+  dispatch.readiness.read:
+    tranche: 2a
+    kind: read
+    site_bound: true
+    routes: []
+    grants:
+      TENANT_ADMIN: [TENANT]
+      DIRECTION: [TENANT]
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+      WORKSHOP_CHIEF: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+      FINANCE: [TENANT, SITE]
+      AUDITOR: [TENANT]
+  dispatch.readiness.record:
+    tranche: 2a
+    kind: create
+    site_bound: true
+    routes: []
+    grants:
+      OPS_MANAGER: [TENANT, SITE]
+      DISPATCHER: [SITE]
+  dispatch.readiness.reject:
+    tranche: 2a
+    kind: action
+    site_bound: true
+    routes: []
+    grants:
+      OPS_MANAGER: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+  dispatch.readiness.approve:
+    tranche: 2a
+    kind: action
+    site_bound: true
+    routes: []
+    grants:
+      OPS_MANAGER: [TENANT, SITE]
+      HSE: [TENANT, SITE]
+
+
   # GPS : partage volontaire du compte ; conducteur limité à son affectation active côté service.
   fleet.gps.share:
     tranche: 1c

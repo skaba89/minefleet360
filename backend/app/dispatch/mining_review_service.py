@@ -24,14 +24,15 @@ def reject_readiness_report(
     (site, referenced vehicle categories, revision), then re-verifies that the
     current evidence digest still equals the reviewed report before writing: a
     writer that committed in between yields EVIDENCE_STALE, a writer that starts
-    during the decision blocks until it commits. Temporary internal policy:
-    technical rejection by OPS_MANAGER, HSE by HSE, both with location read
-    permission on this site. Never approves a network.
+    during the decision blocks until it commits. Permission: dedicated
+    dispatch.readiness.reject on this site — technical rejection by OPS_MANAGER,
+    HSE rejection by HSE, the stage-matching role is enforced on top. Never
+    approves a network.
     """
     if stage not in ("TECHNICAL", "HSE"):
         raise AppError("VALIDATION_ERROR")
     role = "OPS_MANAGER" if stage == "TECHNICAL" else "HSE"
-    scope = evaluate(auth.principal, "dispatch.location.read")
+    scope = evaluate(auth.principal, "dispatch.readiness.reject")
     if auth.principal.tenant_kind != "CUSTOMER" or scope is None or role not in scope.roles_for_site(site_id):
         raise AppError("PERMISSION_DENIED")
     if auth.principal.mfa_enrollment_pending:

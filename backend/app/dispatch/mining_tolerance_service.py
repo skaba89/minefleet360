@@ -33,8 +33,16 @@ def _bounded(value: str, limit: int) -> str:
     return value
 
 
-def _require_manager(auth: Authorized, site_id: UUID) -> None:
-    scope = evaluate(auth.principal, "dispatch.location.manage")
+def _require_record(auth: Authorized, site_id: UUID) -> None:
+    scope = evaluate(auth.principal, "dispatch.readiness.record")
+    if auth.principal.tenant_kind != "CUSTOMER" or scope is None or not scope.covers_site(site_id):
+        raise AppError("PERMISSION_DENIED")
+    if auth.principal.mfa_enrollment_pending:
+        raise AppError("MFA_ENROLLMENT_REQUIRED")
+
+
+def _require_approve(auth: Authorized, site_id: UUID) -> None:
+    scope = evaluate(auth.principal, "dispatch.readiness.approve")
     if auth.principal.tenant_kind != "CUSTOMER" or scope is None or not scope.covers_site(site_id):
         raise AppError("PERMISSION_DENIED")
     if auth.principal.mfa_enrollment_pending:
@@ -56,11 +64,11 @@ def propose_tolerance_qualification(
 ) -> UUID:
     """Stage a PROPOSED qualification and audit together; caller owns commit/rollback.
 
-    Temporary internal policy: location management permission on this site, as for
-    readiness reports, until dedicated permissions are introduced. Proposing is not
-    approving: an independent approver records the approval afterwards.
+    Permission: dedicated dispatch.readiness.record on this site (OPS_MANAGER,
+    DISPATCHER). Proposing is not approving: an independent approver records the
+    approval afterwards.
     """
-    _require_manager(auth, site_id)
+    _require_record(auth, site_id)
     if not isfinite(tolerance_m) or tolerance_m < 0:
         raise AppError("VALIDATION_ERROR")
     if not isfinite(instrument_precision_m) or instrument_precision_m < 0:
@@ -125,10 +133,11 @@ def approve_tolerance_qualification(auth: Authorized, *, site_id: UUID, qualific
     """Approve a PROPOSED qualification; caller owns commit/rollback.
 
     The approver must be independent from the proposer and the responsible
-    surveyor. The conditional UPDATE is the concurrency guard: a concurrent
-    decision either wins and returns its id, or loses and raises CONFLICT.
+    surveyor. Permission: dedicated dispatch.readiness.approve on this site
+    (OPS_MANAGER, HSE). The conditional UPDATE is the concurrency guard: a
+    concurrent decision either wins and returns its id, or loses and raises CONFLICT.
     """
-    _require_manager(auth, site_id)
+    _require_approve(auth, site_id)
     row = auth.db.execute(
         text(
             """
@@ -181,8 +190,9 @@ def retire_tolerance_qualification(auth: Authorized, *, site_id: UUID, qualifica
 
     Retiring does not rewrite history: existing reports keep their historical
     binding, while new reports and later approvals must use another qualification.
+    Permission: dedicated dispatch.readiness.record on this site.
     """
-    _require_manager(auth, site_id)
+    _require_record(auth, site_id)
     retired_id: UUID | None = auth.db.execute(
         text(
             """

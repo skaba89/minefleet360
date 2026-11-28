@@ -32,12 +32,12 @@ def record_draft_readiness(
 
     The tolerance must reference an approved site qualification carrying its survey
     provenance, method, precision, date, responsible surveyor, referential version
-    and justification; the value must match exactly. Until a dedicated route
-    permission is introduced, require existing location management permission as
-    well as the inspection read permission. A report records historical evidence
-    only, even when findings are empty.
+    and justification; the value must match exactly. Permission: dedicated
+    dispatch.readiness.record on this site (OPS_MANAGER, DISPATCHER); inspecting
+    the evidence additionally requires dispatch.readiness.read, held by the same
+    roles. A report records historical evidence only, even when findings are empty.
     """
-    scope = evaluate(auth.principal, "dispatch.location.manage")
+    scope = evaluate(auth.principal, "dispatch.readiness.record")
     if auth.principal.tenant_kind != "CUSTOMER" or scope is None or not scope.covers_site(site_id):
         raise AppError("PERMISSION_DENIED")
     qualified = load_qualified_tolerance(auth, site_id=site_id, qualification_id=tolerance_qualification_id)

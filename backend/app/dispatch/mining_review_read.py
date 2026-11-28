@@ -46,7 +46,7 @@ def load_review_history(
     auth: Authorized, *, site_id: UUID, revision_id: UUID, report_id: UUID
 ) -> ReviewHistory:
     """Return both historical decisions from one scoped database snapshot."""
-    scope = evaluate(auth.principal, "dispatch.location.read")
+    scope = evaluate(auth.principal, "dispatch.readiness.read")
     if auth.principal.tenant_kind != "CUSTOMER" or scope is None or not scope.covers_site(site_id):
         raise AppError("PERMISSION_DENIED")
     if auth.principal.mfa_enrollment_pending:
