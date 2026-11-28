@@ -1,7 +1,8 @@
 """Historical technical report service integration checks."""
 
 from dataclasses import replace
-from uuid import uuid4
+from datetime import date, timedelta
+from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import text
@@ -15,7 +16,28 @@ from app.core.tenancy import set_tenant_context
 from app.dispatch.mining_readiness import ReadinessFinding
 from app.dispatch.mining_report_read import get_readiness_report, list_readiness_reports
 from app.dispatch.mining_report_service import record_draft_readiness
+from app.dispatch.mining_tolerance_service import (
+    approve_tolerance_qualification,
+    propose_tolerance_qualification,
+)
 from tests.conftest import Api
+
+
+def _approved_qualification(auth, approver_auth, site) -> UUID:
+    qualification = propose_tolerance_qualification(
+        auth,
+        site_id=site,
+        tolerance_m=2.0,
+        survey_source="Topographic campaign 2026-11",
+        measurement_method="GNSS RTK",
+        instrument_precision_m=0.05,
+        surveyed_on=date.today() - timedelta(days=1),
+        referential_version="topo-ref-v3",
+        justification="Perimeter survey of the haul road network",
+        responsible_user_id=auth.user_id,
+    )
+    approve_tolerance_qualification(approver_auth, site_id=site, qualification_id=qualification)
+    return qualification
 
 
 def test_record_draft_report(api: Api) -> None:
@@ -41,10 +63,34 @@ def test_record_draft_report(api: Api) -> None:
         scope = evaluate(principal, "dispatch.location.manage")
         assert scope is not None
         auth = Authorized(principal, scope, db, SystemClock())
+        approver = api.user(tenant, "OPS_MANAGER", "SITE", "S1")
+        approver_auth = Authorized(replace(principal, user_id=approver.user_id), scope, db, SystemClock())
+        qualification = _approved_qualification(auth, approver_auth, site)
+        unapproved = propose_tolerance_qualification(
+            auth,
+            site_id=site,
+            tolerance_m=4.0,
+            survey_source="Draft campaign",
+            measurement_method="GNSS RTK",
+            instrument_precision_m=0.05,
+            surveyed_on=date.today() - timedelta(days=1),
+            referential_version="topo-ref-v3",
+            justification="Draft survey awaiting approval",
+            responsible_user_id=auth.user_id,
+        )
 
-        def save(subject=auth, requested_site=site):
+        def save(
+            subject=auth,
+            requested_site=site,
+            tolerance=2,
+            qualification_id=qualification,
+        ):
             return record_draft_readiness(
-                subject, site_id=requested_site, revision_id=revision, tolerance_m=2
+                subject,
+                site_id=requested_site,
+                revision_id=revision,
+                tolerance_m=tolerance,
+                tolerance_qualification_id=qualification_id,
             )
 
         dispatcher = replace(principal, grants=(Grant("DISPATCHER", "SITE", site),))
@@ -57,6 +103,12 @@ def test_record_draft_report(api: Api) -> None:
         with pytest.raises(AppError) as error:
             save(replace(auth, principal=replace(principal, mfa_enrollment_pending=True)))
         assert error.value.code == "MFA_ENROLLMENT_REQUIRED"
+        with pytest.raises(AppError) as error:
+            save(tolerance=3)
+        assert error.value.code == "VALIDATION_ERROR"
+        with pytest.raises(AppError) as error:
+            save(qualification_id=unapproved)
+        assert error.value.code == "CONFLICT"
         assert db.execute(text("SELECT count(*) FROM mining_readiness_report")).scalar_one() == 0
         db.commit()
         set_tenant_context(db, tenant.tenant_id)
@@ -64,28 +116,40 @@ def test_record_draft_report(api: Api) -> None:
         assert result.evidence.findings == (ReadinessFinding("EMPTY_GRAPH"),)
         report = db.execute(
             text(
-                "SELECT evidence_digest, findings, actor_user_id FROM mining_readiness_report "
-                "WHERE report_id = :report"
+                "SELECT evidence_digest, findings, actor_user_id, tolerance_qualification_id "
+                "FROM mining_readiness_report WHERE report_id = :report"
             ),
             {"report": result.report_id},
         ).one()
         assert report.evidence_digest == result.evidence.digest
         assert report.findings == [{"code": "EMPTY_GRAPH", "segment_id": None}]
         assert report.actor_user_id == tenant.admin.user_id
+        assert report.tolerance_qualification_id == qualification
         audit = text(
             "SELECT count(*) FROM audit_event WHERE action = 'mining_readiness_report.create' "
-            "AND entity_id = :report"
+            "AND entity_id = :report AND after_data->>'tolerance_qualification_id' = :qualification"
         )
-        assert db.execute(audit, {"report": result.report_id}).scalar_one() == 1
+        assert (
+            db.execute(audit, {"report": result.report_id, "qualification": str(qualification)}).scalar_one()
+            == 1
+        )
         db.rollback()
         set_tenant_context(db, tenant.tenant_id)
         assert db.execute(text("SELECT count(*) FROM mining_readiness_report")).scalar_one() == 0
-        assert db.execute(audit, {"report": result.report_id}).scalar_one() == 0
+        assert (
+            db.execute(audit, {"report": result.report_id, "qualification": str(qualification)}).scalar_one()
+            == 0
+        )
         committed = save()
         db.commit()
         set_tenant_context(db, tenant.tenant_id)
         assert db.execute(text("SELECT count(*) FROM mining_readiness_report")).scalar_one() == 1
-        assert db.execute(audit, {"report": committed.report_id}).scalar_one() == 1
+        assert (
+            db.execute(
+                audit, {"report": committed.report_id, "qualification": str(qualification)}
+            ).scalar_one()
+            == 1
+        )
 
 
 def test_readiness_report_history(api: Api) -> None:
@@ -115,9 +179,22 @@ def test_readiness_report_history(api: Api) -> None:
         scope = evaluate(principal, "dispatch.location.read")
         assert scope is not None
         auth = Authorized(principal, scope, db, SystemClock())
+        approver = api.user(tenant, "OPS_MANAGER", "SITE", "S1")
+        approver_scope = evaluate(replace(principal, user_id=approver.user_id), "dispatch.location.manage")
+        assert approver_scope is not None
+        approver_auth = Authorized(
+            replace(principal, user_id=approver.user_id), approver_scope, db, SystemClock()
+        )
+        qualification = _approved_qualification(auth, approver_auth, site)
         assert list_readiness_reports(auth, site_id=site, revision_id=empty_revision) == ([], None)
         results = [
-            record_draft_readiness(auth, site_id=site, revision_id=revision, tolerance_m=2.0)
+            record_draft_readiness(
+                auth,
+                site_id=site,
+                revision_id=revision,
+                tolerance_m=2.0,
+                tolerance_qualification_id=qualification,
+            )
             for _ in range(3)
         ]
         reader_principal = replace(principal, grants=(Grant("DISPATCHER", "SITE", site),))
