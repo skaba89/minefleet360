@@ -2978,6 +2978,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sites/{site_id}/mining/revisions/{revision_id}/route-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Mining Route
+         * @description Advisory topology preview over the draft survey: closures applied, no vehicle
+         *     authorization, no GPS snapping. An absent or too-long path is an explicit
+         *     unavailable result, never a partial itinerary.
+         */
+        get: operations["preview_mining_route_api_v1_sites__site_id__mining_revisions__revision_id__route_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sites/{site_id}/reactivate": {
         parameters: {
             query?: never;
@@ -9232,6 +9254,23 @@ export interface components {
              * Format: uuid
              */
             vehicle_id: string;
+        };
+        /**
+         * RoutePreviewOut
+         * @description Advisory draft preview. `found=False` carries no partial route: the contract
+         *     demands an explicit unavailable result rather than a truncated itinerary.
+         */
+        RoutePreviewOut: {
+            /** Distance M */
+            distance_m: number | null;
+            /** Duration Seconds */
+            duration_seconds: number | null;
+            /** Found */
+            found: boolean;
+            /** Nodes */
+            nodes: string[];
+            /** Segment Ids */
+            segment_ids: string[];
         };
         /** SensorCreate */
         SensorCreate: {
@@ -18831,6 +18870,45 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadinessReviewHistoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_mining_route_api_v1_sites__site_id__mining_revisions__revision_id__route_preview_get: {
+        parameters: {
+            query: {
+                origin_id: string;
+                destination_id: string;
+                departure: string;
+                horizon: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                site_id: string;
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoutePreviewOut"];
                 };
             };
             /** @description Validation Error */

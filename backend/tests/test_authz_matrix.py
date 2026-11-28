@@ -221,6 +221,13 @@ SAMPLE_BODIES: dict[tuple[str, str], dict[str, object]] = {
 SAMPLE_QUERIES: dict[tuple[str, str], dict[str, str]] = {
     ("GET", "/vehicles/{vehicle_id}/gps/track"): {"purpose": "SECURITY"},
     ("GET", "/gps/geofence-events"): {"purpose": "SECURITY", "site_id": "{site_id}"},
+    # Nœuds inconnus → aperçu explicite « indisponible » (200 found=false) ; fenêtre littérale valide.
+    ("GET", "/sites/{site_id}/mining/revisions/{revision_id}/route-preview"): {
+        "origin_id": "{origin}",
+        "destination_id": "{destination}",
+        "departure": "2026-11-20T08:00:00Z",
+        "horizon": "2026-11-20T09:00:00Z",
+    },
 }
 
 

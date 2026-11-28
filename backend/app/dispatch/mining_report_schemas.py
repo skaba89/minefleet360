@@ -33,6 +33,17 @@ class ReadinessRevisionOut(BaseModel):
         )
 
 
+class RoutePreviewOut(BaseModel):
+    """Advisory draft preview. `found=False` carries no partial route: the contract
+    demands an explicit unavailable result rather than a truncated itinerary."""
+
+    found: bool
+    nodes: list[UUID]
+    segment_ids: list[UUID]
+    distance_m: int | None
+    duration_seconds: int | None
+
+
 class ReadinessReportCreate(StrictModel):
     """The tolerance must be justified by an approved survey qualification; the server computes evidence."""
 
