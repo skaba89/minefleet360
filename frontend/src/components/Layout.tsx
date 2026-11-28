@@ -73,6 +73,7 @@ export function Layout() {
     { to: "/hse/inspections", text: "Inspections HSE", show: can(me.grants, "hse.inspection.read") || can(me.grants, "hse.inspection.perform") },
     { to: "/hse/checklists", text: "Checklists HSE", show: can(me.grants, "hse.checklist.manage") },
     { to: "/pesees", text: "Pesées", show: can(me.grants, "dispatch.weighing.read") },
+    { to: "/mine", text: "Revue minière", show: can(me.grants, "dispatch.readiness.read") },
     { to: "/juridique", text: "Contrats & assurances", show: can(me.grants, "legal.contract.read", siteId) || can(me.grants, "legal.insurance.read", siteId) },
     { to: "/couts", text: "Coût complet", show: can(me.grants, "cost.vehicle.read") },
     { to: "/indicateurs", text: "Indicateurs", show: can(me.grants, "dispatch.indicators.read") },
@@ -90,7 +91,7 @@ export function Layout() {
     if (to.startsWith("/atelier") || to.startsWith("/maintenance") || to.startsWith("/pieces") || to.startsWith("/pneus")) return "tool";
     if (to.startsWith("/carburant")) return "fuel";
     if (to.startsWith("/hse")) return "shield";
-    if (to.startsWith("/pesees")) return "scale";
+    if (to.startsWith("/pesees") || to.startsWith("/mine")) return "scale";
     if (to.startsWith("/indicateurs") || to.startsWith("/couts")) return "chart";
     return "calendar";
   };

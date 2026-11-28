@@ -29,6 +29,15 @@ class ReportSummary:
 
 
 @dataclass(frozen=True)
+class RevisionSummary:
+    revision_id: UUID
+    version: int
+    provenance: str
+    created_at: datetime
+    report_count: int
+
+
+@dataclass(frozen=True)
 class HistoricalReport:
     summary: ReportSummary
     findings: tuple[ReadinessFinding, ...]
@@ -104,6 +113,43 @@ def list_readiness_reports(
         raise AppError("NOT_FOUND")
     summaries = [_summary(row) for row in rows if row.report_id is not None]
     return summaries[:limit], summaries[limit - 1].report_id if len(summaries) > limit else None
+
+
+def list_site_revisions(
+    auth: Authorized,
+    *,
+    site_id: UUID,
+    limit: int = 50,
+) -> list[RevisionSummary]:
+    """Survey revisions of one site, newest version first, with their recorded report counts."""
+    _require_read(auth, site_id)
+    if not 1 <= limit <= 100:
+        raise AppError("VALIDATION_ERROR")
+    site_exists = auth.db.execute(
+        text("SELECT 1 FROM site WHERE tenant_id = :tenant AND site_id = :site"),
+        {"tenant": auth.tenant_id, "site": site_id},
+    ).scalar()
+    if site_exists is None:
+        # Un site d'un autre tenant est indiscernable d'un identifiant inexistant (isolation ST-02).
+        raise AppError("NOT_FOUND")
+    rows = auth.db.execute(
+        text(
+            """
+            SELECT v.revision_id, v.version, v.provenance, v.created_at,
+                   (SELECT count(*) FROM mining_readiness_report r
+                    WHERE r.tenant_id = v.tenant_id AND r.site_id = v.site_id
+                      AND r.revision_id = v.revision_id) AS report_count
+            FROM mining_route_revision v
+            WHERE v.tenant_id = :tenant AND v.site_id = :site
+            ORDER BY v.version DESC LIMIT :limit
+            """
+        ),
+        {"tenant": auth.tenant_id, "site": site_id, "limit": limit},
+    ).all()
+    return [
+        RevisionSummary(row.revision_id, row.version, row.provenance, row.created_at, row.report_count)
+        for row in rows
+    ]
 
 
 def get_readiness_report(

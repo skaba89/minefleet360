@@ -54,6 +54,7 @@ def test_matrix_declares_readiness_permissions() -> None:
         assert "PLATFORM_ADMIN" not in spec.grants
     base = "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports"
     assert [(r.method, r.path, r.success) for r in matrix.permissions["dispatch.readiness.read"].routes] == [
+        ("GET", "/sites/{site_id}/mining/revisions", 200),
         ("GET", base, 200),
         ("GET", f"{base}/{{report_id}}", 200),
         ("GET", f"{base}/{{report_id}}/review", 200),

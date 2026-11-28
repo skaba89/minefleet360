@@ -27,6 +27,7 @@ import { ChecklistTemplatesPage, HseInspectionPage, HseInspectionsPage } from ".
 import { OfflineFieldPage } from "./pages/HseOffline";
 import { HseIncidentPage, HsePage } from "./pages/HsePages";
 import { LoginPage } from "./pages/LoginPage";
+import { MiningReadinessPage } from "./pages/MiningReadinessPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { LegalRegistriesPage } from "./pages/LegalRegistriesPage";
 import { LiveFleetPage } from "./pages/LiveFleetPage";
@@ -107,6 +108,7 @@ export function App() {
           <Route path="pneus/:tyreId" element={<TyrePage />} />
           <Route path="couts" element={<CostsPage />} />
           <Route path="pesees" element={<WeighingsPage />} />
+          <Route path="mine" element={<MiningReadinessPage />} />
           <Route path="indicateurs" element={<IndicatorsPage />} />
           <Route path="mon-compte/securite" element={<SecurityPage />} />
           <Route path="mon-compte/sessions" element={<SessionsPage />} />

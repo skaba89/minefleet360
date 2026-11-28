@@ -7,8 +7,30 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.core.http import StrictModel
-from app.dispatch.mining_report_read import HistoricalReport, ReportSummary
+from app.dispatch.mining_report_read import (
+    HistoricalReport,
+    ReportSummary,
+    RevisionSummary,
+)
 from app.dispatch.mining_review_read import HistoricalDecision, ReviewHistory
+
+
+class ReadinessRevisionOut(BaseModel):
+    revision_id: UUID
+    version: int
+    provenance: str
+    created_at: datetime
+    report_count: int
+
+    @classmethod
+    def from_revision(cls, revision: RevisionSummary) -> "ReadinessRevisionOut":
+        return cls(
+            revision_id=revision.revision_id,
+            version=revision.version,
+            provenance=revision.provenance,
+            created_at=revision.created_at,
+            report_count=revision.report_count,
+        )
 
 
 class ReadinessReportCreate(StrictModel):

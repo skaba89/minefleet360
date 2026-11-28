@@ -90,7 +90,7 @@ Justifications ancrées dans l'existant :
 | mining_report_read.py | lecture rapports | `readiness.read` |
 | mining_review_read.py | historique de revue | `readiness.read` |
 | mining_report_service.py | enregistrement rapport | `readiness.record` |
-| mining_http.py | routes REST readiness (Phase 6 : enregistrement, lecture, historique, rejet, approbation) | `readiness.record` / `readiness.read` / `readiness.reject` / `readiness.approve` |
+| mining_http.py | routes REST readiness (Phases 6-7 : révisions d'un site, enregistrement, lecture, historique, rejet, approbation) | `readiness.record` / `readiness.read` / `readiness.reject` / `readiness.approve` |
 | mining_tolerance_service.py | proposition/retrait + approbation | `readiness.record` / `readiness.approve` |
 | mining_review_service.py | rejet motivé / approbation positive | `readiness.reject` / `readiness.approve` |
 
@@ -99,8 +99,10 @@ exactes, grille d'évaluation 13 rôles × 4 permissions, routes déclarées par
 permission, DISPATCHER lit mais ne rejette pas, PLATFORM_ADMIN refusé,
 inadéquation rôle/étape refusée), `backend/tests/test_mining_approval_service.py`
 (quatre yeux, indépendance HSE, qualification courante, concurrence, preuves
-périmées) et `backend/tests/test_mining_readiness_http.py` (contrats HTTP :
-statuts, charges utiles, audit de décision).
+périmées), `backend/tests/test_mining_readiness_http.py` (contrats HTTP :
+statuts, charges utiles, audit de décision) et
+`frontend/src/pages/MiningReadinessPage.test.tsx` (écran `/mine` : levés,
+relevés, historique, décisions gated par les permissions générées).
 
 ## 6. Priorités et limites
 
