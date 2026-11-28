@@ -1,6 +1,7 @@
 """Integration checks for historical rejection and transactional audit."""
 
 from dataclasses import replace
+from datetime import date, timedelta
 from uuid import uuid4
 
 import pytest
@@ -12,8 +13,13 @@ from app.core.clock import SystemClock
 from app.core.db import new_session
 from app.core.errors import AppError
 from app.core.tenancy import set_tenant_context
+from app.dispatch.mining_report_service import record_draft_readiness
 from app.dispatch.mining_review_read import load_review_history
 from app.dispatch.mining_review_service import reject_readiness_report
+from app.dispatch.mining_tolerance_service import (
+    approve_tolerance_qualification,
+    propose_tolerance_qualification,
+)
 from tests.conftest import Api
 
 
@@ -31,22 +37,46 @@ def test_rejection_and_audit(api: Api) -> None:
             ),
             {"t": tenant.tenant_id, "s": site, "r": revision},
         )
-        report = db.execute(
-            text(
-                "INSERT INTO mining_readiness_report "
-                "(tenant_id, site_id, revision_id, actor_user_id, digest_version, "
-                "evidence_digest, tolerance_m, findings) "
-                "VALUES (:t, :s, :r, :author, 'mining-readiness-v1', :digest, 2, '[]') "
-                "RETURNING report_id"
-            ),
-            {
-                "t": tenant.tenant_id,
-                "s": site,
-                "r": revision,
-                "author": tenant.admin.user_id,
-                "digest": "a" * 64,
-            },
-        ).scalar_one()
+        author_principal = Principal(
+            tenant.admin.user_id,
+            tenant.tenant_id,
+            "CUSTOMER",
+            uuid4(),
+            (Grant("OPS_MANAGER", "SITE", site),),
+        )
+        author_scope = evaluate(author_principal, "dispatch.location.manage")
+        assert author_scope is not None
+        author_auth = Authorized(author_principal, author_scope, db, SystemClock())
+        reviewer_scope = evaluate(
+            replace(author_principal, user_id=reviewer.user_id), "dispatch.location.manage"
+        )
+        assert reviewer_scope is not None
+        reviewer_auth = Authorized(
+            replace(author_principal, user_id=reviewer.user_id), reviewer_scope, db, SystemClock()
+        )
+        qualification = propose_tolerance_qualification(
+            author_auth,
+            site_id=site,
+            tolerance_m=2.0,
+            survey_source="Topographic campaign 2026-11",
+            measurement_method="GNSS RTK",
+            instrument_precision_m=0.05,
+            surveyed_on=date.today() - timedelta(days=1),
+            referential_version="topo-ref-v3",
+            justification="Perimeter survey of the haul road network",
+            responsible_user_id=author_auth.user_id,
+        )
+        assert (
+            approve_tolerance_qualification(reviewer_auth, site_id=site, qualification_id=qualification)
+            == qualification
+        )
+        report = record_draft_readiness(
+            author_auth,
+            site_id=site,
+            revision_id=revision,
+            tolerance_m=2.0,
+            tolerance_qualification_id=qualification,
+        ).report_id
         db.commit()
         set_tenant_context(db, tenant.tenant_id)
         principal = Principal(

@@ -9,7 +9,9 @@ from app.authz.dependencies import Authorized
 from app.authz.principal import evaluate
 from app.core.errors import AppError
 from app.dispatch.mining_approval_policy import ReviewStage
+from app.dispatch.mining_readiness_snapshot import inspect_draft_evidence
 from app.dispatch.mining_report_read import get_readiness_report
+from app.dispatch.mining_review_locks import lock_review_sources
 from app.dispatch.mining_review_read import load_review_history
 
 
@@ -18,8 +20,13 @@ def reject_readiness_report(
 ) -> UUID:
     """Stage a rejection and audit together; caller owns commit and rollback.
 
-    Temporary internal policy: technical rejection by OPS_MANAGER, HSE by HSE,
-    both with location read permission on this site. Never approves a network.
+    The decision transaction first pins the review sources in a fixed order
+    (site, referenced vehicle categories, revision), then re-verifies that the
+    current evidence digest still equals the reviewed report before writing: a
+    writer that committed in between yields EVIDENCE_STALE, a writer that starts
+    during the decision blocks until it commits. Temporary internal policy:
+    technical rejection by OPS_MANAGER, HSE by HSE, both with location read
+    permission on this site. Never approves a network.
     """
     if stage not in ("TECHNICAL", "HSE"):
         raise AppError("VALIDATION_ERROR")
@@ -32,6 +39,7 @@ def reject_readiness_report(
     reason = reason.strip()
     if not 1 <= len(reason) <= 500 or chr(0) in reason:
         raise AppError("VALIDATION_ERROR")
+    lock_review_sources(auth, site_id=site_id, revision_id=revision_id)
     report = get_readiness_report(auth, site_id=site_id, revision_id=revision_id, report_id=report_id)
     history = load_review_history(auth, site_id=site_id, revision_id=revision_id, report_id=report_id)
     if report.summary.actor_user_id == auth.user_id:
@@ -42,6 +50,14 @@ def reject_readiness_report(
         prior = history.technical_review()
         if prior is None or prior.decision != "APPROVED" or prior.actor_user_id == auth.user_id:
             raise AppError("CONFLICT")
+    evidence = inspect_draft_evidence(
+        auth, site_id=site_id, revision_id=revision_id, tolerance_m=report.summary.tolerance_m
+    )
+    if (evidence.digest_version, evidence.digest) != (
+        report.summary.digest_version,
+        report.summary.evidence_digest,
+    ):
+        raise AppError("EVIDENCE_STALE")
     decision_id: UUID | None = auth.db.execute(
         text(
             """
