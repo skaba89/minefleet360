@@ -111,6 +111,10 @@ CATALOG: dict[str, ErrorDef] = {
     "IDEMPOTENCY_IN_PROGRESS": ErrorDef(
         409, "Cette opération est déjà en cours de traitement. Réessayez dans quelques instants."
     ),
+    "EVIDENCE_STALE": ErrorDef(
+        409,
+        "Les preuves de ce rapport ne correspondent plus à l'état actuel du réseau : refaites un relevé.",
+    ),
     # 422
     "VALIDATION_ERROR": ErrorDef(422, "Les données envoyées sont invalides."),
     "IF_MATCH_REQUIRED": ErrorDef(422, "L'en-tête If-Match est obligatoire pour une modification."),
