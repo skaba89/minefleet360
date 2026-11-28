@@ -54,7 +54,11 @@ de ses entrées et sa tolérance pour que les responsables technique et HSE puis
 `departure` et `horizon` (fenêtre bornée à 92 jours, fuseau obligatoire,
 origine ≠ destination). La réponse est `found=true` avec la séquence complète
 de nœuds, de tronçons, la distance et la durée, ou `found=false` **sans aucune
-donnée partielle**. Aucun profil véhicule n'est encore accepté : la résolution
-de `mining_vehicle_profile` (ingestion + lecture app) reste à livrer avant de
-prévisualiser les restrictions par catégorie, masse et gabarit. L'aperçu reste
+donnée partielle**. Un `vehicle_id` facultatif résout côté serveur le dernier
+profil technique ingéré d'un véhicule garé sur le site demandé (Phase 9) :
+l'évaluation des restrictions échoue alors fermé — tronçon sans politique
+explicite, masse non vérifiée, gabarit ou pente incompatibles, catégorie non
+autorisée. Un véhicule d'un autre tenant est indiscernable d'un véhicule
+inconnu (404), un véhicule garé ailleurs est un refus de permission (403),
+l'absence de preuve technique est une référence insoluble (422). L'aperçu reste
 advisory : jamais une autorisation opérationnelle ni un calcul d'ETA contractuel.
