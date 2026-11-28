@@ -86,7 +86,7 @@ def _preview(
 
 
 def test_route_preview_found(api: Api) -> None:
-    tenant, site, revision, nodes, ops, _, _ = _base(api)
+    _tenant, site, revision, nodes, ops, _, _ = _base(api)
     resp = _preview(api.client, ops.headers, site, revision, nodes["a"], nodes["b"])
     assert resp.status_code == 200, resp.text
     body = resp.json()
@@ -97,7 +97,7 @@ def test_route_preview_found(api: Api) -> None:
 
 
 def test_route_preview_unavailable_is_explicit_and_partial_free(api: Api) -> None:
-    tenant, site, revision, _, ops, _, _ = _base(api)
+    _tenant, site, revision, _, ops, _, _ = _base(api)
     resp = _preview(api.client, ops.headers, site, revision, uuid4(), uuid4())
     assert resp.status_code == 200, resp.text
     assert resp.json() == {
@@ -110,13 +110,13 @@ def test_route_preview_unavailable_is_explicit_and_partial_free(api: Api) -> Non
 
 
 def test_route_preview_unknown_revision_is_404(api: Api) -> None:
-    tenant, site, _, nodes, ops, _, _ = _base(api)
+    _tenant, site, _, nodes, ops, _, _ = _base(api)
     resp = _preview(api.client, ops.headers, site, uuid4(), nodes["a"], nodes["b"])
     assert resp.status_code == 404 and resp.json()["code"] == "NOT_FOUND"
 
 
 def test_route_preview_validations(api: Api) -> None:
-    tenant, site, revision, nodes, ops, _, _ = _base(api)
+    _tenant, site, revision, nodes, ops, _, _ = _base(api)
     cases = [
         # Origine et destination identiques : aucun itinéraire trivial n'a de sens.
         {"origin_id": nodes["a"], "destination_id": nodes["a"]},
@@ -148,13 +148,13 @@ def test_route_preview_validations(api: Api) -> None:
 
 
 def test_route_preview_denied_without_permission(api: Api) -> None:
-    tenant, site, revision, nodes, _, _, hr = _base(api)
+    _tenant, site, revision, nodes, _, _, hr = _base(api)
     resp = _preview(api.client, hr.headers, site, revision, nodes["a"], nodes["b"])
     assert resp.status_code == 403 and resp.json()["code"] == "PERMISSION_DENIED"
 
 
 def test_route_preview_foreign_revision_is_indistinguishable(api: Api) -> None:
-    tenant, site, revision, _, _, _, admin_holder = _base(api)
+    _tenant, site, revision, _, _, _, _admin_holder = _base(api)
     other = api.tenant()
     other_admin = api.user(other, "TENANT_ADMIN", "TENANT")
     resp = _preview(api.client, other_admin.headers, site, revision, uuid4(), uuid4())
