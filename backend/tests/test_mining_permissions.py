@@ -51,8 +51,22 @@ def test_matrix_declares_readiness_permissions() -> None:
         spec = matrix.permissions[name]
         assert spec.site_bound is True
         assert dict(spec.grants) == EXPECTED_GRANTS[name]
-        assert spec.routes == ()
         assert "PLATFORM_ADMIN" not in spec.grants
+    base = "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports"
+    assert [(r.method, r.path, r.success) for r in matrix.permissions["dispatch.readiness.read"].routes] == [
+        ("GET", base, 200),
+        ("GET", f"{base}/{{report_id}}", 200),
+        ("GET", f"{base}/{{report_id}}/review", 200),
+    ]
+    assert [
+        (r.method, r.path, r.success) for r in matrix.permissions["dispatch.readiness.record"].routes
+    ] == [("POST", base, 201)]
+    assert [
+        (r.method, r.path, r.success) for r in matrix.permissions["dispatch.readiness.reject"].routes
+    ] == [("POST", f"{base}/{{report_id}}/reject", 201)]
+    assert [
+        (r.method, r.path, r.success) for r in matrix.permissions["dispatch.readiness.approve"].routes
+    ] == [("POST", f"{base}/{{report_id}}/approve", 201)]
 
 
 def test_readiness_evaluation_grid() -> None:

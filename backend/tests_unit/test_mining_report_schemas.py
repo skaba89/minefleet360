@@ -18,14 +18,19 @@ from app.dispatch.mining_report_schemas import (
 @pytest.mark.parametrize("value", [-1, float("inf"), float("nan"), "2", True, None])
 def test_invalid_tolerance(value: object) -> None:
     with pytest.raises(ValidationError):
-        ReadinessReportCreate.model_validate({"tolerance_m": value})
+        ReadinessReportCreate.model_validate(
+            {"tolerance_m": value, "tolerance_qualification_id": str(UUID(int=9))}
+        )
 
 
 def test_create_contract_rejects_client_evidence() -> None:
-    assert ReadinessReportCreate(tolerance_m=2).tolerance_m == 2
+    body = {"tolerance_m": 2, "tolerance_qualification_id": str(UUID(int=9))}
+    assert ReadinessReportCreate.model_validate(body).tolerance_m == 2
     for field in ("tenant_id", "actor_user_id", "evidence_digest", "findings", "approved", "status"):
         with pytest.raises(ValidationError):
-            ReadinessReportCreate.model_validate({"tolerance_m": 2, field: "forged"})
+            ReadinessReportCreate.model_validate({**body, field: "forged"})
+    with pytest.raises(ValidationError):
+        ReadinessReportCreate.model_validate({"tolerance_m": 2})  # qualification binding is required
 
 
 def test_historical_report_contract() -> None:

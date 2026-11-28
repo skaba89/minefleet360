@@ -2866,6 +2866,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Readiness Reports
+         * @description Newest-first historical reports; opaque cursor pagination inside scope.
+         */
+        get: operations["list_readiness_reports_api_v1_sites__site_id__mining_revisions__revision_id__readiness_reports_get"];
+        put?: never;
+        /**
+         * Record Readiness Report
+         * @description Record one immutable snapshot of the draft graph at the survey tolerance.
+         */
+        post: operations["record_readiness_report_api_v1_sites__site_id__mining_revisions__revision_id__readiness_reports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Readiness Report */
+        get: operations["get_readiness_report_api_v1_sites__site_id__mining_revisions__revision_id__readiness_reports__report_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Readiness Report */
+        post: operations["approve_readiness_report_api_v1_sites__site_id__mining_revisions__revision_id__readiness_reports__report_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Readiness Report */
+        post: operations["reject_readiness_report_api_v1_sites__site_id__mining_revisions__revision_id__readiness_reports__report_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Review History */
+        get: operations["get_review_history_api_v1_sites__site_id__mining_revisions__revision_id__readiness_reports__report_id__review_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/sites/{site_id}/reactivate": {
         parameters: {
             query?: never;
@@ -8757,6 +8849,147 @@ export interface components {
              * @enum {string}
              */
             status: "SUSPENDED" | "REVOKED";
+        };
+        /** ReadinessDecisionOut */
+        ReadinessDecisionOut: {
+            /**
+             * Actor User Id
+             * Format: uuid
+             */
+            actor_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "APPROVED" | "REJECTED";
+            /**
+             * Decision Id
+             * Format: uuid
+             */
+            decision_id: string;
+            /**
+             * Evidence Kind
+             * @default MINING_REVIEW_DECISION
+             * @constant
+             */
+            evidence_kind: "MINING_REVIEW_DECISION";
+            /** Reason */
+            reason: string;
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "TECHNICAL" | "HSE";
+        };
+        /** ReadinessFindingOut */
+        ReadinessFindingOut: {
+            /** Code */
+            code: string;
+            /** Segment Id */
+            segment_id: string | null;
+        };
+        /**
+         * ReadinessReportCreate
+         * @description The tolerance must be justified by an approved survey qualification; the server computes evidence.
+         */
+        ReadinessReportCreate: {
+            /** Tolerance M */
+            tolerance_m: number;
+            /**
+             * Tolerance Qualification Id
+             * Format: uuid
+             */
+            tolerance_qualification_id: string;
+        };
+        /** ReadinessReportDetailOut */
+        ReadinessReportDetailOut: {
+            /** Findings */
+            findings: components["schemas"]["ReadinessFindingOut"][];
+            summary: components["schemas"]["ReadinessReportSummaryOut"];
+        };
+        /** ReadinessReportPageOut */
+        ReadinessReportPageOut: {
+            /** Items */
+            items: components["schemas"]["ReadinessReportSummaryOut"][];
+            /** Next Cursor */
+            next_cursor: string | null;
+        };
+        /** ReadinessReportSummaryOut */
+        ReadinessReportSummaryOut: {
+            /**
+             * Actor User Id
+             * Format: uuid
+             */
+            actor_user_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Digest Version */
+            digest_version: string;
+            /** Evidence Digest */
+            evidence_digest: string;
+            /**
+             * Evidence Kind
+             * @default HISTORICAL_TECHNICAL_INSPECTION
+             * @constant
+             */
+            evidence_kind: "HISTORICAL_TECHNICAL_INSPECTION";
+            /** Finding Count */
+            finding_count: number;
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            /** Tolerance M */
+            tolerance_m: number;
+            /** Tolerance Qualification Id */
+            tolerance_qualification_id?: string | null;
+        };
+        /**
+         * ReadinessReviewCreate
+         * @description A motivated historical decision; the service re-validates stage, role and evidence.
+         */
+        ReadinessReviewCreate: {
+            /** Reason */
+            reason: string;
+            /**
+             * Stage
+             * @enum {string}
+             */
+            stage: "TECHNICAL" | "HSE";
+        };
+        /** ReadinessReviewHistoryOut */
+        ReadinessReviewHistoryOut: {
+            /** Decisions */
+            decisions: components["schemas"]["ReadinessDecisionOut"][];
+            /** Digest Version */
+            digest_version: string;
+            /** Evidence Digest */
+            evidence_digest: string;
+            /**
+             * Evidence Kind
+             * @default MINING_REVIEW_HISTORY
+             * @constant
+             */
+            evidence_kind: "MINING_REVIEW_HISTORY";
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
         };
         /** ReceiptCreate */
         ReceiptCreate: {
@@ -18301,6 +18534,229 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GpsPolicyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_readiness_reports_api_v1_sites__site_id__mining_revisions__revision_id__readiness_reports_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                before?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                site_id: string;
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessReportPageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_readiness_report_api_v1_sites__site_id__mining_revisions__revision_id__readiness_reports_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                site_id: string;
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadinessReportCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessReportDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_readiness_report_api_v1_sites__site_id__mining_revisions__revision_id__readiness_reports__report_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                site_id: string;
+                revision_id: string;
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessReportDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_readiness_report_api_v1_sites__site_id__mining_revisions__revision_id__readiness_reports__report_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                site_id: string;
+                revision_id: string;
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadinessReviewCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessDecisionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_readiness_report_api_v1_sites__site_id__mining_revisions__revision_id__readiness_reports__report_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                site_id: string;
+                revision_id: string;
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReadinessReviewCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessDecisionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_review_history_api_v1_sites__site_id__mining_revisions__revision_id__readiness_reports__report_id__review_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                site_id: string;
+                revision_id: string;
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessReviewHistoryOut"];
                 };
             };
             /** @description Validation Error */
