@@ -961,6 +961,7 @@ permissions:
       - { method: GET, path: "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports", shape: collection, success: 200 }
       - { method: GET, path: "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}", shape: item, success: 200 }
       - { method: GET, path: "/sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}/review", shape: item, success: 200 }
+      - { method: GET, path: "/sites/{site_id}/mining/revisions/{revision_id}/route-preview", shape: item, success: 200 }
     grants:
       TENANT_ADMIN: [TENANT]
       DIRECTION: [TENANT]

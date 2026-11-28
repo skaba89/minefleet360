@@ -46,3 +46,15 @@ introuvable. Un dépassement de capacité interrompt la lecture avant toute conc
 Les constats décrivent les données visibles au début de la lecture. Une modification validée après cet
 instant impose une nouvelle inspection. L’étape suivante consiste à conserver le rapport, les références
 de ses entrées et sa tolérance pour que les responsables technique et HSE puissent examiner la même version.
+
+## Exposition HTTP de l'aperçu (Phase 8)
+
+`GET /sites/{site_id}/mining/revisions/{revision_id}/route-preview` expose
+`preview_draft_route` sous `dispatch.readiness.read` : origine, destination,
+`departure` et `horizon` (fenêtre bornée à 92 jours, fuseau obligatoire,
+origine ≠ destination). La réponse est `found=true` avec la séquence complète
+de nœuds, de tronçons, la distance et la durée, ou `found=false` **sans aucune
+donnée partielle**. Aucun profil véhicule n'est encore accepté : la résolution
+de `mining_vehicle_profile` (ingestion + lecture app) reste à livrer avant de
+prévisualiser les restrictions par catégorie, masse et gabarit. L'aperçu reste
+advisory : jamais une autorisation opérationnelle ni un calcul d'ETA contractuel.

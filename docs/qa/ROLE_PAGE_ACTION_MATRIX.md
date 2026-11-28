@@ -214,7 +214,7 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | `dispatch.weighing.approve` | 1c | `POST /weighing-tickets/{weighing_ticket_id}/approve` | `OPS_MANAGER` |
 | `dispatch.weighing.correct` | 1c | `POST /weighing-tickets/{weighing_ticket_id}/void`<br>`POST /weighing-tickets/{weighing_ticket_id}/correct` | `OPS_MANAGER` |
 | `dispatch.indicators.read` | 1c | `GET /dispatch-indicators` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER` |
-| `dispatch.readiness.read` | 2a | `GET /sites/{site_id}/mining/revisions`<br>`GET /sites/{site_id}/mining/revisions/{revision_id}/readiness-reports`<br>`GET /sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}`<br>`GET /sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}/review` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
+| `dispatch.readiness.read` | 2a | `GET /sites/{site_id}/mining/revisions`<br>`GET /sites/{site_id}/mining/revisions/{revision_id}/readiness-reports`<br>`GET /sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}`<br>`GET /sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}/review`<br>`GET /sites/{site_id}/mining/revisions/{revision_id}/route-preview` | `AUDITOR`, `DIRECTION`, `DISPATCHER`, `FINANCE`, `HSE`, `OPS_MANAGER`, `TENANT_ADMIN`, `WORKSHOP_CHIEF` |
 | `dispatch.readiness.record` | 2a | `POST /sites/{site_id}/mining/revisions/{revision_id}/readiness-reports` | `DISPATCHER`, `OPS_MANAGER` |
 | `dispatch.readiness.reject` | 2a | `POST /sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}/reject` | `HSE`, `OPS_MANAGER` |
 | `dispatch.readiness.approve` | 2a | `POST /sites/{site_id}/mining/revisions/{revision_id}/readiness-reports/{report_id}/approve` | `HSE`, `OPS_MANAGER` |
@@ -280,19 +280,19 @@ Route attrape-tout `*` : page « Page introuvable » (404 UI) dans le shell auth
 | Rôle | Permissions | Routes API accessibles |
 |---|---:|---:|
 | `PLATFORM_ADMIN` | 12 | 33 |
-| `TENANT_ADMIN` | 74 | 143 |
-| `DIRECTION` | 45 | 111 |
-| `OPS_MANAGER` | 95 | 200 |
-| `DISPATCHER` | 39 | 89 |
+| `TENANT_ADMIN` | 74 | 144 |
+| `DIRECTION` | 45 | 112 |
+| `OPS_MANAGER` | 95 | 201 |
+| `DISPATCHER` | 39 | 90 |
 | `HR` | 17 | 36 |
 | `DRIVER` | 5 | 20 |
-| `WORKSHOP_CHIEF` | 43 | 113 |
+| `WORKSHOP_CHIEF` | 43 | 114 |
 | `MECHANIC` | 18 | 49 |
 | `STOREKEEPER` | 17 | 50 |
 | `FUEL_MANAGER` | 28 | 63 |
-| `HSE` | 38 | 89 |
-| `FINANCE` | 32 | 69 |
-| `AUDITOR` | 46 | 114 |
+| `HSE` | 38 | 90 |
+| `FINANCE` | 32 | 70 |
+| `AUDITOR` | 46 | 115 |
 
 ## 6. Anomalies détectées mécaniquement
 

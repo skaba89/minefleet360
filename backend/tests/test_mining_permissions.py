@@ -58,6 +58,7 @@ def test_matrix_declares_readiness_permissions() -> None:
         ("GET", base, 200),
         ("GET", f"{base}/{{report_id}}", 200),
         ("GET", f"{base}/{{report_id}}/review", 200),
+        ("GET", "/sites/{site_id}/mining/revisions/{revision_id}/route-preview", 200),
     ]
     assert [
         (r.method, r.path, r.success) for r in matrix.permissions["dispatch.readiness.record"].routes

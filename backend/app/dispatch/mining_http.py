@@ -1,19 +1,23 @@
-"""HTTP exposure of readiness reports and review decisions (Phase 6).
+"""HTTP exposure of readiness reports, review decisions and draft route preview.
 
-Read endpoints serve the immutable historical evidence; decision endpoints stage
-rejection or approval. Every authorization rule beyond the coarse permission
-gate lives in the services (stage-matching role, four eyes, current tolerance
-qualification, evidence integrity, transactional pinning): the HTTP layer only
+Read endpoints serve the immutable historical evidence and the advisory
+topology preview; decision endpoints stage rejection or approval. Every
+authorization rule beyond the coarse permission gate lives in the services
+(stage-matching role, four eyes, current tolerance qualification, evidence
+integrity, transactional pinning, site ownership): the HTTP layer only
 translates the contract.
 """
 
 import uuid
+from datetime import datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
 from app.authz.dependencies import Authorized, Require
 from app.authz.routing import SecuredRoute
+from app.core.errors import AppError
+from app.dispatch.mining_preview import preview_draft_route
 from app.dispatch.mining_report_read import (
     get_readiness_report as get_report,
 )
@@ -31,6 +35,7 @@ from app.dispatch.mining_report_schemas import (
     ReadinessReviewCreate,
     ReadinessReviewHistoryOut,
     ReadinessRevisionOut,
+    RoutePreviewOut,
 )
 from app.dispatch.mining_report_service import record_draft_readiness
 from app.dispatch.mining_review_read import HistoricalDecision, load_review_history
@@ -63,6 +68,48 @@ def list_mining_revisions(
         ReadinessRevisionOut.from_revision(revision)
         for revision in list_site_revisions(auth, site_id=site_id, limit=limit)
     ]
+
+
+@router.get(
+    "/sites/{site_id}/mining/revisions/{revision_id}/route-preview",
+    response_model=RoutePreviewOut,
+)
+def preview_mining_route(
+    site_id: uuid.UUID,
+    revision_id: uuid.UUID,
+    auth: ReadinessRead,
+    origin_id: uuid.UUID,
+    destination_id: uuid.UUID,
+    departure: datetime,
+    horizon: datetime,
+) -> RoutePreviewOut:
+    """Advisory topology preview over the draft survey: closures applied, no vehicle
+    authorization, no GPS snapping. An absent or too-long path is an explicit
+    unavailable result, never a partial itinerary."""
+    if origin_id == destination_id:
+        raise AppError("VALIDATION_ERROR")
+    if departure.tzinfo is None or horizon.tzinfo is None:
+        raise AppError("VALIDATION_ERROR")
+    if not (timedelta(0) < horizon - departure <= timedelta(days=92)):
+        raise AppError("VALIDATION_ERROR")
+    route = preview_draft_route(
+        auth,
+        site_id=site_id,
+        revision_id=revision_id,
+        origin_id=origin_id,
+        destination_id=destination_id,
+        departure=departure,
+        horizon=horizon,
+    )
+    if route is None:
+        return RoutePreviewOut(found=False, nodes=[], segment_ids=[], distance_m=None, duration_seconds=None)
+    return RoutePreviewOut(
+        found=True,
+        nodes=list(route.nodes),
+        segment_ids=list(route.segment_ids),
+        distance_m=route.distance_m,
+        duration_seconds=route.duration_seconds,
+    )
 
 
 @router.post(

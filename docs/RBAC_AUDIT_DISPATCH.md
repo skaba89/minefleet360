@@ -90,7 +90,7 @@ Justifications ancrées dans l'existant :
 | mining_report_read.py | lecture rapports | `readiness.read` |
 | mining_review_read.py | historique de revue | `readiness.read` |
 | mining_report_service.py | enregistrement rapport | `readiness.record` |
-| mining_http.py | routes REST readiness (Phases 6-7 : révisions d'un site, enregistrement, lecture, historique, rejet, approbation) | `readiness.record` / `readiness.read` / `readiness.reject` / `readiness.approve` |
+| mining_http.py | routes REST readiness (Phases 6-8 : révisions d'un site, enregistrement, lecture, historique, rejet, approbation, aperçu d'itinéraire du brouillon) | `readiness.record` / `readiness.read` / `readiness.reject` / `readiness.approve` |
 | mining_tolerance_service.py | proposition/retrait + approbation | `readiness.record` / `readiness.approve` |
 | mining_review_service.py | rejet motivé / approbation positive | `readiness.reject` / `readiness.approve` |
 
@@ -100,7 +100,10 @@ permission, DISPATCHER lit mais ne rejette pas, PLATFORM_ADMIN refusé,
 inadéquation rôle/étape refusée), `backend/tests/test_mining_approval_service.py`
 (quatre yeux, indépendance HSE, qualification courante, concurrence, preuves
 périmées), `backend/tests/test_mining_readiness_http.py` (contrats HTTP :
-statuts, charges utiles, audit de décision) et
+statuts, charges utiles, audit de décision),
+`backend/tests/test_mining_route_preview_http.py` (aperçu d'itinéraire :
+résultat explicite sans itinéraire partiel, validations de fenêtre, 403/404,
+révision étrangère indiscernable) et
 `frontend/src/pages/MiningReadinessPage.test.tsx` (écran `/mine` : levés,
 relevés, historique, décisions gated par les permissions générées).
 
